@@ -41,6 +41,7 @@ I examine:
 - Package.json or similar config
 - Current documentation state
 - Check for existing README.md (preserve if updating)
+- **Monorepo structure**: Identify if this is a root README or a package-specific README in a monorepo (Lerna, Nx, Turborepo, Pnpm workspaces)
 
 ### Step 2: Select appropriate sections
 
@@ -75,6 +76,13 @@ Choose sections based on project type:
 - Environment variables
 - Backend requirements
 
+  **For Monorepos:**
+
+- Workspace overview (list of packages)
+- Root-level installation and build commands
+- Link to package-specific READMEs
+- Shared development requirements
+
 ### Step 3: Detect configuration and add badges
 
 First, detect what exists:
@@ -85,11 +93,13 @@ First, detect what exists:
 - **Hosting**: Detect GitHub (.github directory), GitLab (.gitlab-ci.yml), or generic
 
 **Badge URL patterns by platform:**
+
 - **GitHub**: `https://img.shields.io/github/actions/workflow/status/{org}/{repo}/{workflow}.yml`
 - **GitLab**: `https://img.shields.io/gitlab/pipeline/{org}/{repo}`
 - **Generics**: Use `shields.io/v2/` format
 
 Select badges based on:
+
 - CI/CD: GitHub Actions, Travis, CircleCI, GitLab CI
 - Code quality: Codecov, CodeClimate, Sonar
 - Package: npm, PyPI, crates.io, Maven
@@ -105,7 +115,7 @@ Add based on project maturity:
 - Changelog (CHANGELOG.md or HISTORY.md)
 - License (LICENSE file)
 
-## Output format
+  ## Output format
 
 I create a README.md file with:
 
@@ -114,10 +124,11 @@ I create a README.md file with:
 - Code blocks with language annotations
 - Relative links to local resources
 - Badge images in standard sizes
+- **Asset management**: Reference images/logos from `/assets` or `/docs/images` using relative paths
 
 ## Example output structure
 
-```markdown
+````markdown
 # Project Name
 
 Brief description (one line, under 80 characters)
@@ -144,6 +155,7 @@ Brief description (one line, under 80 characters)
 ```bash
 npm install project-name
 ```
+````
 
 ### Usage
 
@@ -184,26 +196,31 @@ When a README.md already exists:
 ## Platform-specific badge formats
 
 **GitHub Actions:**
+
 ```markdown
 [![CI](https://img.shields.io/github/actions/workflow/status/{org}/{repo}/{workflow}.yml)](https://github.com/{org}/{repo}/actions)
 ```
 
 **GitLab CI:**
+
 ```markdown
 [![CI](https://img.shields.io/gitlab/pipeline/{org}/{repo}])(https://gitlab.com/{org}/{repo}/pipelines)
 ```
 
 **npm:**
+
 ```markdown
 [![npm](https://img.shields.io/npm/v/{package})](https://www.npmjs.com/package/{package})
 ```
 
 **PyPI:**
+
 ```markdown
 [![PyPI](https://img.shields.io/pypi/v/{package})](https://pypi.org/project/{package}/)
 ```
 
 **Crates.io:**
+
 ```markdown
 [![crates.io](https://img.shields.io/crates/v/{package})](https://crates.io/crates/{package})
 ```
@@ -211,6 +228,7 @@ When a README.md already exists:
 ## Validation checklist
 
 Before finalizing, I ensure:
+
 - [ ] Title is clear and searchable
 - [ ] Description fits on one line (under 80 characters)
 - [ ] Badges are current and link correctly
@@ -222,3 +240,5 @@ Before finalizing, I ensure:
 - [ ] Heading hierarchy is correct (one H1 for title, H2/H3 for sections)
 - [ ] Code blocks have proper language annotations
 - [ ] Badge images display correctly
+- [ ] Monorepo: Root README links to packages, package READMEs link back to root
+- [ ] Assets: Images use relative paths and are stored in appropriate directories
