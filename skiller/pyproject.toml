@@ -1,0 +1,24 @@
+[project]
+name = "skiller"
+version = "0.1.5"
+description = "Helper script to discover, install and manage skills for AI agents"
+authors = [{name = "Johann Waldherr"}]
+requires-python = ">=3.9"
+dependencies = ["pyyaml", "questionary"]
+
+[project.scripts]
+skiller = "skiller:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["skiller*"]
+
+[tool.setuptools.package-data]
+"skiller" = ["skiller_config.json"]

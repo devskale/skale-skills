@@ -1,0 +1,33 @@
+{
+  "custom_subdirs": ["dev"],
+  "agent_dirs": {
+    "default": {
+      "user": ["~/.config/opencode/skill"],
+      "project": [".opencode/skill"]
+    },
+    "opencode": {
+      "user": ["~/.config/opencode/skill"],
+      "project": [".opencode/skill"]
+    },
+    "qwen": {
+      "user": ["~/.qwen/skills"],
+      "project": [".qwen/skills"]
+    },
+    "claude": {
+      "user": ["~/.claude/skills"],
+      "project": [".claude/skills"]
+    },
+    "gemini": {
+      "user": ["~/.gemini/skills"],
+      "project": [".gemini/skills"]
+    },
+    "codex": {
+      "user": ["~/.codex/skills", "/etc/codex/skills"],
+      "project": [".codex/skills", "../.codex/skills"]
+    },
+    "trae": {
+      "user": ["~/.trae/skills"],
+      "project": [".trae/skills"]
+    }
+  }
+}

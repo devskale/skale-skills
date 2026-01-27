@@ -1,4 +1,14 @@
 __pycache__/
-config.json
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+.venv/
+venv/
 node_modules/
+config.json
 transcripts/
+.DS_Store
+.vscode/
