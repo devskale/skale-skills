@@ -68,6 +68,10 @@ function which(cmd) {
 }
 
 function resolveBin(name, fallback) {
+  // Check for local .venv/bin/yt-dlp relative to this script
+  const localBin = path.resolve(__dirname, "../.venv/bin", name);
+  if (fs.existsSync(localBin)) return localBin;
+
   return which(name) || (fallback && fs.existsSync(fallback) ? fallback : null);
 }
 
@@ -685,7 +689,7 @@ function usage() {
   const rel = path.relative(process.cwd(), path.join(__dirname, "vtd.js"));
   return [
     "usage:",
-    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--to-file] [--transcript-dir ./transcripts] [-- <yt-dlp extra…>]`,
+    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-to-file] [--transcript-dir ./transcripts] [-- <yt-dlp extra…>]`,
     `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir ./transcripts]`,
     `  ${rel} download   --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
     `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
@@ -703,16 +707,16 @@ async function main() {
     return;
   }
 
-  const url = opts.url;
+  const url = opts.url ? opts.url.replace(/['"`]+/g, "").trim() : undefined;
   const lang = opts.lang || "en";
   const outputDir = opts["output-dir"] || path.join(os.homedir(), "Downloads");
 
   const timestamps = Boolean(opts.timestamps);
   const keepBrackets = Boolean(opts["keep-brackets"]);
   const extra = opts.extra || [];
-  const transcriptDir =
-    opts["transcript-dir"] || path.resolve("transcripts");
-  const toFile = Boolean(opts["to-file"]);
+  const transcriptDir = opts["transcript-dir"] || path.resolve("transcripts");
+  const toFile =
+    opts["to-file"] !== undefined ? Boolean(opts["to-file"]) : true;
   const limit = opts.limit;
 
   if (cmd === "transcript") {

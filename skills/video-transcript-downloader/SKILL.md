@@ -17,28 +17,41 @@ Transcript behavior:
 
 ## Setup
 
+Run the installation script to set up dependencies (including `yt-dlp` in a virtual environment):
+
 ```bash
-cd ~/code/skills/video-transcript-downloader && pnpm install
+./install.sh
 ```
 
-## Transcript (default: clean paragraph)
+Or manually:
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install yt-dlp
+pnpm install
+```
+
+## Transcript (default: save to ./transcripts)
+
+Transcripts are saved to `./transcripts/YYYY-MM-DD_title-short.md` by default.
 
 ```bash
 ./scripts/vtd.js transcript --url 'https://…'
 ./scripts/vtd.js transcript --url 'https://…' --lang en
 ./scripts/vtd.js transcript --url 'https://…' --timestamps
 ./scripts/vtd.js transcript --url 'https://…' --keep-brackets
-./scripts/vtd.js transcript --url 'https://…' --to-file
+./scripts/vtd.js transcript --url 'https://…' --no-to-file  # Print to console instead
 ```
 
 ## Search
 
-Search for videos and download transcripts (default limit: 1). Auto-detects "top N" in query.
+Search for videos and download transcripts (default limit: 1). Auto-detects "top N" in query. Transcripts are saved to file by default.
 
 ```bash
 ./scripts/vtd.js search "top 3 ai videos on reinforcement learning"
 ./scripts/vtd.js search "nextjs tutorial" --limit 5
-./scripts/vtd.js search "..." --to-file --timestamps
+./scripts/vtd.js search "..." --no-to-file --timestamps
 ```
 
 ## Download video / audio / subtitles
@@ -73,7 +86,7 @@ Prefer MP4 container without re-encoding (remux when possible):
 
 - Default transcript output is a single paragraph. Use `--timestamps` only when asked.
 - Bracketed cues like `[Music]` are stripped by default; keep them via `--keep-brackets`.
-- `--to-file` writes the transcript to `./transcripts/YYYY-MM-DD_title-short.md` in the **current working directory**.
+- By default, transcripts are saved to `./transcripts/YYYY-MM-DD_title-short.md` in the **current working directory**. Use `--no-to-file` to print to stdout instead.
 - Pass extra `yt-dlp` args after `--` for `transcript` fallback, `download`, `audio`, `subs`, `formats`.
 
 ```bash
@@ -84,13 +97,14 @@ Prefer MP4 container without re-encoding (remux when possible):
 
 - Missing `yt-dlp` / `ffmpeg`:
 
+Run `./install.sh` to fix missing `yt-dlp`. For `ffmpeg` (required for audio conversion):
+
 ```bash
-brew install yt-dlp ffmpeg
+brew install ffmpeg
 ```
 
 - Verify:
 
 ```bash
-yt-dlp --version
-ffmpeg -version | head -n 1
+./scripts/vtd.js --help
 ```
