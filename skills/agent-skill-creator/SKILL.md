@@ -214,6 +214,49 @@ The agent reads REDLINING.md or OOXML.md only when the user needs those features
 - **Avoid deeply nested references** - Keep references one level deep from SKILL.md. All reference files should link directly from SKILL.md.
 - **Structure longer reference files** - For files longer than 100 lines, include a table of contents at the top so the agent can see the full scope when previewing.
 
+### Credential Management
+
+When skills require authentication (API keys, tokens, passwords), **NEVER** hardcode credentials in scripts or configuration files. Instead, use the `credgoo` library to securely retrieve credentials from the user's environment.
+
+**Why use credgoo?**
+
+- **Security**: Credentials are not stored in plain text in the codebase.
+- **Portability**: The same skill works for different users with their own credentials.
+- **Ease of Use**: Users manage their keys centrally.
+
+**Implementation Pattern:**
+
+1.  **Install dependency**: Ensure `credgoo` is installed in the skill's environment (e.g., via `install.sh`).
+2.  **Retrieve keys**: Use `get_api_key` in your Python scripts.
+3.  **Parse format**: Standardize on `URL@USERNAME@PASSWORD` or similar formats for complex credentials.
+
+**Example:**
+
+```python
+try:
+    from credgoo import get_api_key
+except ImportError:
+    print("Error: credgoo not found. Run install.sh")
+    sys.exit(1)
+
+# Retrieve credential string
+cred_string = get_api_key("my-service")
+
+if not cred_string:
+    print("Error: Credentials not found for 'my-service'")
+    sys.exit(1)
+
+# Parse (if composite)
+if "@" in cred_string:
+    url, user, password = cred_string.split("@")
+else:
+    api_key = cred_string
+```
+
+**Documentation:**
+
+Always document the expected credential key name (e.g., "my-service") and format in the `SKILL.md` Configuration section so users know what to add to their `credgoo` store.
+
 ## Skill Creation Process
 
 Skill creation involves these steps:

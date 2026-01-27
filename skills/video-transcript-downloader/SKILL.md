@@ -1,0 +1,96 @@
+---
+name: video-transcript-downloader
+description: Download videos, audio, subtitles, and clean paragraph-style transcripts from YouTube and any other yt-dlp supported site. Use when asked to “download this video”, “save this clip”, “rip audio”, “get subtitles”, “get transcript”, or to troubleshoot yt-dlp/ffmpeg and formats/playlists.
+---
+
+# Video Transcript Downloader
+
+`./scripts/vtd.js` can:
+
+- Print a transcript as a clean paragraph (timestamps optional).
+- Download video/audio/subtitles.
+
+Transcript behavior:
+
+- YouTube: fetch via `youtube-transcript-plus` when possible.
+- Otherwise: pull subtitles via `yt-dlp`, then clean into a paragraph.
+
+## Setup
+
+```bash
+cd ~/code/skills/video-transcript-downloader && pnpm install
+```
+
+## Transcript (default: clean paragraph)
+
+```bash
+./scripts/vtd.js transcript --url 'https://…'
+./scripts/vtd.js transcript --url 'https://…' --lang en
+./scripts/vtd.js transcript --url 'https://…' --timestamps
+./scripts/vtd.js transcript --url 'https://…' --keep-brackets
+./scripts/vtd.js transcript --url 'https://…' --to-file
+```
+
+## Search
+
+Search for videos and download transcripts (default limit: 1). Auto-detects "top N" in query.
+
+```bash
+./scripts/vtd.js search "top 3 ai videos on reinforcement learning"
+./scripts/vtd.js search "nextjs tutorial" --limit 5
+./scripts/vtd.js search "..." --to-file --timestamps
+```
+
+## Download video / audio / subtitles
+
+```bash
+./scripts/vtd.js download --url 'https://…' --output-dir ~/Downloads
+./scripts/vtd.js audio --url 'https://…' --output-dir ~/Downloads
+./scripts/vtd.js subs --url 'https://…' --output-dir ~/Downloads --lang en
+```
+
+## Formats (list + choose)
+
+List available formats (format ids, resolution, container, audio-only, etc):
+
+```bash
+./scripts/vtd.js formats --url 'https://…'
+```
+
+Download a specific format id (example):
+
+```bash
+./scripts/vtd.js download --url 'https://…' --output-dir ~/Downloads -- --format 137+140
+```
+
+Prefer MP4 container without re-encoding (remux when possible):
+
+```bash
+./scripts/vtd.js download --url 'https://…' --output-dir ~/Downloads -- --remux-video mp4
+```
+
+## Notes
+
+- Default transcript output is a single paragraph. Use `--timestamps` only when asked.
+- Bracketed cues like `[Music]` are stripped by default; keep them via `--keep-brackets`.
+- `--to-file` writes the transcript to `./transcripts/YYYY-MM-DD_title-short.md` in the **current working directory**.
+- Pass extra `yt-dlp` args after `--` for `transcript` fallback, `download`, `audio`, `subs`, `formats`.
+
+```bash
+./scripts/vtd.js formats --url 'https://…' -- -v
+```
+
+## Troubleshooting (only when needed)
+
+- Missing `yt-dlp` / `ffmpeg`:
+
+```bash
+brew install yt-dlp ffmpeg
+```
+
+- Verify:
+
+```bash
+yt-dlp --version
+ffmpeg -version | head -n 1
+```

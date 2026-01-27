@@ -1,0 +1,23 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      youtube-transcript-plus:
+        specifier: ^1.1.1
+        version: 1.1.2
+
+packages:
+
+  youtube-transcript-plus@1.1.2:
+    resolution: {integrity: sha512-bLlqkA6gVVUorZpcc+THuECXyAwOpnHqW2lOav9g6gGovxAP3FCD8s9GBFVjmSl3cWWwwPPXtG/zY1nD+GvQ7A==}
+    engines: {node: '>=18.0.0'}
+
+snapshots:
+
+  youtube-transcript-plus@1.1.2: {}
