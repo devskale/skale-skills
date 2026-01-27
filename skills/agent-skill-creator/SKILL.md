@@ -22,9 +22,11 @@ This skill creator generates skills compatible with:
 - **Claude** (Anthropic)
 - **Trae IDE** (ByteDance)
 - **Gemini** (Google)
-- **OpenCode**
+- **OpenCode** (Default Target)
 - **Qwen Code CLI**
 - **Custom Agents** (via AgentSkills spec)
+
+**Note:** The default implementation targets **OpenCode** standards.
 
 See `references/schemas/` for platform-specific details.
 
@@ -331,7 +333,21 @@ Do not include any other fields in YAML frontmatter.
 
 Write instructions for using the skill and its bundled resources.
 
-### Step 5: Packaging a Skill
+### Step 5: Validating the Skill
+
+Before packaging, you can validate your skill's structure and metadata to ensure it meets requirements:
+
+```bash
+scripts/quick_validate.py <path/to/skill-folder>
+```
+
+This script checks for:
+
+- Valid SKILL.md frontmatter
+- Correct naming conventions
+- Essential file structure
+
+### Step 6: Packaging a Skill
 
 Once development of the skill is complete, it must be packaged into a distributable .skill file that gets shared with the user. The packaging process automatically validates the skill first to ensure it meets all requirements:
 
@@ -357,7 +373,7 @@ The packaging script will:
 
 If validation fails, the script will report the errors and exit without creating a package. Fix any validation errors and run the packaging command again.
 
-### Step 6: Iterate
+### Step 7: Iterate
 
 After testing the skill, users may request improvements. Often this happens right after using the skill, with fresh context of how the skill performed.
 
