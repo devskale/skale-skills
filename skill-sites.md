@@ -9,6 +9,7 @@ https://github.com/vercel-labs/agent-skills
 https://github.com/obra/superpowers
 https://github.com/ComposioHQ/awesome-claude-skills
 https://github.com/VoltAgent/awesome-claude-skills
+https://skillsmp.com/
 
 ## skill managers
 

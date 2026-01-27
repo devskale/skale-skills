@@ -4,35 +4,19 @@ import os
 import sys
 import urllib.parse
 import urllib.request
+import argparse
 from typing import Dict, Any, List, Optional
 
-SEARXNG_BASE_URL = "https://neusiedl.duckdns.org:8002"
-SEARCH_ENDPOINT = f"{SEARXNG_BASE_URL}/search"
-
-
-def load_config(config_path: str) -> Optional[Dict[str, str]]:
-    """
-    Load authentication credentials from config file.
-
-    Config file should be JSON with format:
-    {
-      "username": "your_username",
-      "password": "your_password"
-    }
-    """
-    if not os.path.exists(config_path):
-        return None
-
-    try:
-        with open(config_path, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
+try:
+    from credgoo import get_api_key
+except ImportError:
+    # Fallback for when running without the virtual environment active
+    # This ensures the script can still provide a helpful error message
+    get_api_key = None
 
 
 def search(
     query: str,
-    config_path: Optional[str] = None,
     engines: Optional[List[str]] = None,
     categories: Optional[List[str]] = None,
     language: str = "en",
@@ -41,32 +25,27 @@ def search(
     format: str = "json",
 ) -> Dict[str, Any]:
     """
-    Search using the SearXNG instance.
-
-    Args:
-        query: The search query string
-        config_path: Path to config.json with credentials (default: ./config.json)
-        engines: List of search engines to use (e.g., ['google', 'bing'])
-        categories: List of categories to search (e.g., ['general', 'images'])
-        language: Language code (default: 'en')
-        time_range: Time filter (e.g., 'day', 'week', 'month', 'year')
-        safesearch: Safe search level (0-2)
-        format: Response format (default: 'json', also supports 'html', 'csv')
-
-    Returns:
-        Dict with search results
+    Search using the SearXNG instance with credentials from credgoo.
     """
-    if config_path is None:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(script_dir, "..", "config.json")
+    if get_api_key is None:
+        return {"error": "credgoo library not found. Please install it: uv pip install -r https://skale.dev/credgoo"}
 
-    if not os.path.exists(config_path):
-        print(f"Error: Configuration file not found at {config_path}")
-        print("Please run the setup script to configure credentials:")
-        print(f"  {os.path.join(os.path.dirname(os.path.abspath(__file__)), 'setup.py')}")
-        sys.exit(1)
-
-    config = load_config(config_path)
+    try:
+        # Get credentials from credgoo
+        # Format: URL@USERNAME@PASSWORD
+        cred_string = get_api_key("searx")
+        if not cred_string:
+             return {"error": "No credentials found for 'searx' in credgoo."}
+             
+        parts = cred_string.split("@")
+        if len(parts) != 3:
+            return {"error": f"Invalid credential format. Expected URL@USERNAME@PASSWORD, got {len(parts)} parts."}
+            
+        base_url, username, password = parts
+        search_endpoint = f"{base_url}/search"
+        
+    except Exception as e:
+        return {"error": f"Failed to retrieve credentials: {e}"}
 
     params = {
         "q": query,
@@ -84,13 +63,13 @@ def search(
     if time_range:
         params["time_range"] = time_range
 
-    url = f"{SEARCH_ENDPOINT}?{urllib.parse.urlencode(params)}"
+    url = f"{search_endpoint}?{urllib.parse.urlencode(params)}"
 
     try:
         req = urllib.request.Request(url)
 
-        if config and "username" in config and "password" in config:
-            auth_string = f"{config['username']}:{config['password']}"
+        if username and password:
+            auth_string = f"{username}:{password}"
             b64_auth = __import__("base64").b64encode(auth_string.encode()).decode()
             req.add_header("Authorization", f"Basic {b64_auth}")
 
@@ -103,47 +82,70 @@ def search(
         return {"error": f"Invalid JSON response: {e}"}
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: search.py <query> [--config <path>] [--engines <engines>] [--categories <categories>] [--language <lang>] [--time <range>]", file=sys.stderr)
-        sys.exit(1)
-
-    query = sys.argv[1]
-    args = sys.argv[2:]
-
-    config_path = None
-    engines = None
-    categories = None
-    language = "en"
-    time_range = None
-
-    i = 0
-    while i < len(args):
-        if args[i] == "--config" and i + 1 < len(args):
-            config_path = args[i + 1]
-            i += 2
-        elif args[i] == "--engines" and i + 1 < len(args):
-            engines = args[i + 1].split(",")
-            i += 2
-        elif args[i] == "--categories" and i + 1 < len(args):
-            categories = args[i + 1].split(",")
-            i += 2
-        elif args[i] == "--language" and i + 1 < len(args):
-            language = args[i + 1]
-            i += 2
-        elif args[i] == "--time" and i + 1 < len(args):
-            time_range = args[i + 1]
-            i += 2
+def print_markdown(results: Dict[str, Any], query: str, limit: int = 5):
+    """Format and print results as Markdown."""
+    if "results" not in results:
+        if "error" in results:
+            print(f"Error: {results['error']}")
         else:
-            i += 1
+            print("No results found.")
+        return
 
-    results = search(query, config_path=config_path, engines=engines, categories=categories, language=language, time_range=time_range)
+    print(f"# Search Results for '{query}'\n")
+    
+    count = 0
+    for result in results["results"]:
+        if count >= limit:
+            break
+            
+        title = result.get("title", "No Title")
+        url = result.get("url", "#")
+        content = result.get("content", "")
+        source = result.get("engine", "Unknown Source")
+        
+        # Clean up content (sometimes it's None)
+        if content is None:
+            content = ""
+            
+        print(f"## [{title}]({url})")
+        print(f"**Source:** {source}")
+        if content:
+            print(f"\n{content}")
+        print("\n---\n")
+        
+        count += 1
 
-    if "error" in results:
-        print(f"Error: {results['error']}", file=sys.stderr)
-        sys.exit(1)
 
-    print(json.dumps(results, indent=2))
+def main():
+    parser = argparse.ArgumentParser(description="Search SearXNG.")
+    parser.add_argument("query", help="The search query string")
+    parser.add_argument("--num", type=int, default=5, help="Number of results to return (default: 5)")
+    parser.add_argument("--categories", help="Comma-separated list of categories (e.g., news,images)")
+    parser.add_argument("--engines", help="Comma-separated list of engines (e.g., google,bing)")
+    parser.add_argument("--time", help="Time range (day, week, month, year)")
+    parser.add_argument("--language", default="en", help="Language code (default: en)")
+    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of Markdown")
+
+    args = parser.parse_args()
+
+    categories = args.categories.split(",") if args.categories else None
+    engines = args.engines.split(",") if args.engines else None
+
+    results = search(
+        query=args.query,
+        engines=engines,
+        categories=categories,
+        language=args.language,
+        time_range=args.time
+    )
+
+    if args.json:
+        if "error" in results:
+            print(f"Error: {results['error']}", file=sys.stderr)
+            sys.exit(1)
+        print(json.dumps(results, indent=2))
+    else:
+        print_markdown(results, args.query, args.num)
 
 
 if __name__ == "__main__":
