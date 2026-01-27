@@ -2,6 +2,12 @@
 
 https://skills.sh/
 https://github.com/numman-ali/openskills
+https://context7.com/?tab=skills
+https://clawdhub.com/
+https://www.agenstskills.com/
+https://github.com/rohitg00/skillkit
+https://github.com/majiayu000/caude-skill-manager
+https://majiayu000.github.io/claude-skill-registry/
 
 ## agents skill docs
 

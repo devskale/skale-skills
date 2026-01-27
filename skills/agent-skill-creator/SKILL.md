@@ -327,7 +327,27 @@ Write the YAML frontmatter with `name` and `description`:
   - Include all "when to use" information here - Not in the body. The body is only loaded after triggering, so "When to Use This Skill" sections in the body are not helpful to the agent.
   - Example description for a `docx` skill: "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. Use when the agent needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
 
-Do not include any other fields in YAML frontmatter.
+##### Description Best Practices
+
+The description is critical for the agent to discover your Skill.
+Formula: `[What it does]` + `[When to use it]` + `[Key triggers]`
+
+**Good Examples:**
+
+- "Extract text and tables from PDF files, fill forms, merge documents. Use when working with PDF files or when the user mentions PDFs, forms, or document extraction."
+- "Analyze Excel spreadsheets, create pivot tables, and generate charts. Use when working with Excel files, spreadsheets, or analyzing tabular data in .xlsx format."
+
+**Bad Examples:**
+
+- "Helps with documents" (Too vague)
+- "For data analysis" (Missing context)
+
+**Tips:**
+
+- Include specific file extensions (`.pdf`, `.xlsx`, `.json`)
+- Mention common user phrases ("analyze", "extract", "generate")
+- List concrete operations (not generic verbs)
+- Add context clues ("Use when...", "For...")
 
 ##### Body
 
