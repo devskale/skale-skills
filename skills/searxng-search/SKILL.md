@@ -14,23 +14,32 @@ Search using the Python script (defaults to Markdown output):
 scripts/search.py "your search query"
 ```
 
+## Installation
+
+Run the install script to set up the environment and dependencies:
+
+```bash
+./install.sh
+```
+
 ## Configuration
 
 This skill uses `credgoo` to securely manage credentials.
 
-1. Install the dependency:
-
-   ```bash
-   uv pip install -r https://skale.dev/credgoo
-   ```
-
-2. Ensure your credentials for `searx` are stored in `credgoo`. The expected format for the credential value is:
+1. Ensure your credentials for `searx` are stored in `credgoo`. The expected format for the credential value is:
    `URL@USERNAME@PASSWORD`
 
    Example:
-   `https://neusiedl.duckdns.org:8002@user@pass`
+   `https://neusiedl.duckdns.org:8002@searxng@searxng23`
 
 ## Usage
+
+**Note:** Always activate the virtual environment before running the scripts, or run them using the python executable in the virtual environment.
+
+```bash
+source .venv/bin/activate
+scripts/search.py "your search query"
+```
 
 ### Basic Search (Markdown)
 
