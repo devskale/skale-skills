@@ -12,8 +12,13 @@ Search YouTube videos using the Invidious API at `https://yt.tarka.dev`.
 Run the included python script to search and get formatted results:
 
 ```bash
-python3 search.py "<query>"
+python3 search.py "<query>" [--num <number>] [--rank <relevance|date|views|rating>]
 ```
+
+Options:
+
+- `--num`: Number of results to return (default: 3)
+- `--rank`: Sort order (default: relevance). Choices: `relevance`, `date`, `views`, `rating`, `ranking`
 
 The script will output a markdown list of videos.
 
@@ -23,6 +28,18 @@ When user asks "find me a video about Clojure macros":
 
 ```bash
 python3 search.py "Clojure macros"
+```
+
+When user asks "show me the most viewed videos about rust":
+
+```bash
+python3 search.py "rust lang" --rank views
+```
+
+When user asks "show me 3 recent videos about AI":
+
+```bash
+python3 search.py "artificial intelligence" --num 3 --rank date
 ```
 
 Output:

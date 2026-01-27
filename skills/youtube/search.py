@@ -4,6 +4,7 @@ import json
 import urllib.request
 import urllib.parse
 import datetime
+import argparse
 
 def format_duration(seconds):
     """Formats seconds into MM:SS or H:MM:SS."""
@@ -22,12 +23,26 @@ def format_duration(seconds):
         m, s = divmod(remainder, 60)
         return f"{h}:{m:02d}:{s:02d}"
 
-def search_youtube(query):
+def search_youtube(query, num=5, sort_by='relevance'):
     """Searches YouTube via Invidious API and prints formatted results."""
     base_url = "https://yt.tarka.dev/api/v1/search"
+    
+    # Map friendly sort names to API parameter values
+    # API supports: relevance, rating, upload_date, view_count
+    sort_map = {
+        'relevance': 'relevance',
+        'date': 'upload_date',
+        'views': 'view_count',
+        'rating': 'rating',
+        'ranking': 'rating'
+    }
+    
+    api_sort = sort_map.get(sort_by, 'relevance')
+    
     params = {
         "q": query,
-        "type": "video"
+        "type": "video",
+        "sort_by": api_sort
     }
     url = f"{base_url}?{urllib.parse.urlencode(params)}"
     
@@ -39,8 +54,8 @@ def search_youtube(query):
             print("No results found.")
             return
 
-        # Limit to top 5 results
-        results = data[:5]
+        # Limit results
+        results = data[:num]
         
         for video in results:
             title = video.get("title", "Untitled")
@@ -61,9 +76,12 @@ def search_youtube(query):
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python3 search.py <query>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Search YouTube videos via Invidious API')
+    parser.add_argument('query', help='Search query')
+    parser.add_argument('--num', type=int, default=3, help='Number of results to return (default: 3)')
+    parser.add_argument('--rank', choices=['relevance', 'date', 'views', 'rating', 'ranking'], default='relevance',
+                        help='Sort order: relevance, date, views, rating, ranking (default: relevance)')
     
-    query = " ".join(sys.argv[1:])
-    search_youtube(query)
+    args = parser.parse_args()
+    
+    search_youtube(args.query, num=args.num, sort_by=args.rank)
