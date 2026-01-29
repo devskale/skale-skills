@@ -46,9 +46,10 @@ def _run(args: argparse.Namespace, config: dict) -> None:
     results = []
 
     for skill in skills:
-        # Search in name and potentially other fields
+        # Search in name and description
         name = skill.get("name", "").lower()
-        if query in name:
+        description = skill.get("description", "").lower()
+        if query in name or query in description:
             results.append(skill)
 
     if args.json:
@@ -62,6 +63,9 @@ def _run(args: argparse.Namespace, config: dict) -> None:
     print(f"Found {len(results)} skills matching '{args.query}':\n")
     for skill in results:
         print(f"  - {skill['name']}")
+        desc = skill.get("description", "")
+        if desc:
+            print(f"    Description: {desc[:80]}{'...' if len(desc) > 80 else ''}")
         print(f"    URL: {skill['url']}")
         print(f"    Source: {skill['source']}")
         print()

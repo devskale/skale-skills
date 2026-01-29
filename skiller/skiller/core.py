@@ -5,9 +5,53 @@ from __future__ import annotations
 import os
 import shutil
 import sys
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 import yaml
+
+# Import UI functions for prompting
+_imported_ui = None
+
+
+def _get_ui():
+    """Lazy import UI functions to avoid circular imports."""
+    global _imported_ui
+    if _imported_ui is None:
+        from skiller import ui
+        _imported_ui = ui
+    return _imported_ui
+
+
+def prompt_agents_and_paths(config: dict) -> Optional[Tuple[List[str], List[str]]]:
+    """Prompt user to select agents and path types for installation/removal.
+    
+    Returns:
+        Tuple of (selected_agents, selected_paths) or None if cancelled.
+    """
+    ui = _get_ui()
+    agent_dirs = config.get("agent_dirs", {}) or {}
+    if not agent_dirs:
+        print("No agent configurations available.")
+        return None
+    agents = sorted(agent_dirs.keys())
+    if not agents:
+        print("No agents defined in configuration.")
+        return None
+    agent_default = [agents[0]]
+    selected_agents = ui.select_multiple(
+        "Choose agent(s):", agents, default=agent_default
+    )
+    if not selected_agents:
+        return None
+    path_choices = ["user", "project"]
+    selected_paths = ui.select_multiple(
+        "Choose path types (user/project):",
+        path_choices,
+        default=["user"],
+    )
+    if not selected_paths:
+        return None
+    return selected_agents, selected_paths
 
 
 def parse_frontmatter(file_path: str) -> Optional[dict]:

@@ -35,6 +35,11 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
         default=1.0,
         help="Delay in seconds between requests (default: 1.0)",
     )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Test mode - show what would be crawled without saving",
+    )
 
 def _extract_urls(file_path: str) -> list[str]:
     """Extract URLs from a markdown file, only from the '# skill repos' section."""
@@ -71,6 +76,32 @@ def _get_github_repo_info(url: str) -> tuple[str, str] | None:
         return owner, repo
     return None
 
+def _fetch_skill_description(skill_file_url: str, headers: dict) -> str:
+    """Fetch and parse SKILL.md to extract description from frontmatter."""
+    try:
+        req = urllib.request.Request(skill_file_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            content = response.read().decode('utf-8')
+            
+            # Check for YAML frontmatter
+            if content.startswith("---\n"):
+                end_pos = content.find("\n---\n", 4)
+                if end_pos != -1:
+                    import yaml
+                    frontmatter_str = content[4:end_pos]
+                    try:
+                        parsed = yaml.safe_load(frontmatter_str)
+                        if isinstance(parsed, dict):
+                            desc = parsed.get("description")
+                            if desc:
+                                return str(desc).replace("\n", " ")
+                    except Exception:
+                        pass
+        return ""
+    except Exception:
+        return ""
+
+
 def _fetch_github_skills(owner: str, repo: str, delay: float = 0) -> list[dict[str, Any]]:
     """Fetch skills from a GitHub repository using the Content API."""
     skills = []
@@ -90,12 +121,14 @@ def _fetch_github_skills(owner: str, repo: str, delay: float = 0) -> list[dict[s
             # Check for SKILL.md in root
             for item in contents:
                 if item["name"].lower() == "skill.md" and item["type"] == "file":
+                    description = _fetch_skill_description(item["download_url"], headers)
                     skills.append({
                         "name": f"{owner}/{repo}",
                         "source": "github",
                         "url": f"https://github.com/{owner}/{repo}",
                         "skill_file_url": item["download_url"],
-                        "path": ""
+                        "path": "",
+                        "description": description or "(No description available)"
                     })
                 
                 # If there's a skills/ directory, look inside
@@ -115,12 +148,14 @@ def _fetch_github_skills(owner: str, repo: str, delay: float = 0) -> list[dict[s
                                     sub_contents = json.loads(sub_response.read().decode())
                                     for sub_file in sub_contents:
                                         if sub_file["name"].lower() == "skill.md":
+                                            description = _fetch_skill_description(sub_file["download_url"], headers)
                                             skills.append({
                                                 "name": f"{owner}/{repo}/{s_item['name']}",
                                                 "source": "github",
                                                 "url": f"https://github.com/{owner}/{repo}/tree/main/skills/{s_item['name']}",
                                                 "skill_file_url": sub_file["download_url"],
-                                                "path": f"skills/{s_item['name']}"
+                                                "path": f"skills/{s_item['name']}",
+                                                "description": description or "(No description available)"
                                             })
     except Exception as e:
         print(f"  [Error] Failed to fetch from {owner}/{repo}: {e}")
@@ -161,6 +196,7 @@ def _save_index(skills: list[dict[str, Any]]) -> None:
 
 def _run(args: argparse.Namespace, config: dict) -> None:
     """Run the crawl command."""
+    test_mode = getattr(args, "test", False)
     _load_env()
     print(f"Crawling skills from {args.file}...")
     urls = _extract_urls(args.file)
@@ -189,7 +225,12 @@ def _run(args: argparse.Namespace, config: dict) -> None:
             # Web scraping could be added here later
             print(f"  [Web] Skipping {url} (Web crawling not yet implemented)")
     
-    if all_discovered_skills:
+    if test_mode:
+        print(f"\nTest mode - found {len(all_discovered_skills)} skills:")
+        for skill in all_discovered_skills:
+            print(f"  - {skill['name']}: {skill.get('description', '(no description)')[:60]}...")
+        print("\nRun without --test to save these skills to the index.")
+    elif all_discovered_skills:
         _save_index(all_discovered_skills)
     else:
         print("\nNo skills discovered.")
