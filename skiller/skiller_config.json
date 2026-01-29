@@ -12,6 +12,10 @@
       "user": ["~/.config/opencode/skill"],
       "project": [".opencode/skill"]
     },
+    "pi": {
+      "user": ["~/.pi/skills"],
+      "project": [".pi/skills"]
+    },
     "qwen": {
       "user": ["~/.qwen/skills"],
       "project": [".qwen/skills"]

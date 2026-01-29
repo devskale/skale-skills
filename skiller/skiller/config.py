@@ -198,6 +198,7 @@ DEFAULT_CONFIG: dict = {
     "agent_dirs": {
         "default": {"user": ["~/.config/opencode/skill"], "project": [".opencode/skill"]},
         "opencode": {"user": ["~/.config/opencode/skill"], "project": [".opencode/skill"]},
+        "pi": {"user": ["~/.pi/skills"], "project": [".pi/skills"]},
         "qwen": {"user": ["~/.qwen/skills"], "project": [".qwen/skills"]},
         "claude": {"user": ["~/.claude/skills"], "project": [".claude/skills"]},
         "gemini": {"user": ["~/.gemini/skills"], "project": [".gemini/skills"]},

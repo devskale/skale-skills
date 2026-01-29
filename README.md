@@ -86,7 +86,7 @@ Skiller loads configuration from `skiller_config.json` with the following schema
 - `discovery_dirs`: List of absolute paths to scan for skills (used by install command)
 - `agent_dirs`: Installation targets for each agent, with `user` and `project` path types
 
-Supported agents: opencode, qwen, claude, gemini, codex, trae.
+Supported agents: opencode, pi, qwen, claude, gemini, codex, trae.
 
 ## Installation
 
