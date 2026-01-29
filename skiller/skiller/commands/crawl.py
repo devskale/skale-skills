@@ -1,4 +1,10 @@
-"""Crawl command implementation to discover skills from external sites."""
+"""Crawl command implementation to discover skills from external sites.
+
+This module uses efficient GitHub API patterns to minimize API calls:
+- Uses Tree API with recursive=1 to get all repository files in ONE call
+- Fetches SKILL.md contents in parallel with rate limiting
+- Implements exponential backoff for rate limit handling
+"""
 
 from __future__ import annotations
 
@@ -10,8 +16,10 @@ import json
 import urllib.request
 import urllib.error
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor
 
 from skiller.commands.base import Command
+
 
 def _load_env() -> None:
     """Load environment variables from .env file if it exists."""
@@ -23,29 +31,86 @@ def _load_env() -> None:
                     key, value = line.strip().split("=", 1)
                     os.environ[key] = value
 
+
+def _get_headers() -> dict:
+    """Get request headers with optional auth token."""
+    token = os.environ.get("GITHUB_TOKEN")
+    headers = {
+        "User-Agent": "Skiller-Crawl",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    if token:
+        headers["Authorization"] = f"token {token}"
+    return headers
+
+
+def _make_request(url: str, headers: dict, max_retries: int = 3) -> Any:
+    """Make API request with rate limit handling and retries."""
+    for attempt in range(max_retries):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return json.loads(response.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                reset_time = e.headers.get("X-RateLimit-Reset")
+                if reset_time:
+                    sleep_time = max(0, int(reset_time) - time.time())
+                    if sleep_time > 0 and attempt < max_retries - 1:
+                        print(f"    Rate limited. Waiting {sleep_time:.0f}s...")
+                        time.sleep(sleep_time + 1)
+                        continue
+            if e.code == 404:
+                return None
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"    API Error {e.code}: {e.reason}")
+                return None
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"    Request error: {e}")
+                return None
+    return None
+
+
 def _add_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--file",
         default="skill-sites.md",
-        help="Path to the markdown file containing skill sites (default: skill-sites.md)",
+        help="Path to markdown file containing skill sites",
     )
     parser.add_argument(
         "--delay",
         type=float,
-        default=1.0,
-        help="Delay in seconds between requests (default: 1.0)",
+        default=0.5,
+        help="Delay in seconds between requests (default: 0.5)",
     )
     parser.add_argument(
         "--test",
         action="store_true",
         help="Test mode - show what would be crawled without saving",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Limit number of repos to crawl (0 = no limit, default: 0)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=5,
+        help="Number of parallel workers for fetching descriptions (default: 5)",
+    )
+
 
 def _extract_urls(file_path: str) -> list[str]:
-    """Extract URLs from a markdown file, only from the '# skill repos' section."""
+    """Extract URLs from markdown file, only from skill repos section."""
     urls = []
     if not os.path.exists(file_path):
-        # Try to find it in the project root if relative
         root_path = os.path.join(os.getcwd(), file_path)
         if os.path.exists(root_path):
             file_path = root_path
@@ -56,18 +121,21 @@ def _extract_urls(file_path: str) -> list[str]:
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
         
-        # Extract content only between '# skill repos' and the next H2 heading (##)
-        repo_section_match = re.search(r"# skill repos(.*?)(?=\n##|$)", content, re.DOTALL | re.IGNORECASE)
-        if repo_section_match:
-            section_content = repo_section_match.group(1)
-            # Simple regex to find https links in that section
-            urls = re.findall(r'https?://[^\s\)]+', section_content)
-        else:
-            print("Warning: Section '# skill repos' not found in file.")
+    repo_section_match = re.search(
+        r"# skill repos(.*?)(?=\n##|$)", 
+        content, 
+        re.DOTALL | re.IGNORECASE
+    )
+    if repo_section_match:
+        section_content = repo_section_match.group(1)
+        urls = re.findall(r'https?://[^\s\)]+', section_content)
+    else:
+        print("Warning: Section '# skill repos' not found in file.")
     
     return list(set(urls))
 
-def _get_github_repo_info(url: str) -> tuple[str, str] | None:
+
+def _get_github_repo_info(url: str):
     """Extract owner and repo from a GitHub URL."""
     match = re.search(r"github\.com/([^/]+)/([^/]+)", url)
     if match:
@@ -76,14 +144,74 @@ def _get_github_repo_info(url: str) -> tuple[str, str] | None:
         return owner, repo
     return None
 
-def _fetch_skill_description(skill_file_url: str, headers: dict) -> str:
+
+def _fetch_repo_tree(owner: str, repo: str, headers: dict) -> list[dict]:
+    """Fetch entire repository tree using Git Tree API (single request).
+    
+    This is much more efficient than Contents API which requires
+    multiple requests for nested directories.
+    """
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/HEAD?recursive=1"
+    
+    result = _make_request(api_url, headers)
+    if result and "tree" in result:
+        return result["tree"]
+    return []
+
+
+def _parse_skills_from_tree(tree: list[dict], owner: str, repo: str) -> list[dict]:
+    """Parse repository tree to find all SKILL.md files."""
+    skills = []
+    
+    for item in tree:
+        if item.get("type") != "blob":
+            continue
+            
+        path = item.get("path", "")
+        path_lower = path.lower()
+        
+        if not path_lower.endswith("skill.md"):
+            continue
+            
+        parts = path.split("/")
+        
+        if len(parts) == 1:
+            skill_name = f"{owner}/{repo}"
+            skill_url = f"https://github.com/{owner}/{repo}"
+            skill_path = ""
+        elif len(parts) >= 2 and parts[0].lower() == "skills":
+            skill_dir = parts[1] if len(parts) > 1 else ""
+            skill_name = f"{owner}/{repo}/{skill_dir}"
+            skill_url = f"https://github.com/{owner}/{repo}/tree/main/{parts[0]}/{skill_dir}"
+            skill_path = f"{parts[0]}/{skill_dir}"
+        else:
+            skill_name = f"{owner}/{repo}/{path}"
+            skill_url = f"https://github.com/{owner}/{repo}/blob/main/{path}"
+            skill_path = path
+            
+        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{path}"
+        
+        skills.append({
+            "name": skill_name,
+            "source": "github",
+            "url": skill_url,
+            "skill_file_url": raw_url,
+            "path": skill_path,
+            "description": "",
+        })
+    
+    return skills
+
+
+def _fetch_skill_description(skill_info: dict, headers: dict) -> dict:
     """Fetch and parse SKILL.md to extract description from frontmatter."""
+    url = skill_info["skill_file_url"]
+    
     try:
-        req = urllib.request.Request(skill_file_url, headers=headers)
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=10) as response:
             content = response.read().decode('utf-8')
             
-            # Check for YAML frontmatter
             if content.startswith("---\n"):
                 end_pos = content.find("\n---\n", 4)
                 if end_pos != -1:
@@ -94,76 +222,62 @@ def _fetch_skill_description(skill_file_url: str, headers: dict) -> str:
                         if isinstance(parsed, dict):
                             desc = parsed.get("description")
                             if desc:
-                                return str(desc).replace("\n", " ")
+                                skill_info["description"] = str(desc).replace("\n", " ")
+                                return skill_info
                     except Exception:
                         pass
-        return ""
     except Exception:
-        return ""
+        pass
+    
+    skill_info["description"] = "(No description available)"
+    return skill_info
 
 
-def _fetch_github_skills(owner: str, repo: str, delay: float = 0) -> list[dict[str, Any]]:
-    """Fetch skills from a GitHub repository using the Content API."""
-    skills = []
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents"
+def _fetch_github_skills(owner: str, repo: str, headers: dict, workers: int = 5) -> list[dict]:
+    """Fetch skills from a GitHub repository efficiently."""
+    print(f"  [GitHub] Scanning {owner}/{repo}...")
     
-    token = os.environ.get("GITHUB_TOKEN")
-    headers = {"User-Agent": "Skiller-Crawl"}
-    if token:
-        headers["Authorization"] = f"token {token}"
+    tree = _fetch_repo_tree(owner, repo, headers)
+    if not tree:
+        print(f"    No tree found for {owner}/{repo}")
+        return []
     
-    try:
-        # We search for SKILL.md files in the root or 'skills/' directory
-        req = urllib.request.Request(api_url, headers=headers)
-        with urllib.request.urlopen(req) as response:
-            contents = json.loads(response.read().decode())
-            
-            # Check for SKILL.md in root
-            for item in contents:
-                if item["name"].lower() == "skill.md" and item["type"] == "file":
-                    description = _fetch_skill_description(item["download_url"], headers)
-                    skills.append({
-                        "name": f"{owner}/{repo}",
-                        "source": "github",
-                        "url": f"https://github.com/{owner}/{repo}",
-                        "skill_file_url": item["download_url"],
-                        "path": "",
-                        "description": description or "(No description available)"
-                    })
-                
-                # If there's a skills/ directory, look inside
-                if item["name"].lower() == "skills" and item["type"] == "dir":
-                    if delay > 0:
-                        time.sleep(delay)
-                    skills_req = urllib.request.Request(item["url"], headers=headers)
-                    with urllib.request.urlopen(skills_req) as skills_response:
-                        skills_contents = json.loads(skills_response.read().decode())
-                        for s_item in skills_contents:
-                            if s_item["type"] == "dir":
-                                if delay > 0:
-                                    time.sleep(delay)
-                                # Look for SKILL.md inside each subdirectory
-                                sub_req = urllib.request.Request(s_item["url"], headers=headers)
-                                with urllib.request.urlopen(sub_req) as sub_response:
-                                    sub_contents = json.loads(sub_response.read().decode())
-                                    for sub_file in sub_contents:
-                                        if sub_file["name"].lower() == "skill.md":
-                                            description = _fetch_skill_description(sub_file["download_url"], headers)
-                                            skills.append({
-                                                "name": f"{owner}/{repo}/{s_item['name']}",
-                                                "source": "github",
-                                                "url": f"https://github.com/{owner}/{repo}/tree/main/skills/{s_item['name']}",
-                                                "skill_file_url": sub_file["download_url"],
-                                                "path": f"skills/{s_item['name']}",
-                                                "description": description or "(No description available)"
-                                            })
-    except Exception as e:
-        print(f"  [Error] Failed to fetch from {owner}/{repo}: {e}")
-        
-    return skills
+    skills = _parse_skills_from_tree(tree, owner, repo)
+    if not skills:
+        print(f"    No SKILL.md files found")
+        return []
+    
+    print(f"    Found {len(skills)} skills. Fetching descriptions...")
+    
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        results = list(executor.map(
+            lambda s: _fetch_skill_description(s.copy(), headers),
+            skills
+        ))
+    
+    with_desc_count = len([r for r in results if r.get("description") and r["description"] != "(No description available)"])
+    print(f"    Completed fetching descriptions for {with_desc_count} skills")
+    return results
+
+
+def _validate_skill_structure(skill: dict) -> list[str]:
+    """Validate a skill entry has all required fields."""
+    errors = []
+    
+    required_fields = ["name", "source", "url", "skill_file_url", "description"]
+    for field in required_fields:
+        if field not in skill or not skill[field]:
+            errors.append(f"Missing or empty field: {field}")
+    
+    if skill.get("name"):
+        if "/" not in skill["name"]:
+            errors.append(f"Invalid skill name format: {skill['name']} (should contain '/')")
+    
+    return errors
+
 
 def _load_index() -> list[dict[str, Any]]:
-    """Load existing skills from the local index file."""
+    """Load existing skills from local index file."""
     index_path = os.path.join(os.getcwd(), "skiller_index.json")
     if os.path.exists(index_path):
         try:
@@ -174,11 +288,11 @@ def _load_index() -> list[dict[str, Any]]:
             return []
     return []
 
+
 def _save_index(skills: list[dict[str, Any]]) -> None:
-    """Save the discovered skills to a local index file, merging with existing ones."""
+    """Save discovered skills to a local index file."""
     index_path = os.path.join(os.getcwd(), "skiller_index.json")
     
-    # Simple merge: use name as unique key
     existing_skills = _load_index()
     skill_map = {s["name"]: s for s in existing_skills}
     for s in skills:
@@ -188,15 +302,17 @@ def _save_index(skills: list[dict[str, Any]]) -> None:
     
     with open(index_path, "w", encoding="utf-8") as f:
         json.dump({
-            "updated_at": "now", 
+            "updated_at": "now",
             "count": len(final_skills),
             "skills": final_skills
         }, f, indent=2)
     print(f"\nIndex updated. Total skills: {len(final_skills)} (Saved to {index_path})")
 
+
 def _run(args: argparse.Namespace, config: dict) -> None:
     """Run the crawl command."""
     test_mode = getattr(args, "test", False)
+    limit = getattr(args, "limit", 0)
     _load_env()
     print(f"Crawling skills from {args.file}...")
     urls = _extract_urls(args.file)
@@ -205,8 +321,14 @@ def _run(args: argparse.Namespace, config: dict) -> None:
         print("No URLs found to crawl.")
         return
 
+    if limit > 0:
+        urls = urls[:limit]
+        print(f"Limit: Crawling first {len(urls)} repos only.")
+
     all_discovered_skills = []
     print(f"Found {len(urls)} potential sources. Starting crawl...")
+    
+    headers = _get_headers()
     
     for i, url in enumerate(urls):
         if i > 0 and args.delay > 0:
@@ -216,31 +338,54 @@ def _run(args: argparse.Namespace, config: dict) -> None:
             info = _get_github_repo_info(url)
             if info:
                 owner, repo = info
-                print(f"  [GitHub] Scanning {owner}/{repo}...")
-                discovered = _fetch_github_skills(owner, repo, args.delay)
+                discovered = _fetch_github_skills(
+                    owner, repo, headers, args.workers
+                )
                 if discovered:
-                    print(f"    Found {len(discovered)} skills.")
                     all_discovered_skills.extend(discovered)
         else:
-            # Web scraping could be added here later
             print(f"  [Web] Skipping {url} (Web crawling not yet implemented)")
     
-    if test_mode:
-        print(f"\nTest mode - found {len(all_discovered_skills)} skills:")
-        for skill in all_discovered_skills:
-            print(f"  - {skill['name']}: {skill.get('description', '(no description)')[:60]}...")
-        print("\nRun without --test to save these skills to the index.")
-    elif all_discovered_skills:
-        _save_index(all_discovered_skills)
-    else:
+    if not all_discovered_skills:
         print("\nNo skills discovered.")
+        return
+
+    print(f"\n=== Crawl Complete ===")
+    print(f"Total repos scanned: {len(urls)}")
+    print(f"Total skills found: {len(all_discovered_skills)}")
+    
+    validation_errors = []
+    for skill in all_discovered_skills:
+        errors = _validate_skill_structure(skill)
+        if errors:
+            validation_errors.extend([
+                f"  - {skill.get('name', 'Unknown')}: {', '.join(errors)}"
+            ])
+    
+    if validation_errors:
+        print(f"\nValidation warnings ({len(validation_errors)}):")
+        for error in validation_errors:
+            print(error)
+    else:
+        print(f"\nAll {len(all_discovered_skills)} skills validated successfully!")
+    
+    if test_mode:
+        print(f"\n=== Test Mode Output ===")
+        print(f"Found {len(all_discovered_skills)} skills (NOT SAVED):")
+        for skill in all_discovered_skills:
+            desc = skill.get('description', '(no description)')[:60]
+            print(f"  - {skill['name']}: {desc}...")
+        print("\nRun without --test to save these skills to index.")
+    else:
+        _save_index(all_discovered_skills)
+
 
 def _run_interactive(config: dict) -> None:
     """Interactive version of the crawl command."""
-    # Simple default run for now
     class Args:
         file = "skill-sites.md"
     _run(Args(), config)
+
 
 command = Command(
     name="crawl",
