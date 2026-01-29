@@ -5,7 +5,7 @@ description: "Analyze coding agent session transcripts to improve existing skill
 
 # Improve Skill
 
-This skill helps analyze coding agent sessions to improve or create skills. It works with Claude Code, Pi, and Codex session files.
+This skill helps analyze coding agent sessions to improve or create skills. It works with Claude Code, Pi, Codex, and OpenCode session files.
 
 ## Quick Start
 
@@ -18,7 +18,7 @@ Extract the current session and generate an improvement prompt:
 
 ## Session Extraction
 
-The `extract-session.js` script finds and parses session files from any of the three agents:
+The `extract-session.js` script finds and parses session files from any of the four agents:
 
 ```bash
 # Auto-detect (uses most recent session for current working directory)
@@ -28,6 +28,7 @@ The `extract-session.js` script finds and parses session files from any of the t
 ./scripts/extract-session.js --agent claude
 ./scripts/extract-session.js --agent pi
 ./scripts/extract-session.js --agent codex
+./scripts/extract-session.js --agent opencode
 
 # Specify a different working directory
 ./scripts/extract-session.js --cwd /path/to/project
@@ -37,15 +38,18 @@ The `extract-session.js` script finds and parses session files from any of the t
 ```
 
 **Session file locations:**
+
 - **Claude Code**: `~/.claude/projects/<encoded-cwd>/*.jsonl`
 - **Pi**: `~/.pi/agent/sessions/<encoded-cwd>/*.jsonl`
 - **Codex**: `~/.codex/sessions/YYYY/MM/DD/*.jsonl`
+- **OpenCode**: `~/.local/share/opencode/<project>/global/storage/session/message/<session-id>/*.json`
 
 ## Workflow: Improve an Existing Skill
 
 When asked to improve a skill based on a session:
 
 1. **Extract the session transcript:**
+
    ```bash
    ./scripts/extract-session.js > /tmp/session-transcript.txt
    ```
@@ -54,6 +58,7 @@ When asked to improve a skill based on a session:
    - `~/.codex/skills/<skill-name>/SKILL.md`
    - `~/.claude/skills/<skill-name>/SKILL.md`
    - `~/.pi/agent/skills/<skill-name>/SKILL.md`
+   - `~/.config/opencode/skill/<skill-name>/SKILL.md`
 
 3. **Generate an improvement prompt** for a new session:
 
@@ -92,6 +97,7 @@ Write the improved skill back to the same location.
 When asked to create a new skill from a session:
 
 1. **Extract the session transcript:**
+
    ```bash
    ./scripts/extract-session.js > /tmp/session-transcript.txt
    ```
@@ -115,7 +121,11 @@ Create a new skill that captures:
 3. Common pitfalls and how to avoid them
 4. Example usage for typical scenarios
 
-Write the skill to: ~/.codex/skills/<skill-name>/SKILL.md
+Write the skill to one of these locations (based on your agent):
+- `~/.codex/skills/<skill-name>/SKILL.md`
+- `~/.claude/skills/<skill-name>/SKILL.md`
+- `~/.pi/agent/skills/<skill-name>/SKILL.md`
+- `~/.config/opencode/skill/<skill-name>/SKILL.md`
 
 Use this format:
 ---
