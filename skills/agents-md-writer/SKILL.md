@@ -1,5 +1,5 @@
 ---
-name: agents-writer
+name: agents-md-writer
 description: Create and optimize AGENTS.md files for AI coding agents. Use this skill when users ask to create, write, generate, improve, or update an AGENTS.md file for their project, or when they need guidance on making their codebase more agent-friendly. Also use when users ask about agent context files, documentation for AI agents, or improving agent performance in their repository.
 license: MIT License - See LICENSE.txt
 ---
@@ -13,6 +13,7 @@ Create high-quality AGENTS.md files that maximize AI agent effectiveness through
 AGENTS.md provides persistent context to AI coding agents, eliminating the unreliability of skill-based retrieval. Research shows passive context in AGENTS.md achieves 100% pass rates versus 53-79% with skills.
 
 **Key advantages:**
+
 - No decision point (always available)
 - Consistent availability (in every turn)
 - No ordering issues (no sequencing decisions)
@@ -36,6 +37,7 @@ cat requirements.txt | head -20
 ```
 
 Determine:
+
 - Primary framework(s) and versions
 - Project type (web app, library, CLI, etc.)
 - Tech stack (languages, databases, tools)
@@ -72,13 +74,15 @@ This shifts agents from relying on potentially outdated training data to consult
 If Context7 MCP is available, leverage it for live framework documentation access instead of creating static indexes:
 
 **Check Context7 availability:**
+
 ```bash
 # List available Context7 knowledge bases
 mcp__context7__list_knowledge_bases
 ```
 
 **Add Context7 instruction to AGENTS.md:**
-```markdown
+
+````markdown
 ## Framework Documentation
 
 **IMPORTANT:** This project uses [Framework] [Version]. For framework-specific APIs and patterns, use Context7 MCP to access live documentation:
@@ -92,9 +96,11 @@ mcp__context7__query_knowledge_base knowledge_base="nextjs" query="use cache dir
 mcp__context7__query_knowledge_base knowledge_base="react" query="useEffect hook"
 mcp__context7__query_knowledge_base knowledge_base="python" query="asyncio patterns"
 ```
+````
 
 Prefer retrieval-led reasoning using Context7 over pre-training-led reasoning.
-```
+
+````
 
 **Benefits of Context7:**
 - Always up-to-date documentation
@@ -113,11 +119,12 @@ If Context7 doesn't cover your framework or you have internal documentation, cre
 |IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning
 |section-1:{file1.md,file2.md,file3.md}
 |section-2/subsection:{file4.md,file5.md}
-```
+````
 
 **Target size: <10KB** (80% compression from typical docs)
 
 **When to use each approach:**
+
 - Context7: Major frameworks and popular libraries
 - Static index: Internal frameworks, company-specific docs, custom tooling
 
@@ -130,6 +137,7 @@ scripts/validate_agents_md.py path/to/AGENTS.md
 ```
 
 Validation checks:
+
 - Size under 10KB (warns if over)
 - Includes framework version
 - Contains retrieval instruction
@@ -148,6 +156,7 @@ If possible, test the AGENTS.md with actual agent tasks targeting APIs not in tr
 Keep AGENTS.md under 10KB through strategic compression:
 
 **Bad (bloated):**
+
 ```markdown
 # API Documentation
 
@@ -157,6 +166,7 @@ The authentication endpoint is located at /api/auth/login and accepts POST reque
 ```
 
 **Good (compressed index):**
+
 ```markdown
 [API Docs]|root: ./.api-docs
 |auth:{login.md,logout.md,refresh.md}
@@ -166,12 +176,14 @@ The authentication endpoint is located at /api/auth/login and accepts POST reque
 ### Prioritize New/Unknown APIs
 
 Focus documentation on:
+
 - Framework features added after model training cutoff
 - Project-specific patterns and conventions
 - APIs unique to your version
 - Common pitfalls and gotchas
 
 **Skip documentation for:**
+
 - Well-known, stable APIs in training data
 - Standard language features
 - Universal programming concepts
@@ -184,15 +196,19 @@ Use clear hierarchical structure:
 # Project Context for AI Agents
 
 ## Project Overview
+
 [One paragraph]
 
 ## Tech Stack
+
 [Bullet list]
 
 ## Documentation Index
+
 [Compressed format]
 
 ## Key Conventions
+
 [Essential patterns only]
 ```
 
@@ -205,6 +221,7 @@ Agents scan AGENTS.md quickly; make information easy to find.
 For major frameworks, **prefer Context7 MCP** over static documentation:
 
 **Available knowledge bases include:**
+
 - `nextjs` - Next.js framework
 - `react` - React library
 - `vue` - Vue.js framework
@@ -217,27 +234,33 @@ For major frameworks, **prefer Context7 MCP** over static documentation:
 - And many more...
 
 **Command format:**
+
 ```bash
 mcp__context7__query_knowledge_base knowledge_base="[framework]" query="[your question]"
 ```
 
 **Example AGENTS.md instructions:**
-```markdown
+
+````markdown
 ## Framework Documentation (Context7)
 
 Use Context7 MCP for Next.js documentation:
+
 ```bash
 mcp__context7__query_knowledge_base knowledge_base="nextjs" query="server components vs client components"
 mcp__context7__query_knowledge_base knowledge_base="nextjs" query="use cache directive"
 ```
+````
 
 For Prisma database queries:
+
 ```bash
 mcp__context7__query_knowledge_base knowledge_base="prisma" query="relation queries"
 ```
 
 IMPORTANT: Prefer Context7 retrieval over pre-training knowledge.
-```
+
+````
 
 ### Next.js Projects
 
@@ -291,7 +314,7 @@ packages/
 └── utils/        # Shared utilities
 
 Each app has its own AGENTS.md with app-specific details.
-```
+````
 
 ### Multi-Framework Projects
 
@@ -349,18 +372,21 @@ For older projects:
 Structure content in layers:
 
 **Layer 1: Always visible (in AGENTS.md)**
+
 - Project overview
 - Tech stack
 - Documentation index
 - Key conventions
 
 **Layer 2: Reference files (loaded as needed)**
+
 - Detailed API documentation
 - Extended examples
 - Complex workflows
 - Schema definitions
 
 **Layer 3: External docs (linked)**
+
 - Official framework docs
 - Third-party library docs
 - Company wikis
@@ -399,6 +425,7 @@ git commit -m "Update AGENTS.md for [Framework] v[X]"
 **Symptoms:** Agent uses outdated patterns, doesn't reference documentation
 
 **Solutions:**
+
 - Ensure "prefer retrieval-led reasoning" instruction is present and prominent
 - Check AGENTS.md is in project root
 - Verify agent supports AGENTS.md (Cursor, Claude Code, etc.)
@@ -409,6 +436,7 @@ git commit -m "Update AGENTS.md for [Framework] v[X]"
 **Symptoms:** Agent performance degrades, slow responses
 
 **Solutions:**
+
 - Compress documentation indexes further
 - Move detailed docs to reference files
 - Use pipe-delimited format
@@ -419,6 +447,7 @@ git commit -m "Update AGENTS.md for [Framework] v[X]"
 **Symptoms:** Suggests APIs from wrong framework version
 
 **Solutions:**
+
 - Add explicit version warnings
 - Include negative examples ("Do NOT use X")
 - Make version number more prominent
@@ -448,10 +477,12 @@ Before finalizing AGENTS.md, verify:
 ## Platform-Specific Notes
 
 **Deploying to Vercel:**
+
 - Use `export const runtime = 'edge'` for Edge Functions
 - Image optimization is automatic
 
 **Deploying to AWS:**
+
 - Configure custom image optimization
 - Check Node.js version compatibility
 ```
@@ -462,11 +493,13 @@ Before finalizing AGENTS.md, verify:
 ## Language-Specific Conventions
 
 **TypeScript (frontend):**
+
 - Strict mode enabled
 - No `any` types
 - Prefer interfaces over types
 
 **Python (backend):**
+
 - Type hints required
 - Black formatting
 - pytest for testing
