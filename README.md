@@ -38,20 +38,21 @@ npx skills
 
 The CLI automatically detects which AI coding assistants you have installed and offers to install skills for them:
 
-| Client | Skills Directory |
-|--------|------------------|
-| Claude Code | `.claude/skills/` |
-| Cursor | `.cursor/skills/` |
-| Codex | `.codex/skills/` |
-| OpenCode | `.opencode/skills/` |
-| Amp | `.agents/skills/` |
-| Antigravity | `.agent/skills/` |
-| qwen | `.qwen/skills/` |
-| trae | `.trae/skills/` |
+| Client      | Skills Directory    |
+| ----------- | ------------------- |
+| Claude Code | `.claude/skills/`   |
+| Cursor      | `.cursor/skills/`   |
+| Codex       | `.codex/skills/`    |
+| OpenCode    | `.opencode/skills/` |
+| Amp         | `.agents/skills/`   |
+| Antigravity | `.agent/skills/`    |
+| qwen        | `.qwen/skills/`     |
+| trae        | `.trae/skills/`     |
 
 ## Related Resources
 
 See [skill-sites.md](skill-sites.md) for:
+
 - List of skill repositories
 - Skill managers and tools
 - Agent skill documentation links

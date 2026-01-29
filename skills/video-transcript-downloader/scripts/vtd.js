@@ -15,6 +15,12 @@ function die(message, code = 1) {
   process.exit(code);
 }
 
+function debug(message) {
+  if (process.env.DEBUG || process.env.VTD_DEBUG) {
+    process.stderr.write(`[DEBUG] ${message}\n`);
+  }
+}
+
 function parseArgs(argv) {
   // Tiny no-deps parser.
   // - `--flag` => boolean
@@ -205,6 +211,7 @@ async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
   }
   const filename = buildTranscriptFilename(meta);
   const dir = path.resolve(transcriptDir);
+  debug(`Creating directory: ${dir}`);
   fs.mkdirSync(dir, { recursive: true });
   const fullPath = path.join(dir, filename);
 
@@ -227,6 +234,7 @@ async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
     frontmatter + String(text || "").trimEnd() + "\n",
     "utf8",
   );
+  debug(`Saved transcript to: ${fullPath}`);
   return fullPath;
 }
 
@@ -416,7 +424,9 @@ async function downloadTranscript({
               transcriptDir,
               meta,
             });
-            process.stdout.write(filePath + "\n");
+            process.stdout.write(
+              `The transcript is extensive. It's saved to: ${filePath}\n`,
+            );
           } else {
             process.stdout.write(output + "\n");
           }
@@ -434,7 +444,9 @@ async function downloadTranscript({
             transcriptDir,
             meta,
           });
-          process.stdout.write(filePath + "\n");
+          process.stdout.write(
+            `The transcript is extensive. It's saved to: ${filePath}\n`,
+          );
         } else {
           process.stdout.write(paragraph + "\n");
         }
@@ -471,7 +483,9 @@ async function downloadTranscript({
           transcriptDir,
           meta,
         });
-        process.stdout.write(filePath + "\n");
+        process.stdout.write(
+          `The transcript is extensive. It's saved to: ${filePath}\n`,
+        );
       } else {
         process.stdout.write(output + "\n");
       }
@@ -487,7 +501,9 @@ async function downloadTranscript({
         transcriptDir,
         meta,
       });
-      process.stdout.write(filePath + "\n");
+      process.stdout.write(
+        `The transcript is extensive. It's saved to: ${filePath}\n`,
+      );
     } else {
       process.stdout.write(paragraph + "\n");
     }
@@ -689,8 +705,8 @@ function usage() {
   const rel = path.relative(process.cwd(), path.join(__dirname, "vtd.js"));
   return [
     "usage:",
-    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-to-file] [--transcript-dir ~/transcripts] [-- <yt-dlp extra…>]`,
-    `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir ~/transcripts]`,
+    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-file] [--transcript-dir .] [-- <yt-dlp extra…>]`,
+    `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir .]`,
     `  ${rel} download   --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
     `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
     `  ${rel} subs       --url 'https://…' [--output-dir ~/Downloads] [--lang en] [-- <yt-dlp extra…>]`,
@@ -714,9 +730,35 @@ async function main() {
   const timestamps = Boolean(opts.timestamps);
   const keepBrackets = Boolean(opts["keep-brackets"]);
   const extra = opts.extra || [];
-  const transcriptDir = opts["transcript-dir"] || path.resolve("transcripts");
-  const toFile =
-    opts["to-file"] !== undefined ? Boolean(opts["to-file"]) : true;
+  const transcriptDir =
+    typeof opts["transcript-dir"] === "string"
+      ? opts["transcript-dir"]
+      : process.cwd();
+
+  const toFileArg = opts["to-file"];
+  let toFile = true; // Default
+
+  if (opts["no-file"] || opts["no-to-file"]) {
+    toFile = false;
+  } else if (toFileArg !== undefined) {
+    // Handle --to-file false / --to-file=false
+    if (toFileArg === "false" || toFileArg === false) {
+      toFile = false;
+    } else {
+      toFile = Boolean(toFileArg);
+    }
+  }
+
+  // Always log where we intend to save if toFile is true, for debugging
+  if (toFile) {
+    // We can't log to stdout as it might break piping, so use stderr
+    // But only if we want verbose feedback. For now, rely on final message.
+    // However, we'll use our debug function.
+    debug(`toFile=true. Target directory: ${transcriptDir}`);
+  } else {
+    debug(`toFile=false. Outputting to stdout.`);
+  }
+
   const limit = opts.limit;
 
   if (cmd === "transcript") {
