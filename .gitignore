@@ -14,3 +14,4 @@ transcripts/
 .vscode/
 *.zip
 .claude
+*.env
