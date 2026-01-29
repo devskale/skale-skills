@@ -42,8 +42,36 @@ There is no global test runner. Tests are script-based per skill.
 
 ### Python (Skiller CLI)
 
-- **Install for Dev**: `uv pip install -e skiller` or `pip install -e skiller`.
+- **Install for Dev**:
+  ```bash
+  cd skiller
+  uv venv
+  source .venv/bin/activate  # On Unix/macOS
+  uv pip install -e .
+  ```
 - **Dependency Management**: Uses `pyproject.toml`.
+
+### Skiller CLI Commands
+
+```bash
+# List all available commands
+skiller --help
+
+# Discover skills in a directory
+skiller discovery [--dd [DIR]]
+
+# List installed skills
+skiller list
+
+# Install a discovered skill
+skiller install
+
+# Crawl external sites for skills
+skiller crawl
+
+# Search for skills in the crawled index
+skiller search [query]
+```
 
 ## 3. Code Style Guidelines
 
@@ -90,7 +118,9 @@ There is no global test runner. Tests are script-based per skill.
 - **Skiller**:
   ```bash
   cd skiller
-  pip install -e .
+  uv venv
+  source .venv/bin/activate  # On Unix/macOS
+  uv pip install -e .
   ```
 
 ### Linting (Recommended)
@@ -101,6 +131,21 @@ There is no global test runner. Tests are script-based per skill.
   # or
   flake8 .
   ```
+
+### External Skill Discovery
+
+The skiller CLI can discover skills from external sources:
+
+- **Crawl**: Fetch skills from GitHub repositories listed in `skill-sites.md`
+  ```bash
+  skiller crawl
+  ```
+- **Search**: Query the crawled skill index with JSON output
+  ```bash
+  skiller search <query> --json
+  ```
+
+Skills are indexed in `skiller/skiller_index.json` which is auto-generated during crawl operations.
 
 ## 5. Agent Behavior Rules
 
