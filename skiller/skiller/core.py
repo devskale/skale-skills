@@ -22,8 +22,17 @@ def _get_ui():
     return _imported_ui
 
 
-def prompt_agents_and_paths(config: dict) -> Optional[Tuple[List[str], List[str]]]:
+def prompt_agents_and_paths(
+    config: dict,
+    default_agents: Optional[List[str]] = None,
+    default_paths: Optional[List[str]] = None
+) -> Optional[Tuple[List[str], List[str]]]:
     """Prompt user to select agents and path types for installation/removal.
+    
+    Args:
+        config: Configuration dictionary
+        default_agents: Default agents to use (skip prompt if provided)
+        default_paths: Default paths to use (skip prompt if provided)
     
     Returns:
         Tuple of (selected_agents, selected_paths) or None if cancelled.
@@ -37,20 +46,27 @@ def prompt_agents_and_paths(config: dict) -> Optional[Tuple[List[str], List[str]
     if not agents:
         print("No agents defined in configuration.")
         return None
-    agent_default = [agents[0]]
-    selected_agents = ui.select_multiple(
-        "Choose agent(s):", agents, default=agent_default
-    )
+    
+    selected_agents = default_agents
     if not selected_agents:
-        return None
-    path_choices = ["user", "project"]
-    selected_paths = ui.select_multiple(
-        "Choose path types (user/project):",
-        path_choices,
-        default=["user"],
-    )
+        agent_default = [agents[0]]
+        selected_agents = ui.select_multiple(
+            "Choose agent(s):", agents, default=agent_default
+        )
+        if not selected_agents:
+            return None
+    
+    selected_paths = default_paths
     if not selected_paths:
-        return None
+        path_choices = ["user", "project"]
+        selected_paths = ui.select_multiple(
+            "Choose path types (user/project):",
+            path_choices,
+            default=["user"],
+        )
+        if not selected_paths:
+            return None
+    
     return selected_agents, selected_paths
 
 

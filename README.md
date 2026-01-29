@@ -14,6 +14,80 @@ A collection of reusable AI agent skills for enhancing coding and productivity w
 - **readme-write** - Generate and update README.md files
 - **searxng-search** - Search via SearXNG instance
 
+## Using Skiller CLI
+
+`skiller` is a Python CLI tool included in this repository for discovering, installing, and managing AI agent skills.
+
+### Installation
+
+```bash
+cd skiller
+uv venv
+source .venv/bin/activate  # On Unix/macOS
+uv pip install -e .
+```
+
+### Commands
+
+```bash
+# Show help
+skiller --help
+
+# Discover skills in a directory
+skiller discovery [DIR]
+
+# List installed skills across all agents
+skiller list
+
+# List installed skills for a specific agent
+skiller list --agent opencode
+
+# Install discovered skills (interactive or with arguments)
+skiller install
+skiller install docx xlsx --agent opencode --path-type user
+
+# Test mode - preview what would be installed
+skiller install --test docx
+
+# Remove installed skills (interactive or with arguments)
+skiller remove
+skiller remove frontend-design --agent opencode
+
+# Test mode - preview what would be removed
+skiller remove --test frontend-design
+
+# Crawl external sites for skills
+skiller crawl
+
+# Search the crawled skill index
+skiller search <query>
+skiller search youtube --json
+```
+
+### Configuration
+
+Skiller loads configuration from `skiller_config.json` with the following schema:
+
+```json
+{
+  "custom_subdirs": ["dev"],
+  "discovery_dirs": ["/Users/johannwaldherr/code/skale-skills"],
+  "agent_dirs": {
+    "opencode": {
+      "user": ["~/.config/opencode/skill"],
+      "project": [".opencode/skill"]
+    }
+  }
+}
+```
+
+**Configuration Keys:**
+- `custom_subdirs`: Subdirectory patterns to search within a base directory
+- `discovery_dirs`: List of absolute paths to scan for skills (used by install command)
+- `agent_dirs`: Installation targets for each agent, with `user` and `project` path types
+
+Supported agents: opencode, qwen, claude, gemini, codex, trae.
+
 ## Installation
 
 ### Using OpenSkills (recommended)

@@ -1,5 +1,8 @@
 {
   "custom_subdirs": ["dev"],
+  "discovery_dirs": [
+    "/Users/johannwaldherr/code/skale-skills"
+  ],
   "agent_dirs": {
     "default": {
       "user": ["~/.config/opencode/skill"],

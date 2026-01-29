@@ -59,7 +59,7 @@ def install_candidates(
     """
     # Get agents/paths if not provided
     if selected_agents is None or selected_paths is None:
-        selection = prompt_agents_and_paths(config)
+        selection = prompt_agents_and_paths(config, selected_agents, selected_paths)
         if not selection:
             return False
         selected_agents, selected_paths = selection
@@ -113,11 +113,18 @@ def _run(args: argparse.Namespace, config: dict) -> None:
     test_mode = getattr(args, "test", False)
     base_dir = os.getcwd()
     
-    # Discover all available skills
-    discovered = discover_skills_in_tree(base_dir, max_depth=3)
+    # Discover all available skills from multiple sources
+    discovered: List[dict] = []
+    
+    # Scan current directory
+    discovered.extend(discover_skills_in_tree(base_dir, max_depth=3))
+    
+    # Scan discovery_dirs from config
+    for discovery_dir in config.get("discovery_dirs", []):
+        discovered.extend(discover_skills_in_tree(discovery_dir, max_depth=3))
     
     if not discovered:
-        print("No skills discovered in the current directory.")
+        print("No skills discovered in current directory or discovery_dirs.")
         return
     
     # Filter by skill names if provided
@@ -198,10 +205,19 @@ def _install_interactive_multi(config: dict, discovered: List[dict], test_mode: 
 def _run_interactive(config: dict) -> None:
     """Interactive version of the install command."""
     base_dir = os.getcwd()
-    discovered = discover_skills_in_tree(base_dir, max_depth=3)
+    
+    # Discover all available skills from multiple sources
+    discovered: List[dict] = []
+    
+    # Scan current directory
+    discovered.extend(discover_skills_in_tree(base_dir, max_depth=3))
+    
+    # Scan discovery_dirs from config
+    for discovery_dir in config.get("discovery_dirs", []):
+        discovered.extend(discover_skills_in_tree(discovery_dir, max_depth=3))
     
     if not discovered:
-        print("No skills discovered in the current directory.")
+        print("No skills discovered in current directory or discovery_dirs.")
         return
     
     _install_interactive_multi(config, discovered, test_mode=False)

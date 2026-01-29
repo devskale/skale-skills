@@ -58,19 +58,22 @@ There is no global test runner. Tests are script-based per skill.
 skiller --help
 
 # Discover skills in a directory
-skiller discovery [--dd [DIR]]
+skiller discovery [DIR]
 
 # List installed skills
-skiller list
+skiller list [--agent AGENT]
 
-# Install a discovered skill
-skiller install
+# Install discovered skills (interactive or with arguments)
+skiller install [skill_name ...] [--agent AGENT] [--path-type user|project] [--test]
+
+# Remove installed skills (interactive or with arguments)
+skiller remove [skill_name] [--agent AGENT] [--path-type user|project|all] [--test]
 
 # Crawl external sites for skills
-skiller crawl
+skiller crawl [--file skill-sites.md] [--test] [--limit N]
 
 # Search for skills in the crawled index
-skiller search [query]
+skiller search [query] [--json]
 ```
 
 ## 3. Code Style Guidelines
@@ -146,6 +149,43 @@ The skiller CLI can discover skills from external sources:
   ```
 
 Skills are indexed in `skiller/skiller_index.json` which is auto-generated during crawl operations.
+
+### Skiller Configuration
+
+Skiller loads configuration from `skiller_config.json` with the following options:
+
+```json
+{
+  "custom_subdirs": ["dev"],
+  "discovery_dirs": ["/Users/johannwaldherr/code/skale-skills"],
+  "agent_dirs": {
+    "opencode": {
+      "user": ["~/.config/opencode/skill"],
+      "project": [".opencode/skill"]
+    }
+  }
+}
+```
+
+**Configuration Keys:**
+- `custom_subdirs`: Subdirectory patterns to search within a base directory
+- `discovery_dirs`: List of absolute paths to scan for skills (used by install command)
+- `agent_dirs`: Installation targets for each agent, with `user` and `project` path types
+
+**Configuration Loading Priority:**
+1. `SKILLER_CONFIG` environment variable
+2. `skiller_config.json` (searches upward from CWD)
+3. Packaged `skiller_config.json`
+4. Built-in defaults
+
+### Skiller CLI Features
+
+- **Interactive TUI**: Uses questionary for rich menus with curses fallback
+- **YAML Frontmatter Parsing**: Extracts skill metadata from `SKILL.md` files
+- **Tree-based Discovery**: Scans directories up to configurable max depth (default: 3)
+- **GitHub API Crawling**: Efficient Git Tree API with parallel fetching, rate limiting, and exponential backoff
+- **Test Mode**: Preview install/remove operations without making changes (`--test` flag)
+- **Multi-agent/Path Targeting**: Install or remove skills across multiple agents and path types simultaneously
 
 ## 5. Agent Behavior Rules
 
