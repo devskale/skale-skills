@@ -26,6 +26,7 @@ def _add_legacy_flags(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--interactive", action="store_true", help="Run interactive TUI")
     parser.add_argument("--install", action="store_true", help="Install a discovered skill")
+    parser.add_argument("--crawl", action="store_true", help="Crawl external sites for skills")
 
 
 def _run_interactive(config: dict) -> None:
@@ -53,6 +54,10 @@ def _dispatch_legacy(args: argparse.Namespace, config: dict) -> bool:
 
     if args.install:
         COMMAND_MAP["install"].run(args, config)
+        return True
+
+    if args.crawl:
+        COMMAND_MAP["crawl"].run(args, config)
         return True
 
     if args.dd is not None:

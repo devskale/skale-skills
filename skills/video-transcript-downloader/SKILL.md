@@ -23,18 +23,9 @@ Run the installation script to set up dependencies (including `yt-dlp` in a virt
 ./install.sh
 ```
 
-Or manually:
+## Transcript (default: save to ~/transcripts)
 
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install yt-dlp
-pnpm install
-```
-
-## Transcript (default: save to ./transcripts)
-
-Transcripts are saved to `./transcripts/YYYY-MM-DD_title-short.md` by default.
+Transcripts are saved to `~/transcripts/YYYY-MM-DD_title-short.md` by default.
 
 ```bash
 ./scripts/vtd.js transcript --url 'https://…'
@@ -86,7 +77,8 @@ Prefer MP4 container without re-encoding (remux when possible):
 
 - Default transcript output is a single paragraph. Use `--timestamps` only when asked.
 - Bracketed cues like `[Music]` are stripped by default; keep them via `--keep-brackets`.
-- By default, transcripts are saved to `./transcripts/YYYY-MM-DD_title-short.md` in the **current working directory**. Use `--no-to-file` to print to stdout instead.
+- By default, transcripts are saved to `~/transcripts/YYYY-MM-DD_title-short.md`.
+- Use `--no-to-file` to print to stdout instead if User requests it.
 - Pass extra `yt-dlp` args after `--` for `transcript` fallback, `download`, `audio`, `subs`, `formats`.
 
 ```bash

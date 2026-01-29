@@ -689,8 +689,8 @@ function usage() {
   const rel = path.relative(process.cwd(), path.join(__dirname, "vtd.js"));
   return [
     "usage:",
-    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-to-file] [--transcript-dir ./transcripts] [-- <yt-dlp extra…>]`,
-    `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir ./transcripts]`,
+    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-to-file] [--transcript-dir ~/transcripts] [-- <yt-dlp extra…>]`,
+    `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir ~/transcripts]`,
     `  ${rel} download   --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
     `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
     `  ${rel} subs       --url 'https://…' [--output-dir ~/Downloads] [--lang en] [-- <yt-dlp extra…>]`,

@@ -12,3 +12,5 @@ config.json
 transcripts/
 .DS_Store
 .vscode/
+*.zip
+.claude

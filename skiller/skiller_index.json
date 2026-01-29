@@ -1,0 +1,2099 @@
+{
+  "updated_at": "now",
+  "count": 299,
+  "skills": [
+    {
+      "name": "anthropics/skills/algorithmic-art",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/algorithmic-art",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/algorithmic-art/SKILL.md",
+      "path": "skills/algorithmic-art"
+    },
+    {
+      "name": "anthropics/skills/brand-guidelines",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/brand-guidelines",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/brand-guidelines/SKILL.md",
+      "path": "skills/brand-guidelines"
+    },
+    {
+      "name": "anthropics/skills/canvas-design",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/canvas-design",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/canvas-design/SKILL.md",
+      "path": "skills/canvas-design"
+    },
+    {
+      "name": "anthropics/skills/doc-coauthoring",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/doc-coauthoring",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/doc-coauthoring/SKILL.md",
+      "path": "skills/doc-coauthoring"
+    },
+    {
+      "name": "anthropics/skills/docx",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/docx",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/docx/SKILL.md",
+      "path": "skills/docx"
+    },
+    {
+      "name": "anthropics/skills/frontend-design",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/frontend-design",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md",
+      "path": "skills/frontend-design"
+    },
+    {
+      "name": "anthropics/skills/internal-comms",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/internal-comms",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/internal-comms/SKILL.md",
+      "path": "skills/internal-comms"
+    },
+    {
+      "name": "anthropics/skills/mcp-builder",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/mcp-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/mcp-builder/SKILL.md",
+      "path": "skills/mcp-builder"
+    },
+    {
+      "name": "anthropics/skills/pdf",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/pdf",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/pdf/SKILL.md",
+      "path": "skills/pdf"
+    },
+    {
+      "name": "anthropics/skills/pptx",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/pptx",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/pptx/SKILL.md",
+      "path": "skills/pptx"
+    },
+    {
+      "name": "anthropics/skills/skill-creator",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/skill-creator",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md",
+      "path": "skills/skill-creator"
+    },
+    {
+      "name": "anthropics/skills/slack-gif-creator",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/slack-gif-creator",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/slack-gif-creator/SKILL.md",
+      "path": "skills/slack-gif-creator"
+    },
+    {
+      "name": "anthropics/skills/theme-factory",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/theme-factory",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/theme-factory/SKILL.md",
+      "path": "skills/theme-factory"
+    },
+    {
+      "name": "anthropics/skills/web-artifacts-builder",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/web-artifacts-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/web-artifacts-builder/SKILL.md",
+      "path": "skills/web-artifacts-builder"
+    },
+    {
+      "name": "anthropics/skills/webapp-testing",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/webapp-testing",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/webapp-testing/SKILL.md",
+      "path": "skills/webapp-testing"
+    },
+    {
+      "name": "anthropics/skills/xlsx",
+      "source": "github",
+      "url": "https://github.com/anthropics/skills/tree/main/skills/xlsx",
+      "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/xlsx/SKILL.md",
+      "path": "skills/xlsx"
+    },
+    {
+      "name": "guanyang/antigravity-skills/advanced-evaluation",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/advanced-evaluation",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/advanced-evaluation/SKILL.md",
+      "path": "skills/advanced-evaluation"
+    },
+    {
+      "name": "guanyang/antigravity-skills/algorithmic-art",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/algorithmic-art",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/algorithmic-art/SKILL.md",
+      "path": "skills/algorithmic-art"
+    },
+    {
+      "name": "guanyang/antigravity-skills/bdi-mental-states",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/bdi-mental-states",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/bdi-mental-states/SKILL.md",
+      "path": "skills/bdi-mental-states"
+    },
+    {
+      "name": "guanyang/antigravity-skills/brainstorming",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/brainstorming",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/brainstorming/SKILL.md",
+      "path": "skills/brainstorming"
+    },
+    {
+      "name": "guanyang/antigravity-skills/brand-guidelines",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/brand-guidelines",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/brand-guidelines/SKILL.md",
+      "path": "skills/brand-guidelines"
+    },
+    {
+      "name": "guanyang/antigravity-skills/canvas-design",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/canvas-design",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/canvas-design/SKILL.md",
+      "path": "skills/canvas-design"
+    },
+    {
+      "name": "guanyang/antigravity-skills/context-compression",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/context-compression",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/context-compression/SKILL.md",
+      "path": "skills/context-compression"
+    },
+    {
+      "name": "guanyang/antigravity-skills/context-degradation",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/context-degradation",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/context-degradation/SKILL.md",
+      "path": "skills/context-degradation"
+    },
+    {
+      "name": "guanyang/antigravity-skills/context-fundamentals",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/context-fundamentals",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/context-fundamentals/SKILL.md",
+      "path": "skills/context-fundamentals"
+    },
+    {
+      "name": "guanyang/antigravity-skills/context-optimization",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/context-optimization",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/context-optimization/SKILL.md",
+      "path": "skills/context-optimization"
+    },
+    {
+      "name": "guanyang/antigravity-skills/dispatching-parallel-agents",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/dispatching-parallel-agents",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/dispatching-parallel-agents/SKILL.md",
+      "path": "skills/dispatching-parallel-agents"
+    },
+    {
+      "name": "guanyang/antigravity-skills/doc-coauthoring",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/doc-coauthoring",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/doc-coauthoring/SKILL.md",
+      "path": "skills/doc-coauthoring"
+    },
+    {
+      "name": "guanyang/antigravity-skills/docx",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/docx",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/docx/SKILL.md",
+      "path": "skills/docx"
+    },
+    {
+      "name": "guanyang/antigravity-skills/evaluation",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/evaluation",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/evaluation/SKILL.md",
+      "path": "skills/evaluation"
+    },
+    {
+      "name": "guanyang/antigravity-skills/executing-plans",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/executing-plans",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/executing-plans/SKILL.md",
+      "path": "skills/executing-plans"
+    },
+    {
+      "name": "guanyang/antigravity-skills/filesystem-context",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/filesystem-context",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/filesystem-context/SKILL.md",
+      "path": "skills/filesystem-context"
+    },
+    {
+      "name": "guanyang/antigravity-skills/finishing-a-development-branch",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/finishing-a-development-branch",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/finishing-a-development-branch/SKILL.md",
+      "path": "skills/finishing-a-development-branch"
+    },
+    {
+      "name": "guanyang/antigravity-skills/frontend-design",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/frontend-design",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/frontend-design/SKILL.md",
+      "path": "skills/frontend-design"
+    },
+    {
+      "name": "guanyang/antigravity-skills/hosted-agents",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/hosted-agents",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/hosted-agents/SKILL.md",
+      "path": "skills/hosted-agents"
+    },
+    {
+      "name": "guanyang/antigravity-skills/internal-comms",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/internal-comms",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/internal-comms/SKILL.md",
+      "path": "skills/internal-comms"
+    },
+    {
+      "name": "guanyang/antigravity-skills/json-canvas",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/json-canvas",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/json-canvas/SKILL.md",
+      "path": "skills/json-canvas"
+    },
+    {
+      "name": "guanyang/antigravity-skills/mcp-builder",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/mcp-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/mcp-builder/SKILL.md",
+      "path": "skills/mcp-builder"
+    },
+    {
+      "name": "guanyang/antigravity-skills/memory-systems",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/memory-systems",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/memory-systems/SKILL.md",
+      "path": "skills/memory-systems"
+    },
+    {
+      "name": "guanyang/antigravity-skills/multi-agent-patterns",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/multi-agent-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/multi-agent-patterns/SKILL.md",
+      "path": "skills/multi-agent-patterns"
+    },
+    {
+      "name": "guanyang/antigravity-skills/notebooklm",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/notebooklm",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/notebooklm/SKILL.md",
+      "path": "skills/notebooklm"
+    },
+    {
+      "name": "guanyang/antigravity-skills/obsidian-bases",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/obsidian-bases",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/obsidian-bases/SKILL.md",
+      "path": "skills/obsidian-bases"
+    },
+    {
+      "name": "guanyang/antigravity-skills/obsidian-markdown",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/obsidian-markdown",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/obsidian-markdown/SKILL.md",
+      "path": "skills/obsidian-markdown"
+    },
+    {
+      "name": "guanyang/antigravity-skills/pdf",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/pdf",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/pdf/SKILL.md",
+      "path": "skills/pdf"
+    },
+    {
+      "name": "guanyang/antigravity-skills/planning-with-files",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/planning-with-files",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/planning-with-files/SKILL.md",
+      "path": "skills/planning-with-files"
+    },
+    {
+      "name": "guanyang/antigravity-skills/pptx",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/pptx",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/pptx/SKILL.md",
+      "path": "skills/pptx"
+    },
+    {
+      "name": "guanyang/antigravity-skills/project-development",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/project-development",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/project-development/SKILL.md",
+      "path": "skills/project-development"
+    },
+    {
+      "name": "guanyang/antigravity-skills/receiving-code-review",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/receiving-code-review",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/receiving-code-review/SKILL.md",
+      "path": "skills/receiving-code-review"
+    },
+    {
+      "name": "guanyang/antigravity-skills/remotion",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/remotion",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/remotion/SKILL.md",
+      "path": "skills/remotion"
+    },
+    {
+      "name": "guanyang/antigravity-skills/requesting-code-review",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/requesting-code-review",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/requesting-code-review/SKILL.md",
+      "path": "skills/requesting-code-review"
+    },
+    {
+      "name": "guanyang/antigravity-skills/skill-creator",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/skill-creator",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/skill-creator/SKILL.md",
+      "path": "skills/skill-creator"
+    },
+    {
+      "name": "guanyang/antigravity-skills/slack-gif-creator",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/slack-gif-creator",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/slack-gif-creator/SKILL.md",
+      "path": "skills/slack-gif-creator"
+    },
+    {
+      "name": "guanyang/antigravity-skills/subagent-driven-development",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/subagent-driven-development",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/subagent-driven-development/SKILL.md",
+      "path": "skills/subagent-driven-development"
+    },
+    {
+      "name": "guanyang/antigravity-skills/systematic-debugging",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/systematic-debugging",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/systematic-debugging/SKILL.md",
+      "path": "skills/systematic-debugging"
+    },
+    {
+      "name": "guanyang/antigravity-skills/test-driven-development",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/test-driven-development",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/test-driven-development/SKILL.md",
+      "path": "skills/test-driven-development"
+    },
+    {
+      "name": "guanyang/antigravity-skills/theme-factory",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/theme-factory",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/theme-factory/SKILL.md",
+      "path": "skills/theme-factory"
+    },
+    {
+      "name": "guanyang/antigravity-skills/tool-design",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/tool-design",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/tool-design/SKILL.md",
+      "path": "skills/tool-design"
+    },
+    {
+      "name": "guanyang/antigravity-skills/ui-ux-pro-max",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/ui-ux-pro-max",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/ui-ux-pro-max/SKILL.md",
+      "path": "skills/ui-ux-pro-max"
+    },
+    {
+      "name": "guanyang/antigravity-skills/using-git-worktrees",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/using-git-worktrees",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/using-git-worktrees/SKILL.md",
+      "path": "skills/using-git-worktrees"
+    },
+    {
+      "name": "guanyang/antigravity-skills/using-superpowers",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/using-superpowers",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/using-superpowers/SKILL.md",
+      "path": "skills/using-superpowers"
+    },
+    {
+      "name": "guanyang/antigravity-skills/verification-before-completion",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/verification-before-completion",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/verification-before-completion/SKILL.md",
+      "path": "skills/verification-before-completion"
+    },
+    {
+      "name": "guanyang/antigravity-skills/web-artifacts-builder",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/web-artifacts-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/web-artifacts-builder/SKILL.md",
+      "path": "skills/web-artifacts-builder"
+    },
+    {
+      "name": "guanyang/antigravity-skills/webapp-testing",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/webapp-testing",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/webapp-testing/SKILL.md",
+      "path": "skills/webapp-testing"
+    },
+    {
+      "name": "guanyang/antigravity-skills/writing-plans",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/writing-plans",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/writing-plans/SKILL.md",
+      "path": "skills/writing-plans"
+    },
+    {
+      "name": "guanyang/antigravity-skills/writing-skills",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/writing-skills",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/writing-skills/SKILL.md",
+      "path": "skills/writing-skills"
+    },
+    {
+      "name": "guanyang/antigravity-skills/xlsx",
+      "source": "github",
+      "url": "https://github.com/guanyang/antigravity-skills/tree/main/skills/xlsx",
+      "skill_file_url": "https://raw.githubusercontent.com/guanyang/antigravity-skills/main/skills/xlsx/SKILL.md",
+      "path": "skills/xlsx"
+    },
+    {
+      "name": "ibelick/ui-skills/baseline-ui",
+      "source": "github",
+      "url": "https://github.com/ibelick/ui-skills/tree/main/skills/baseline-ui",
+      "skill_file_url": "https://raw.githubusercontent.com/ibelick/ui-skills/main/skills/baseline-ui/SKILL.md",
+      "path": "skills/baseline-ui"
+    },
+    {
+      "name": "ibelick/ui-skills/fixing-accessibility",
+      "source": "github",
+      "url": "https://github.com/ibelick/ui-skills/tree/main/skills/fixing-accessibility",
+      "skill_file_url": "https://raw.githubusercontent.com/ibelick/ui-skills/main/skills/fixing-accessibility/SKILL.md",
+      "path": "skills/fixing-accessibility"
+    },
+    {
+      "name": "ibelick/ui-skills/fixing-metadata",
+      "source": "github",
+      "url": "https://github.com/ibelick/ui-skills/tree/main/skills/fixing-metadata",
+      "skill_file_url": "https://raw.githubusercontent.com/ibelick/ui-skills/main/skills/fixing-metadata/SKILL.md",
+      "path": "skills/fixing-metadata"
+    },
+    {
+      "name": "ibelick/ui-skills/fixing-motion-performance",
+      "source": "github",
+      "url": "https://github.com/ibelick/ui-skills/tree/main/skills/fixing-motion-performance",
+      "skill_file_url": "https://raw.githubusercontent.com/ibelick/ui-skills/main/skills/fixing-motion-performance/SKILL.md",
+      "path": "skills/fixing-motion-performance"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/.template",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/.template",
+      "skill_file_url": "https://raw.githubusercontent.com/majiayu000/claude-skill-registry/main/skills/.template/SKILL.md",
+      "path": "skills/.template"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/data",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/data",
+      "skill_file_url": null,
+      "path": "skills/data"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/design",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/design",
+      "skill_file_url": "https://raw.githubusercontent.com/majiayu000/claude-skill-registry/main/skills/design/SKILL.md",
+      "path": "skills/design"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/development",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/development",
+      "skill_file_url": "https://raw.githubusercontent.com/majiayu000/claude-skill-registry/main/skills/development/SKILL.md",
+      "path": "skills/development"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/devops",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/devops",
+      "skill_file_url": "https://raw.githubusercontent.com/majiayu000/claude-skill-registry/main/skills/devops/SKILL.md",
+      "path": "skills/devops"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/marketing",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/marketing",
+      "skill_file_url": "https://raw.githubusercontent.com/majiayu000/claude-skill-registry/main/skills/marketing/SKILL.md",
+      "path": "skills/marketing"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/security",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/security",
+      "skill_file_url": "https://raw.githubusercontent.com/majiayu000/claude-skill-registry/main/skills/security/SKILL.md",
+      "path": "skills/security"
+    },
+    {
+      "name": "majiayu000/claude-skill-registry/testing",
+      "source": "github",
+      "url": "https://github.com/majiayu000/claude-skill-registry/tree/main/skills/testing",
+      "skill_file_url": "https://raw.githubusercontent.com/majiayu000/claude-skill-registry/main/skills/testing/SKILL.md",
+      "path": "skills/testing"
+    },
+    {
+      "name": "obra/superpowers/brainstorming",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/brainstorming",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/brainstorming/SKILL.md",
+      "path": "skills/brainstorming"
+    },
+    {
+      "name": "obra/superpowers/dispatching-parallel-agents",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/dispatching-parallel-agents",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/dispatching-parallel-agents/SKILL.md",
+      "path": "skills/dispatching-parallel-agents"
+    },
+    {
+      "name": "obra/superpowers/executing-plans",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/executing-plans",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/executing-plans/SKILL.md",
+      "path": "skills/executing-plans"
+    },
+    {
+      "name": "obra/superpowers/finishing-a-development-branch",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/finishing-a-development-branch",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/finishing-a-development-branch/SKILL.md",
+      "path": "skills/finishing-a-development-branch"
+    },
+    {
+      "name": "obra/superpowers/receiving-code-review",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/receiving-code-review",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/receiving-code-review/SKILL.md",
+      "path": "skills/receiving-code-review"
+    },
+    {
+      "name": "obra/superpowers/requesting-code-review",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/requesting-code-review",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/requesting-code-review/SKILL.md",
+      "path": "skills/requesting-code-review"
+    },
+    {
+      "name": "obra/superpowers/subagent-driven-development",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/subagent-driven-development",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/subagent-driven-development/SKILL.md",
+      "path": "skills/subagent-driven-development"
+    },
+    {
+      "name": "obra/superpowers/systematic-debugging",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/systematic-debugging",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/systematic-debugging/SKILL.md",
+      "path": "skills/systematic-debugging"
+    },
+    {
+      "name": "obra/superpowers/test-driven-development",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/test-driven-development",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/test-driven-development/SKILL.md",
+      "path": "skills/test-driven-development"
+    },
+    {
+      "name": "obra/superpowers/using-git-worktrees",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/using-git-worktrees",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/using-git-worktrees/SKILL.md",
+      "path": "skills/using-git-worktrees"
+    },
+    {
+      "name": "obra/superpowers/using-superpowers",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/using-superpowers",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/using-superpowers/SKILL.md",
+      "path": "skills/using-superpowers"
+    },
+    {
+      "name": "obra/superpowers/verification-before-completion",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/verification-before-completion",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/verification-before-completion/SKILL.md",
+      "path": "skills/verification-before-completion"
+    },
+    {
+      "name": "obra/superpowers/writing-plans",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/writing-plans",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/writing-plans/SKILL.md",
+      "path": "skills/writing-plans"
+    },
+    {
+      "name": "obra/superpowers/writing-skills",
+      "source": "github",
+      "url": "https://github.com/obra/superpowers/tree/main/skills/writing-skills",
+      "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/writing-skills/SKILL.md",
+      "path": "skills/writing-skills"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/3d-web-experience",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/3d-web-experience",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/3d-web-experience/SKILL.md",
+      "path": "skills/3d-web-experience"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/ab-test-setup",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/ab-test-setup",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/ab-test-setup/SKILL.md",
+      "path": "skills/ab-test-setup"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/active-directory-attacks",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/active-directory-attacks",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/active-directory-attacks/SKILL.md",
+      "path": "skills/active-directory-attacks"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/address-github-comments",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/address-github-comments",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/address-github-comments/SKILL.md",
+      "path": "skills/address-github-comments"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/agent-evaluation",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/agent-evaluation",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/agent-evaluation/SKILL.md",
+      "path": "skills/agent-evaluation"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/agent-manager-skill",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/agent-manager-skill",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/agent-manager-skill/SKILL.md",
+      "path": "skills/agent-manager-skill"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/agent-memory-mcp",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/agent-memory-mcp",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/agent-memory-mcp/SKILL.md",
+      "path": "skills/agent-memory-mcp"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/agent-memory-systems",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/agent-memory-systems",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/agent-memory-systems/SKILL.md",
+      "path": "skills/agent-memory-systems"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/agent-tool-builder",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/agent-tool-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/agent-tool-builder/SKILL.md",
+      "path": "skills/agent-tool-builder"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/ai-agents-architect",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/ai-agents-architect",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/ai-agents-architect/SKILL.md",
+      "path": "skills/ai-agents-architect"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/ai-product",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/ai-product",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/ai-product/SKILL.md",
+      "path": "skills/ai-product"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/ai-wrapper-product",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/ai-wrapper-product",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/ai-wrapper-product/SKILL.md",
+      "path": "skills/ai-wrapper-product"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/algolia-search",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/algolia-search",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/algolia-search/SKILL.md",
+      "path": "skills/algolia-search"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/algorithmic-art",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/algorithmic-art",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/algorithmic-art/SKILL.md",
+      "path": "skills/algorithmic-art"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/analytics-tracking",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/analytics-tracking",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/analytics-tracking/SKILL.md",
+      "path": "skills/analytics-tracking"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/api-documentation-generator",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/api-documentation-generator",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/api-documentation-generator/SKILL.md",
+      "path": "skills/api-documentation-generator"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/api-fuzzing-bug-bounty",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/api-fuzzing-bug-bounty",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/api-fuzzing-bug-bounty/SKILL.md",
+      "path": "skills/api-fuzzing-bug-bounty"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/api-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/api-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/api-patterns/SKILL.md",
+      "path": "skills/api-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/api-security-best-practices",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/api-security-best-practices",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/api-security-best-practices/SKILL.md",
+      "path": "skills/api-security-best-practices"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/app-builder",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/app-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/app-builder/SKILL.md",
+      "path": "skills/app-builder"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/app-store-optimization",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/app-store-optimization",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/app-store-optimization/SKILL.md",
+      "path": "skills/app-store-optimization"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/architecture",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/architecture",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/architecture/SKILL.md",
+      "path": "skills/architecture"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/autonomous-agent-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/autonomous-agent-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/autonomous-agent-patterns/SKILL.md",
+      "path": "skills/autonomous-agent-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/autonomous-agents",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/autonomous-agents",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/autonomous-agents/SKILL.md",
+      "path": "skills/autonomous-agents"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/avalonia-layout-zafiro",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/avalonia-layout-zafiro",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/avalonia-layout-zafiro/SKILL.md",
+      "path": "skills/avalonia-layout-zafiro"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/avalonia-viewmodels-zafiro",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/avalonia-viewmodels-zafiro",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/avalonia-viewmodels-zafiro/SKILL.md",
+      "path": "skills/avalonia-viewmodels-zafiro"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/avalonia-zafiro-development",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/avalonia-zafiro-development",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/avalonia-zafiro-development/SKILL.md",
+      "path": "skills/avalonia-zafiro-development"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/aws-penetration-testing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/aws-penetration-testing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/aws-penetration-testing/SKILL.md",
+      "path": "skills/aws-penetration-testing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/aws-serverless",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/aws-serverless",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/aws-serverless/SKILL.md",
+      "path": "skills/aws-serverless"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/azure-functions",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/azure-functions",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/azure-functions/SKILL.md",
+      "path": "skills/azure-functions"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/backend-dev-guidelines",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/backend-dev-guidelines",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/backend-dev-guidelines/SKILL.md",
+      "path": "skills/backend-dev-guidelines"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/bash-linux",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/bash-linux",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/bash-linux/SKILL.md",
+      "path": "skills/bash-linux"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/behavioral-modes",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/behavioral-modes",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/behavioral-modes/SKILL.md",
+      "path": "skills/behavioral-modes"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/blockrun",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/blockrun",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/blockrun/SKILL.md",
+      "path": "skills/blockrun"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/brainstorming",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/brainstorming",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/brainstorming/SKILL.md",
+      "path": "skills/brainstorming"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/brand-guidelines-anthropic",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/brand-guidelines-anthropic",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/brand-guidelines-anthropic/SKILL.md",
+      "path": "skills/brand-guidelines-anthropic"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/brand-guidelines-community",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/brand-guidelines-community",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/brand-guidelines-community/SKILL.md",
+      "path": "skills/brand-guidelines-community"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/broken-authentication",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/broken-authentication",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/broken-authentication/SKILL.md",
+      "path": "skills/broken-authentication"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/browser-automation",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/browser-automation",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/browser-automation/SKILL.md",
+      "path": "skills/browser-automation"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/browser-extension-builder",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/browser-extension-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/browser-extension-builder/SKILL.md",
+      "path": "skills/browser-extension-builder"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/bullmq-specialist",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/bullmq-specialist",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/bullmq-specialist/SKILL.md",
+      "path": "skills/bullmq-specialist"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/bun-development",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/bun-development",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/bun-development/SKILL.md",
+      "path": "skills/bun-development"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/burp-suite-testing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/burp-suite-testing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/burp-suite-testing/SKILL.md",
+      "path": "skills/burp-suite-testing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/busybox-on-windows",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/busybox-on-windows",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/busybox-on-windows/SKILL.md",
+      "path": "skills/busybox-on-windows"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/canvas-design",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/canvas-design",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/canvas-design/SKILL.md",
+      "path": "skills/canvas-design"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-backend-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-backend-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-backend-patterns/SKILL.md",
+      "path": "skills/cc-skill-backend-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-clickhouse-io",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-clickhouse-io",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-clickhouse-io/SKILL.md",
+      "path": "skills/cc-skill-clickhouse-io"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-coding-standards",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-coding-standards",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-coding-standards/SKILL.md",
+      "path": "skills/cc-skill-coding-standards"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-continuous-learning",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-continuous-learning",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-continuous-learning/SKILL.md",
+      "path": "skills/cc-skill-continuous-learning"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-frontend-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-frontend-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-frontend-patterns/SKILL.md",
+      "path": "skills/cc-skill-frontend-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-project-guidelines-example",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-project-guidelines-example",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-project-guidelines-example/SKILL.md",
+      "path": "skills/cc-skill-project-guidelines-example"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-security-review",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-security-review",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-security-review/SKILL.md",
+      "path": "skills/cc-skill-security-review"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cc-skill-strategic-compact",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cc-skill-strategic-compact",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cc-skill-strategic-compact/SKILL.md",
+      "path": "skills/cc-skill-strategic-compact"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/claude-code-guide",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/claude-code-guide",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/claude-code-guide/SKILL.md",
+      "path": "skills/claude-code-guide"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/claude-d3js-skill",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/claude-d3js-skill",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/claude-d3js-skill/SKILL.md",
+      "path": "skills/claude-d3js-skill"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/clean-code",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/clean-code",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/clean-code/SKILL.md",
+      "path": "skills/clean-code"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/clerk-auth",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/clerk-auth",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/clerk-auth/SKILL.md",
+      "path": "skills/clerk-auth"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/cloud-penetration-testing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/cloud-penetration-testing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/cloud-penetration-testing/SKILL.md",
+      "path": "skills/cloud-penetration-testing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/code-review-checklist",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/code-review-checklist",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/code-review-checklist/SKILL.md",
+      "path": "skills/code-review-checklist"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/codex-review",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/codex-review",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/codex-review/SKILL.md",
+      "path": "skills/codex-review"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/competitor-alternatives",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/competitor-alternatives",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/competitor-alternatives/SKILL.md",
+      "path": "skills/competitor-alternatives"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/computer-use-agents",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/computer-use-agents",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/computer-use-agents/SKILL.md",
+      "path": "skills/computer-use-agents"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/concise-planning",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/concise-planning",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/concise-planning/SKILL.md",
+      "path": "skills/concise-planning"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/content-creator",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/content-creator",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/content-creator/SKILL.md",
+      "path": "skills/content-creator"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/context-window-management",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/context-window-management",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/context-window-management/SKILL.md",
+      "path": "skills/context-window-management"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/context7-auto-research",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/context7-auto-research",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/context7-auto-research/SKILL.md",
+      "path": "skills/context7-auto-research"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/conversation-memory",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/conversation-memory",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/conversation-memory/SKILL.md",
+      "path": "skills/conversation-memory"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/copy-editing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/copy-editing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/copy-editing/SKILL.md",
+      "path": "skills/copy-editing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/copywriting",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/copywriting",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/copywriting/SKILL.md",
+      "path": "skills/copywriting"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/core-components",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/core-components",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/core-components/SKILL.md",
+      "path": "skills/core-components"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/crewai",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/crewai",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/crewai/SKILL.md",
+      "path": "skills/crewai"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/daily-news-report",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/daily-news-report",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/daily-news-report/SKILL.md",
+      "path": "skills/daily-news-report"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/database-design",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/database-design",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/database-design/SKILL.md",
+      "path": "skills/database-design"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/deployment-procedures",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/deployment-procedures",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/deployment-procedures/SKILL.md",
+      "path": "skills/deployment-procedures"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/design-orchestration",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/design-orchestration",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/design-orchestration/SKILL.md",
+      "path": "skills/design-orchestration"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/discord-bot-architect",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/discord-bot-architect",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/discord-bot-architect/SKILL.md",
+      "path": "skills/discord-bot-architect"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/dispatching-parallel-agents",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/dispatching-parallel-agents",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/dispatching-parallel-agents/SKILL.md",
+      "path": "skills/dispatching-parallel-agents"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/doc-coauthoring",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/doc-coauthoring",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/doc-coauthoring/SKILL.md",
+      "path": "skills/doc-coauthoring"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/docker-expert",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/docker-expert",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/docker-expert/SKILL.md",
+      "path": "skills/docker-expert"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/documentation-templates",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/documentation-templates",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/documentation-templates/SKILL.md",
+      "path": "skills/documentation-templates"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/docx-official",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/docx-official",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/docx-official/SKILL.md",
+      "path": "skills/docx-official"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/email-sequence",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/email-sequence",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/email-sequence/SKILL.md",
+      "path": "skills/email-sequence"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/email-systems",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/email-systems",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/email-systems/SKILL.md",
+      "path": "skills/email-systems"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/environment-setup-guide",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/environment-setup-guide",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/environment-setup-guide/SKILL.md",
+      "path": "skills/environment-setup-guide"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/ethical-hacking-methodology",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/ethical-hacking-methodology",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/ethical-hacking-methodology/SKILL.md",
+      "path": "skills/ethical-hacking-methodology"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/exa-search",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/exa-search",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/exa-search/SKILL.md",
+      "path": "skills/exa-search"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/executing-plans",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/executing-plans",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/executing-plans/SKILL.md",
+      "path": "skills/executing-plans"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/file-organizer",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/file-organizer",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/file-organizer/SKILL.md",
+      "path": "skills/file-organizer"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/file-path-traversal",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/file-path-traversal",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/file-path-traversal/SKILL.md",
+      "path": "skills/file-path-traversal"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/file-uploads",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/file-uploads",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/file-uploads/SKILL.md",
+      "path": "skills/file-uploads"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/finishing-a-development-branch",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/finishing-a-development-branch",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/finishing-a-development-branch/SKILL.md",
+      "path": "skills/finishing-a-development-branch"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/firebase",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/firebase",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/firebase/SKILL.md",
+      "path": "skills/firebase"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/firecrawl-scraper",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/firecrawl-scraper",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/firecrawl-scraper/SKILL.md",
+      "path": "skills/firecrawl-scraper"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/form-cro",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/form-cro",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/form-cro/SKILL.md",
+      "path": "skills/form-cro"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/free-tool-strategy",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/free-tool-strategy",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/free-tool-strategy/SKILL.md",
+      "path": "skills/free-tool-strategy"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/frontend-design",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/frontend-design",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/frontend-design/SKILL.md",
+      "path": "skills/frontend-design"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/frontend-dev-guidelines",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/frontend-dev-guidelines",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/frontend-dev-guidelines/SKILL.md",
+      "path": "skills/frontend-dev-guidelines"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/game-development",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/game-development",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/game-development/SKILL.md",
+      "path": "skills/game-development"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/gcp-cloud-run",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/gcp-cloud-run",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/gcp-cloud-run/SKILL.md",
+      "path": "skills/gcp-cloud-run"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/geo-fundamentals",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/geo-fundamentals",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/geo-fundamentals/SKILL.md",
+      "path": "skills/geo-fundamentals"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/git-pushing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/git-pushing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/git-pushing/SKILL.md",
+      "path": "skills/git-pushing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/github-workflow-automation",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/github-workflow-automation",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/github-workflow-automation/SKILL.md",
+      "path": "skills/github-workflow-automation"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/graphql",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/graphql",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/graphql/SKILL.md",
+      "path": "skills/graphql"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/html-injection-testing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/html-injection-testing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/html-injection-testing/SKILL.md",
+      "path": "skills/html-injection-testing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/hubspot-integration",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/hubspot-integration",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/hubspot-integration/SKILL.md",
+      "path": "skills/hubspot-integration"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/i18n-localization",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/i18n-localization",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/i18n-localization/SKILL.md",
+      "path": "skills/i18n-localization"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/idor-testing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/idor-testing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/idor-testing/SKILL.md",
+      "path": "skills/idor-testing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/inngest",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/inngest",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/inngest/SKILL.md",
+      "path": "skills/inngest"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/interactive-portfolio",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/interactive-portfolio",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/interactive-portfolio/SKILL.md",
+      "path": "skills/interactive-portfolio"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/internal-comms-anthropic",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/internal-comms-anthropic",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/internal-comms-anthropic/SKILL.md",
+      "path": "skills/internal-comms-anthropic"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/internal-comms-community",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/internal-comms-community",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/internal-comms-community/SKILL.md",
+      "path": "skills/internal-comms-community"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/javascript-mastery",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/javascript-mastery",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/javascript-mastery/SKILL.md",
+      "path": "skills/javascript-mastery"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/kaizen",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/kaizen",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/kaizen/SKILL.md",
+      "path": "skills/kaizen"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/langfuse",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/langfuse",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/langfuse/SKILL.md",
+      "path": "skills/langfuse"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/langgraph",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/langgraph",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/langgraph/SKILL.md",
+      "path": "skills/langgraph"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/last30days",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/last30days",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/last30days/SKILL.md",
+      "path": "skills/last30days"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/launch-strategy",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/launch-strategy",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/launch-strategy/SKILL.md",
+      "path": "skills/launch-strategy"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/lint-and-validate",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/lint-and-validate",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/lint-and-validate/SKILL.md",
+      "path": "skills/lint-and-validate"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/linux-privilege-escalation",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/linux-privilege-escalation",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/linux-privilege-escalation/SKILL.md",
+      "path": "skills/linux-privilege-escalation"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/linux-shell-scripting",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/linux-shell-scripting",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/linux-shell-scripting/SKILL.md",
+      "path": "skills/linux-shell-scripting"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/llm-app-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/llm-app-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/llm-app-patterns/SKILL.md",
+      "path": "skills/llm-app-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/loki-mode",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/loki-mode",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/loki-mode/SKILL.md",
+      "path": "skills/loki-mode"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/marketing-ideas",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/marketing-ideas",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/marketing-ideas/SKILL.md",
+      "path": "skills/marketing-ideas"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/marketing-psychology",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/marketing-psychology",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/marketing-psychology/SKILL.md",
+      "path": "skills/marketing-psychology"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/mcp-builder",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/mcp-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/mcp-builder/SKILL.md",
+      "path": "skills/mcp-builder"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/metasploit-framework",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/metasploit-framework",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/metasploit-framework/SKILL.md",
+      "path": "skills/metasploit-framework"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/micro-saas-launcher",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/micro-saas-launcher",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/micro-saas-launcher/SKILL.md",
+      "path": "skills/micro-saas-launcher"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/mobile-design",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/mobile-design",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/mobile-design/SKILL.md",
+      "path": "skills/mobile-design"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/moodle-external-api-development",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/moodle-external-api-development",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/moodle-external-api-development/SKILL.md",
+      "path": "skills/moodle-external-api-development"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/multi-agent-brainstorming",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/multi-agent-brainstorming",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/multi-agent-brainstorming/SKILL.md",
+      "path": "skills/multi-agent-brainstorming"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/neon-postgres",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/neon-postgres",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/neon-postgres/SKILL.md",
+      "path": "skills/neon-postgres"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/nestjs-expert",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/nestjs-expert",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/nestjs-expert/SKILL.md",
+      "path": "skills/nestjs-expert"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/network-101",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/network-101",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/network-101/SKILL.md",
+      "path": "skills/network-101"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/nextjs-best-practices",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/nextjs-best-practices",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/nextjs-best-practices/SKILL.md",
+      "path": "skills/nextjs-best-practices"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/nextjs-supabase-auth",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/nextjs-supabase-auth",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/nextjs-supabase-auth/SKILL.md",
+      "path": "skills/nextjs-supabase-auth"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/nodejs-best-practices",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/nodejs-best-practices",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/nodejs-best-practices/SKILL.md",
+      "path": "skills/nodejs-best-practices"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/nosql-expert",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/nosql-expert",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/nosql-expert/SKILL.md",
+      "path": "skills/nosql-expert"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/notebooklm",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/notebooklm",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/notebooklm/SKILL.md",
+      "path": "skills/notebooklm"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/notion-template-business",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/notion-template-business",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/notion-template-business/SKILL.md",
+      "path": "skills/notion-template-business"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/obsidian-clipper-template-creator",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/obsidian-clipper-template-creator",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/obsidian-clipper-template-creator/SKILL.md",
+      "path": "skills/obsidian-clipper-template-creator"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/onboarding-cro",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/onboarding-cro",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/onboarding-cro/SKILL.md",
+      "path": "skills/onboarding-cro"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/page-cro",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/page-cro",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/page-cro/SKILL.md",
+      "path": "skills/page-cro"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/paid-ads",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/paid-ads",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/paid-ads/SKILL.md",
+      "path": "skills/paid-ads"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/parallel-agents",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/parallel-agents",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/parallel-agents/SKILL.md",
+      "path": "skills/parallel-agents"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/paywall-upgrade-cro",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/paywall-upgrade-cro",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/paywall-upgrade-cro/SKILL.md",
+      "path": "skills/paywall-upgrade-cro"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/pdf-official",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/pdf-official",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/pdf-official/SKILL.md",
+      "path": "skills/pdf-official"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/pentest-checklist",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/pentest-checklist",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/pentest-checklist/SKILL.md",
+      "path": "skills/pentest-checklist"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/pentest-commands",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/pentest-commands",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/pentest-commands/SKILL.md",
+      "path": "skills/pentest-commands"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/performance-profiling",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/performance-profiling",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/performance-profiling/SKILL.md",
+      "path": "skills/performance-profiling"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/personal-tool-builder",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/personal-tool-builder",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/personal-tool-builder/SKILL.md",
+      "path": "skills/personal-tool-builder"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/plaid-fintech",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/plaid-fintech",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/plaid-fintech/SKILL.md",
+      "path": "skills/plaid-fintech"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/plan-writing",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/plan-writing",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/plan-writing/SKILL.md",
+      "path": "skills/plan-writing"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/planning-with-files",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/planning-with-files",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/planning-with-files/SKILL.md",
+      "path": "skills/planning-with-files"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/playwright-skill",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/playwright-skill",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/playwright-skill/SKILL.md",
+      "path": "skills/playwright-skill"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/popup-cro",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/popup-cro",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/popup-cro/SKILL.md",
+      "path": "skills/popup-cro"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/postgres-best-practices",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/postgres-best-practices",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/postgres-best-practices/SKILL.md",
+      "path": "skills/postgres-best-practices"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/powershell-windows",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/powershell-windows",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/powershell-windows/SKILL.md",
+      "path": "skills/powershell-windows"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/pptx-official",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/pptx-official",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/pptx-official/SKILL.md",
+      "path": "skills/pptx-official"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/pricing-strategy",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/pricing-strategy",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/pricing-strategy/SKILL.md",
+      "path": "skills/pricing-strategy"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/prisma-expert",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/prisma-expert",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/prisma-expert/SKILL.md",
+      "path": "skills/prisma-expert"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/privilege-escalation-methods",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/privilege-escalation-methods",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/privilege-escalation-methods/SKILL.md",
+      "path": "skills/privilege-escalation-methods"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/product-manager-toolkit",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/product-manager-toolkit",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/product-manager-toolkit/SKILL.md",
+      "path": "skills/product-manager-toolkit"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/production-code-audit",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/production-code-audit",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/production-code-audit/SKILL.md",
+      "path": "skills/production-code-audit"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/programmatic-seo",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/programmatic-seo",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/programmatic-seo/SKILL.md",
+      "path": "skills/programmatic-seo"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/prompt-caching",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/prompt-caching",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/prompt-caching/SKILL.md",
+      "path": "skills/prompt-caching"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/prompt-engineer",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/prompt-engineer",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/prompt-engineer/SKILL.md",
+      "path": "skills/prompt-engineer"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/prompt-engineering",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/prompt-engineering",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/prompt-engineering/SKILL.md",
+      "path": "skills/prompt-engineering"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/prompt-library",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/prompt-library",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/prompt-library/SKILL.md",
+      "path": "skills/prompt-library"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/python-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/python-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/python-patterns/SKILL.md",
+      "path": "skills/python-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/rag-engineer",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/rag-engineer",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/rag-engineer/SKILL.md",
+      "path": "skills/rag-engineer"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/rag-implementation",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/rag-implementation",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/rag-implementation/SKILL.md",
+      "path": "skills/rag-implementation"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/react-best-practices",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/react-best-practices",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/react-best-practices/SKILL.md",
+      "path": "skills/react-best-practices"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/react-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/react-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/react-patterns/SKILL.md",
+      "path": "skills/react-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/react-ui-patterns",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/react-ui-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/react-ui-patterns/SKILL.md",
+      "path": "skills/react-ui-patterns"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/receiving-code-review",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/receiving-code-review",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/receiving-code-review/SKILL.md",
+      "path": "skills/receiving-code-review"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/red-team-tactics",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/red-team-tactics",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/red-team-tactics/SKILL.md",
+      "path": "skills/red-team-tactics"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/red-team-tools",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/red-team-tools",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/red-team-tools/SKILL.md",
+      "path": "skills/red-team-tools"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/referral-program",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/referral-program",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/referral-program/SKILL.md",
+      "path": "skills/referral-program"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/remotion-best-practices",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/remotion-best-practices",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/remotion-best-practices/SKILL.md",
+      "path": "skills/remotion-best-practices"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/requesting-code-review",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/requesting-code-review",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/requesting-code-review/SKILL.md",
+      "path": "skills/requesting-code-review"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/research-engineer",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/research-engineer",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/research-engineer/SKILL.md",
+      "path": "skills/research-engineer"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/salesforce-development",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/salesforce-development",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/salesforce-development/SKILL.md",
+      "path": "skills/salesforce-development"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/scanning-tools",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/scanning-tools",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/scanning-tools/SKILL.md",
+      "path": "skills/scanning-tools"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/schema-markup",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/schema-markup",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/schema-markup/SKILL.md",
+      "path": "skills/schema-markup"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/scroll-experience",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/scroll-experience",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/scroll-experience/SKILL.md",
+      "path": "skills/scroll-experience"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/segment-cdp",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/segment-cdp",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/segment-cdp/SKILL.md",
+      "path": "skills/segment-cdp"
+    },
+    {
+      "name": "sickn33/antigravity-awesome-skills/senior-architect",
+      "source": "github",
+      "url": "https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/senior-architect",
+      "skill_file_url": "https://raw.githubusercontent.com/sickn33/antigravity-awesome-skills/main/skills/senior-architect/SKILL.md",
+      "path": "skills/senior-architect"
+    },
+    {
+      "name": "steipete/agent-scripts/1password",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/1password",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/1password/SKILL.md",
+      "path": "skills/1password"
+    },
+    {
+      "name": "steipete/agent-scripts/brave-search",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/brave-search",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/brave-search/SKILL.md",
+      "path": "skills/brave-search"
+    },
+    {
+      "name": "steipete/agent-scripts/create-cli",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/create-cli",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/create-cli/SKILL.md",
+      "path": "skills/create-cli"
+    },
+    {
+      "name": "steipete/agent-scripts/domain-dns-ops",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/domain-dns-ops",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/domain-dns-ops/SKILL.md",
+      "path": "skills/domain-dns-ops"
+    },
+    {
+      "name": "steipete/agent-scripts/frontend-design",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/frontend-design",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/frontend-design/SKILL.md",
+      "path": "skills/frontend-design"
+    },
+    {
+      "name": "steipete/agent-scripts/instruments-profiling",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/instruments-profiling",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/instruments-profiling/SKILL.md",
+      "path": "skills/instruments-profiling"
+    },
+    {
+      "name": "steipete/agent-scripts/markdown-converter",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/markdown-converter",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/markdown-converter/SKILL.md",
+      "path": "skills/markdown-converter"
+    },
+    {
+      "name": "steipete/agent-scripts/nano-banana-pro",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/nano-banana-pro",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/nano-banana-pro/SKILL.md",
+      "path": "skills/nano-banana-pro"
+    },
+    {
+      "name": "steipete/agent-scripts/native-app-performance",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/native-app-performance",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/native-app-performance/SKILL.md",
+      "path": "skills/native-app-performance"
+    },
+    {
+      "name": "steipete/agent-scripts/openai-image-gen",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/openai-image-gen",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/openai-image-gen/SKILL.md",
+      "path": "skills/openai-image-gen"
+    },
+    {
+      "name": "steipete/agent-scripts/oracle",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/oracle",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/oracle/SKILL.md",
+      "path": "skills/oracle"
+    },
+    {
+      "name": "steipete/agent-scripts/swift-concurrency-expert",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swift-concurrency-expert",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swift-concurrency-expert/SKILL.md",
+      "path": "skills/swift-concurrency-expert"
+    },
+    {
+      "name": "steipete/agent-scripts/swiftui-liquid-glass",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swiftui-liquid-glass",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swiftui-liquid-glass/SKILL.md",
+      "path": "skills/swiftui-liquid-glass"
+    },
+    {
+      "name": "steipete/agent-scripts/swiftui-performance-audit",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swiftui-performance-audit",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swiftui-performance-audit/SKILL.md",
+      "path": "skills/swiftui-performance-audit"
+    },
+    {
+      "name": "steipete/agent-scripts/swiftui-view-refactor",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swiftui-view-refactor",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swiftui-view-refactor/SKILL.md",
+      "path": "skills/swiftui-view-refactor"
+    },
+    {
+      "name": "steipete/agent-scripts/video-transcript-downloader",
+      "source": "github",
+      "url": "https://github.com/steipete/agent-scripts/tree/main/skills/video-transcript-downloader",
+      "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/video-transcript-downloader/SKILL.md",
+      "path": "skills/video-transcript-downloader"
+    },
+    {
+      "name": "vercel-labs/agent-skills/composition-patterns",
+      "source": "github",
+      "url": "https://github.com/vercel-labs/agent-skills/tree/main/skills/composition-patterns",
+      "skill_file_url": "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/composition-patterns/SKILL.md",
+      "path": "skills/composition-patterns"
+    },
+    {
+      "name": "vercel-labs/agent-skills/react-best-practices",
+      "source": "github",
+      "url": "https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices",
+      "skill_file_url": "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-best-practices/SKILL.md",
+      "path": "skills/react-best-practices"
+    },
+    {
+      "name": "vercel-labs/agent-skills/react-native-skills",
+      "source": "github",
+      "url": "https://github.com/vercel-labs/agent-skills/tree/main/skills/react-native-skills",
+      "skill_file_url": "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-native-skills/SKILL.md",
+      "path": "skills/react-native-skills"
+    },
+    {
+      "name": "vercel-labs/agent-skills/web-design-guidelines",
+      "source": "github",
+      "url": "https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines",
+      "skill_file_url": "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/web-design-guidelines/SKILL.md",
+      "path": "skills/web-design-guidelines"
+    }
+  ]
+}
