@@ -76,6 +76,10 @@ Skiller loads configuration from `skiller_config.json` with the following schema
     "opencode": {
       "user": ["~/.config/opencode/skill"],
       "project": [".opencode/skill"]
+    },
+    "pi": {
+      "user": ["~/.pi/skills"],
+      "project": [".pi/skills"]
     }
   }
 }
