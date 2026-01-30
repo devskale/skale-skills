@@ -11,9 +11,10 @@ https://github.com/obra/superpowers
 https://github.com/ComposioHQ/awesome-claude-skills
 https://github.com/VoltAgent/awesome-claude-skills
 https://skillsmp.com/
+https://github.com/mitsuhiko/agent-stuff
 https://github.com/steipete/agent-scripts
 https://github.com/anthropics/skills
-https://github.com/openai/skills #https://github.com/guanyang/antigravity-skills #https://github.com/sickn33/antigravity-awesome-skills #https://github.com/majiayu000/claude-skill-registry
+https://github.com/openai/skills #https://github.com/guanyang/antigravity-skills #https://github.com/sickn33/antigravity-awesome-skills #https://github.com/#majiayu000/claude-skill-registry
 
 ## skill managers
 

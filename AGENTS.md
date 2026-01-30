@@ -61,19 +61,30 @@ skiller --help
 skiller discovery [DIR]
 
 # List installed skills
-skiller list [--agent AGENT]
+skiller list
+skiller list --agent AGENT  # List skills for specific agent
 
 # Install discovered skills (interactive or with arguments)
-skiller install [skill_name ...] [--agent AGENT] [--path-type user|project] [--test]
+skiller install
+skiller install docx xlsx --agent opencode --path-type user
+skiller install --test docx  # Test mode preview
 
 # Remove installed skills (interactive or with arguments)
-skiller remove [skill_name] [--agent AGENT] [--path-type user|project|all] [--test]
+skiller remove
+skiller remove frontend-design --agent opencode
+skiller remove --test frontend-design  # Test mode preview
 
 # Crawl external sites for skills
-skiller crawl [--file skill-sites.md] [--test] [--limit N]
+skiller crawl                    # Crawl all repos
+skiller crawl --limit 5        # Crawl first 5 repos only
+skiller crawl --test            # Preview without saving
+skiller crawl --limit2 --test  # Test mode with limit
+skiller crawl --workers 10    # Adjust parallel workers (default: 5)
+skiller crawl --delay 1.0      # Add delay between requests (default: 0.5)
 
 # Search for skills in the crawled index
-skiller search [query] [--json]
+skiller search <query>
+skiller search youtube --json  # JSON output for integration
 ```
 
 ## 3. Code Style Guidelines
@@ -200,7 +211,163 @@ Skiller loads configuration from `skiller_config.json` with the following option
 - **Test Mode**: Preview install/remove operations without making changes (`--test` flag)
 - **Multi-agent/Path Targeting**: Install or remove skills across multiple agents and path types simultaneously
 
-## 5. Agent Behavior Rules
+## 5. Skiller CLI Features
+
+### Crawl Command
+
+The crawl command discovers skills from GitHub repositories and builds a searchable index.
+
+**Usage:**
+```bash
+# Crawl all repositories in skill-sites.md
+skiller crawl
+
+# Crawl first N repos only
+skiller crawl --limit 5
+
+# Test mode (preview without saving)
+skiller crawl --test
+skiller crawl --limit 3 --test
+
+# Crawl with custom file
+skiller crawl --file /path/to/your-sites.md
+
+# Adjust parallel workers (default: 5)
+skiller crawl --workers 10
+
+# Add delay between requests (default: 0.5)
+skiller crawl --delay 1.0
+```
+
+**Features:**
+- **GitHub API Integration**: Uses Git Tree API for efficient single-request repository scanning
+- **Dynamic Branch Detection**: Automatically detects default branch (master/main) for each repository
+- **Parallel Fetching**: Concurrent skill description fetching with configurable workers
+- **Rate Limiting**: Exponential backoff for GitHub API rate limits
+- **YAML Frontmatter Parsing**: Extracts skill metadata from SKILL.md files
+- **Validation**: Validates all skill entries before saving to index
+- **Incremental Saving**: Saves skills to index after each repository is crawled
+- **Comment Support**: Lines starting with `#` in skill-sites.md are skipped (both full-line and inline comments)
+
+**skill-sites.md Format:**
+```markdown
+# skill repos
+
+https://github.com/badlogic/pi-skills
+# https://github.com/badlogic/pi-mono  # This repo is commented out
+https://github.com/anthropics/skills
+
+# inline comments also work
+https://github.com/test/repo # https://github.com/other/repo  # Comment disabled
+
+## skill managers
+...
+```
+
+**Index Management:**
+- **File**: `skiller_index.json` (generated in working directory)
+- **Structure**: JSON with `skills` array, `count`, and `updated_at` fields
+- **Merging**: Preserves existing skills, adds new ones, deduplicates by name
+- **Deduplication**: Skills with same name use newest version
+
+**Performance:**
+- **Efficiency**: One Git Tree API call per repo (vs. hundreds for Contents API)
+- **Parallelization**: 5 workers fetch descriptions concurrently
+- **Error Handling**: Retries with exponential backoff on rate limits
+
+### Search Command
+
+The search command queries the crawled skill index.
+
+**Usage:**
+```bash
+# Search for skills by name or description
+skiller search browser
+
+# Multi-word search (finds skills matching ALL words)
+skiller search "google calendar"
+skiller search "anthropics skills docx"
+
+# Search with JSON output (for integration)
+skiller search youtube --json
+
+# No results handling
+skiller search "nonexistent-skill-name"
+# Output: "No skills found matching 'nonexistent-skill-name'."
+```
+
+**Features:**
+- **Multi-Word Search**: Finds skills matching ALL query words (AND logic)
+- **Word-Level Tokenization**: Intelligently splits query by spaces, hyphens, underscores, punctuation
+- **Relevance Scoring**: Results ranked by match relevance (name matches > description matches)
+- **Match Highlighting**: Search terms highlighted in **bold** in description output
+- **Case-Insensitive Matching**: Matches query in both name and description fields
+- **Word Boundary Truncation**: Descriptions truncated at word boundaries (not mid-word)
+- **Numbered Results**: Each result shown with index number for easy reference
+- **Result Limiting**: Top 50 most relevant results shown
+- **Query Display**: Shows tokenized query words being searched
+
+**Search Algorithm:**
+
+```python
+# Tokenization
+query_tokens = ["google", "calendar"]  # Splits by space, -, _, ., ;, ()
+
+# Scoring (per skill)
+score = 0
+for word in query_tokens:
+    if word in skill_name:
+        score += 3  # Name matches have highest weight
+    elif word in description:
+        score += 2  # Description matches have medium weight
+
+# Sorting
+results.sort(key=lambda x: (-x.score, x.name))  # By relevance, then by name
+```
+
+**Example Output:**
+```
+Found 2 skills matching 'google calendar':
+  (Searching for: google, calendar)
+
+  [1] badlogic/pi-skills/gccli/SKILL.md
+      **Google** **Calendar** CLI for listing calendars, viewing/creating/updating events...
+      URL: https://github.com/badlogic/pi-skills/blob/main/gccli/SKILL.md
+      Source: github
+
+  [2] moltbot/skills/bilalmohamed187-cpu
+      **Google** **Calendar** integration for viewing, creating, and managing calendar...
+      URL: https://github.com/moltbot/skills/tree/main/skills/bilalmohamed187-cpu
+      Source: github
+```
+
+### Index Structure
+
+```json
+{
+  "updated_at": "now",
+  "count": 4932,
+  "skills": [
+    {
+      "name": "badlogic/pi-skills/gccli/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/gccli/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/gccli/SKILL.md",
+      "path": "gccli/SKILL.md",
+      "description": "Google Calendar CLI for listing calendars, viewing/creating/updating events..."
+    }
+  ]
+}
+```
+
+**Required Fields (validated):**
+- `name`: Unique skill identifier
+- `source`: Repository source (github)
+- `url`: GitHub URL for the skill
+- `skill_file_url`: Raw GitHub URL for SKILL.md
+- `description`: Skill description from YAML frontmatter
+
+## 6. Agent Behavior Rules
 
 - **Proactive Testing**: Always run the relevant `test.sh` after modifying a skill.
 - **File Integrity**: Do not modify `SKILL.md` frontmatter keys (`name`, `description`) unless renaming the skill.
