@@ -108,7 +108,10 @@ def _add_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def _extract_urls(file_path: str) -> list[str]:
-    """Extract URLs from markdown file, only from skill repos section."""
+    """Extract URLs from markdown file, only from skill repos section.
+    
+    Skips lines that start with # (comments) and removes inline comments.
+    """
     urls = []
     if not os.path.exists(file_path):
         root_path = os.path.join(os.getcwd(), file_path)
@@ -117,7 +120,7 @@ def _extract_urls(file_path: str) -> list[str]:
         else:
             print(f"Error: File {file_path} not found.")
             return []
-
+    
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
         
@@ -128,7 +131,24 @@ def _extract_urls(file_path: str) -> list[str]:
     )
     if repo_section_match:
         section_content = repo_section_match.group(1)
-        urls = re.findall(r'https?://[^\s\)]+', section_content)
+        
+        # Process line by line to handle comments
+        for line in section_content.split('\n'):
+            # Skip empty lines
+            if not line.strip():
+                continue
+            
+            # Skip lines that start with # (comment lines)
+            if line.strip().startswith('#'):
+                continue
+            
+            # Extract URL, removing inline comments (text after #)
+            # Match URL only up to # or end of line
+            url_match = re.search(r'https?://[^\s\)]+', line.split('#')[0])
+            if url_match:
+                url = url_match.group(0)
+                if url:
+                    urls.append(url)
     else:
         print("Warning: Section '# skill repos' not found in file.")
     
