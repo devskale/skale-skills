@@ -141,14 +141,27 @@ The skiller CLI can discover skills from external sources:
 
 - **Crawl**: Fetch skills from GitHub repositories listed in `skill-sites.md`
   ```bash
-  skiller crawl
+  skiller crawl                    # Crawl all repos
+  skiller crawl --limit 5        # Crawl first 5 repos only
+  skiller crawl --test            # Preview without saving to index
+  skiller crawl --limit 2 --test # Test mode with limit
   ```
 - **Search**: Query the crawled skill index with JSON output
   ```bash
-  skiller search <query> --json
+  skiller search <query>
+  skiller search youtube --json
   ```
 
 Skills are indexed in `skiller/skiller_index.json` which is auto-generated during crawl operations.
+
+**Crawl Features:**
+- **GitHub API Integration**: Uses Git Tree API for efficient single-request repository scanning
+- **Dynamic Branch Detection**: Automatically detects default branch (master/main) for each repository
+- **Parallel Fetching**: Concurrent skill description fetching with configurable workers (--workers N)
+- **Rate Limiting**: Exponential backoff for GitHub API rate limits
+- **YAML Frontmatter Parsing**: Extracts skill metadata from SKILL.md files
+- **Validation**: Validates all skill entries before saving to index
+- **Incremental Saving**: Saves skills to index after each repository is crawled
 
 ### Skiller Configuration
 

@@ -132,7 +132,14 @@ def _extract_urls(file_path: str) -> list[str]:
     else:
         print("Warning: Section '# skill repos' not found in file.")
     
-    return list(set(urls))
+    # Deduplicate URLs while preserving order
+    seen = set()
+    unique_urls = []
+    for url in urls:
+        if url not in seen:
+            seen.add(url)
+            unique_urls.append(url)
+    return unique_urls
 
 
 def _get_github_repo_info(url: str):
@@ -143,6 +150,15 @@ def _get_github_repo_info(url: str):
         repo = match.group(2).replace(".git", "")
         return owner, repo
     return None
+
+
+def _get_github_repo_branch(owner: str, repo: str, headers: dict) -> str:
+    """Get the default branch for a GitHub repository."""
+    api_url = f"https://api.github.com/repos/{owner}/{repo}"
+    result = _make_request(api_url, headers)
+    if result:
+        return result.get("default_branch", "main")
+    return "main"
 
 
 def _fetch_repo_tree(owner: str, repo: str, headers: dict) -> list[dict]:
@@ -159,7 +175,7 @@ def _fetch_repo_tree(owner: str, repo: str, headers: dict) -> list[dict]:
     return []
 
 
-def _parse_skills_from_tree(tree: list[dict], owner: str, repo: str) -> list[dict]:
+def _parse_skills_from_tree(tree: list[dict], owner: str, repo: str, default_branch: str = "main") -> list[dict]:
     """Parse repository tree to find all SKILL.md files."""
     skills = []
     
@@ -182,14 +198,14 @@ def _parse_skills_from_tree(tree: list[dict], owner: str, repo: str) -> list[dic
         elif len(parts) >= 2 and parts[0].lower() == "skills":
             skill_dir = parts[1] if len(parts) > 1 else ""
             skill_name = f"{owner}/{repo}/{skill_dir}"
-            skill_url = f"https://github.com/{owner}/{repo}/tree/main/{parts[0]}/{skill_dir}"
+            skill_url = f"https://github.com/{owner}/{repo}/tree/{default_branch}/{parts[0]}/{skill_dir}"
             skill_path = f"{parts[0]}/{skill_dir}"
         else:
             skill_name = f"{owner}/{repo}/{path}"
-            skill_url = f"https://github.com/{owner}/{repo}/blob/main/{path}"
+            skill_url = f"https://github.com/{owner}/{repo}/blob/{default_branch}/{path}"
             skill_path = path
             
-        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/main/{path}"
+        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{default_branch}/{path}"
         
         skills.append({
             "name": skill_name,
@@ -233,7 +249,7 @@ def _fetch_skill_description(skill_info: dict, headers: dict) -> dict:
     return skill_info
 
 
-def _fetch_github_skills(owner: str, repo: str, headers: dict, workers: int = 5) -> list[dict]:
+def _fetch_github_skills(owner: str, repo: str, headers: dict, workers: int = 5, default_branch: str = "main") -> list[dict]:
     """Fetch skills from a GitHub repository efficiently."""
     print(f"  [GitHub] Scanning {owner}/{repo}...")
     
@@ -242,7 +258,7 @@ def _fetch_github_skills(owner: str, repo: str, headers: dict, workers: int = 5)
         print(f"    No tree found for {owner}/{repo}")
         return []
     
-    skills = _parse_skills_from_tree(tree, owner, repo)
+    skills = _parse_skills_from_tree(tree, owner, repo, default_branch)
     if not skills:
         print(f"    No SKILL.md files found")
         return []
@@ -289,13 +305,21 @@ def _load_index() -> list[dict[str, Any]]:
     return []
 
 
-def _save_index(skills: list[dict[str, Any]]) -> None:
-    """Save discovered skills to a local index file."""
+def _save_index(skills: list[dict[str, Any]], quiet: bool = False) -> None:
+    """Save discovered skills to a local index file.
+    
+    Args:
+        skills: New skills to save
+        quiet: If True, suppress "Index updated" message
+    """
     index_path = os.path.join(os.getcwd(), "skiller_index.json")
     
     existing_skills = _load_index()
     skill_map = {s["name"]: s for s in existing_skills}
+    new_count = 0
     for s in skills:
+        if s["name"] not in skill_map:
+            new_count += 1
         skill_map[s["name"]] = s
     
     final_skills = sorted(list(skill_map.values()), key=lambda x: x["name"])
@@ -306,7 +330,9 @@ def _save_index(skills: list[dict[str, Any]]) -> None:
             "count": len(final_skills),
             "skills": final_skills
         }, f, indent=2)
-    print(f"\nIndex updated. Total skills: {len(final_skills)} (Saved to {index_path})")
+    
+    if not quiet:
+        print(f"\nIndex updated. Total skills: {len(final_skills)} (Saved to {index_path})")
 
 
 def _run(args: argparse.Namespace, config: dict) -> None:
@@ -320,11 +346,11 @@ def _run(args: argparse.Namespace, config: dict) -> None:
     if not urls:
         print("No URLs found to crawl.")
         return
-
+    
     if limit > 0:
         urls = urls[:limit]
         print(f"Limit: Crawling first {len(urls)} repos only.")
-
+    
     all_discovered_skills = []
     print(f"Found {len(urls)} potential sources. Starting crawl...")
     
@@ -338,18 +364,23 @@ def _run(args: argparse.Namespace, config: dict) -> None:
             info = _get_github_repo_info(url)
             if info:
                 owner, repo = info
+                default_branch = _get_github_repo_branch(owner, repo, headers)
                 discovered = _fetch_github_skills(
-                    owner, repo, headers, args.workers
+                    owner, repo, headers, args.workers, default_branch
                 )
                 if discovered:
                     all_discovered_skills.extend(discovered)
+                    # Save after each repo if not in test mode
+                    if not test_mode:
+                        _save_index(all_discovered_skills, quiet=True)
+                        print(f"  -> Saved to index. Total: {len(all_discovered_skills)} skills")
         else:
             print(f"  [Web] Skipping {url} (Web crawling not yet implemented)")
     
     if not all_discovered_skills:
         print("\nNo skills discovered.")
         return
-
+    
     print(f"\n=== Crawl Complete ===")
     print(f"Total repos scanned: {len(urls)}")
     print(f"Total skills found: {len(all_discovered_skills)}")
@@ -376,14 +407,16 @@ def _run(args: argparse.Namespace, config: dict) -> None:
             desc = skill.get('description', '(no description)')[:60]
             print(f"  - {skill['name']}: {desc}...")
         print("\nRun without --test to save these skills to index.")
-    else:
-        _save_index(all_discovered_skills)
 
 
 def _run_interactive(config: dict) -> None:
     """Interactive version of the crawl command."""
     class Args:
         file = "skill-sites.md"
+        delay = 0.5
+        test = False
+        limit = 0
+        workers = 5
     _run(Args(), config)
 
 

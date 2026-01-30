@@ -1,7 +1,263 @@
 {
   "updated_at": "now",
-  "count": 299,
+  "count": 345,
   "skills": [
+    {
+      "name": "ComposioHQ/awesome-claude-skills/artifacts-builder/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/artifacts-builder/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/artifacts-builder/SKILL.md",
+      "path": "artifacts-builder/SKILL.md",
+      "description": "Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/brand-guidelines/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/brand-guidelines/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/brand-guidelines/SKILL.md",
+      "path": "brand-guidelines/SKILL.md",
+      "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/canvas-design/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/canvas-design/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/canvas-design/SKILL.md",
+      "path": "canvas-design/SKILL.md",
+      "description": "Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/changelog-generator/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/changelog-generator/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/changelog-generator/SKILL.md",
+      "path": "changelog-generator/SKILL.md",
+      "description": "Automatically creates user-facing changelogs from git commits by analyzing commit history, categorizing changes, and transforming technical commits into clear, customer-friendly release notes. Turns hours of manual changelog writing into minutes of automated generation."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/competitive-ads-extractor/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/competitive-ads-extractor/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/competitive-ads-extractor/SKILL.md",
+      "path": "competitive-ads-extractor/SKILL.md",
+      "description": "Extracts and analyzes competitors' ads from ad libraries (Facebook, LinkedIn, etc.) to understand what messaging, problems, and creative approaches are working. Helps inspire and improve your own ad campaigns."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/connect-apps/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/connect-apps/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/connect-apps/SKILL.md",
+      "path": "connect-apps/SKILL.md",
+      "description": "Connect Claude to external apps like Gmail, Slack, GitHub. Use this skill when the user wants to send emails, create issues, post messages, or take actions in external services."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/connect/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/connect/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/connect/SKILL.md",
+      "path": "connect/SKILL.md",
+      "description": "Connect Claude to any app. Send emails, create issues, post messages, update databases - take real actions across Gmail, Slack, GitHub, Notion, and 1000+ services."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/content-research-writer/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/content-research-writer/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/content-research-writer/SKILL.md",
+      "path": "content-research-writer/SKILL.md",
+      "description": "Assists in writing high-quality content by conducting research, adding citations, improving hooks, iterating on outlines, and providing real-time feedback on each section. Transforms your writing process from solo effort to collaborative partnership."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/developer-growth-analysis/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/developer-growth-analysis/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/developer-growth-analysis/SKILL.md",
+      "path": "developer-growth-analysis/SKILL.md",
+      "description": "Analyzes your recent Claude Code chat history to identify coding patterns, development gaps, and areas for improvement, curates relevant learning resources from HackerNews, and automatically sends a personalized growth report to your Slack DMs."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/document-skills/docx/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/document-skills/docx/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/document-skills/docx/SKILL.md",
+      "path": "document-skills/docx/SKILL.md",
+      "description": "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. When Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/document-skills/pdf/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/document-skills/pdf/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/document-skills/pdf/SKILL.md",
+      "path": "document-skills/pdf/SKILL.md",
+      "description": "Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/document-skills/pptx/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/document-skills/pptx/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/document-skills/pptx/SKILL.md",
+      "path": "document-skills/pptx/SKILL.md",
+      "description": "Presentation creation, editing, and analysis. When Claude needs to work with presentations (.pptx files) for: (1) Creating new presentations, (2) Modifying or editing content, (3) Working with layouts, (4) Adding comments or speaker notes, or any other presentation tasks"
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/document-skills/xlsx/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/document-skills/xlsx/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/document-skills/xlsx/SKILL.md",
+      "path": "document-skills/xlsx/SKILL.md",
+      "description": "Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, data analysis, and visualization. When Claude needs to work with spreadsheets (.xlsx, .xlsm, .csv, .tsv, etc) for: (1) Creating new spreadsheets with formulas and formatting, (2) Reading or analyzing data, (3) Modify existing spreadsheets while preserving formulas, (4) Data analysis and visualization in spreadsheets, or (5) Recalculating formulas"
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/domain-name-brainstormer/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/domain-name-brainstormer/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/domain-name-brainstormer/SKILL.md",
+      "path": "domain-name-brainstormer/SKILL.md",
+      "description": "Generates creative domain name ideas for your project and checks availability across multiple TLDs (.com, .io, .dev, .ai, etc.). Saves hours of brainstorming and manual checking."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/file-organizer/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/file-organizer/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/file-organizer/SKILL.md",
+      "path": "file-organizer/SKILL.md",
+      "description": "Intelligently organizes your files and folders across your computer by understanding context, finding duplicates, suggesting better structures, and automating cleanup tasks. Reduces cognitive load and keeps your digital workspace tidy without manual effort."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/image-enhancer/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/image-enhancer/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/image-enhancer/SKILL.md",
+      "path": "image-enhancer/SKILL.md",
+      "description": "Improves the quality of images, especially screenshots, by enhancing resolution, sharpness, and clarity. Perfect for preparing images for presentations, documentation, or social media posts."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/internal-comms/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/internal-comms/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/internal-comms/SKILL.md",
+      "path": "internal-comms/SKILL.md",
+      "description": "A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.)."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/invoice-organizer/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/invoice-organizer/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/invoice-organizer/SKILL.md",
+      "path": "invoice-organizer/SKILL.md",
+      "description": "Automatically organizes invoices and receipts for tax preparation by reading messy files, extracting key information, renaming them consistently, and sorting them into logical folders. Turns hours of manual bookkeeping into minutes of automated organization."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/langsmith-fetch/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/langsmith-fetch/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/langsmith-fetch/SKILL.md",
+      "path": "langsmith-fetch/SKILL.md",
+      "description": "Debug LangChain and LangGraph agents by fetching execution traces from LangSmith Studio. Use when debugging agent behavior, investigating errors, analyzing tool calls, checking memory operations, or examining agent performance. Automatically fetches recent traces and analyzes execution patterns. Requires langsmith-fetch CLI installed."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/lead-research-assistant/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/lead-research-assistant/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/lead-research-assistant/SKILL.md",
+      "path": "lead-research-assistant/SKILL.md",
+      "description": "Identifies high-quality leads for your product or service by analyzing your business, searching for target companies, and providing actionable contact strategies. Perfect for sales, business development, and marketing professionals."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/mcp-builder/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/mcp-builder/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/mcp-builder/SKILL.md",
+      "path": "mcp-builder/SKILL.md",
+      "description": "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK)."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/meeting-insights-analyzer/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/meeting-insights-analyzer/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/meeting-insights-analyzer/SKILL.md",
+      "path": "meeting-insights-analyzer/SKILL.md",
+      "description": "Analyzes meeting transcripts and recordings to uncover behavioral patterns, communication insights, and actionable feedback. Identifies when you avoid conflict, use filler words, dominate conversations, or miss opportunities to listen. Perfect for professionals seeking to improve their communication and leadership skills."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/raffle-winner-picker/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/raffle-winner-picker/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/raffle-winner-picker/SKILL.md",
+      "path": "raffle-winner-picker/SKILL.md",
+      "description": "Picks random winners from lists, spreadsheets, or Google Sheets for giveaways, raffles, and contests. Ensures fair, unbiased selection with transparency."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/skill-creator/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/skill-creator/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/skill-creator/SKILL.md",
+      "path": "skill-creator/SKILL.md",
+      "description": "Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/skill-share/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/skill-share/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/skill-share/SKILL.md",
+      "path": "skill-share/SKILL.md",
+      "description": "A skill that creates new Claude skills and automatically shares them on Slack using Rube for seamless team collaboration and skill discovery."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/slack-gif-creator/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/slack-gif-creator/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/slack-gif-creator/SKILL.md",
+      "path": "slack-gif-creator/SKILL.md",
+      "description": "Toolkit for creating animated GIFs optimized for Slack, with validators for size constraints and composable animation primitives. This skill applies when users request animated GIFs or emoji animations for Slack from descriptions like \"make me a GIF for Slack of X doing Y\"."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/tailored-resume-generator/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/tailored-resume-generator/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/tailored-resume-generator/SKILL.md",
+      "path": "tailored-resume-generator/SKILL.md",
+      "description": "Analyzes job descriptions and generates tailored resumes that highlight relevant experience, skills, and achievements to maximize interview chances"
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/template-skill/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/template-skill/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/template-skill/SKILL.md",
+      "path": "template-skill/SKILL.md",
+      "description": "Replace with description of the skill and when Claude should use it."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/theme-factory/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/theme-factory/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/theme-factory/SKILL.md",
+      "path": "theme-factory/SKILL.md",
+      "description": "Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/twitter-algorithm-optimizer/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/twitter-algorithm-optimizer/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/twitter-algorithm-optimizer/SKILL.md",
+      "path": "twitter-algorithm-optimizer/SKILL.md",
+      "description": "Analyze and optimize tweets for maximum reach using Twitter's open-source algorithm insights. Rewrite and edit user tweets to improve engagement and visibility based on how the recommendation system ranks content."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/video-downloader/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/video-downloader/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/video-downloader/SKILL.md",
+      "path": "video-downloader/SKILL.md",
+      "description": "Download YouTube videos with customizable quality and format options. Use this skill when the user asks to download, save, or grab YouTube videos. Supports various quality settings (best, 1080p, 720p, 480p, 360p), multiple formats (mp4, webm, mkv), and audio-only downloads as MP3."
+    },
+    {
+      "name": "ComposioHQ/awesome-claude-skills/webapp-testing/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/ComposioHQ/awesome-claude-skills/blob/master/webapp-testing/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/webapp-testing/SKILL.md",
+      "path": "webapp-testing/SKILL.md",
+      "description": "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs."
+    },
     {
       "name": "anthropics/skills/algorithmic-art",
       "source": "github",
@@ -113,6 +369,70 @@
       "url": "https://github.com/anthropics/skills/tree/main/skills/xlsx",
       "skill_file_url": "https://raw.githubusercontent.com/anthropics/skills/main/skills/xlsx/SKILL.md",
       "path": "skills/xlsx"
+    },
+    {
+      "name": "badlogic/pi-skills/brave-search/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/brave-search/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/brave-search/SKILL.md",
+      "path": "brave-search/SKILL.md",
+      "description": "Web search and content extraction via Brave Search API. Use for searching documentation, facts, or any web content. Lightweight, no browser required."
+    },
+    {
+      "name": "badlogic/pi-skills/browser-tools/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/browser-tools/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/browser-tools/SKILL.md",
+      "path": "browser-tools/SKILL.md",
+      "description": "Interactive browser automation via Chrome DevTools Protocol. Use when you need to interact with web pages, test frontends, or when user interaction with a visible browser is required."
+    },
+    {
+      "name": "badlogic/pi-skills/gccli/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/gccli/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/gccli/SKILL.md",
+      "path": "gccli/SKILL.md",
+      "description": "Google Calendar CLI for listing calendars, viewing/creating/updating events, and checking availability."
+    },
+    {
+      "name": "badlogic/pi-skills/gdcli/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/gdcli/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/gdcli/SKILL.md",
+      "path": "gdcli/SKILL.md",
+      "description": "Google Drive CLI for listing, searching, uploading, downloading, and sharing files and folders."
+    },
+    {
+      "name": "badlogic/pi-skills/gmcli/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/gmcli/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/gmcli/SKILL.md",
+      "path": "gmcli/SKILL.md",
+      "description": "Gmail CLI for searching emails, reading threads, sending messages, managing drafts, and handling labels/attachments."
+    },
+    {
+      "name": "badlogic/pi-skills/transcribe/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/transcribe/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/transcribe/SKILL.md",
+      "path": "transcribe/SKILL.md",
+      "description": "Speech-to-text transcription using Groq Whisper API. Supports m4a, mp3, wav, ogg, flac, webm."
+    },
+    {
+      "name": "badlogic/pi-skills/vscode/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/vscode/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/vscode/SKILL.md",
+      "path": "vscode/SKILL.md",
+      "description": "VS Code integration for viewing diffs and comparing files. Use when showing file differences to the user."
+    },
+    {
+      "name": "badlogic/pi-skills/youtube-transcript/SKILL.md",
+      "source": "github",
+      "url": "https://github.com/badlogic/pi-skills/blob/main/youtube-transcript/SKILL.md",
+      "skill_file_url": "https://raw.githubusercontent.com/badlogic/pi-skills/main/youtube-transcript/SKILL.md",
+      "path": "youtube-transcript/SKILL.md",
+      "description": "Fetch transcripts from YouTube videos for summarization and analysis."
     },
     {
       "name": "guanyang/antigravity-skills/advanced-evaluation",
@@ -549,6 +869,30 @@
       "path": "skills/testing"
     },
     {
+      "name": "numman-ali/n-skills/automation",
+      "source": "github",
+      "url": "https://github.com/numman-ali/n-skills/tree/main/skills/automation",
+      "skill_file_url": "https://raw.githubusercontent.com/numman-ali/n-skills/main/skills/automation/dev-browser/skills/dev-browser/SKILL.md",
+      "path": "skills/automation",
+      "description": "Browser automation with persistent page state. Use when users ask to navigate websites, fill forms, take screenshots, extract web data, test web apps, or automate browser workflows. Trigger phrases include \"go to [url]\", \"click on\", \"fill out the form\", \"take a screenshot\", \"scrape\", \"automate\", \"test the website\", \"log into\", or any browser interaction request."
+    },
+    {
+      "name": "numman-ali/n-skills/tools",
+      "source": "github",
+      "url": "https://github.com/numman-ali/n-skills/tree/main/skills/tools",
+      "skill_file_url": "https://raw.githubusercontent.com/numman-ali/n-skills/main/skills/tools/zai-cli/skills/zai-cli/SKILL.md",
+      "path": "skills/tools",
+      "description": "Z.AI CLI providing: - Vision: image/video analysis, OCR, UI-to-code, error diagnosis (GLM-4.6V) - Search: real-time web search with domain/recency filtering - Reader: web page to markdown extraction - Repo: GitHub code search and reading via ZRead - Tools: MCP tool discovery and raw calls - Code: TypeScript tool chaining Use for visual content analysis, web search, page reading, or GitHub exploration. Requires Z_AI_API_KEY."
+    },
+    {
+      "name": "numman-ali/n-skills/workflow",
+      "source": "github",
+      "url": "https://github.com/numman-ali/n-skills/tree/main/skills/workflow",
+      "skill_file_url": "https://raw.githubusercontent.com/numman-ali/n-skills/main/skills/workflow/orchestration/skills/orchestration/SKILL.md",
+      "path": "skills/workflow",
+      "description": "Multi-agent orchestration for complex tasks. Use when tasks require parallel work, multiple agents, or sophisticated coordination. Triggers include requests for features, reviews, refactoring, testing, documentation, or any work that benefits from decomposition into parallel subtasks. This skill defines how to orchestrate work using cc-mirror tasks for persistent dependency tracking and TodoWrite for real-time session visibility."
+    },
+    {
       "name": "obra/superpowers/brainstorming",
       "source": "github",
       "url": "https://github.com/obra/superpowers/tree/main/skills/brainstorming",
@@ -645,6 +989,30 @@
       "url": "https://github.com/obra/superpowers/tree/main/skills/writing-skills",
       "skill_file_url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/writing-skills/SKILL.md",
       "path": "skills/writing-skills"
+    },
+    {
+      "name": "openai/skills/.curated",
+      "source": "github",
+      "url": "https://github.com/openai/skills/tree/main/skills/.curated",
+      "skill_file_url": "https://raw.githubusercontent.com/openai/skills/main/skills/.curated/yeet/SKILL.md",
+      "path": "skills/.curated",
+      "description": "Use only when the user explicitly asks to stage, commit, push, and open a GitHub pull request in one flow using the GitHub CLI (`gh`)."
+    },
+    {
+      "name": "openai/skills/.experimental",
+      "source": "github",
+      "url": "https://github.com/openai/skills/tree/main/skills/.experimental",
+      "skill_file_url": "https://raw.githubusercontent.com/openai/skills/main/skills/.experimental/linear/SKILL.md",
+      "path": "skills/.experimental",
+      "description": "Manage issues, projects & team workflows in Linear. Use when the user wants to read, create or updates tickets in Linear."
+    },
+    {
+      "name": "openai/skills/.system",
+      "source": "github",
+      "url": "https://github.com/openai/skills/tree/main/skills/.system",
+      "skill_file_url": "https://raw.githubusercontent.com/openai/skills/main/skills/.system/skill-installer/SKILL.md",
+      "path": "skills/.system",
+      "description": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos)."
     },
     {
       "name": "sickn33/antigravity-awesome-skills/3d-web-experience",
@@ -1960,112 +2328,128 @@
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/1password",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/1password/SKILL.md",
-      "path": "skills/1password"
+      "path": "skills/1password",
+      "description": "Set up and use 1Password CLI (op). Use when installing the CLI, enabling desktop app integration, signing in (single or multi-account), or reading/injecting/running secrets via op."
     },
     {
       "name": "steipete/agent-scripts/brave-search",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/brave-search",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/brave-search/SKILL.md",
-      "path": "skills/brave-search"
+      "path": "skills/brave-search",
+      "description": "Web search and content extraction via Brave Search API. Use for searching documentation, facts, or any web content. Lightweight, no browser required."
     },
     {
       "name": "steipete/agent-scripts/create-cli",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/create-cli",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/create-cli/SKILL.md",
-      "path": "skills/create-cli"
+      "path": "skills/create-cli",
+      "description": "Design command-line interface parameters and UX: arguments, flags, subcommands, help text, output formats, error messages, exit codes, prompts, config/env precedence, and safe/dry-run behavior. Use when you\u2019re designing a CLI spec (before implementation) or refactoring an existing CLI\u2019s surface area for consistency, composability, and discoverability."
     },
     {
       "name": "steipete/agent-scripts/domain-dns-ops",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/domain-dns-ops",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/domain-dns-ops/SKILL.md",
-      "path": "skills/domain-dns-ops"
+      "path": "skills/domain-dns-ops",
+      "description": "Domain/DNS ops across Cloudflare, DNSimple, Namecheap for Peter. Use for onboarding zones to Cloudflare, flipping nameservers, setting redirects (Page Rules/Rulesets/Workers), updating redirect-worker mappings, and verifying DNS/HTTP. Source of truth: ~/Projects/manager."
     },
     {
       "name": "steipete/agent-scripts/frontend-design",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/frontend-design",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/frontend-design/SKILL.md",
-      "path": "skills/frontend-design"
+      "path": "skills/frontend-design",
+      "description": "Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, or applications. Generates creative, polished code that avoids generic AI aesthetics."
     },
     {
       "name": "steipete/agent-scripts/instruments-profiling",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/instruments-profiling",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/instruments-profiling/SKILL.md",
-      "path": "skills/instruments-profiling"
+      "path": "skills/instruments-profiling",
+      "description": "Use when profiling native macOS or iOS apps with Instruments/xctrace. Covers correct binary selection, CLI arguments, exports, and common gotchas."
     },
     {
       "name": "steipete/agent-scripts/markdown-converter",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/markdown-converter",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/markdown-converter/SKILL.md",
-      "path": "skills/markdown-converter"
+      "path": "skills/markdown-converter",
+      "description": "Convert documents and files to Markdown using markitdown. Use when converting PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .xls), HTML, CSV, JSON, XML, images (with EXIF/OCR), audio (with transcription), ZIP archives, YouTube URLs, or EPubs to Markdown format for LLM processing or text analysis."
     },
     {
       "name": "steipete/agent-scripts/nano-banana-pro",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/nano-banana-pro",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/nano-banana-pro/SKILL.md",
-      "path": "skills/nano-banana-pro"
+      "path": "skills/nano-banana-pro",
+      "description": "Generate/edit images with Nano Banana Pro (Gemini 3 Pro Image). Use for image create/modify requests incl. edits. Supports text-to-image + image-to-image; 1K/2K/4K; use --input-image."
     },
     {
       "name": "steipete/agent-scripts/native-app-performance",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/native-app-performance",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/native-app-performance/SKILL.md",
-      "path": "skills/native-app-performance"
+      "path": "skills/native-app-performance",
+      "description": "Native macOS/iOS app performance profiling via xctrace/Time Profiler and CLI-only analysis of Instruments traces. Use when asked to profile, attach, record, or analyze Instruments .trace files, find hotspots, or optimize native app performance without opening Instruments UI."
     },
     {
       "name": "steipete/agent-scripts/openai-image-gen",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/openai-image-gen",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/openai-image-gen/SKILL.md",
-      "path": "skills/openai-image-gen"
+      "path": "skills/openai-image-gen",
+      "description": "Batch-generate images via OpenAI Images API. Random prompt sampler + `index.html` gallery."
     },
     {
       "name": "steipete/agent-scripts/oracle",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/oracle",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/oracle/SKILL.md",
-      "path": "skills/oracle"
+      "path": "skills/oracle",
+      "description": "Use the @steipete/oracle CLI to bundle a prompt plus the right files and get a second-model review (API or browser) for debugging, refactors, design checks, or cross-validation."
     },
     {
       "name": "steipete/agent-scripts/swift-concurrency-expert",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swift-concurrency-expert",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swift-concurrency-expert/SKILL.md",
-      "path": "skills/swift-concurrency-expert"
+      "path": "skills/swift-concurrency-expert",
+      "description": "Swift Concurrency review and remediation for Swift 6.2+. Use when asked to review Swift Concurrency usage, improve concurrency compliance, or fix Swift concurrency compiler errors in a feature or file."
     },
     {
       "name": "steipete/agent-scripts/swiftui-liquid-glass",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swiftui-liquid-glass",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swiftui-liquid-glass/SKILL.md",
-      "path": "skills/swiftui-liquid-glass"
+      "path": "skills/swiftui-liquid-glass",
+      "description": "Implement, review, or improve SwiftUI features using the iOS 26+ Liquid Glass API. Use when asked to adopt Liquid Glass in new SwiftUI UI, refactor an existing feature to Liquid Glass, or review Liquid Glass usage for correctness, performance, and design alignment."
     },
     {
       "name": "steipete/agent-scripts/swiftui-performance-audit",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swiftui-performance-audit",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swiftui-performance-audit/SKILL.md",
-      "path": "skills/swiftui-performance-audit"
+      "path": "skills/swiftui-performance-audit",
+      "description": "Audit and improve SwiftUI runtime performance from code review and architecture. Use for requests to diagnose slow rendering, janky scrolling, high CPU/memory usage, excessive view updates, or layout thrash in SwiftUI apps, and to provide guidance for user-run Instruments profiling when code review alone is insufficient."
     },
     {
       "name": "steipete/agent-scripts/swiftui-view-refactor",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/swiftui-view-refactor",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/swiftui-view-refactor/SKILL.md",
-      "path": "skills/swiftui-view-refactor"
+      "path": "skills/swiftui-view-refactor",
+      "description": "Refactor and review SwiftUI view files for consistent structure, dependency injection, and Observation usage. Use when asked to clean up a SwiftUI view\u2019s layout/ordering, handle view models safely (non-optional when possible), or standardize how dependencies and @Observable state are initialized and passed."
     },
     {
       "name": "steipete/agent-scripts/video-transcript-downloader",
       "source": "github",
       "url": "https://github.com/steipete/agent-scripts/tree/main/skills/video-transcript-downloader",
       "skill_file_url": "https://raw.githubusercontent.com/steipete/agent-scripts/main/skills/video-transcript-downloader/SKILL.md",
-      "path": "skills/video-transcript-downloader"
+      "path": "skills/video-transcript-downloader",
+      "description": "Download videos, audio, subtitles, and clean paragraph-style transcripts from YouTube and any other yt-dlp supported site. Use when asked to \u201cdownload this video\u201d, \u201csave this clip\u201d, \u201crip audio\u201d, \u201cget subtitles\u201d, \u201cget transcript\u201d, or to troubleshoot yt-dlp/ffmpeg and formats/playlists."
     },
     {
       "name": "vercel-labs/agent-skills/composition-patterns",
