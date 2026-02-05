@@ -13,17 +13,28 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Third-party imports
+requests = None
 try:
     import requests
 except ImportError:
-    print("Error: 'requests' library is required. Install with: pip3 install requests")
-    sys.exit(1)
+    pass  # Will show error when API mode is actually used
+
+credgoo = None
+try:
+    from credgoo import get_api_key
+except ImportError:
+    pass  # Optional dependency
 
 # Default configuration
 DEFAULT_API_URL = "https://amd1.mooo.com/api/duck/search"
 
 def get_bearer_token() -> Optional[str]:
-    """Get bearer token from environment variable or .env file.
+    """Get bearer token from environment variable, credgoo, or .env file.
+
+    Priority order:
+    1. Environment variable (WEB_SEARCH_BEARER)
+    2. credgoo (if available)
+    3. .env file
 
     Returns:
         The bearer token string if found, None otherwise.
@@ -32,6 +43,16 @@ def get_bearer_token() -> Optional[str]:
     token = os.environ.get("WEB_SEARCH_BEARER")
     if token:
         return token
+
+    # Try credgoo if available
+    if credgoo is not None:
+        try:
+            token = credgoo.get_api_key("web-search")
+            if token:
+                return token
+        except Exception:
+            # Silently fail if credgoo is not configured
+            pass
 
     # Try to read from .env file in skill directory
     env_file: Path = Path(__file__).parent / ".env"
@@ -259,7 +280,9 @@ Examples:
         backend=args.backend,
         proxy=args.proxy,
         verify=args.verify,
-        bearer=bearer
+        bearer=bearer,
+        api_url=args.api_url,
+        timeout=args.timeout
     )
 
     # Output results
