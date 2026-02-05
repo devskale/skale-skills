@@ -1,0 +1,10 @@
+# Optional: only required for API mode
+requests>=2.31.0
+
+# For local mode, no Python dependencies are required
+# This skill uses subprocess to call w3m and lynx
+# Install those separately using your system package manager:
+#   macOS: brew install w3m lynx
+#   Debian/Ubuntu: sudo apt-get install w3m lynx
+#   Arch: sudo pacman -S w3m lynx
+

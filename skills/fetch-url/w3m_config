@@ -1,0 +1,21 @@
+# w3m configuration for fetch-url skill
+
+# Use colors in the output (ignored in dump mode but keeps config valid)
+color 1
+
+# Display images if supported (set to 0 to disable for text-only output)
+display_image 0
+
+# Set the default language for web pages
+accept_language en
+
+# Cookies (enable for better results on sites that require cookies)
+use_cookie 1
+accept_cookie 1
+
+# Display link numbers (can be overridden with -o flag)
+display_link_number 1
+display_link 0
+
+# Set user agent string to avoid blocking
+user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"

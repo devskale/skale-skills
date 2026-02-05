@@ -1,0 +1,5 @@
+# lynx configuration for fetch-url skill
+
+ACCEPT_ALL_COOKIES:TRUE
+SET_COOKIES:TRUE
+CHARACTER_SET:utf-8
