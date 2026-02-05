@@ -178,6 +178,20 @@ export FETCH_URL_BEARER="your_token"
 export WEB_SEARCH_BEARER="your_token"
 ```
 
+**Venv corruption (dyld/SIGABRT error):**
+```bash
+cd ~/.pi/agent/skills/fetch-url
+rm -rf .venv
+uv venv
+uv pip install requests  # if using API mode
+```
+
+**w3m "gunzip: unknown compression format" error:**
+```bash
+# Try lynx instead
+uv run fetch.py "https://example.com" --tool lynx
+```
+
 **Request timed out:**
 - Try simpler page
 - Switch browsers (w3m ↔ lynx)
