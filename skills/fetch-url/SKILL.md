@@ -5,293 +5,184 @@ description: Fetch and extract readable text content from web pages using text-b
 
 # Fetch URL
 
+## Quick Reference
+
+```bash
+cd ~/.pi/agent/skills/fetch-url
+
+# Fetch a URL (local mode, w3m)
+uv run fetch.py "https://example.com"
+
+# Use lynx instead
+uv run fetch.py "https://example.com" --tool lynx
+
+# Use API mode
+uv run fetch.py "https://example.com" --api
+
+# Clean output (remove empty lines)
+uv run fetch.py "https://example.com" --clean
+
+# Show link numbers for reference
+uv run fetch.py "https://github.com" --links
+```
+
+See **Setup**, **Options**, and **Examples** below for advanced usage.
+
 ## Description
 
-Extract readable text content from web pages using text-based browsers (w3m or lynx) or via a remote API. This skill fetches web pages and returns the plain text content without rendering images, styles, or JavaScript. It's perfect for reading articles, documentation, and other text-heavy web pages.
+Extract readable text from web pages using text-based browsers (w3m/lynx) or a remote API. Returns plain text without images, styles, or JavaScript. Ideal for articles, documentation, and text-heavy pages.
 
 ## Setup
 
-1. From the skill directory, create a virtual environment:
+### 1. Create Virtual Environment
 
 ```bash
 cd ~/.pi/agent/skills/fetch-url
 uv venv
 ```
 
-2. Install Python dependencies (only required for API mode):
+### 2. Install Dependencies
 
+**For API mode (optional):**
 ```bash
 uv pip install requests
 ```
 
-3. Install the required text browsers (for local mode only):
+**For local mode (w3m/lynx):**
 
-**macOS:**
-```bash
-brew install w3m lynx
-```
+| OS | Command |
+|----|---------|
+| macOS | `brew install w3m lynx` |
+| Ubuntu/Debian | `sudo apt-get install w3m lynx` |
+| Arch Linux | `sudo pacman -S w3m lynx` |
 
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install w3m lynx
-```
-
-**Arch Linux:**
-```bash
-sudo pacman -S w3m lynx
-```
-
-4. Set your API bearer token (for API mode, optional):
+### 3. Set API Bearer Token (API mode only)
 
 ```bash
 export FETCH_URL_BEARER="your_token"
-```
-
-Or create a `.env` file in the skill directory:
-
-```bash
+# or use .env file
 echo "FETCH_URL_BEARER=your_token" > ~/.pi/agent/skills/fetch-url/.env
 ```
 
-2. Install the required text browsers:
-
-**macOS:**
-```bash
-brew install w3m lynx
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install w3m lynx
-```
-
-**Arch Linux:**
-```bash
-sudo pacman -S w3m lynx
-```
-
 ## How to Use
-
-**Option 1: Run with uv (recommended)**
 
 ```bash
 cd ~/.pi/agent/skills/fetch-url
 uv run fetch.py "<url>" [options]
 ```
 
-**Option 2: Install as a command**
-
+Or install as a command:
 ```bash
-cd ~/.pi/agent/skills/fetch-url
 uv pip install -e .
-uv run fetch-url "<url>" [options]
+fetch-url "<url>" [options]
 ```
 
-### Options
+## Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--tool` | w3m | Browser to use: w3m or lynx |
-| `--links` | false | Display link numbers in output (w3m only) |
-| `--clean` | false | Remove consecutive empty lines from output |
+| `--links` | false | Display link numbers (w3m only) |
+| `--clean` | false | Remove consecutive empty lines |
 | `--api` | false | Use API instead of local tools |
-| `--api-url` | https://amd1.mooo.com/api/fetch_url | Custom API endpoint URL |
-| `--bearer` | - | Bearer token for API authentication (overrides env var) |
+| `--api-url` | https://amd1.mooo.com/api/fetch_url | Custom API endpoint |
+| `--bearer` | - | Bearer token (overrides env var) |
 
 ## Examples
 
-### Local Mode
-
-Fetch a URL with default settings (w3m):
-
+**Basic fetching:**
 ```bash
 uv run fetch.py "https://example.com"
+uv run fetch.py "example.com"  # https:// added automatically
 ```
 
-Fetch a URL without protocol (https:// will be added):
-
+**Choose browser:**
 ```bash
-uv run fetch.py "example.com"
+uv run fetch.py "https://docs.python.org" --tool w3m   # better formatting
+uv run fetch.py "https://docs.python.org" --tool lynx   # faster
 ```
 
-Use lynx instead of w3m:
-
+**Clean and reference output:**
 ```bash
-uv run fetch.py "https://docs.python.org" --tool lynx
+uv run fetch.py "https://github.com" --links    # show link numbers
+uv run fetch.py "https://example.com" --clean   # remove empty lines
 ```
 
-Fetch with link numbers displayed (for reference):
-
+**API mode:**
 ```bash
-uv run fetch.py "https://github.com" --links
+uv run fetch.py "https://example.com" --api
+uv run fetch.py "https://example.com" --api --tool lynx
+uv run fetch.py "https://example.com" --api --bearer YOUR_TOKEN
 ```
 
-Fetch and clean up empty lines:
-
-```bash
-uv run fetch.py "https://example.com/article" --clean
-```
-
-### API Mode
-
-Fetch a URL via API:
-
-```bash
-uv run fetch.py "https://orf.at" --api
-```
-
-Fetch via API with custom bearer token:
-
-```bash
-uv run fetch.py "https://orf.at" --api --bearer YOUR_TOKEN
-```
-
-Use lynx via API:
-
-```bash
-uv run fetch.py "https://orf.at" --api --tool lynx
-```
-
-Use custom API endpoint:
-
-```bash
-uv run fetch.py "https://example.com" --api --api-url "https://your-api.com/fetch"
-```
-
-### Other Operations
-
-Pipe output to grep for specific content:
-
+**Piping output:**
 ```bash
 uv run fetch.py "https://example.com" | grep -i "search term"
-```
-
-Fetch and save to file:
-
-```bash
 uv run fetch.py "https://example.com" > output.txt
 ```
 
 ## Modes
 
 ### Local Mode
-Uses w3m or lynx installed on your local system. Requires the text browsers to be installed but doesn't require network calls to an external API. Use this when you have the tools installed and want to avoid API rate limits.
+Uses w3m/lynx installed locally. No API dependency but requires browser installation.
 
-**Pros:**
-- No API dependencies
-- No rate limits
-- Works offline (for cached pages)
-
-**Cons:**
-- Requires w3m/lynx to be installed
-- May be blocked by some websites
+**Pros:** No rate limits, offline capability, no API calls
+**Cons:** Requires browser installation, some sites block text browsers
 
 ### API Mode
-Fetches URLs via a remote API endpoint. The API handles the browser execution and returns the text content. Requires `requests` library and a bearer token.
+Fetches via remote API endpoint. Requires `requests` library and bearer token.
 
-**Pros:**
-- No local browser installation required
-- May bypass certain local restrictions
-- Centralized access
+**Pros:** No local browser needed, may bypass restrictions
+**Cons:** Requires network, rate limits possible, needs token
 
-**Cons:**
-- Requires network connectivity to API
-- API may have rate limits
-- Requires bearer token
+## Browser Comparison
 
-## Browser Differences
-
-### w3m
-- **Pros**: Better formatting, supports link numbers, handles complex layouts well
-- **Cons**: Slightly slower than lynx
-- **Use when**: You need well-formatted text or reference to link numbers
-
-### lynx
-- **Pros**: Faster, lighter weight
-- **Cons**: Simpler formatting, no link number support
-- **Use when**: Speed is more important than formatting
+| Browser | Speed | Formatting | Link Numbers | Best For |
+|---------|-------|------------|---------------|----------|
+| w3m | Medium | Excellent | Yes | Complex layouts, formatted text |
+| lynx | Fast | Good | No | Quick reads, simple pages |
 
 ## Output
 
-The skill outputs the plain text content of the webpage, including:
-- Headings and subheadings
-- Paragraph text
+Returns plain text including:
+- Headings and paragraphs
 - Lists
-- Link text (URLs shown in parentheses or with numbers if `--links` is used)
-- Basic form elements labels
+- Link text (URLs in parentheses or numbered)
+- Form labels
 
-JavaScript, CSS, images, and other media are stripped.
+Stripped: JavaScript, CSS, images, media.
 
 ## Notes
 
-- URLs without `http://` or `https://` prefix will have `https://` automatically added
-- The fetch operation has a 30-second timeout
-- Both w3m and lynx use custom configuration files with:
-  - Cookie support enabled
-  - UTF-8 character set
-  - User agent strings to avoid being blocked
-- Some websites may block text browsers or require JavaScript - these sites may return incomplete content
-- For dynamic sites that require JavaScript, consider using the web-browser skill instead
+- URLs without `http://` or `https://` get `https://` added automatically
+- 30-second timeout on fetch operations
+- Both browsers use custom configs with cookie support, UTF-8, and user agent strings
+- Some sites block text browsers or require JavaScript - try API mode or web-browser skill for these
 
 ## Troubleshooting
 
-### Local Mode Issues
-
-**Error: w3m not found**
+**Browser not found:**
 ```bash
-# macOS
-brew install w3m
-
-# Linux (Debian/Ubuntu)
-sudo apt-get install w3m
-
-# Linux (Arch)
-sudo pacman -S w3m
+# Install w3m or lynx per OS instructions in Setup section
 ```
 
-**Error: Lynx not found**
-```bash
-# macOS
-brew install lynx
-
-# Linux (Debian/Ubuntu)
-sudo apt-get install lynx
-
-# Linux (Arch)
-sudo pacman -S lynx
-```
-
-### API Mode Issues
-
-**Error: 'requests' library is required for API mode**
+**'requests' library required (API mode):**
 ```bash
 uv pip install requests
 ```
 
-**Error: Bearer token is required for API mode**
-Set the environment variable or create a .env file:
+**Bearer token required (API mode):**
 ```bash
 export FETCH_URL_BEARER="your_token"
-# or use the same token as web-search
+# or reuse web-search token
 export WEB_SEARCH_BEARER="your_token"
 ```
 
-**API request failed**
-- Check your bearer token is correct
-- Ensure you have network connectivity to the API endpoint
-- Verify the API endpoint is accessible
-- Try using local mode instead with `--tool w3m` (without `--api`)
+**Request timed out:**
+- Try simpler page
+- Switch browsers (w3m ↔ lynx)
+- Try API mode
 
-### General Issues
-
-**Request timed out**
-- Try fetching a simpler page
-- Some sites may be slow or blocking text browsers
-- Try the other browser (switch between w3m and lynx)
-- Try API mode instead of local mode
-
-**Incomplete content**
-- Some sites rely heavily on JavaScript
-- Try using the web-browser skill for JavaScript-heavy sites
-- The site may be blocking text-based browsers
-- Try API mode which may handle some sites better
+**Incomplete content:**
+- Site may require JavaScript - use web-browser skill
+- Site blocks text browsers - try API mode
