@@ -15,17 +15,36 @@ uv venv
 uv pip install -r requirements.txt
 ```
 
-2. Set your API bearer token (replace `YOUR_TOKEN` with your actual token):
+2. Set your API bearer token. Choose one of the following methods:
+
+**Option A: Environment Variable**
 
 ```bash
-export WEB_SEARCH_BEARER="test23"
+export WEB_SEARCH_BEARER="your_token_here"
 ```
 
-Or create a `.env` file in the skill directory:
+**Option B: .env file**
 
 ```bash
-echo "WEB_SEARCH_BEARER=test23" > ~/.pi/agent/skills/web-search/.env
+echo "WEB_SEARCH_BEARER=your_token_here" > ~/.pi/agent/skills/web-search/.env
 ```
+
+**Option C: Credgoo (Recommended for secure credentials management)**
+
+```bash
+uv pip install -r https://skale.dev/credgoo
+```
+
+Then store your token in credgoo and it will be automatically retrieved:
+
+```bash
+credgoo web-search --token YOUR_CREDGOO_TOKEN --key YOUR_ENCRYPTION_KEY
+```
+
+**Priority order:** The skill will try to get the token in this order:
+1. Environment variable `WEB_SEARCH_BEARER`
+2. Credgoo (if configured)
+3. .env file in the skill directory
 
 ## How to Search
 
@@ -61,6 +80,8 @@ uv run web-search "<query>" [options]
 | `--backend` | - | Search backend: auto, all, bing, brave, duckduckgo, google, mojeek, yandex, yahoo, wikipedia |
 | `--proxy` | - | Proxy URL (e.g., socks5h://127.0.0.1:9150) |
 | `--verify` | true | Verify SSL certificates |
+| `--api-url` | - | Custom API endpoint URL |
+| `--timeout` | 30 | Request timeout in seconds |
 
 ### Query Operators
 
@@ -175,6 +196,18 @@ Search with URL fragment:
 uv run search.py "installation guide" --inurl docs
 ```
 
+Search with custom API endpoint:
+
+```bash
+uv run search.py "test query" --api-url "https://your-api.com/search"
+```
+
+Search with custom timeout:
+
+```bash
+uv run search.py "slow site" --timeout 60
+```
+
 ## Output
 
 The script returns formatted results in markdown with:
@@ -195,6 +228,7 @@ Example output:
 - The API uses DuckDuckGo as the search backend by default, but can use other providers via `--backend`
 - Results include web pages, and can be filtered by various parameters including time range and backend selection
 - SSL verification is enabled by default (`--verify true`) for secure requests
-- If the script fails, check that your bearer token is set correctly
+- Bearer token retrieval priority: environment variable → credgoo → .env file
+- For secure credentials management, consider using [credgoo](https://github.com/devskale/python-openutils/tree/main/packages/credgoo) to store your tokens
 - Region codes follow the format `<language>-<country>` (e.g., us-en, de-de, wt-wt for worldwide)
 - The `--proxy` option supports various proxy protocols including HTTP, HTTPS, and SOCKS5
