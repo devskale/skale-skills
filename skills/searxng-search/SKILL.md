@@ -30,7 +30,7 @@ This skill uses `credgoo` to securely manage credentials.
    `URL@USERNAME@PASSWORD`
 
    Example:
-   `https://neusiedl.duckdns.org:8002@searxng@searxng23`
+   `https://neusiedl.duckdns.org:8002@searxng@sear####`
 
 ## Usage
 
