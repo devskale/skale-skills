@@ -7,6 +7,30 @@ description: Create and manage TODO.md task tracking files for complex multi-ste
 
 Create structured TODO.md files to track progress on complex tasks. Essential for multi-session work where context may be lost.
 
+## Status Values
+
+| Status | When to Use |
+|--------|-------------|
+| `planning` | Defining scope, creating checklist, not yet ready to start |
+| `ready` | Fully defined, cleared to begin work |
+| `in-progress` | Actively working on the task |
+| `blocked` | Cannot proceed due to dependency, external factor, or issue |
+| `review` | Work complete, awaiting verification/approval |
+| `completed` | All items done and verified |
+| `on-hold` | Paused temporarily, will resume later |
+| `cancelled` | No longer needed, abandoned |
+
+**Status transitions:**
+```
+planning → ready → in-progress → review → completed
+                   ↓
+                 blocked → in-progress
+                   ↓
+                 on-hold → in-progress
+                   ↓
+                 cancelled
+```
+
 ## When to Create a TODO.md
 
 - Task has 3+ distinct steps or phases
@@ -23,9 +47,10 @@ Create structured TODO.md files to track progress on complex tasks. Essential fo
 task: "[Brief task description]"
 created: "[YYYY-MM-DD HH:MM]"
 updated: "[YYYY-MM-DD HH:MM]"
-status: "[in-progress|completed|blocked]"
+status: "[see status options below]"
 priority: "[high|medium|low]"
 tags: "[comma-separated tags]"
+blocker: "[Optional: reason when status is blocked]"
 context: |
   [Background context - why this task matters, constraints, dependencies]
 ---
@@ -117,12 +142,17 @@ Add entries to the Progress Log section:
 - Next: Implement caching layer
 ```
 
-### 5. Mark Completion
+### 5. Update Status
 
-When a task is done:
-- Set `status: completed`
-- Add final progress log entry
-- Optionally archive or delete TODO.md
+Update the `status` field as the task progresses:
+- `planning` → `ready` when checklist is complete
+- `ready` → `in-progress` when work begins
+- `in-progress` → `blocked` if you hit a blocker (document in Notes)
+- `blocked` → `in-progress` when blocker resolved
+- `in-progress` → `review` when work done but needs verification
+- `review` → `completed` when verified
+
+Always update the `updated:` timestamp when changing status.
 
 ## Example: Debugging Session
 
@@ -190,8 +220,8 @@ Investigate and fix memory leak causing OOM errors during batch image processing
 ---
 task: "Add dark mode support"
 created: "2024-01-15 09:00"
-updated: "2024-01-15 09:00"
-status: "in-progress"
+updated: "2024-01-15 09:15"
+status: "planning"
 priority: "medium"
 tags: "feature, ui, css"
 context: |
@@ -226,13 +256,18 @@ Implement system-aware dark mode with manual toggle and persistent preference.
 
 ### 2024-01-15 09:00
 - Task initialized
-- Starting design phase
+- Gathering requirements
+
+### 2024-01-15 09:15
+- Checklist drafted
+- Status: planning → ready (pending design review)
 
 ## Notes
 
 - Use `prefers-color-scheme` media query
 - Fallback to light mode if no preference
 - Consider adding transition animation
+- Need design sign-off before implementation
 ```
 
 ## Quick Commands
@@ -248,12 +283,68 @@ echo "Completed: $(grep -c '^\s*- \[x\]' TODO.md)"
 echo "Remaining: $(grep -c '^\s*- \[ \]' TODO.md)"
 ```
 
+Find all TODOs by status:
+```bash
+# Find blocked tasks
+grep -l "^status:.*blocked" */TODO.md
+
+# Find in-progress tasks
+grep -l "^status:.*in-progress" */TODO.md
+```
+
+## Blocked Task Example
+
+When blocked, clearly document the blocker:
+
+```markdown
+---
+task: "Migrate database to PostgreSQL"
+created: "2024-01-10 14:00"
+updated: "2024-01-12 09:30"
+status: "blocked"
+priority: "high"
+tags: "migration, database, infra"
+blocker: "Waiting for DBA team to provision production instance"
+context: |
+  Current MySQL instance hitting capacity. Migration planned for Q1.
+---
+
+# Migrate Database to PostgreSQL
+
+## Overview
+Migrate from MySQL 5.7 to PostgreSQL 15 for better performance.
+
+## Checklist
+
+- [x] Create migration scripts
+- [x] Test on staging environment
+- [ ] Provision production PostgreSQL
+  - BLOCKED: DBA team ticket #1234, ETA: 2024-01-15
+- [ ] Run migration during maintenance window
+- [ ] Verify data integrity
+- [ ] Update application configs
+
+## Progress Log
+
+### 2024-01-12 09:30
+- Status: in-progress → blocked
+- DBA team delayed, new ETA 2024-01-15
+- Using time to improve migration scripts
+
+## Notes
+
+- Migration scripts tested and ready
+- Estimated downtime: 2 hours
+- Rollback plan documented in wiki
+```
+
 ## Best Practices
 
 1. **Be specific**: "Fix login bug on mobile" not "Fix bugs"
 2. **Right granularity**: Tasks completable in one session
-3. **Update frequently**: Log progress as you go
+3. **Update frequently**: Log progress and update status as you go
 4. **Include context**: Future-you will thank present-you
 5. **Use subtasks**: Break complex items into steps
-6. **Mark blocked items**: Note blockers in progress log
+6. **Document blockers**: Add `blocker:` field when status is blocked
 7. **Archive when done**: Keep completed TODOs for reference
+8. **Timestamp changes**: Always update `updated:` field on modifications

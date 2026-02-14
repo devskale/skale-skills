@@ -48,7 +48,7 @@ export WEB_SEARCH_BEARER="your_token_here"
 **Option B: Credgoo** (Priority: 2 - Recommended for secure credentials)
 ```bash
 uv pip install -r https://skale.dev/credgoo
-credgoo web-search --token YOUR_CREDGOO_TOKEN --key YOUR_ENCRYPTION_KEY
+credgoo web-search
 ```
 
 **Option C: .env file** (Priority: 3)
