@@ -200,3 +200,13 @@ uv run fetch.py "https://example.com" --tool lynx
 **Incomplete content:**
 - Site may require JavaScript - use web-browser skill
 - Site blocks text browsers - try API mode
+
+---
+
+## Reference Documentation
+
+Detailed guides for specific use cases:
+
+- **[GitHub Pages](references/github.md)** — Strategies for fetching GitHub content, URL conversion patterns, curl workflows, and common troubleshooting.
+
+See [references/](references/) directory for all reference documentation.
