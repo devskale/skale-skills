@@ -16,6 +16,12 @@ uv run fetch.py "https://example.com"
 # Use lynx instead
 uv run fetch.py "https://example.com" --tool lynx
 
+# Use markdown.new (ideal for Windows)
+uv run fetch.py "https://example.com" --tool markdown
+
+# JS-heavy sites with browser rendering
+uv run fetch.py "https://spa-site.com" --tool markdown --md-method browser
+
 # Use API mode
 uv run fetch.py "https://example.com" --api
 
@@ -55,6 +61,16 @@ uv pip install requests
 | macOS | `brew install w3m lynx` |
 | Ubuntu/Debian | `sudo apt-get install w3m lynx` |
 | Arch Linux | `sudo pacman -S w3m lynx` |
+| Windows | Use `--tool markdown` (no browser needed) |
+
+**For Windows (recommended):**
+```powershell
+# Windows doesn't have w3m/lynx easily available
+# Use markdown.new instead (only requires 'requests' library)
+cd ~/.pi/agent/skills/fetch-url
+uv pip install requests
+uv run fetch.py "https://example.com" --tool markdown
+```
 
 ### 3. Set API Bearer Token (API mode only)
 
@@ -81,12 +97,28 @@ fetch-url "<url>" [options]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--tool` | w3m | Browser to use: w3m or lynx |
+| `--tool` | w3m | Browser to use: w3m, lynx, or markdown |
 | `--links` | false | Display link numbers (w3m only) |
 | `--clean` | false | Remove consecutive empty lines |
 | `--api` | false | Use API instead of local tools |
 | `--api-url` | https://amd1.mooo.com/api/fetch_url | Custom API endpoint |
 | `--bearer` | - | Bearer token (overrides env var) |
+| `--md-method` | auto | markdown.new method: auto, ai, or browser |
+| `--md-images` | false | Retain images in markdown output |
+
+### markdown.new Options
+
+When using `--tool markdown`, additional options are available:
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `--md-method` | `auto`, `ai`, `browser` | Conversion method. Use `browser` for JS-heavy sites. |
+| `--md-images` | flag | Retain images in output (default: strip images) |
+
+**Methods explained:**
+- `auto` (default): Tries Cloudflare's native markdown first, falls back to AI
+- `ai`: Forces Workers AI `toMarkdown()` conversion
+- `browser`: Renders page in headless browser (best for JS-heavy sites, slower)
 
 ## Examples
 
@@ -96,16 +128,34 @@ uv run fetch.py "https://example.com"
 uv run fetch.py "example.com"  # https:// added automatically
 ```
 
+**Windows (no browser needed):**
+```powershell
+uv run fetch.py "https://example.com" --tool markdown
+```
+
 **Choose browser:**
 ```bash
-uv run fetch.py "https://docs.python.org" --tool w3m   # better formatting
-uv run fetch.py "https://docs.python.org" --tool lynx   # faster
+uv run fetch.py "https://docs.python.org" --tool w3m      # better formatting
+uv run fetch.py "https://docs.python.org" --tool lynx      # faster
+uv run fetch.py "https://docs.python.org" --tool markdown  # Windows-friendly, markdown output
 ```
 
 **Clean and reference output:**
 ```bash
 uv run fetch.py "https://github.com" --links    # show link numbers
 uv run fetch.py "https://example.com" --clean   # remove empty lines
+```
+
+**markdown.new options (Windows-friendly):**
+```bash
+# JS-heavy sites - use browser rendering
+uv run fetch.py "https://spa-site.com" --tool markdown --md-method browser
+
+# Keep images in output
+uv run fetch.py "https://blog.example.com" --tool markdown --md-images
+
+# Combine options
+uv run fetch.py "https://example.com" --tool markdown --md-method browser --md-images --clean
 ```
 
 **API mode:**
@@ -141,6 +191,12 @@ Fetches via remote API endpoint. Requires `requests` library and bearer token.
 |---------|-------|------------|---------------|----------|
 | w3m | Medium | Excellent | Yes | Complex layouts, formatted text |
 | lynx | Fast | Good | No | Quick reads, simple pages |
+| markdown | Fast | Markdown | No | Windows, clean markdown output, 80% fewer tokens |
+
+**markdown.new** uses Cloudflare's Markdown for Agents API with automatic fallbacks:
+1. Native `text/markdown` content negotiation
+2. Workers AI `toMarkdown()` 
+3. Browser Rendering for JS-heavy pages
 
 ## Output
 
@@ -156,7 +212,8 @@ Stripped: JavaScript, CSS, images, media.
 
 - URLs without `http://` or `https://` get `https://` added automatically
 - 30-second timeout on fetch operations
-- Both browsers use custom configs with cookie support, UTF-8, and user agent strings
+- w3m and lynx use custom configs with cookie support, UTF-8, and user agent strings
+- **Windows**: Use `--tool markdown` for best results (uses markdown.new API)
 - Some sites block text browsers or require JavaScript - try API mode or web-browser skill for these
 
 ## Troubleshooting
@@ -164,9 +221,11 @@ Stripped: JavaScript, CSS, images, media.
 **Browser not found:**
 ```bash
 # Install w3m or lynx per OS instructions in Setup section
+# On Windows, use --tool markdown instead
+uv run fetch.py "https://example.com" --tool markdown
 ```
 
-**'requests' library required (API mode):**
+**'requests' library required (API mode or markdown tool):**
 ```bash
 uv pip install requests
 ```
@@ -198,8 +257,14 @@ uv run fetch.py "https://example.com" --tool lynx
 - Try API mode
 
 **Incomplete content:**
-- Site may require JavaScript - use web-browser skill
-- Site blocks text browsers - try API mode
+- Site may require JavaScript - use `--tool markdown --md-method browser`
+- Site blocks text browsers - try API mode or `--tool markdown`
+
+**JS-heavy sites (SPA, React, Vue):**
+```bash
+# Use browser rendering method
+uv run fetch.py "https://spa-site.com" --tool markdown --md-method browser
+```
 
 ---
 
