@@ -16,3 +16,4 @@ transcripts/
 .claude
 *.env
 .trae
+.gogcli

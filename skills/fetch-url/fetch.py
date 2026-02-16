@@ -9,6 +9,7 @@ import sys
 import argparse
 import subprocess
 import platform
+import urllib.parse
 from pathlib import Path
 
 requests = None
@@ -22,6 +23,7 @@ SCRIPT_DIR = Path(__file__).parent
 W3M_CONFIG = SCRIPT_DIR / "w3m_config"
 LYNX_CONFIG = SCRIPT_DIR / "lynx_config"
 DEFAULT_API_URL = "https://amd1.mooo.com/api/fetch_url"
+MARKDOWN_NEW_URL = "https://markdown.new"
 
 
 def get_bearer_token():
@@ -55,6 +57,52 @@ def get_lynx_path():
         return '/usr/bin/lynx'
     else:
         return 'lynx'
+
+
+def fetch_with_markdown_new(url: str, method: str = 'auto', retain_images: bool = False) -> str:
+    """Fetch a webpage using markdown.new API and return markdown text.
+
+    This is ideal for Windows systems where w3m/lynx are not easily available.
+    Returns clean markdown-formatted text.
+
+    Args:
+        url: The URL to fetch
+        method: Conversion method - 'auto' (default), 'ai', or 'browser'
+        retain_images: Whether to keep images in output (default: False)
+
+    Returns:
+        The markdown content of the webpage
+
+    Raises:
+        RuntimeError: If the request fails or no requests library
+    """
+    if requests is None:
+        raise RuntimeError("'requests' library is required for markdown.new. Install with: pip install requests")
+
+    # Ensure URL has protocol
+    url = url.strip()
+    if not url.startswith('http://') and not url.startswith('https://'):
+        url = 'https://' + url
+
+    try:
+        # Build query parameters
+        params = []
+        if method != 'auto':
+            params.append(f"method={method}")
+        if retain_images:
+            params.append("retain_images=true")
+        
+        query_string = "?" + "&".join(params) if params else ""
+        api_url = f"{MARKDOWN_NEW_URL}/{url}{query_string}"
+
+        response = requests.get(api_url, timeout=30)
+        response.raise_for_status()
+        return response.text
+
+    except requests.exceptions.Timeout:
+        raise RuntimeError(f"markdown.new request timed out after 30 seconds for URL: {url}")
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Failed to fetch page with markdown.new: {e}")
 
 
 def fetch_with_w3m(url: str, links: bool = False) -> str:
@@ -194,22 +242,25 @@ def fetch_via_api(url: str, tool: str = 'w3m', bearer: str = None, api_url: str 
 
 
 def fetch_url(url: str, tool: str = 'w3m', links: bool = False, use_api: bool = False,
-              bearer: str = None, api_url: str = None) -> str:
+              bearer: str = None, api_url: str = None, md_method: str = 'auto',
+              md_retain_images: bool = False) -> str:
     """Fetch a webpage using the specified text-based browser or via API.
 
     Args:
         url: The URL to fetch
-        tool: The browser to use ('w3m' or 'lynx', default: 'w3m')
+        tool: The browser to use ('w3m', 'lynx', or 'markdown', default: 'w3m')
         links: Whether to display link numbers (only for w3m, default: False)
         use_api: Whether to use the API instead of local tools
         bearer: Bearer token for API mode
         api_url: API endpoint URL
+        md_method: markdown.new method - 'auto', 'ai', or 'browser' (default: 'auto')
+        md_retain_images: Whether to retain images in markdown.new output (default: False)
 
     Returns:
         The text content of the webpage
 
     Raises:
-        ValueError: If tool is not 'w3m' or 'lynx'
+        ValueError: If tool is not 'w3m', 'lynx', or 'markdown'
         RuntimeError: If the fetch operation fails
     """
     if use_api:
@@ -224,8 +275,10 @@ def fetch_url(url: str, tool: str = 'w3m', links: bool = False, use_api: bool = 
         return fetch_with_w3m(url, links)
     elif tool == 'lynx':
         return fetch_with_lynx(url)
+    elif tool == 'markdown':
+        return fetch_with_markdown_new(url, method=md_method, retain_images=md_retain_images)
     else:
-        raise ValueError(f"Invalid tool: {tool}. Use 'w3m' or 'lynx'.")
+        raise ValueError(f"Invalid tool: {tool}. Use 'w3m', 'lynx', or 'markdown'.")
 
 
 def clean_output(text: str, remove_empty_lines: bool = True) -> str:
@@ -255,6 +308,10 @@ def clean_output(text: str, remove_empty_lines: bool = True) -> str:
 
 
 def main():
+    # Fix Windows console encoding for Unicode output
+    if sys.platform == 'win32':
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
     parser = argparse.ArgumentParser(
         description='Fetch and extract text content from web URLs using text-based browsers or via API',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -265,6 +322,15 @@ Examples:
 
   # Fetch using local lynx
   %(prog)s "example.com" --tool lynx
+
+  # Fetch using markdown.new (ideal for Windows)
+  %(prog)s "https://example.com" --tool markdown
+
+  # Fetch JS-heavy site with browser rendering
+  %(prog)s "https://example.com" --tool markdown --md-method browser
+
+  # Fetch with images retained
+  %(prog)s "https://example.com" --tool markdown --md-images
 
   # Fetch via API
   %(prog)s "https://orf.at" --api
@@ -281,8 +347,8 @@ Examples:
     )
 
     parser.add_argument('url', help='URL to fetch (http:// or https:// will be added if missing)')
-    parser.add_argument('--tool', choices=['w3m', 'lynx'], default='w3m',
-                        help='Text browser to use (default: w3m)')
+    parser.add_argument('--tool', choices=['w3m', 'lynx', 'markdown'], default='w3m',
+                        help='Text browser to use: w3m, lynx, or markdown (markdown.new API, ideal for Windows) (default: w3m)')
     parser.add_argument('--links', action='store_true',
                         help='Display link numbers in output (w3m only)')
     parser.add_argument('--clean', action='store_true',
@@ -293,6 +359,10 @@ Examples:
                         help='Custom API endpoint URL (default: https://amd1.mooo.com/api/fetch_url)')
     parser.add_argument('--bearer',
                         help='Bearer token for API authentication (overrides FETCH_URL_BEARER env var)')
+    parser.add_argument('--md-method', choices=['auto', 'ai', 'browser'], default='auto',
+                        help='markdown.new conversion method: auto (default), ai, or browser (for JS-heavy sites)')
+    parser.add_argument('--md-images', action='store_true',
+                        help='Retain images in markdown.new output (default: strip images)')
 
     args = parser.parse_args()
 
@@ -303,7 +373,9 @@ Examples:
             args.links,
             use_api=args.api,
             bearer=args.bearer,
-            api_url=args.api_url
+            api_url=args.api_url,
+            md_method=args.md_method,
+            md_retain_images=args.md_images
         )
         if args.clean:
             content = clean_output(content)
