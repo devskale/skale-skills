@@ -196,7 +196,7 @@ def format_results(results: List[Dict[str, Any]]) -> str:
     output: List[str] = []
     for result in results:
         title: str = result.get('title', 'No title')
-        url: str = result.get('url', '')
+        url: str = result.get('href', '') or result.get('url', '')
         body: str = result.get('body', '')
 
         # Format as markdown link with description
