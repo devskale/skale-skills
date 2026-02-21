@@ -54,8 +54,8 @@ def get_bearer_token() -> Optional[str]:
             # Silently fail if credgoo is not configured
             pass
 
-    # Try to read from .env file in skill directory
-    env_file: Path = Path(__file__).parent / ".env"
+    # Try to read from .env file in skill directory (parent of scripts/)
+    env_file: Path = Path(__file__).parent.parent / ".env"
     if env_file.exists():
         for line in env_file.read_text().strip().split('\n'):
             if line.startswith('WEB_SEARCH_BEARER='):
