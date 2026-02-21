@@ -234,6 +234,23 @@ def fetch_with_lynx(url: str, timeout: int = 30) -> str:
         raise RuntimeError("Lynx not found. Install with 'brew install lynx' (macOS) or 'sudo apt-get install lynx' (Linux)")
 
 
+def fetch_with_chawan(url: str, timeout: int = 30) -> str:
+    """Fetch a webpage using Chawan browser."""
+    try:
+        cmd = ['cha', '-d', url]
+
+        # Run with stderr suppressed (JS errors are common but don't affect output)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=timeout)
+        return result.stdout
+
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"Chawan timed out for URL: {url}")
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Chawan failed: {e.stderr}")
+    except FileNotFoundError:
+        raise RuntimeError("Chawan not found. Install with 'brew install chawan' (macOS) or see https://github.com/devskale/chawan")
+
+
 def fetch_via_api(url: str, tool: str = 'w3m', bearer: str = None, api_url: str = None, timeout: int = 30) -> str:
     """Fetch a webpage via the API endpoint."""
     if requests is None:
@@ -273,6 +290,8 @@ def fetch_with_tool(tool: str, url: str, links: bool = False, bearer: str = None
         return fetch_with_w3m(url, links, timeout)
     elif tool == 'lynx':
         return fetch_with_lynx(url, timeout)
+    elif tool == 'chawan':
+        return fetch_with_chawan(url, timeout)
     elif tool == 'markdown':
         return fetch_with_markdown_new(url, md_method, md_retain_images, timeout)
     elif tool == 'jina':
@@ -408,11 +427,12 @@ Tools:
   markdown  - markdown.new API (clean markdown, 50/day limit)
   w3m       - Local text browser (best formatting, macOS/Linux only)
   lynx      - Local text browser (fast, macOS/Linux only)
+  chawan    - Modern text browser with CSS/JS (great for StackOverflow, macOS/Linux only)
         """
     )
 
     parser.add_argument('url', help='URL to fetch')
-    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'markdown', 'jina', 'api'], default='auto',
+    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'chawan', 'markdown', 'jina', 'api'], default='auto',
                         help='Tool to use (default: auto)')
     parser.add_argument('--links', action='store_true', help='Display link numbers (w3m only)')
     parser.add_argument('--clean', action='store_true', help='Remove consecutive empty lines')
