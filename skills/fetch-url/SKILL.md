@@ -185,9 +185,13 @@ Fetches via remote API endpoint. Requires `requests` library and bearer token.
 | auto | - | - | - | - | Auto-selects best tool, uses fallbacks |
 | jina | Fast | None | Unlimited | Markdown | Default, free unlimited, no auth |
 | api | Fast | Bearer | - | Plain text | Custom API, requires token |
-| markdown | Fast | None | 50/day | Markdown | Clean output, images optional |
-| w3m | Medium | None | None | Plain text | Complex layouts, link numbers |
-| lynx | Fast | None | None | Plain text | Quick reads, simple pages |
+| markdown | Fast | None | 50/day | Markdown | **CAPTCHA/403 bypass**, clean output |
+| w3m | Medium | None | None | Plain text | Complex layouts, Reddit |
+| lynx | Fast | None | None | Plain text | Quick reads, Reddit, Medium |
+
+**Bypassing blocks:**
+- StackOverflow, Reddit, OpenAI docs with CAPTCHA → use `--tool markdown`
+- Sites blocking w3m → try `--tool lynx` or `--tool markdown`
 
 **API Services:**
 - **jina** - Jina.ai Reader, free unlimited, no auth required
@@ -210,7 +214,10 @@ Stripped: JavaScript, CSS, images, media.
 - 30-second timeout on fetch operations
 - w3m and lynx use custom configs with cookie support, UTF-8, and user agent strings
 - **Windows**: Use `--tool markdown` for best results (uses markdown.new API)
-- Some sites block text browsers or require JavaScript - try API mode or web-browser skill for these
+- Some sites block text browsers or require JavaScript - try `--tool markdown` for these
+- **CAPTCHA/403 errors**: Try `--tool markdown` which can bypass some bot detection
+- **Sites that don't work well**: Twitter/X (requires JS/auth), YouTube (title only - use video-transcript-downloader skill instead)
+- **For Reddit**: Use `--tool markdown` or `--tool w3m` - jina/api are blocked
 
 ## Troubleshooting
 
@@ -260,6 +267,21 @@ uv run scripts/fetch.py "https://example.com" --tool lynx
 ```bash
 # Use browser rendering method
 uv run scripts/fetch.py "https://spa-site.com" --tool markdown --md-method browser
+```
+
+**CAPTCHA/403 blocked sites:**
+```bash
+# Try markdown tool to bypass blocks
+uv run scripts/fetch.py "https://stackoverflow.com/questions/12345" --tool markdown
+uv run scripts/fetch.py "https://www.reddit.com/r/LocalLLaMA/..." --tool markdown
+uv run scripts/fetch.py "https://platform.openai.com/docs/..." --tool markdown
+```
+
+**Reddit:**
+```bash
+# Reddit blocks jina/api, use markdown or w3m/lynx
+uv run scripts/fetch.py "https://www.reddit.com/r/..." --tool markdown
+uv run scripts/fetch.py "https://www.reddit.com/r/..." --tool w3m
 ```
 
 ---
