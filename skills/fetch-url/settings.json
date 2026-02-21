@@ -18,6 +18,15 @@
       },
       "notes": "Faster than w3m, simpler output"
     },
+    "chawan": {
+      "platforms": ["Darwin", "Linux"],
+      "requires_install": true,
+      "install": {
+        "Darwin": "brew install chawan",
+        "Linux": "See https://github.com/devskale/chawan"
+      },
+      "notes": "Modern browser with CSS/JS support - great for StackOverflow"
+    },
     "jina": {
       "platforms": ["Darwin", "Linux", "Windows"],
       "requires_install": false,
@@ -40,10 +49,10 @@
     }
   },
   "defaults": {
-    "Darwin": ["jina", "api", "markdown", "w3m", "lynx"],
-    "Linux": ["jina", "api", "markdown", "w3m", "lynx"],
+    "Darwin": ["jina", "api", "markdown", "chawan", "w3m", "lynx"],
+    "Linux": ["jina", "api", "markdown", "chawan", "w3m", "lynx"],
     "Windows": ["jina", "api", "markdown"]
   },
-  "fallback_order": ["jina", "api", "markdown", "w3m", "lynx"],
+  "fallback_order": ["jina", "api", "markdown", "chawan", "w3m", "lynx"],
   "timeout": 30
 }

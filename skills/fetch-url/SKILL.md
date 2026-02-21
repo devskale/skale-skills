@@ -56,12 +56,13 @@ uv run scripts/fetch.py "https://example.com"
 uv run --with requests scripts/fetch.py "https://example.com"
 ```
 
-### Local browsers (optional, for w3m/lynx):
+### Local browsers (optional, for w3m/lynx/chawan):
 
 | OS | Command |
 |----|---------|
-| macOS | `brew install w3m lynx` |
+| macOS | `brew install w3m lynx chawan` |
 | Ubuntu/Debian | `sudo apt-get install w3m lynx` |
+| Linux (chawan) | See https://github.com/devskale/chawan |
 | Windows | Not needed - use `--tool jina` (default) |
 
 ### Bearer token (for API tool only):
@@ -186,11 +187,13 @@ Fetches via remote API endpoint. Requires `requests` library and bearer token.
 | jina | Fast | None | Unlimited | Markdown | Default, free unlimited, no auth |
 | api | Fast | Bearer | - | Plain text | Custom API, requires token |
 | markdown | Fast | None | 50/day | Markdown | **CAPTCHA/403 bypass**, clean output |
+| chawan | Medium | None | None | Plain text | **StackOverflow** (full code), Reddit |
 | w3m | Medium | None | None | Plain text | Complex layouts, Reddit |
 | lynx | Fast | None | None | Plain text | Quick reads, Reddit, Medium |
 
 **Bypassing blocks:**
-- StackOverflow, Reddit, OpenAI docs with CAPTCHA → use `--tool markdown`
+- StackOverflow → use `--tool chawan` (best) or `--tool markdown`
+- Reddit → use `--tool chawan` or `--tool markdown`
 - Sites blocking w3m → try `--tool lynx` or `--tool markdown`
 
 **API Services:**
@@ -290,9 +293,9 @@ Quick reference for popular sites:
 
 | Site Type | Best Tool |
 |-----------|-----------|
-| Reddit | `markdown` or `w3m` |
-| StackOverflow | `markdown` (bypasses CAPTCHA) |
-| Hacker News | `jina` or `w3m` |
+| StackOverflow | `chawan` (full code) or `markdown` |
+| Reddit | `chawan` or `markdown` |
+| Hacker News | `jina` or `chawan` |
 | Medium | `jina` |
 | Austrian sites (geizhals, willhaben, ORF) | `jina` |
 | Twitter/X | ❌ Use bird/peep skill |
