@@ -284,12 +284,29 @@ uv run scripts/fetch.py "https://www.reddit.com/r/..." --tool markdown
 uv run scripts/fetch.py "https://www.reddit.com/r/..." --tool w3m
 ```
 
+## Site Compatibility
+
+Quick reference for popular sites:
+
+| Site Type | Best Tool |
+|-----------|-----------|
+| Reddit | `markdown` or `w3m` |
+| StackOverflow | `markdown` (bypasses CAPTCHA) |
+| Hacker News | `jina` or `w3m` |
+| Medium | `jina` |
+| Austrian sites (geizhals, willhaben, ORF) | `jina` |
+| Twitter/X | ❌ Use bird/peep skill |
+| YouTube | ❌ Use video-transcript skill |
+
+**Full compatibility matrix:** See [references/sites.md](references/sites.md) for detailed testing results.
+
 ---
 
 ## Reference Documentation
 
 Detailed guides for specific use cases:
 
+- **[Site Compatibility](references/sites.md)** — Full testing matrix for popular sites (Reddit, StackOverflow, Austrian sites, etc.)
 - **[GitHub Pages](references/github.md)** — Strategies for fetching GitHub content, URL conversion patterns, curl workflows, and common troubleshooting.
 
 See [references/](references/) directory for all reference documentation.
