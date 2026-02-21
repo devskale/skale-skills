@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -7,13 +8,31 @@ dist/
 build/
 .venv/
 venv/
+*.egg
+
+# Node
 node_modules/
+
+# IDE/Editor
+.vscode/
+.ruff_cache/
+
+# OS
+.DS_Store
+
+# Project-specific
+.pi/
+.rodney/
+.agent/
+Documents/
 config.json
 transcripts/
-.DS_Store
-.vscode/
 *.zip
-.claude
 *.env
+.claude
 .trae
 .gogcli
+
+# Skiller build artifacts
+skiller/python3.14/
+skiller_index.json

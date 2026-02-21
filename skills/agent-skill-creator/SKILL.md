@@ -66,9 +66,13 @@ Every skill consists of a required SKILL.md file and optional bundled resources:
 ```
 skill-name/
 ├── SKILL.md (required)
-│   ├── YAML frontmatter metadata (required)
+│   ├── YAML frontmatter (required)
 │   │   ├── name: (required)
-│   │   └── description: (required)
+│   │   ├── description: (required)
+│   │   ├── license: (optional)
+│   │   ├── compatibility: (optional)
+│   │   ├── allowed-tools: (optional, experimental)
+│   │   └── metadata: (optional)
 │   └── Markdown instructions (required)
 └── Bundled Resources (optional)
     ├── scripts/          - Executable code (Python/Bash/etc.)
@@ -80,7 +84,7 @@ skill-name/
 
 Every SKILL.md consists of:
 
-- **Frontmatter** (YAML): Contains `name` and `description` fields. These are the only fields that the agent reads to determine when the skill gets used, thus it is very important to be clear and comprehensive in describing what the skill is, and when it should be used.
+- **Frontmatter** (YAML): Contains `name` and `description` fields (required), plus optional fields like `license`, `compatibility`, `allowed-tools`, and `metadata`. The `name` and `description` are what the agent reads to determine when the skill gets used, thus it is very important to be clear and comprehensive in describing what the skill is, and when it should be used.
 - **Body** (Markdown): Instructions and guidance for using the skill. Only loaded AFTER the skill triggers (if at all).
 
 #### Bundled Resources (optional)
@@ -226,7 +230,7 @@ When skills require authentication (API keys, tokens, passwords), **NEVER** hard
 
 **Implementation Pattern:**
 
-1.  **Install dependency**: Ensure `credgoo` is installed in the skill's environment (e.g., via `install.sh`).
+1.  **Install dependency**: Use `uv pip install <package>` to install dependencies in the skill's environment.
 2.  **Retrieve keys**: Use `get_api_key` in your Python scripts.
 3.  **Parse format**: Standardize on `URL@USERNAME@PASSWORD` or similar formats for complex credentials.
 
@@ -345,6 +349,7 @@ Consult these helpful guides based on your skill's needs:
 - **Multi-step processes**: See references/workflows.md for sequential workflows and conditional logic
 - **Specific output formats or quality standards**: See references/output-patterns.md for template and example patterns
 - **Platform specific schemas**: See references/schemas/\*.md for platform specific details
+- **Official best practices**: See [AgentSkills best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) from Anthropic
 
 These files contain established best practices for effective skill design.
 
@@ -362,13 +367,34 @@ Any example files and directories not needed for the skill should be deleted. Th
 
 ##### Frontmatter
 
-Write the YAML frontmatter with `name` and `description`:
+Write the YAML frontmatter with required and optional fields:
 
-- `name`: The skill name
-- `description`: This is the primary triggering mechanism for your skill, and helps the agent understand when to use the skill.
-  - Include both what the Skill does and specific triggers/contexts for when to use it.
-  - Include all "when to use" information here - Not in the body. The body is only loaded after triggering, so "When to Use This Skill" sections in the body are not helpful to the agent.
-  - Example description for a `docx` skill: "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. Use when the agent needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
+**Required fields:**
+
+- `name`: The skill name (1-64 characters, lowercase letters/digits/hyphens only, no leading/trailing/consecutive hyphens)
+- `description`: What the skill does and when to use it (max 1024 characters)
+
+**Optional fields:**
+
+- `license`: License name or reference to a bundled license file
+- `compatibility`: Environment requirements (max 500 characters). Use when your skill has specific requirements like intended product, system packages, or network access. Example: `compatibility: Requires git, docker, and internet access`
+- `allowed-tools`: Space-delimited list of pre-approved tools the skill may use (experimental). Example: `allowed-tools: Bash(git:*) Bash(jq:*) Read`
+- `metadata`: Arbitrary key-value mapping for additional properties. Use unique key names to avoid conflicts. Example: `metadata: { author: org-name, version: "1.0" }`
+
+**Example with optional fields:**
+
+```yaml
+---
+name: pdf-processing
+description: Extract text and tables from PDF files, fill forms, merge documents.
+license: Apache-2.0
+compatibility: Requires poppler-utils and pdfplumber
+allowed-tools: Bash(pdfinfo:*) Read
+metadata:
+  author: example-org
+  version: "1.0"
+---
+```
 
 ##### Description Best Practices
 
@@ -406,9 +432,18 @@ scripts/quick_validate.py <path/to/skill-folder>
 
 This script checks for:
 
-- Valid SKILL.md frontmatter
-- Correct naming conventions
-- Essential file structure
+- Valid SKILL.md frontmatter (required and optional fields)
+- Correct naming conventions (lowercase, hyphen-case, max 64 chars)
+- Name matches directory name
+- Description quality and length (max 1024 chars)
+- Only allowed frontmatter fields (`name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`)
+
+**Alternative:** The official [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) CLI from AgentSkills can also validate skills:
+
+```bash
+pip install skills-ref
+skills-ref validate ./my-skill
+```
 
 ### Step 6: Packaging a Skill
 
