@@ -23,9 +23,10 @@ except ImportError:
 
 # Configuration
 SCRIPT_DIR = Path(__file__).parent
-W3M_CONFIG = SCRIPT_DIR / "w3m_config"
-LYNX_CONFIG = SCRIPT_DIR / "lynx_config"
-SETTINGS_FILE = SCRIPT_DIR / "settings.json"
+SKILL_DIR = SCRIPT_DIR.parent  # Config files are in skill root, not scripts/
+W3M_CONFIG = SKILL_DIR / "w3m_config"
+LYNX_CONFIG = SKILL_DIR / "lynx_config"
+SETTINGS_FILE = SKILL_DIR / "settings.json"
 DEFAULT_API_URL = "https://amd1.mooo.com/api/fetch_url"
 MARKDOWN_NEW_URL = "https://markdown.new"
 JINA_READER_URL = "https://r.jina.ai"
@@ -109,7 +110,8 @@ def get_bearer_token() -> Optional[str]:
     if token:
         return token
 
-    env_file = Path(__file__).parent / ".env"
+    # Look for .env in skill root directory
+    env_file = SKILL_DIR / ".env"
     if env_file.exists():
         for line in env_file.read_text().strip().split('\n'):
             if line.startswith('FETCH_URL_BEARER=') or line.startswith('WEB_SEARCH_BEARER='):

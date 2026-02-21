@@ -11,24 +11,24 @@ description: Fetch and extract readable text content from web pages using text-b
 cd ~/.pi/agent/skills/fetch-url
 
 # Auto-select best tool (default) - tries jina → api → markdown → w3m → lynx
-uv run fetch.py "https://example.com"
+uv run scripts/fetch.py "https://example.com"
 
 # Use specific tool
-uv run fetch.py "https://example.com" --tool jina
-uv run fetch.py "https://example.com" --tool api --bearer TOKEN
-uv run fetch.py "https://example.com" --tool markdown
+uv run scripts/fetch.py "https://example.com" --tool jina
+uv run scripts/fetch.py "https://example.com" --tool api --bearer TOKEN
+uv run scripts/fetch.py "https://example.com" --tool markdown
 
 # Show fallback attempts
-uv run fetch.py "https://example.com" --verbose
+uv run scripts/fetch.py "https://example.com" --verbose
 
 # JS-heavy sites with browser rendering
-uv run fetch.py "https://spa-site.com" --tool markdown --md-method browser
+uv run scripts/fetch.py "https://spa-site.com" --tool markdown --md-method browser
 
 # Clean output (remove empty lines)
-uv run fetch.py "https://example.com" --clean
+uv run scripts/fetch.py "https://example.com" --clean
 
 # Show link numbers for reference (w3m only)
-uv run fetch.py "https://github.com" --tool w3m --links
+uv run scripts/fetch.py "https://github.com" --tool w3m --links
 ```
 
 See **Setup**, **Options**, and **Examples** below for advanced usage.
@@ -39,51 +39,43 @@ Extract readable text from web pages using text-based browsers (w3m/lynx) or a r
 
 ## Setup
 
-### 1. Create Virtual Environment
-
 ```bash
 cd ~/.pi/agent/skills/fetch-url
-uv venv
+
+# Install dependencies (run once)
+uv sync
+
+# Then use the skill
+uv run scripts/fetch.py "https://example.com"
 ```
 
-### 2. Install Dependencies
+### Alternative: No setup required
 
-**For API mode (optional):**
 ```bash
-uv pip install requests
+# uv will install dependencies automatically
+uv run --with requests scripts/fetch.py "https://example.com"
 ```
 
-**For local mode (w3m/lynx):**
+### Local browsers (optional, for w3m/lynx):
 
 | OS | Command |
 |----|---------|
 | macOS | `brew install w3m lynx` |
 | Ubuntu/Debian | `sudo apt-get install w3m lynx` |
-| Arch Linux | `sudo pacman -S w3m lynx` |
-| Windows | Use `--tool markdown` (no browser needed) |
+| Windows | Not needed - use `--tool jina` (default) |
 
-**For Windows (recommended):**
-```powershell
-# Windows doesn't have w3m/lynx easily available
-# Use markdown.new instead (only requires 'requests' library)
-cd ~/.pi/agent/skills/fetch-url
-uv pip install requests
-uv run fetch.py "https://example.com" --tool markdown
-```
-
-### 3. Set API Bearer Token (API mode only)
+### Bearer token (for API tool only):
 
 ```bash
 export FETCH_URL_BEARER="your_token"
-# or use .env file
-echo "FETCH_URL_BEARER=your_token" > ~/.pi/agent/skills/fetch-url/.env
+# or create .env file in skill directory
 ```
 
 ## How to Use
 
 ```bash
 cd ~/.pi/agent/skills/fetch-url
-uv run fetch.py "<url>" [options]
+uv run scripts/fetch.py "<url>" [options]
 ```
 
 Or install as a command:
@@ -124,52 +116,52 @@ When using `--tool markdown`, additional options are available:
 
 **Basic fetching:**
 ```bash
-uv run fetch.py "https://example.com"
-uv run fetch.py "example.com"  # https:// added automatically
+uv run scripts/fetch.py "https://example.com"
+uv run scripts/fetch.py "example.com"  # https:// added automatically
 ```
 
 **Windows (no browser needed):**
 ```powershell
-uv run fetch.py "https://example.com" --tool markdown
+uv run scripts/fetch.py "https://example.com" --tool markdown
 ```
 
 **Choose tool:**
 ```bash
-uv run fetch.py "https://docs.python.org" --tool w3m      # better formatting
-uv run fetch.py "https://docs.python.org" --tool lynx     # faster
-uv run fetch.py "https://docs.python.org" --tool markdown # markdown output
-uv run fetch.py "https://docs.python.org" --tool jina     # free unlimited, markdown
+uv run scripts/fetch.py "https://docs.python.org" --tool w3m      # better formatting
+uv run scripts/fetch.py "https://docs.python.org" --tool lynx     # faster
+uv run scripts/fetch.py "https://docs.python.org" --tool markdown # markdown output
+uv run scripts/fetch.py "https://docs.python.org" --tool jina     # free unlimited, markdown
 ```
 
 **Clean and reference output:**
 ```bash
-uv run fetch.py "https://github.com" --links    # show link numbers
-uv run fetch.py "https://example.com" --clean   # remove empty lines
+uv run scripts/fetch.py "https://github.com" --links    # show link numbers
+uv run scripts/fetch.py "https://example.com" --clean   # remove empty lines
 ```
 
 **markdown.new options (Windows-friendly):**
 ```bash
 # JS-heavy sites - use browser rendering
-uv run fetch.py "https://spa-site.com" --tool markdown --md-method browser
+uv run scripts/fetch.py "https://spa-site.com" --tool markdown --md-method browser
 
 # Keep images in output
-uv run fetch.py "https://blog.example.com" --tool markdown --md-images
+uv run scripts/fetch.py "https://blog.example.com" --tool markdown --md-images
 
 # Combine options
-uv run fetch.py "https://example.com" --tool markdown --md-method browser --md-images --clean
+uv run scripts/fetch.py "https://example.com" --tool markdown --md-method browser --md-images --clean
 ```
 
 **API mode:**
 ```bash
-uv run fetch.py "https://example.com" --api
-uv run fetch.py "https://example.com" --api --tool lynx
-uv run fetch.py "https://example.com" --api --bearer YOUR_TOKEN
+uv run scripts/fetch.py "https://example.com" --api
+uv run scripts/fetch.py "https://example.com" --api --tool lynx
+uv run scripts/fetch.py "https://example.com" --api --bearer YOUR_TOKEN
 ```
 
 **Piping output:**
 ```bash
-uv run fetch.py "https://example.com" | grep -i "search term"
-uv run fetch.py "https://example.com" > output.txt
+uv run scripts/fetch.py "https://example.com" | grep -i "search term"
+uv run scripts/fetch.py "https://example.com" > output.txt
 ```
 
 ## Modes
@@ -226,7 +218,7 @@ Stripped: JavaScript, CSS, images, media.
 ```bash
 # Install w3m or lynx per OS instructions in Setup section
 # On Windows, use --tool markdown instead
-uv run fetch.py "https://example.com" --tool markdown
+uv run scripts/fetch.py "https://example.com" --tool markdown
 ```
 
 **'requests' library required (API mode or markdown tool):**
@@ -252,7 +244,7 @@ uv pip install requests  # if using API mode
 **w3m "gunzip: unknown compression format" error:**
 ```bash
 # Try lynx instead
-uv run fetch.py "https://example.com" --tool lynx
+uv run scripts/fetch.py "https://example.com" --tool lynx
 ```
 
 **Request timed out:**
@@ -267,7 +259,7 @@ uv run fetch.py "https://example.com" --tool lynx
 **JS-heavy sites (SPA, React, Vue):**
 ```bash
 # Use browser rendering method
-uv run fetch.py "https://spa-site.com" --tool markdown --md-method browser
+uv run scripts/fetch.py "https://spa-site.com" --tool markdown --md-method browser
 ```
 
 ---
