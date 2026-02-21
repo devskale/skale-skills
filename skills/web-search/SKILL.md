@@ -13,7 +13,7 @@ cd <skill-dir>
 uv run scripts/search.py "query" [options]
 ```
 
-**Setup:** Set `WEB_SEARCH_BEARER` env var, or use credgoo with service `web-search`, or create `.env` file with `WEB_SEARCH_BEARER=your_token`.
+**Setup:** Create a `.env` file in the skill root directory with `WEB_SEARCH_BEARER=your_token`. Alternatively, set the env var or use credgoo.
 
 ## Common Patterns
 
@@ -32,6 +32,9 @@ uv run scripts/search.py "python tutorial" --exclude youtube,video
 
 # Error messages
 uv run scripts/search.py "TypeError NoneType" --exact --site stackoverflow.com
+
+# Combine multiple filters
+uv run scripts/search.py "kubernetes security" --site kubernetes.io --inurl docs
 ```
 
 ## Options

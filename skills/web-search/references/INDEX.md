@@ -97,12 +97,14 @@ uv run scripts/search.py "site:github.com rust async"
 
 | Backend | Best For |
 |---------|----------|
-| `duckduckgo` | General search (default) |
+| `duckduckgo` | General search (default, most reliable) |
 | `google` | Broader results, news |
 | `bing` | Alternative to Google |
 | `brave` | Privacy-focused, tech content |
 | `wikipedia` | Encyclopedia articles only |
 | `mojeek` | Independent index |
+
+**Note:** Some backends may return 404 if the API doesn't support them. Default (`duckduckgo`) is most reliable.
 
 **Tip:** If one backend returns poor results, try another.
 
@@ -128,15 +130,17 @@ Set `WEB_SEARCH_BEARER` token via (in priority order):
    export WEB_SEARCH_BEARER="your_token"
    ```
 
-2. **Credgoo** (recommended for shared environments):
+2. **Credgoo** (if available):
    ```bash
    credgoo  # service name: web-search
    ```
 
-3. **.env file** in skill directory:
+3. **.env file** in skill root directory (auto-loaded):
    ```
    WEB_SEARCH_BEARER=your_token
    ```
+
+**Note:** The `.env` file should be placed in the skill's root directory (same level as `SKILL.md`), not in `scripts/`.
 
 ## Tips & Tricks
 
@@ -172,8 +176,9 @@ uv run scripts/search.py "test" --bearer "other_token"
 
 | Error | Solution |
 |-------|----------|
-| "Bearer token is required" | Set `WEB_SEARCH_BEARER` via env, credgoo, or .env |
+| "Bearer token is required" | Ensure `.env` file exists in skill root (not scripts/), or set env var |
 | "Error performing search" | Check network, verify API is accessible |
 | "No results found" | Simplify query, try different backend |
+| 404 with specific backend | Some backends may not be supported; use default (duckduckgo) |
 | Timeout errors | Increase `--timeout 60` |
 | SSL errors | Check `--verify true/false` setting |
