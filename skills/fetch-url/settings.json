@@ -1,0 +1,49 @@
+{
+  "tools": {
+    "w3m": {
+      "platforms": ["Darwin", "Linux"],
+      "requires_install": true,
+      "install": {
+        "Darwin": "brew install w3m",
+        "Linux": "sudo apt-get install w3m"
+      },
+      "notes": "Best formatting, supports link numbers"
+    },
+    "lynx": {
+      "platforms": ["Darwin", "Linux"],
+      "requires_install": true,
+      "install": {
+        "Darwin": "brew install lynx",
+        "Linux": "sudo apt-get install lynx"
+      },
+      "notes": "Faster than w3m, simpler output"
+    },
+    "jina": {
+      "platforms": ["Darwin", "Linux", "Windows"],
+      "requires_install": false,
+      "rate_limit": "unlimited",
+      "notes": "Jina.ai Reader - free unlimited, no auth, clean markdown"
+    },
+    "markdown": {
+      "platforms": ["Darwin", "Linux", "Windows"],
+      "requires_install": false,
+      "rate_limit": "50/day",
+      "notes": "markdown.new - Cloudflare API, clean markdown, JS rendering option"
+    },
+    "api": {
+      "platforms": ["Darwin", "Linux", "Windows"],
+      "requires_install": false,
+      "requires_auth": true,
+      "api_url": "https://amd1.mooo.com/api/fetch_url",
+      "tools": ["w3m", "lynx"],
+      "notes": "Custom API endpoint, requires bearer token"
+    }
+  },
+  "defaults": {
+    "Darwin": ["jina", "api", "markdown", "w3m", "lynx"],
+    "Linux": ["jina", "api", "markdown", "w3m", "lynx"],
+    "Windows": ["jina", "api", "markdown"]
+  },
+  "fallback_order": ["jina", "api", "markdown", "w3m", "lynx"],
+  "timeout": 30
+}

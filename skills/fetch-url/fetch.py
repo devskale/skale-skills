@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 Fetch URL content using text-based browsers (w3m or lynx) or via API.
+Supports markdown.new and Jina.ai Reader for clean markdown output.
+Auto-selects best tool for platform with automatic fallback.
 Extracts readable text from web pages without rendering.
 """
 
@@ -8,9 +10,10 @@ import os
 import sys
 import argparse
 import subprocess
-import platform
-import urllib.parse
+import platform as platform_module
+import json
 from pathlib import Path
+from typing import Dict, List, Optional, Any
 
 requests = None
 try:
@@ -22,18 +25,90 @@ except ImportError:
 SCRIPT_DIR = Path(__file__).parent
 W3M_CONFIG = SCRIPT_DIR / "w3m_config"
 LYNX_CONFIG = SCRIPT_DIR / "lynx_config"
+SETTINGS_FILE = SCRIPT_DIR / "settings.json"
 DEFAULT_API_URL = "https://amd1.mooo.com/api/fetch_url"
 MARKDOWN_NEW_URL = "https://markdown.new"
+JINA_READER_URL = "https://r.jina.ai"
 
 
-def get_bearer_token():
+def load_settings() -> Dict[str, Any]:
+    """Load settings from settings.json."""
+    if SETTINGS_FILE.exists():
+        try:
+            return json.loads(SETTINGS_FILE.read_text())
+        except json.JSONDecodeError:
+            pass
+    return get_default_settings()
+
+
+def get_default_settings() -> Dict[str, Any]:
+    """Return default settings if settings.json not found."""
+    return {
+        "tools": {
+            "w3m": {"platforms": ["Darwin", "Linux"], "requires_install": True},
+            "lynx": {"platforms": ["Darwin", "Linux"], "requires_install": True},
+            "markdown": {"platforms": ["Darwin", "Linux", "Windows"], "requires_install": False},
+            "jina": {"platforms": ["Darwin", "Linux", "Windows"], "requires_install": False},
+        },
+        "defaults": {
+            "Darwin": ["w3m", "jina", "markdown", "lynx"],
+            "Linux": ["w3m", "jina", "markdown", "lynx"],
+            "Windows": ["jina", "markdown"]
+        },
+        "fallback_order": ["jina", "markdown", "w3m", "lynx"],
+        "timeout": 30
+    }
+
+
+def get_platform() -> str:
+    """Get current platform name."""
+    system = platform_module.system()
+    if system == "Darwin":
+        return "Darwin"
+    elif system == "Linux":
+        return "Linux"
+    elif system == "Windows":
+        return "Windows"
+    return system
+
+
+def get_available_tools(settings: Dict[str, Any]) -> List[str]:
+    """Get list of tools available for current platform."""
+    current_platform = get_platform()
+    available = []
+    for tool_name, tool_config in settings.get("tools", {}).items():
+        if current_platform in tool_config.get("platforms", []):
+            available.append(tool_name)
+    return available
+
+
+def get_default_tool(settings: Dict[str, Any]) -> str:
+    """Get default tool for current platform."""
+    current_platform = get_platform()
+    defaults = settings.get("defaults", {})
+    platform_defaults = defaults.get(current_platform, ["jina", "markdown"])
+    available = get_available_tools(settings)
+
+    # Return first available default
+    for tool in platform_defaults:
+        if tool in available:
+            return tool
+    return "jina"  # Fallback to jina (works everywhere)
+
+
+def check_tool_available(tool: str, settings: Dict[str, Any]) -> bool:
+    """Check if a tool is available on current platform."""
+    current_platform = get_platform()
+    tool_config = settings.get("tools", {}).get(tool, {})
+    return current_platform in tool_config.get("platforms", [])
+
+
+def get_bearer_token() -> Optional[str]:
     """Get bearer token from environment variable or .env file."""
-    # Check environment variable first
     token = os.environ.get("FETCH_URL_BEARER") or os.environ.get("WEB_SEARCH_BEARER")
     if token:
         return token
 
-    # Try to read from .env file in skill directory
     env_file = Path(__file__).parent / ".env"
     if env_file.exists():
         for line in env_file.read_text().strip().split('\n'):
@@ -43,81 +118,72 @@ def get_bearer_token():
     return None
 
 
-def get_w3m_path():
+def get_w3m_path() -> str:
     """Determine the correct path for w3m based on the OS."""
-    if platform.system() == 'Linux':
+    if platform_module.system() == 'Linux':
         return '/usr/bin/w3m'
-    else:
-        return 'w3m'
+    return 'w3m'
 
 
-def get_lynx_path():
+def get_lynx_path() -> str:
     """Determine the correct path for lynx based on the OS."""
-    if platform.system() == 'Linux':
+    if platform_module.system() == 'Linux':
         return '/usr/bin/lynx'
-    else:
-        return 'lynx'
+    return 'lynx'
 
 
-def fetch_with_markdown_new(url: str, method: str = 'auto', retain_images: bool = False) -> str:
-    """Fetch a webpage using markdown.new API and return markdown text.
-
-    This is ideal for Windows systems where w3m/lynx are not easily available.
-    Returns clean markdown-formatted text.
-
-    Args:
-        url: The URL to fetch
-        method: Conversion method - 'auto' (default), 'ai', or 'browser'
-        retain_images: Whether to keep images in output (default: False)
-
-    Returns:
-        The markdown content of the webpage
-
-    Raises:
-        RuntimeError: If the request fails or no requests library
-    """
+def fetch_with_markdown_new(url: str, method: str = 'auto', retain_images: bool = False, timeout: int = 30) -> str:
+    """Fetch a webpage using markdown.new API."""
     if requests is None:
-        raise RuntimeError("'requests' library is required for markdown.new. Install with: pip install requests")
+        raise RuntimeError("'requests' library required. Install with: pip install requests")
 
-    # Ensure URL has protocol
     url = url.strip()
     if not url.startswith('http://') and not url.startswith('https://'):
         url = 'https://' + url
 
     try:
-        # Build query parameters
         params = []
         if method != 'auto':
             params.append(f"method={method}")
         if retain_images:
             params.append("retain_images=true")
-        
+
         query_string = "?" + "&".join(params) if params else ""
         api_url = f"{MARKDOWN_NEW_URL}/{url}{query_string}"
 
-        response = requests.get(api_url, timeout=30)
+        response = requests.get(api_url, timeout=timeout)
         response.raise_for_status()
         return response.text
 
     except requests.exceptions.Timeout:
-        raise RuntimeError(f"markdown.new request timed out after 30 seconds for URL: {url}")
+        raise RuntimeError(f"markdown.new request timed out for URL: {url}")
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Failed to fetch page with markdown.new: {e}")
+        raise RuntimeError(f"markdown.new failed: {e}")
 
 
-def fetch_with_w3m(url: str, links: bool = False) -> str:
-    """Fetch a webpage using w3m with a custom config and return the text output.
+def fetch_with_jina(url: str, timeout: int = 30) -> str:
+    """Fetch a webpage using Jina.ai Reader API."""
+    if requests is None:
+        raise RuntimeError("'requests' library required. Install with: pip install requests")
 
-    Args:
-        url: The URL to fetch
-        links: Whether to display link numbers (default: False)
+    url = url.strip()
+    if not url.startswith('http://') and not url.startswith('https://'):
+        url = 'https://' + url
 
-    Returns:
-        The text content of the webpage
+    try:
+        api_url = f"{JINA_READER_URL}/{url}"
+        response = requests.get(api_url, timeout=timeout)
+        response.raise_for_status()
+        return response.text
 
-    Raises:
-        RuntimeError: If w3m fails or times out
-    """
+    except requests.exceptions.Timeout:
+        raise RuntimeError(f"Jina.ai request timed out for URL: {url}")
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Jina.ai failed: {e}")
+
+
+def fetch_with_w3m(url: str, links: bool = False, timeout: int = 30) -> str:
+    """Fetch a webpage using w3m."""
     w3m_path = get_w3m_path()
 
     try:
@@ -129,36 +195,19 @@ def fetch_with_w3m(url: str, links: bool = False) -> str:
             url
         ]
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=30  # 30 second timeout
-        )
-
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=timeout)
         return result.stdout
 
     except subprocess.TimeoutExpired:
-        raise RuntimeError(f"w3m request timed out after 30 seconds for URL: {url}")
+        raise RuntimeError(f"w3m timed out for URL: {url}")
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to fetch page with w3m: {e.stderr}")
+        raise RuntimeError(f"w3m failed: {e.stderr}")
     except FileNotFoundError:
-        raise RuntimeError("w3m not found. Install it with 'brew install w3m' on macOS or 'sudo apt-get install w3m' on Linux")
+        raise RuntimeError("w3m not found. Install with 'brew install w3m' (macOS) or 'sudo apt-get install w3m' (Linux)")
 
 
-def fetch_with_lynx(url: str) -> str:
-    """Fetch a webpage using Lynx with a custom config and return the text output.
-
-    Args:
-        url: The URL to fetch
-
-    Returns:
-        The text content of the webpage
-
-    Raises:
-        RuntimeError: If lynx fails or times out
-    """
+def fetch_with_lynx(url: str, timeout: int = 30) -> str:
+    """Fetch a webpage using Lynx."""
     lynx_path = get_lynx_path()
 
     try:
@@ -169,69 +218,41 @@ def fetch_with_lynx(url: str) -> str:
             '-cfg=', str(LYNX_CONFIG),
             '--display_charset=utf-8',
             '-accept_all_cookies',
-            '-nomore'  # Don't pause at page boundaries
+            '-nomore'
         ]
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=30  # 30 second timeout
-        )
-
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=timeout)
         return result.stdout
 
     except subprocess.TimeoutExpired:
-        raise RuntimeError(f"Lynx request timed out after 30 seconds for URL: {url}")
+        raise RuntimeError(f"Lynx timed out for URL: {url}")
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to fetch page with Lynx: {e.stderr}")
+        raise RuntimeError(f"Lynx failed: {e.stderr}")
     except FileNotFoundError:
-        raise RuntimeError("Lynx not found. Install it with 'brew install lynx' on macOS or 'sudo apt-get install lynx' on Linux")
+        raise RuntimeError("Lynx not found. Install with 'brew install lynx' (macOS) or 'sudo apt-get install lynx' (Linux)")
 
 
-def fetch_via_api(url: str, tool: str = 'w3m', bearer: str = None, api_url: str = None) -> str:
-    """Fetch a webpage via the API endpoint.
-
-    Args:
-        url: The URL to fetch
-        tool: The tool to use ('w3m' or 'lynx', default: 'w3m')
-        bearer: Bearer token for authentication
-        api_url: API endpoint URL
-
-    Returns:
-        The text content of the webpage
-
-    Raises:
-        RuntimeError: If the API request fails
-    """
+def fetch_via_api(url: str, tool: str = 'w3m', bearer: str = None, api_url: str = None, timeout: int = 30) -> str:
+    """Fetch a webpage via the API endpoint."""
     if requests is None:
-        raise RuntimeError("'requests' library is required for API mode. Install with: pip3 install requests")
+        raise RuntimeError("'requests' library required. Install with: pip install requests")
 
     if not bearer:
         bearer = get_bearer_token()
     if not bearer:
-        raise ValueError("Bearer token is required for API mode. Set FETCH_URL_BEARER or WEB_SEARCH_BEARER environment variable or create a .env file.")
+        raise ValueError("Bearer token required for API mode. Set FETCH_URL_BEARER or WEB_SEARCH_BEARER env var.")
 
     api_url = api_url or DEFAULT_API_URL
 
-    # Ensure URL has protocol
     url = url.strip()
     if not url.startswith('http://') and not url.startswith('https://'):
         url = 'https://' + url
 
-    params = {
-        'url': url,
-        'tool': tool
-    }
-
-    headers = {
-        'accept': 'application/json',
-        'Authorization': f'Bearer {bearer}'
-    }
+    params = {'url': url, 'tool': tool}
+    headers = {'accept': 'application/json', 'Authorization': f'Bearer {bearer}'}
 
     try:
-        response = requests.get(api_url, params=params, headers=headers, timeout=30)
+        response = requests.get(api_url, params=params, headers=headers, timeout=timeout)
         response.raise_for_status()
         data = response.json()
         return data.get('content', '')
@@ -241,58 +262,102 @@ def fetch_via_api(url: str, tool: str = 'w3m', bearer: str = None, api_url: str 
         raise RuntimeError(f"Failed to parse API response: {e}")
 
 
-def fetch_url(url: str, tool: str = 'w3m', links: bool = False, use_api: bool = False,
+def fetch_with_tool(tool: str, url: str, links: bool = False, bearer: str = None,
+                    api_url: str = None, md_method: str = 'auto',
+                    md_retain_images: bool = False, timeout: int = 30,
+                    settings: Dict[str, Any] = None) -> str:
+    """Fetch URL using a specific tool."""
+    if tool == 'w3m':
+        return fetch_with_w3m(url, links, timeout)
+    elif tool == 'lynx':
+        return fetch_with_lynx(url, timeout)
+    elif tool == 'markdown':
+        return fetch_with_markdown_new(url, md_method, md_retain_images, timeout)
+    elif tool == 'jina':
+        return fetch_with_jina(url, timeout)
+    elif tool == 'api':
+        # Get API URL from settings if not provided
+        if not api_url and settings:
+            api_url = settings.get("tools", {}).get("api", {}).get("api_url", DEFAULT_API_URL)
+        if not bearer:
+            bearer = get_bearer_token()
+        return fetch_via_api(url, 'w3m', bearer, api_url or DEFAULT_API_URL, timeout)
+    else:
+        raise ValueError(f"Unknown tool: {tool}")
+
+
+def fetch_with_fallback(url: str, preferred_tool: str, settings: Dict[str, Any],
+                        links: bool = False, bearer: str = None, api_url: str = None,
+                        md_method: str = 'auto', md_retain_images: bool = False,
+                        verbose: bool = False) -> str:
+    """Fetch URL with automatic fallback to other tools on failure."""
+    timeout = settings.get("timeout", 30)
+    fallback_order = settings.get("fallback_order", ["jina", "api", "markdown", "w3m", "lynx"])
+    available = get_available_tools(settings)
+    
+    # Check if API tool can be used (requires auth)
+    api_requires_auth = settings.get("tools", {}).get("api", {}).get("requires_auth", True)
+    has_auth = bool(bearer or get_bearer_token())
+
+    # Build tool order: preferred first, then fallbacks
+    tool_order = []
+    if preferred_tool in available:
+        tool_order.append(preferred_tool)
+    for tool in fallback_order:
+        if tool in available and tool not in tool_order:
+            # Skip api tool if no auth available
+            if tool == 'api' and api_requires_auth and not has_auth:
+                continue
+            tool_order.append(tool)
+
+    errors = []
+    for tool in tool_order:
+        try:
+            if verbose and tool != preferred_tool:
+                print(f"Trying {tool}...", file=sys.stderr)
+            result = fetch_with_tool(tool, url, links, bearer, api_url, md_method, md_retain_images, timeout, settings)
+            if result and result.strip():
+                return result
+            errors.append(f"{tool}: empty response")
+        except Exception as e:
+            errors.append(f"{tool}: {e}")
+
+    raise RuntimeError(f"All tools failed:\n  " + "\n  ".join(errors))
+
+
+def fetch_url(url: str, tool: str = 'auto', links: bool = False, use_api: bool = False,
               bearer: str = None, api_url: str = None, md_method: str = 'auto',
-              md_retain_images: bool = False) -> str:
-    """Fetch a webpage using the specified text-based browser or via API.
+              md_retain_images: bool = False, verbose: bool = False) -> str:
+    """Fetch a webpage using the specified tool or auto-select best available."""
+    settings = load_settings()
 
-    Args:
-        url: The URL to fetch
-        tool: The browser to use ('w3m', 'lynx', or 'markdown', default: 'w3m')
-        links: Whether to display link numbers (only for w3m, default: False)
-        use_api: Whether to use the API instead of local tools
-        bearer: Bearer token for API mode
-        api_url: API endpoint URL
-        md_method: markdown.new method - 'auto', 'ai', or 'browser' (default: 'auto')
-        md_retain_images: Whether to retain images in markdown.new output (default: False)
-
-    Returns:
-        The text content of the webpage
-
-    Raises:
-        ValueError: If tool is not 'w3m', 'lynx', or 'markdown'
-        RuntimeError: If the fetch operation fails
-    """
-    if use_api:
-        return fetch_via_api(url, tool, bearer, api_url)
-
+    # Handle URL protocol
     url = url.strip()
-
     if not url.startswith('http://') and not url.startswith('https://'):
         url = 'https://' + url
 
-    if tool == 'w3m':
-        return fetch_with_w3m(url, links)
-    elif tool == 'lynx':
-        return fetch_with_lynx(url)
-    elif tool == 'markdown':
-        return fetch_with_markdown_new(url, method=md_method, retain_images=md_retain_images)
-    else:
-        raise ValueError(f"Invalid tool: {tool}. Use 'w3m', 'lynx', or 'markdown'.")
+    # API mode doesn't use fallback
+    if use_api:
+        timeout = settings.get("timeout", 30)
+        return fetch_via_api(url, 'w3m', bearer, api_url, timeout)
+
+    # Auto-select tool if needed
+    if tool == 'auto':
+        tool = get_default_tool(settings)
+        if verbose:
+            print(f"Auto-selected tool: {tool}", file=sys.stderr)
+
+    # Check tool availability
+    if not check_tool_available(tool, settings):
+        available = get_available_tools(settings)
+        raise ValueError(f"Tool '{tool}' not available on {get_platform()}. Available: {', '.join(available)}")
+
+    return fetch_with_fallback(url, tool, settings, links, bearer, api_url, md_method, md_retain_images, verbose)
 
 
 def clean_output(text: str, remove_empty_lines: bool = True) -> str:
-    """Clean the output text.
-
-    Args:
-        text: The text to clean
-        remove_empty_lines: Whether to remove consecutive empty lines
-
-    Returns:
-        The cleaned text
-    """
+    """Clean the output text."""
     if remove_empty_lines:
-        # Remove consecutive empty lines
         lines = text.split('\n')
         cleaned = []
         prev_empty = False
@@ -308,61 +373,54 @@ def clean_output(text: str, remove_empty_lines: bool = True) -> str:
 
 
 def main():
-    # Fix Windows console encoding for Unicode output
     if sys.platform == 'win32':
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
     parser = argparse.ArgumentParser(
-        description='Fetch and extract text content from web URLs using text-based browsers or via API',
+        description='Fetch and extract text content from web URLs with automatic tool selection and fallback',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Fetch using local w3m
+  # Auto-select best tool (default)
   %(prog)s "https://example.com"
 
-  # Fetch using local lynx
-  %(prog)s "example.com" --tool lynx
-
-  # Fetch using markdown.new (ideal for Windows)
+  # Use specific tool
+  %(prog)s "https://example.com" --tool jina
   %(prog)s "https://example.com" --tool markdown
+  %(prog)s "https://example.com" --tool w3m
+  %(prog)s "https://example.com" --tool api --bearer TOKEN
 
-  # Fetch JS-heavy site with browser rendering
-  %(prog)s "https://example.com" --tool markdown --md-method browser
+  # JS-heavy sites
+  %(prog)s "https://spa-site.com" --tool markdown --md-method browser
 
-  # Fetch with images retained
-  %(prog)s "https://example.com" --tool markdown --md-images
-
-  # Fetch via API
-  %(prog)s "https://orf.at" --api
-
-  # Fetch via API with custom bearer token
-  %(prog)s "https://orf.at" --api --bearer YOUR_TOKEN
+  # Show fallback attempts
+  %(prog)s "https://example.com" --verbose
 
   # Fetch with link numbers (w3m only)
   %(prog)s "https://docs.python.org" --tool w3m --links
 
-  # Pipe to grep
-  %(prog)s "https://github.com" | grep -i python
+Tools:
+  auto      - Auto-select best tool for platform (default)
+  jina      - Jina.ai Reader (free unlimited, works everywhere)
+  api       - Custom API endpoint (requires bearer token)
+  markdown  - markdown.new API (clean markdown, 50/day limit)
+  w3m       - Local text browser (best formatting, macOS/Linux only)
+  lynx      - Local text browser (fast, macOS/Linux only)
         """
     )
 
-    parser.add_argument('url', help='URL to fetch (http:// or https:// will be added if missing)')
-    parser.add_argument('--tool', choices=['w3m', 'lynx', 'markdown'], default='w3m',
-                        help='Text browser to use: w3m, lynx, or markdown (markdown.new API, ideal for Windows) (default: w3m)')
-    parser.add_argument('--links', action='store_true',
-                        help='Display link numbers in output (w3m only)')
-    parser.add_argument('--clean', action='store_true',
-                        help='Remove consecutive empty lines from output')
-    parser.add_argument('--api', action='store_true',
-                        help='Use API instead of local tools')
-    parser.add_argument('--api-url',
-                        help='Custom API endpoint URL (default: https://amd1.mooo.com/api/fetch_url)')
-    parser.add_argument('--bearer',
-                        help='Bearer token for API authentication (overrides FETCH_URL_BEARER env var)')
+    parser.add_argument('url', help='URL to fetch')
+    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'markdown', 'jina', 'api'], default='auto',
+                        help='Tool to use (default: auto)')
+    parser.add_argument('--links', action='store_true', help='Display link numbers (w3m only)')
+    parser.add_argument('--clean', action='store_true', help='Remove consecutive empty lines')
+    parser.add_argument('--verbose', action='store_true', help='Show fallback attempts')
+    parser.add_argument('--api', action='store_true', help='Use custom API (requires --bearer)')
+    parser.add_argument('--api-url', help='Custom API endpoint URL')
+    parser.add_argument('--bearer', help='Bearer token for API mode')
     parser.add_argument('--md-method', choices=['auto', 'ai', 'browser'], default='auto',
-                        help='markdown.new conversion method: auto (default), ai, or browser (for JS-heavy sites)')
-    parser.add_argument('--md-images', action='store_true',
-                        help='Retain images in markdown.new output (default: strip images)')
+                        help='markdown.new method: auto, ai, or browser (for JS sites)')
+    parser.add_argument('--md-images', action='store_true', help='Retain images in markdown output')
 
     args = parser.parse_args()
 
@@ -375,7 +433,8 @@ Examples:
             bearer=args.bearer,
             api_url=args.api_url,
             md_method=args.md_method,
-            md_retain_images=args.md_images
+            md_retain_images=args.md_images,
+            verbose=args.verbose
         )
         if args.clean:
             content = clean_output(content)

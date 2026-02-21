@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-description: Fetch and extract readable text content from web pages using text-based browsers (w3m/lynx) or via API. Extracts plain text without rendering images, styles, or JavaScript. Use when the user wants to read articles, documentation, or scrape text content from web pages.
+description: Fetch and extract readable text content from web pages using text-based browsers (w3m/lynx) or via API. Auto-selects best tool for platform with automatic fallback. Supports Jina.ai Reader (free unlimited), markdown.new, and custom API. Extracts plain text without rendering images, styles, or JavaScript. Use when the user wants to read articles, documentation, or scrape text content from web pages.
 ---
 
 # Fetch URL
@@ -10,26 +10,25 @@ description: Fetch and extract readable text content from web pages using text-b
 ```bash
 cd ~/.pi/agent/skills/fetch-url
 
-# Fetch a URL (local mode, w3m)
+# Auto-select best tool (default) - tries jina → api → markdown → w3m → lynx
 uv run fetch.py "https://example.com"
 
-# Use lynx instead
-uv run fetch.py "https://example.com" --tool lynx
-
-# Use markdown.new (ideal for Windows)
+# Use specific tool
+uv run fetch.py "https://example.com" --tool jina
+uv run fetch.py "https://example.com" --tool api --bearer TOKEN
 uv run fetch.py "https://example.com" --tool markdown
+
+# Show fallback attempts
+uv run fetch.py "https://example.com" --verbose
 
 # JS-heavy sites with browser rendering
 uv run fetch.py "https://spa-site.com" --tool markdown --md-method browser
 
-# Use API mode
-uv run fetch.py "https://example.com" --api
-
 # Clean output (remove empty lines)
 uv run fetch.py "https://example.com" --clean
 
-# Show link numbers for reference
-uv run fetch.py "https://github.com" --links
+# Show link numbers for reference (w3m only)
+uv run fetch.py "https://github.com" --tool w3m --links
 ```
 
 See **Setup**, **Options**, and **Examples** below for advanced usage.
@@ -97,12 +96,13 @@ fetch-url "<url>" [options]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--tool` | w3m | Browser to use: w3m, lynx, or markdown |
+| `--tool` | auto | Tool to use: auto, jina, api, markdown, w3m, lynx |
 | `--links` | false | Display link numbers (w3m only) |
 | `--clean` | false | Remove consecutive empty lines |
-| `--api` | false | Use API instead of local tools |
-| `--api-url` | https://amd1.mooo.com/api/fetch_url | Custom API endpoint |
-| `--bearer` | - | Bearer token (overrides env var) |
+| `--verbose` | false | Show fallback attempts |
+| `--api` | false | Use custom API (same as --tool api) |
+| `--api-url` | - | Custom API endpoint URL |
+| `--bearer` | - | Bearer token for API mode |
 | `--md-method` | auto | markdown.new method: auto, ai, or browser |
 | `--md-images` | false | Retain images in markdown output |
 
@@ -133,11 +133,12 @@ uv run fetch.py "example.com"  # https:// added automatically
 uv run fetch.py "https://example.com" --tool markdown
 ```
 
-**Choose browser:**
+**Choose tool:**
 ```bash
 uv run fetch.py "https://docs.python.org" --tool w3m      # better formatting
-uv run fetch.py "https://docs.python.org" --tool lynx      # faster
-uv run fetch.py "https://docs.python.org" --tool markdown  # Windows-friendly, markdown output
+uv run fetch.py "https://docs.python.org" --tool lynx     # faster
+uv run fetch.py "https://docs.python.org" --tool markdown # markdown output
+uv run fetch.py "https://docs.python.org" --tool jina     # free unlimited, markdown
 ```
 
 **Clean and reference output:**
@@ -185,18 +186,21 @@ Fetches via remote API endpoint. Requires `requests` library and bearer token.
 **Pros:** No local browser needed, may bypass restrictions
 **Cons:** Requires network, rate limits possible, needs token
 
-## Browser Comparison
+## Tool Comparison
 
-| Browser | Speed | Formatting | Link Numbers | Best For |
-|---------|-------|------------|---------------|----------|
-| w3m | Medium | Excellent | Yes | Complex layouts, formatted text |
-| lynx | Fast | Good | No | Quick reads, simple pages |
-| markdown | Fast | Markdown | No | Windows, clean markdown output, 80% fewer tokens |
+| Tool | Speed | Auth | Rate Limit | Output | Best For |
+|------|-------|------|------------|--------|----------|
+| auto | - | - | - | - | Auto-selects best tool, uses fallbacks |
+| jina | Fast | None | Unlimited | Markdown | Default, free unlimited, no auth |
+| api | Fast | Bearer | - | Plain text | Custom API, requires token |
+| markdown | Fast | None | 50/day | Markdown | Clean output, images optional |
+| w3m | Medium | None | None | Plain text | Complex layouts, link numbers |
+| lynx | Fast | None | None | Plain text | Quick reads, simple pages |
 
-**markdown.new** uses Cloudflare's Markdown for Agents API with automatic fallbacks:
-1. Native `text/markdown` content negotiation
-2. Workers AI `toMarkdown()` 
-3. Browser Rendering for JS-heavy pages
+**API Services:**
+- **jina** - Jina.ai Reader, free unlimited, no auth required
+- **api** - Custom endpoint (https://amd1.mooo.com/api/fetch_url), requires bearer token
+- **markdown** - markdown.new, Cloudflare API with fallbacks (native → AI → browser)
 
 ## Output
 
