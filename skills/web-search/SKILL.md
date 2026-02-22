@@ -1,65 +1,105 @@
 ---
 name: web-search
-description: Perform DuckDuckGo web searches with rich filters including domain, filetype, and URL fragment operators, exclusion lists, region settings, and pagination. Use when the user wants to search the web for information, find documentation, or look up facts.
-compatibility: Requires requests library and WEB_SEARCH_BEARER token
+description: Search the web with automatic backend selection. Uses privacy-respecting SearXNG when available, otherwise DuckDuckGo. Supports rich filters including domain, filetype, time filters, and exclusions.
+compatibility: Requires WEB_SEARCH_BEARER for DuckDuckGo; credgoo (searx key) for SearXNG
 ---
 
-# Web Search (DuckDuckGo)
+# Web Search
+
+Simple, opinionated web search that automatically picks the best backend.
 
 ## Quick Start
 
 ```bash
 cd <skill-dir>
-uv run scripts/search.py "query" [options]
+uv run scripts/search.py "your query"
 ```
 
-**Setup:** Create a `.env` file in the skill root directory with `WEB_SEARCH_BEARER=your_token`. Alternatively, set the env var or use credgoo.
+## Configuration
 
-## Common Patterns
+### SearXNG (Recommended - Privacy)
+Configure in credgoo with key `searx`:
+```
+URL@USERNAME@PASSWORD
+```
+Example: `https://searx.example.com:8080@myuser@mypassword`
+
+### DuckDuckGo (Fallback)
+Create `.env` file with:
+```
+WEB_SEARCH_BEARER=your_token
+```
+Or set `WEB_SEARCH_BEARER` environment variable.
+
+## Usage
 
 ```bash
-# Documentation
-uv run scripts/search.py "react hooks" --site react.dev
+# Basic search
+uv run scripts/search.py "react hooks"
 
-# PDFs/papers
+# Documentation search
+uv run scripts/search.py "python tutorial" --site github.com
+
+# Filter by file type
 uv run scripts/search.py "ML transformers" --filetype pdf
 
 # Recent news
 uv run scripts/search.py "AI news" --timelimit d
 
-# Exclude noise
-uv run scripts/search.py "python tutorial" --exclude youtube,video
+# Exclude sites
+uv run scripts/search.py "python tutorial" --exclude youtube,reddit
 
-# Error messages
-uv run scripts/search.py "TypeError NoneType" --exact --site stackoverflow.com
+# Exact phrase
+uv run scripts/search.py "error message" --exact
 
-# Combine multiple filters
-uv run scripts/search.py "kubernetes security" --site kubernetes.io --inurl docs
+# Images
+uv run scripts/search.py "cats" --categories images
+
+# Recent specific topic
+uv run scripts/search.py "climate" --time-range week
 ```
 
 ## Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--max` | 10 | Maximum results |
-| `--page` | 1 | Page number |
-| `--site` | - | Filter by domain |
-| `--filetype` | - | Filter by extension (pdf, doc, etc.) |
-| `--inurl` | - | URL must contain text |
-| `--exclude` | - | Comma-separated terms to exclude |
-| `--timelimit` | - | d (day), w (week), m (month), y (year) |
-| `--region` | wt-wt | Region code (us-en, de-de, etc.) |
-| `--backend` | duckduckgo | Provider: google, bing, brave, wikipedia |
-| `--exact` | false | Exact phrase matching |
+| Option | Description |
+|--------|-------------|
+| `--max N` | Number of results (default: 10) |
+| `--site DOMAIN` | Filter by domain |
+| `--filetype TYPE` | Filter by file type (pdf, txt, etc.) |
+| `--exclude TERMS` | Exclude comma-separated terms |
+| `--exact` | Exact phrase matching |
+| `--timelimit d\|w\|m\|y` | Time filter (day/week/month/year) |
+| `--categories` | Category filter (images, news, videos) |
+| `--time-range` | Time range (day, week, month, year) |
+| `--json` | Output raw JSON |
+| `--verbose` | Show which backend is being used |
 
-## Output
+## Backend Selection
 
-Markdown with clickable links:
-```markdown
-- [**Title**](https://url.com)
-  Description snippet...
+The skill automatically selects the best backend:
+1. **SearXNG** - Used if credentials configured (privacy, more engines)
+2. **DuckDuckGo** - Default fallback
+
+User doesn't need to think about backends - just search.
+
+## Examples
+
+```bash
+# Find documentation
+uv run scripts/search.py "react useEffect" --site react.dev
+
+# Find papers
+uv run scripts/search.py "attention is all you need" --filetype pdf
+
+# Troubleshooting
+uv run scripts/search.py "TypeError NoneType" --exact --site stackoverflow.com
+
+# Current events
+uv run scripts/search.py "bitcoin" --timelimit d
+
+# Images
+uv run scripts/search.py "landscape photography" --categories images
+
+# Multiple exclusions
+uv run scripts/search.py "python async" --exclude youtube,twitter,reddit
 ```
-
-## Reference
-
-For detailed patterns, backends, and troubleshooting, see [references/INDEX.md](references/INDEX.md).
