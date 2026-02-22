@@ -3,6 +3,7 @@ name: readme-write
 description: Create and update README.md files with proper structure, badges, and sections.
 license: MIT
 compatibility: opencode
+disable-model-invocation: true
 ---
 
 ## Skill: readme-write

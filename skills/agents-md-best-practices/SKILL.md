@@ -3,6 +3,7 @@ name: agents-md-best-practices
 description: Create and update concise AGENTS.md files using proven best practices.
 license: MIT
 compatibility: opencode
+disable-model-invocation: true
 ---
 
 ## Skill: agents-md-best-practices
