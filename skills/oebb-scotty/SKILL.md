@@ -1,6 +1,7 @@
 ---
 name: oebb-scotty
 description: Austrian rail travel planner (ÖBB Scotty). Use when planning train journeys in Austria, checking departures/arrivals at stations, or looking for service disruptions. Covers ÖBB trains, S-Bahn, regional trains, and connections to neighboring countries.
+disable-model-invocation: true
 ---
 
 # ÖBB Scotty API

@@ -1,6 +1,7 @@
 ---
 name: todo
 description: Create and manage TODO.md task tracking files for complex multi-step work. Use when starting a larger task that benefits from progress tracking, when the user asks to create a todo list, checklist, or task breakdown, or when planning work across multiple sessions. Creates YAML frontmatter with metadata and checkable markdown items.
+disable-model-invocation: true
 ---
 
 # TODO Task Tracker
