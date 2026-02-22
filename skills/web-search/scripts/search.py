@@ -59,22 +59,34 @@ def get_bearer_token() -> Optional[str]:
 
 
 def get_searxng_credentials() -> Optional[Dict[str, str]]:
-    """Get SearXNG credentials from credgoo. Format: URL@USERNAME@PASSWORD"""
-    if credgoo is None:
-        return None
+    """Get SearXNG credentials from credgoo or local file. Format: URL@USERNAME@PASSWORD"""
+    # Try credgoo first
+    if credgoo is not None:
+        try:
+            cred_string = get_api_key("searx")
+            if cred_string:
+                parts = cred_string.split("@")
+                if len(parts) == 3:
+                    return {"base_url": parts[0], "username": parts[1], "password": parts[2]}
+        except Exception:
+            pass
 
-    try:
-        cred_string = get_api_key("searx")
-        if not cred_string:
-            return None
+    # Try local file fallback
+    config_dir = os.path.expanduser("~/.config/api_keys")
+    config_file = Path(config_dir) / "searx.json"
+    if config_file.exists():
+        try:
+            import json
+            data = json.loads(config_file.read_text())
+            return {
+                "base_url": data.get("url", data.get("base_url", "")),
+                "username": data.get("username", ""),
+                "password": data.get("password", "")
+            }
+        except Exception:
+            pass
 
-        parts = cred_string.split("@")
-        if len(parts) != 3:
-            return None
-
-        return {"base_url": parts[0], "username": parts[1], "password": parts[2]}
-    except Exception:
-        return None
+    return None
 
 
 def has_searxng_credentials() -> bool:
