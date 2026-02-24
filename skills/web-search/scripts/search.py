@@ -7,6 +7,14 @@ Search the web with rich filters. Smart backend selection based on query.
 # Standard library imports
 import os
 import sys
+
+# Configure UTF-8 encoding for stdout (especially important on Windows)
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+# More standard library imports
 import argparse
 import json
 import urllib.parse
@@ -24,6 +32,7 @@ except ImportError:
 credgoo = None
 try:
     from credgoo import get_api_key
+    credgoo = True  # Mark as available
 except ImportError:
     pass  # Optional dependency
 
@@ -458,11 +467,12 @@ Examples:
     categories = args.categories.split(",") if args.categories else None
     engines = args.engines.split(",") if args.engines else None
 
-    # Build query
+    # Build query (apply filters for both backends)
     if backend == "duckduckgo":
         query = build_ddg_query(args)
     else:
-        query = args.query
+        # For SearXNG, also apply site/filetype/exclude filters
+        query = build_ddg_query(args)
 
     # Perform search
     results = search(
