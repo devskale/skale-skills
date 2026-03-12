@@ -8,12 +8,64 @@ compatibility: Requires WEB_SEARCH_BEARER for DuckDuckGo; credgoo (searx key) fo
 
 Simple, opinionated web search that automatically picks the best backend.
 
-## Quick Start
+## How to Run
 
+### Option 1: From Within the Skill Directory (Easiest)
+Navigate to the skill directory first:
 ```bash
-cd <skill-dir>
+cd <path-to-skill>
+./search "your query"
+```
+Example:
+```bash
+cd ~/.pi/agent/skills/web-search
+./search "react hooks"
+```
+
+### Option 2: From Any Directory (Full Path)
+Use the full path to the `search` script:
+```bash
+<path-to-skill>/search "your query"
+```
+Example:
+```bash
+~/.pi/agent/skills/web-search/search "react hooks"
+```
+
+### Finding Your Skill Path
+If you're unsure where the skill is installed:
+```bash
+find ~ -name "search" -path "*/web-search/*" 2>/dev/null
+# Or
+locate web-search/search
+```
+
+### Option 3: Using uv run
+```bash
+cd <path-to-skill>
 uv run scripts/search.py "your query"
 ```
+
+### Option 4: After Installing as Package
+```bash
+cd <path-to-skill>
+uv pip install -e .
+web-search "your query"
+```
+
+---
+
+## ⚠️ Important Note About Paths
+
+The `search` script automatically switches to the skill directory when executed. However, **you must call the script using its correct path**:
+
+- ❌ `./search "query"` → **Fails** if you're not in the skill directory
+- ✅ `cd <skill-path> && ./search "query"` → **Works**
+- ✅ `<skill-path>/search "query"` → **Works from anywhere**
+
+**Replace `<skill-path>` with your actual installation path**, typically:
+- `~/.pi/agent/skills/web-search`
+- `/path/to/skills/web-search`
 
 ## Configuration
 
@@ -31,32 +83,34 @@ WEB_SEARCH_BEARER=your_token
 ```
 Or set `WEB_SEARCH_BEARER` environment variable.
 
-## Usage
+## Usage Examples
+
+Replace `<skill-path>` with your actual installation path (e.g., `~/.pi/agent/skills/web-search`).
 
 ```bash
 # Basic search
-uv run scripts/search.py "react hooks"
+<skill-path>/search "react hooks"
 
 # Documentation search
-uv run scripts/search.py "python tutorial" --site github.com
+<skill-path>/search "python tutorial" --site github.com
 
 # Filter by file type
-uv run scripts/search.py "ML transformers" --filetype pdf
+<skill-path>/search "ML transformers" --filetype pdf
 
-# Recent news
-uv run scripts/search.py "AI news" --timelimit d
+# Recent news (last day)
+<skill-path>/search "AI news" --timelimit d
 
 # Exclude sites
-uv run scripts/search.py "python tutorial" --exclude youtube,reddit
+<skill-path>/search "python tutorial" --exclude youtube,reddit
 
 # Exact phrase
-uv run scripts/search.py "error message" --exact
+<skill-path>/search "TypeError NoneType" --exact
 
 # Images
-uv run scripts/search.py "cats" --categories images
+<skill-path>/search "cats" --categories images
 
-# Recent specific topic
-uv run scripts/search.py "climate" --time-range week
+# Time range (last week)
+<skill-path>/search "climate" --time-range week
 ```
 
 ## Options
@@ -82,24 +136,42 @@ The skill automatically selects the best backend:
 
 User doesn't need to think about backends - just search.
 
-## Examples
+## Tip: Create an Alias
+
+To avoid typing the full path every time, add this to your `~/.zshrc` or `~/.bashrc`:
+
+```bash
+alias web-search='<skill-path>/search'
+```
+
+Example:
+```bash
+alias web-search='~/.pi/agent/skills/web-search/search'
+```
+
+Then reload your shell (`source ~/.zshrc` or `source ~/.bashrc`) and use:
+```bash
+web-search "your query" --site github.com
+```
+
+## More Examples
 
 ```bash
 # Find documentation
-uv run scripts/search.py "react useEffect" --site react.dev
+cd <skill-path> && ./search "react useEffect" --site react.dev
 
 # Find papers
-uv run scripts/search.py "attention is all you need" --filetype pdf
+cd <skill-path> && ./search "attention is all you need" --filetype pdf
 
 # Troubleshooting
-uv run scripts/search.py "TypeError NoneType" --exact --site stackoverflow.com
+cd <skill-path> && ./search "TypeError NoneType" --exact --site stackoverflow.com
 
 # Current events
-uv run scripts/search.py "bitcoin" --timelimit d
+cd <skill-path> && ./search "bitcoin" --timelimit d
 
 # Images
-uv run scripts/search.py "landscape photography" --categories images
+cd <skill-path> && ./search "landscape photography" --categories images
 
 # Multiple exclusions
-uv run scripts/search.py "python async" --exclude youtube,twitter,reddit
+cd <skill-path> && ./search "python async" --exclude youtube,twitter,reddit
 ```

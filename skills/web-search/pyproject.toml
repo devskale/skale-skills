@@ -5,10 +5,11 @@ description = "DuckDuckGo web search skill for pi"
 requires-python = ">=3.8"
 dependencies = [
     "requests>=2.31.0",
+    "duckduckgo-search>=6.0.0",
 ]
 
 [project.scripts]
-web-search = "search:main"
+web-search = "scripts.search:main"
 
 [build-system]
 requires = ["setuptools"]

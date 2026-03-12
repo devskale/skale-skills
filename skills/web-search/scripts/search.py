@@ -195,12 +195,6 @@ def search_duckduckgo(
         params['page'] = page
     if timelimit is not None:
         params['timelimit'] = timelimit
-    if backend is not None:
-        params['backend'] = backend
-    if proxy is not None:
-        params['proxy'] = proxy
-    if verify is not None:
-        params['verify'] = str(verify).lower()
 
     headers: Dict[str, str] = {
         'accept': 'application/json',
