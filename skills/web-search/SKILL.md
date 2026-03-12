@@ -5,7 +5,7 @@ description: Search the web with automatic backend selection. Works out-of-the-b
 
 # Web Search
 
-Unified web search that works immediately without any setup. Uses public SearXNG instances by default.
+Search the web. Works immediately without any setup.
 
 ## Quick Start
 
@@ -53,10 +53,6 @@ export SEARXNG_URL=http://localhost:8080
 
 # Option 3: Environment variable (with auth)
 export SEARXNG_URL=http://localhost:8080@username@password
-
-# Option 4: Config file
-mkdir -p ~/.config/api_keys
-echo '{"url":"http://localhost:8080","username":"user","password":"pass"}' > ~/.config/api_keys/searx.json
 ```
 
 ## Usage
@@ -128,8 +124,6 @@ echo '{"url":"http://localhost:8080","username":"user","password":"pass"}' > ~/.
 
 # Debug backend selection
 ./search "test" -v
-# Output: # Backend: searxng
-#         _Instance: https://searx.be_
 ```
 
 ## Alias Setup
