@@ -2,6 +2,7 @@
 name: agent-skill-creator
 description: Guide for creating effective skills for any AI agent (Claude, Trae, Gemini, OpenCode, Qwen, etc.). This skill should be used when users want to create a new skill or update an existing one.
 license: Complete terms in LICENSE.txt
+disable-model-invocation: true
 ---
 
 # Universal Skill Creator
@@ -72,13 +73,16 @@ skill-name/
 │   │   ├── license: (optional)
 │   │   ├── compatibility: (optional)
 │   │   ├── allowed-tools: (optional, experimental)
-│   │   └── metadata: (optional)
+│   │   ├── metadata: (optional)
+│   │   └── disable-model-invocation: (optional, pi-specific)
 │   └── Markdown instructions (required)
 └── Bundled Resources (optional)
     ├── scripts/          - Executable code (Python/Bash/etc.)
     ├── references/       - Documentation intended to be loaded into context as needed
     └── assets/           - Files used in output (templates, icons, fonts, etc.)
 ```
+
+**Specification reference:** See the [Agent Skills Specification](https://agentskills.io/specification) for the official format.
 
 #### SKILL.md (required)
 
@@ -371,15 +375,19 @@ Write the YAML frontmatter with required and optional fields:
 
 **Required fields:**
 
-- `name`: The skill name (1-64 characters, lowercase letters/digits/hyphens only, no leading/trailing/consecutive hyphens)
+- `name`: The skill name (1-64 characters, lowercase letters/digits/hyphens only, no leading/trailing/consecutive hyphens). **Must match the parent directory name.**
 - `description`: What the skill does and when to use it (max 1024 characters)
 
-**Optional fields:**
+**Optional fields (per [Agent Skills Spec](https://agentskills.io/specification)):**
 
 - `license`: License name or reference to a bundled license file
 - `compatibility`: Environment requirements (max 500 characters). Use when your skill has specific requirements like intended product, system packages, or network access. Example: `compatibility: Requires git, docker, and internet access`
 - `allowed-tools`: Space-delimited list of pre-approved tools the skill may use (experimental). Example: `allowed-tools: Bash(git:*) Bash(jq:*) Read`
 - `metadata`: Arbitrary key-value mapping for additional properties. Use unique key names to avoid conflicts. Example: `metadata: { author: org-name, version: "1.0" }`
+
+**Platform-specific extensions (not in spec):**
+
+- `disable-model-invocation`: (pi-specific) When `true`, prevents the agent from invoking the model while processing this skill. Use for skills that provide pure instructions without needing model reasoning. Example: `disable-model-invocation: true`
 
 **Example with optional fields:**
 
@@ -436,13 +444,13 @@ This script checks for:
 - Correct naming conventions (lowercase, hyphen-case, max 64 chars)
 - Name matches directory name
 - Description quality and length (max 1024 chars)
-- Only allowed frontmatter fields (`name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`)
+- Standard frontmatter fields (`name`, `description`, `license`, `compatibility`, `allowed-tools`, `metadata`)
+- Platform-specific extensions (e.g., `disable-model-invocation` for pi)
 
-**Alternative:** The official [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) CLI from AgentSkills can also validate skills:
+**Alternative:** The official [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) CLI from AgentSkills validates against the spec (note: it doesn't recognize platform-specific extensions):
 
 ```bash
-pip install skills-ref
-skills-ref validate ./my-skill
+uvx --from skills-ref agentskills validate ./my-skill
 ```
 
 ### Step 6: Packaging a Skill
@@ -481,3 +489,9 @@ After testing the skill, users may request improvements. Often this happens righ
 2. Notice struggles or inefficiencies
 3. Identify how SKILL.md or bundled resources should be updated
 4. Implement changes and test again
+
+## See Also
+
+- **[Agent Skills Specification](https://agentskills.io/specification)** — Official format spec for SKILL.md files
+- **[Agent Skills Home](https://agentskills.io/home)** — Documentation hub for skill creators
+- **[skills-ref CLI](https://github.com/agentskills/agentskills/tree/main/skills-ref)** — Official validation tool (`pip install skills-ref`)

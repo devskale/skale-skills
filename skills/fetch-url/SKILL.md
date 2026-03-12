@@ -1,6 +1,9 @@
 ---
 name: fetch-url
 description: Fetch and extract readable text content from web pages using text-based browsers (w3m/lynx) or via API. Auto-selects best tool for platform with automatic fallback. Supports Jina.ai Reader (free unlimited), markdown.new, and custom API. Extracts plain text without rendering images, styles, or JavaScript. Use when the user wants to read articles, documentation, or scrape text content from web pages.
+metadata:
+  author: skale
+  version: "1.2"
 ---
 
 # Fetch URL
@@ -313,3 +316,10 @@ Detailed guides for specific use cases:
 - **[GitHub Pages](references/github.md)** — Strategies for fetching GitHub content, URL conversion patterns, curl workflows, and common troubleshooting.
 
 See [references/](references/) directory for all reference documentation.
+
+---
+
+## See Also
+
+- [Agent Skills Specification](https://agentskills.io/specification) — The open standard for agent skills format
+- [Agent Skills Home](https://agentskills.io/home) — Documentation hub for skill creators
