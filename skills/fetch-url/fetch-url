@@ -1,0 +1,5 @@
+#!/bin/bash
+# Fetch URL - Extract text from any webpage
+# Usage: ./fetch "https://example.com" [--tool jina] [--verbose]
+cd "$(dirname "$0")"
+uv run scripts/fetch.py "$@"

@@ -1,5 +1,26 @@
 {
   "tools": {
+    "jina": {
+      "platforms": ["Darwin", "Linux", "Windows"],
+      "requires_install": false,
+      "rate_limit": "unlimited",
+      "notes": "Jina.ai Reader - free unlimited, no auth, clean markdown"
+    },
+    "markdown": {
+      "platforms": ["Darwin", "Linux", "Windows"],
+      "requires_install": false,
+      "rate_limit": "50/day",
+      "notes": "markdown.new - Cloudflare API, clean markdown, JS rendering option"
+    },
+    "chawan": {
+      "platforms": ["Darwin", "Linux"],
+      "requires_install": true,
+      "install": {
+        "Darwin": "brew install chawan",
+        "Linux": "See https://github.com/devskale/chawan"
+      },
+      "notes": "Modern browser with CSS/JS support - great for StackOverflow"
+    },
     "w3m": {
       "platforms": ["Darwin", "Linux"],
       "requires_install": true,
@@ -18,41 +39,19 @@
       },
       "notes": "Faster than w3m, simpler output"
     },
-    "chawan": {
-      "platforms": ["Darwin", "Linux"],
-      "requires_install": true,
-      "install": {
-        "Darwin": "brew install chawan",
-        "Linux": "See https://github.com/devskale/chawan"
-      },
-      "notes": "Modern browser with CSS/JS support - great for StackOverflow"
-    },
-    "jina": {
-      "platforms": ["Darwin", "Linux", "Windows"],
-      "requires_install": false,
-      "rate_limit": "unlimited",
-      "notes": "Jina.ai Reader - free unlimited, no auth, clean markdown"
-    },
-    "markdown": {
-      "platforms": ["Darwin", "Linux", "Windows"],
-      "requires_install": false,
-      "rate_limit": "50/day",
-      "notes": "markdown.new - Cloudflare API, clean markdown, JS rendering option"
-    },
     "api": {
       "platforms": ["Darwin", "Linux", "Windows"],
       "requires_install": false,
       "requires_auth": true,
       "api_url": "https://amd1.mooo.com/api/fetch_url",
-      "tools": ["w3m", "lynx"],
       "notes": "Custom API endpoint, requires bearer token"
     }
   },
   "defaults": {
-    "Darwin": ["jina", "api", "markdown", "chawan", "w3m", "lynx"],
-    "Linux": ["jina", "api", "markdown", "chawan", "w3m", "lynx"],
-    "Windows": ["jina", "api", "markdown"]
+    "Darwin": ["jina", "markdown", "chawan", "w3m", "lynx"],
+    "Linux": ["jina", "markdown", "chawan", "w3m", "lynx"],
+    "Windows": ["jina", "markdown"]
   },
-  "fallback_order": ["jina", "api", "markdown", "chawan", "w3m", "lynx"],
+  "fallback_order": ["jina", "markdown", "chawan", "w3m", "lynx"],
   "timeout": 30
 }

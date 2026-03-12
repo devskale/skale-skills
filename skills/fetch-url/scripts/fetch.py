@@ -12,14 +12,24 @@ import argparse
 import subprocess
 import platform as platform_module
 import json
+import re
+import contextlib
+import io
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+# Optional dependencies with graceful fallback
 requests = None
 try:
     import requests
 except ImportError:
     pass  # Will show error when API mode is actually used
+
+# Credgoo for credential management
+try:
+    from credgoo import get_api_key
+except ImportError:
+    get_api_key = None  # type: ignore
 
 # Configuration
 SCRIPT_DIR = Path(__file__).parent
@@ -30,6 +40,45 @@ SETTINGS_FILE = SKILL_DIR / "settings.json"
 DEFAULT_API_URL = "https://amd1.mooo.com/api/fetch_url"
 MARKDOWN_NEW_URL = "https://markdown.new"
 JINA_READER_URL = "https://r.jina.ai"
+
+# Error patterns that indicate blocked/failed responses
+ERROR_PATTERNS = [
+    r"been blocked by network security",
+    r"blocked by network security",
+    r"error 403",
+    r"error 429",
+    r"access denied",
+    r"just a moment",
+    r"checking your browser",
+    r"captcha",
+    r"cloudflare",
+    r"please enable javascript",
+    r"security verification",
+    r"ray id:",
+    r"you don't have permission",
+    r"forbidden",
+    r"rate limited",
+]
+
+# Site-specific tool preferences (domains that need specific tools)
+SITE_TOOL_HINTS = {
+    # Sites where w3m excels
+    "reddit.com": ["w3m", "lynx", "markdown"],
+    "www.reddit.com": ["w3m", "lynx", "markdown"],
+    "news.ycombinator.com": ["w3m", "jina"],
+    # Sites that block jina, use markdown fallback
+    "stackoverflow.com": ["markdown"],
+    "stackexchange.com": ["markdown"],
+    "superuser.com": ["markdown"],
+    "askubuntu.com": ["markdown"],
+    "serverfault.com": ["markdown"],
+    # Sites that work well with jina
+    "docs.python.org": ["jina"],
+    "developer.mozilla.org": ["jina"],
+    "github.com": ["jina", "markdown"],
+    "medium.com": ["jina"],
+    "wikipedia.org": ["jina"],
+}
 
 
 def load_settings() -> Dict[str, Any]:
@@ -52,11 +101,11 @@ def get_default_settings() -> Dict[str, Any]:
             "jina": {"platforms": ["Darwin", "Linux", "Windows"], "requires_install": False},
         },
         "defaults": {
-            "Darwin": ["w3m", "jina", "markdown", "lynx"],
-            "Linux": ["w3m", "jina", "markdown", "lynx"],
+            "Darwin": ["jina", "markdown", "w3m", "lynx"],
+            "Linux": ["jina", "markdown", "w3m", "lynx"],
             "Windows": ["jina", "markdown"]
         },
-        "fallback_order": ["jina", "markdown", "w3m", "lynx"],
+        "fallback_order": ["jina", "markdown", "chawan", "w3m", "lynx"],
         "timeout": 30
     }
 
@@ -83,20 +132,6 @@ def get_available_tools(settings: Dict[str, Any]) -> List[str]:
     return available
 
 
-def get_default_tool(settings: Dict[str, Any]) -> str:
-    """Get default tool for current platform."""
-    current_platform = get_platform()
-    defaults = settings.get("defaults", {})
-    platform_defaults = defaults.get(current_platform, ["jina", "markdown"])
-    available = get_available_tools(settings)
-
-    # Return first available default
-    for tool in platform_defaults:
-        if tool in available:
-            return tool
-    return "jina"  # Fallback to jina (works everywhere)
-
-
 def check_tool_available(tool: str, settings: Dict[str, Any]) -> bool:
     """Check if a tool is available on current platform."""
     current_platform = get_platform()
@@ -105,19 +140,70 @@ def check_tool_available(tool: str, settings: Dict[str, Any]) -> bool:
 
 
 def get_bearer_token() -> Optional[str]:
-    """Get bearer token from environment variable or .env file."""
-    token = os.environ.get("FETCH_URL_BEARER") or os.environ.get("WEB_SEARCH_BEARER")
-    if token:
+    """Get bearer token from credgoo, environment variable, or .env file."""
+    # Environment variable (highest priority)
+    if token := os.environ.get("FETCH_URL_BEARER"):
         return token
-
-    # Look for .env in skill root directory
+    
+    # Credgoo (suppress output)
+    if get_api_key:
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                if token := get_api_key("FETCH_URL_BEARER"):
+                    return token
+        except Exception:
+            pass
+    
+    # Local .env file
     env_file = SKILL_DIR / ".env"
     if env_file.exists():
-        for line in env_file.read_text().strip().split('\n'):
-            if line.startswith('FETCH_URL_BEARER=') or line.startswith('WEB_SEARCH_BEARER='):
-                return line.split('=', 1)[1].strip()
-
+        for line in env_file.read_text().splitlines():
+            if line.startswith("FETCH_URL_BEARER="):
+                return line.split("=", 1)[1].strip()
+    
     return None
+
+
+def extract_domain(url: str) -> str:
+    """Extract domain from URL."""
+    url = url.strip()
+    if not url.startswith('http://') and not url.startswith('https://'):
+        url = 'https://' + url
+    
+    # Extract domain
+    match = re.match(r'https?://([^/]+)', url)
+    if match:
+        return match.group(1).lower()
+    return ""
+
+
+def get_site_tool_hint(url: str) -> Optional[List[str]]:
+    """Get preferred tools for a specific site based on domain."""
+    domain = extract_domain(url)
+    
+    # Direct match
+    if domain in SITE_TOOL_HINTS:
+        return SITE_TOOL_HINTS[domain]
+    
+    # Partial match (e.g., subdomain)
+    for site_domain, tools in SITE_TOOL_HINTS.items():
+        if domain.endswith(site_domain) or site_domain.endswith(domain):
+            return tools
+    
+    return None
+
+
+def is_valid_content(content: str) -> bool:
+    """Check if content is valid (not an error page)."""
+    if not content or not content.strip():
+        return False
+    
+    content_lower = content.lower()
+    for pattern in ERROR_PATTERNS:
+        if re.search(pattern, content_lower, re.IGNORECASE):
+            return False
+    
+    return True
 
 
 def get_w3m_path() -> str:
@@ -311,19 +397,30 @@ def fetch_with_fallback(url: str, preferred_tool: str, settings: Dict[str, Any],
                         links: bool = False, bearer: str = None, api_url: str = None,
                         md_method: str = 'auto', md_retain_images: bool = False,
                         verbose: bool = False) -> str:
-    """Fetch URL with automatic fallback to other tools on failure."""
+    """Fetch URL with automatic fallback to other tools on failure or invalid content."""
     timeout = settings.get("timeout", 30)
-    fallback_order = settings.get("fallback_order", ["jina", "api", "markdown", "w3m", "lynx"])
+    fallback_order = settings.get("fallback_order", ["jina", "markdown", "chawan", "w3m", "lynx"])
     available = get_available_tools(settings)
     
     # Check if API tool can be used (requires auth)
     api_requires_auth = settings.get("tools", {}).get("api", {}).get("requires_auth", True)
     has_auth = bool(bearer or get_bearer_token())
 
-    # Build tool order: preferred first, then fallbacks
+    # Check for site-specific tool hints
+    site_hints = get_site_tool_hint(url)
+    
+    # Build tool order: preferred first, then site hints, then fallbacks
     tool_order = []
     if preferred_tool in available:
         tool_order.append(preferred_tool)
+    
+    # Add site-specific tools next if available
+    if site_hints:
+        for tool in site_hints:
+            if tool in available and tool not in tool_order:
+                tool_order.append(tool)
+    
+    # Then add remaining fallback tools
     for tool in fallback_order:
         if tool in available and tool not in tool_order:
             # Skip api tool if no auth available
@@ -337,9 +434,17 @@ def fetch_with_fallback(url: str, preferred_tool: str, settings: Dict[str, Any],
             if verbose and tool != preferred_tool:
                 print(f"Trying {tool}...", file=sys.stderr)
             result = fetch_with_tool(tool, url, links, bearer, api_url, md_method, md_retain_images, timeout, settings)
+            
+            # Check if content is valid (not an error page)
             if result and result.strip():
-                return result
-            errors.append(f"{tool}: empty response")
+                if is_valid_content(result):
+                    return result
+                else:
+                    errors.append(f"{tool}: blocked/error response")
+                    if verbose:
+                        print(f"{tool}: detected blocked/error response, trying next...", file=sys.stderr)
+            else:
+                errors.append(f"{tool}: empty response")
         except Exception as e:
             errors.append(f"{tool}: {e}")
 
@@ -364,9 +469,22 @@ def fetch_url(url: str, tool: str = 'auto', links: bool = False, use_api: bool =
 
     # Auto-select tool if needed
     if tool == 'auto':
-        tool = get_default_tool(settings)
-        if verbose:
-            print(f"Auto-selected tool: {tool}", file=sys.stderr)
+        # Check for site-specific preference first
+        site_hints = get_site_tool_hint(url)
+        available = get_available_tools(settings)
+        
+        if site_hints:
+            for hint_tool in site_hints:
+                if hint_tool in available:
+                    tool = hint_tool
+                    if verbose:
+                        print(f"Site-specific tool: {tool} for {extract_domain(url)}", file=sys.stderr)
+                    break
+        
+        if tool == 'auto':
+            tool = "jina"  # Default to jina (works everywhere)
+            if verbose:
+                print(f"Auto-selected tool: {tool}", file=sys.stderr)
 
     # Check tool availability
     if not check_tool_available(tool, settings):
@@ -398,53 +516,35 @@ def main():
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
     parser = argparse.ArgumentParser(
-        description='Fetch and extract text content from web URLs with automatic tool selection and fallback',
+        description='Fetch and extract text content from web URLs',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Auto-select best tool (default)
-  %(prog)s "https://example.com"
-
-  # Use specific tool
-  %(prog)s "https://example.com" --tool jina
-  %(prog)s "https://example.com" --tool markdown
-  %(prog)s "https://example.com" --tool w3m
-  %(prog)s "https://example.com" --tool api --bearer TOKEN
-
-  # JS-heavy sites
-  %(prog)s "https://spa-site.com" --tool markdown --md-method browser
-
-  # Show fallback attempts
-  %(prog)s "https://example.com" --verbose
-
-  # Fetch with link numbers (w3m only)
-  %(prog)s "https://docs.python.org" --tool w3m --links
-
-Tools:
-  auto      - Auto-select best tool for platform (default)
-  jina      - Jina.ai Reader (free unlimited, works everywhere)
-  api       - Custom API endpoint (requires bearer token)
-  markdown  - markdown.new API (clean markdown, 50/day limit)
-  w3m       - Local text browser (best formatting, macOS/Linux only)
-  lynx      - Local text browser (fast, macOS/Linux only)
-  chawan    - Modern text browser with CSS/JS (great for StackOverflow, macOS/Linux only)
+  %(prog)s "https://example.com"           # Just works (auto-select)
+  %(prog)s "https://reddit.com/r/python"   # Auto-detects Reddit, uses markdown
+  %(prog)s "https://stackoverflow.com/..." # Auto-detects, bypasses blocks
+  %(prog)s "https://docs.python.org" --tool jina  # Force specific tool
         """
     )
 
     parser.add_argument('url', help='URL to fetch')
-    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'chawan', 'markdown', 'jina', 'api'], default='auto',
-                        help='Tool to use (default: auto)')
+    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'chawan', 'markdown', 'jina', 'api'], 
+                        default='auto', help='Tool to use (default: auto)')
     parser.add_argument('--links', action='store_true', help='Display link numbers (w3m only)')
-    parser.add_argument('--clean', action='store_true', help='Remove consecutive empty lines')
-    parser.add_argument('--verbose', action='store_true', help='Show fallback attempts')
-    parser.add_argument('--api', action='store_true', help='Use custom API (requires --bearer)')
-    parser.add_argument('--api-url', help='Custom API endpoint URL')
+    parser.add_argument('--clean', '-c', action='store_true', default=True, 
+                        help='Remove consecutive empty lines (default: True)')
+    parser.add_argument('--no-clean', action='store_true', help='Keep all empty lines')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Show tool selection')
+    parser.add_argument('--api', action='store_true', help='Use custom API')
     parser.add_argument('--bearer', help='Bearer token for API mode')
     parser.add_argument('--md-method', choices=['auto', 'ai', 'browser'], default='auto',
-                        help='markdown.new method: auto, ai, or browser (for JS sites)')
-    parser.add_argument('--md-images', action='store_true', help='Retain images in markdown output')
+                        help='markdown.new method (for JS sites, use: browser)')
+    parser.add_argument('--md-images', action='store_true', help='Keep images in markdown')
 
     args = parser.parse_args()
+    
+    # Handle clean flag
+    do_clean = not args.no_clean
 
     try:
         content = fetch_url(
@@ -453,12 +553,11 @@ Tools:
             args.links,
             use_api=args.api,
             bearer=args.bearer,
-            api_url=args.api_url,
             md_method=args.md_method,
             md_retain_images=args.md_images,
             verbose=args.verbose
         )
-        if args.clean:
+        if do_clean:
             content = clean_output(content)
         print(content)
     except (ValueError, RuntimeError) as e:
