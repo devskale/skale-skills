@@ -8,25 +8,44 @@ metadata:
 
 # Fetch URL
 
-Extract text from any webpage.
+Extract text from any webpage. Works out-of-the-box.
+
+## Quick Start
+
+```bash
+cd <skill-path>
+./install.sh
+./fetch-url "https://example.com"
+```
+
+**That's it!** No credentials needed for basic usage (jina/markdown/w3m are free).
+
+## Credentials (Optional)
+
+Only needed for the `--tool api` mode (custom API endpoint). Most users don't need this.
+
+**Configure:**
+```bash
+# Option 1: Using credgoo (recommended)
+credgoo add FETCH_URL_BEARER
+# Enter your token when prompted
+
+# Option 2: Environment variable
+export FETCH_URL_BEARER=your_token
+
+# Option 3: Add to shell config
+echo 'export FETCH_URL_BEARER=your_token' >> ~/.zshrc
+```
 
 ## Usage
 
 ```bash
-cd ~/.pi/agent/skills/fetch-url
-
-# Just works
+# Just works (auto-selects best tool)
 ./fetch-url "https://example.com"
 
 # Blocked sites too (Reddit, StackOverflow)
 ./fetch-url "https://reddit.com/r/python"
-```
-
-## Install
-
-```bash
-cd ~/.pi/agent/skills/fetch-url
-./install.sh
+./fetch-url "https://stackoverflow.com/questions/12345"
 ```
 
 ## Options
@@ -62,14 +81,6 @@ Not required - jina/markdown work everywhere.
 
 ```bash
 brew install w3m lynx chawan  # macOS
-```
-
-## Credentials (Optional)
-
-Only for `--tool api` mode:
-
-```bash
-credgoo add FETCH_URL_BEARER
 ```
 
 ## Troubleshooting
