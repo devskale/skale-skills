@@ -1,101 +1,135 @@
 ---
 name: web-search
-description: Search the web with automatic backend selection. Duck API for general search, SearXNG for images/news/videos. Rich filters including site, filetype, timelimit.
-compatibility: Requires uv for installation. Duck API needs WEB_SEARCH_BEARER token; SearXNG needs credgoo 'searx' key.
+description: Search the web with automatic backend selection. Works out-of-the-box with public SearXNG. Optional Duck API for advanced filters. Supports images, news, videos.
 ---
 
 # Web Search
 
-Unified web search with intelligent backend selection and rich filters.
+Unified web search that works immediately without any setup. Uses public SearXNG instances by default.
 
-## Installation
+## Quick Start
 
 ```bash
 cd <skill-path>
 ./install.sh
+./search "your query"
 ```
 
-## Credentials
+**That's it!** No credentials needed for basic usage.
 
-**Duck API** (primary):
+## Credentials (Optional)
+
+### Duck API - Advanced Filters
+
+The Duck API provides advanced filters (`--site`, `--filetype`, `--exact`, etc.) but requires a token.
+
+**Get token:** Contact your admin or use your private API endpoint.
+
+**Configure:**
 ```bash
+# Option 1: Using credgoo (recommended)
 credgoo add WEB_SEARCH_BEARER
-# Or: export WEB_SEARCH_BEARER=your_token
+# Enter your token when prompted
+
+# Option 2: Environment variable
+export WEB_SEARCH_BEARER=your_token
+
+# Option 3: Add to shell config
+echo 'export WEB_SEARCH_BEARER=your_token' >> ~/.zshrc
 ```
 
-**SearXNG** (optional, for images/news):
+### Private SearXNG - Better Reliability
+
+Public instances may have rate limits. For better reliability, run your own SearXNG instance.
+
+**Configure:**
 ```bash
+# Option 1: Using credgoo (recommended)
 credgoo add searx
-# Format: URL@USERNAME@PASSWORD
+# Enter: http://localhost:8080@username@password
+
+# Option 2: Environment variable (no auth)
+export SEARXNG_URL=http://localhost:8080
+
+# Option 3: Environment variable (with auth)
+export SEARXNG_URL=http://localhost:8080@username@password
+
+# Option 4: Config file
+mkdir -p ~/.config/api_keys
+echo '{"url":"http://localhost:8080","username":"user","password":"pass"}' > ~/.config/api_keys/searx.json
 ```
 
 ## Usage
 
 ```bash
-# Basic search
+# Basic search (works without credentials)
 ./search "react hooks"
 
-# With filters
+# With filters (requires Duck API token)
 ./search "python tutorial" --site github.com
 ./search "ML paper" --filetype pdf --timelimit m
 ./search "error fix" --exact
-./search "tutorial" --exclude youtube,video
 
-# Images/news (uses SearXNG automatically)
+# Images/news (uses SearXNG)
 ./search "cats" --categories images
 ./search "AI news" --categories news
 
 # Force specific backend
-./search "query" --api        # Duck API
-./search "query" --searxng    # SearXNG
+./search "query" --searxng    # Public SearXNG (no token needed)
+./search "query" --api        # Duck API (requires token)
 ```
 
 ## Options
 
-| Option | Description |
-|--------|-------------|
-| `--max N` | Max results (default: 10) |
-| `--site DOMAIN` | Filter by domain |
-| `--filetype EXT` | Filter by file type (pdf, txt, etc.) |
-| `--inurl FRAGMENT` | Filter by URL substring |
-| `--exclude TERMS` | Exclude comma-separated terms |
-| `--exact` | Exact phrase match |
-| `--timelimit D/W/M/Y` | Time filter (day/week/month/year) |
-| `--region CODE` | Region (us-en, de-de, wt-wt) |
-| `--categories CAT` | Category (images, news, videos) - triggers SearXNG |
-| `--json` | Output raw JSON |
-| `-v, --verbose` | Show backend used |
+| Option | Description | Backend |
+|--------|-------------|---------|
+| `--max N` | Max results (default: 10) | All |
+| `--site DOMAIN` | Filter by domain | Duck API |
+| `--filetype EXT` | Filter by file type (pdf, txt, etc.) | Duck API |
+| `--inurl FRAGMENT` | Filter by URL substring | Duck API |
+| `--exclude TERMS` | Exclude comma-separated terms | Duck API |
+| `--exact` | Exact phrase match | Duck API |
+| `--timelimit D/W/M/Y` | Time filter | Duck API |
+| `--categories CAT` | Category (images, news, videos) | SearXNG |
+| `--time-range DAY/WEEK/MONTH/YEAR` | Time filter | SearXNG |
+| `--json` | Output raw JSON | All |
+| `-v, --verbose` | Show backend used | All |
 
 ## Backend Selection
 
-| Query Type | Backend | Reason |
-|------------|---------|--------|
-| General search | Duck API | Reliable results |
-| `--categories images/news` | SearXNG | Better media aggregation |
+| Scenario | Backend | Why |
+|----------|---------|-----|
+| No token configured | Public SearXNG | Works out-of-the-box |
+| Token configured + general search | Duck API | Advanced filters |
+| `--categories images/news/videos` | SearXNG | Better media aggregation |
 | `--searxng` flag | SearXNG | Explicit choice |
 | `--api` flag | Duck API | Explicit choice |
 
 ## Examples
 
 ```bash
-# Code examples
+# Quick search (no setup needed)
+./search "how to learn python"
+
+# News search
+./search "AI news" --categories news --time-range day
+
+# Image search
+./search "cute cats" --categories images --max 5
+
+# Research (requires Duck API token)
+./search "transformer architecture" --filetype pdf --timelimit y
+
+# Code examples (requires Duck API token)
 ./search "python asyncio" --site github.com
 
-# Research papers
-./search "transformer architecture" --filetype pdf
-
-# Recent news
-./search "AI regulation" --timelimit w
-
-# Exact error messages
+# Exact error messages (requires Duck API token)
 ./search "TypeError: NoneType has no attribute" --exact
-
-# Exclude video results
-./search "python tutorial" --exclude youtube,video
 
 # Debug backend selection
 ./search "test" -v
-# Output: # Backend: duck
+# Output: # Backend: searxng
+#         _Instance: https://searx.be_
 ```
 
 ## Alias Setup
@@ -104,5 +138,5 @@ credgoo add searx
 echo "alias ws='~/.pi/agent/skills/web-search/search'" >> ~/.zshrc
 source ~/.zshrc
 
-ws "your query" --site docs.python.org
+ws "your query"
 ```
