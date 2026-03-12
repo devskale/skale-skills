@@ -1,11 +1,11 @@
 [project]
 name = "web-search-skill"
 version = "1.0.0"
-description = "DuckDuckGo web search skill for pi"
+description = "Web search skill with automatic backend selection"
 requires-python = ">=3.8"
 dependencies = [
     "requests>=2.31.0",
-    "duckduckgo-search>=6.0.0",
+    "credgoo>=0.1.0",
 ]
 
 [project.scripts]
