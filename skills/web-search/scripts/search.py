@@ -52,7 +52,7 @@ def get_bearer_token() -> Optional[str]:
 
     if credgoo is not None:
         try:
-            token = credgoo.get_api_key("web-search")
+            token = get_api_key("WEB_SEARCH_BEARER")
             if token:
                 return token
         except Exception:
