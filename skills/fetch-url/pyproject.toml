@@ -1,12 +1,12 @@
 [project]
 name = "fetch-url-skill"
-version = "1.0.0"
+version = "2.1.0"
 description = "Fetch URL content using text-based browsers or APIs"
 readme = "SKILL.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "Pi Agent", email = "pi@example.com"},
+    {name = "skale"},
 ]
 dependencies = [
     "requests>=2.31.0",
