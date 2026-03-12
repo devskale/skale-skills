@@ -1,12 +1,12 @@
 ---
 name: web-search
-description: Search the web with automatic backend selection. Uses privacy-respecting SearXNG when available, otherwise DuckDuckGo. Supports rich filters including domain, filetype, time filters, and exclusions.
-compatibility: Requires uv for installation. SearXNG needs credgoo with 'searx' key; DuckDuckGo needs WEB_SEARCH_BEARER env var.
+description: Search the web with automatic backend selection. Duck API for general search, SearXNG for images/news/videos. Rich filters including site, filetype, timelimit.
+compatibility: Requires uv for installation. Duck API needs WEB_SEARCH_BEARER token; SearXNG needs credgoo 'searx' key.
 ---
 
 # Web Search
 
-Simple, opinionated web search that automatically picks the best backend.
+Unified web search with intelligent backend selection and rich filters.
 
 ## Installation
 
@@ -15,25 +15,18 @@ cd <skill-path>
 ./install.sh
 ```
 
-Or manually:
-```bash
-cd <skill-path>
-uv venv && uv pip install -e .
-```
+## Credentials
 
-### Credentials
-
-**SearXNG** (recommended for privacy):
-```bash
-credgoo add searx
-# Format: URL@USERNAME@PASSWORD
-# Example: https://searx.example.com:8002@searxng@searxng23
-```
-
-**DuckDuckGo** (fallback):
+**Duck API** (primary):
 ```bash
 credgoo add WEB_SEARCH_BEARER
 # Or: export WEB_SEARCH_BEARER=your_token
+```
+
+**SearXNG** (optional, for images/news):
+```bash
+credgoo add searx
+# Format: URL@USERNAME@PASSWORD
 ```
 
 ## Usage
@@ -44,41 +37,72 @@ credgoo add WEB_SEARCH_BEARER
 
 # With filters
 ./search "python tutorial" --site github.com
-./search "ML transformers" --filetype pdf
-./search "AI news" --timelimit d
-./search "python tutorial" --exclude youtube,reddit
-./search "TypeError NoneType" --exact
+./search "ML paper" --filetype pdf --timelimit m
+./search "error fix" --exact
+./search "tutorial" --exclude youtube,video
+
+# Images/news (uses SearXNG automatically)
 ./search "cats" --categories images
-./search "climate" --time-range week
+./search "AI news" --categories news
+
+# Force specific backend
+./search "query" --api        # Duck API
+./search "query" --searxng    # SearXNG
 ```
 
 ## Options
 
 | Option | Description |
 |--------|-------------|
-| `--max N` | Number of results (default: 10) |
+| `--max N` | Max results (default: 10) |
 | `--site DOMAIN` | Filter by domain |
-| `--filetype TYPE` | Filter by file type (pdf, txt, etc.) |
+| `--filetype EXT` | Filter by file type (pdf, txt, etc.) |
+| `--inurl FRAGMENT` | Filter by URL substring |
 | `--exclude TERMS` | Exclude comma-separated terms |
-| `--exact` | Exact phrase matching |
-| `--timelimit d\|w\|m\|y` | Time filter (day/week/month/year) |
-| `--categories` | Category filter (images, news, videos) |
-| `--time-range` | Time range (day, week, month, year) |
+| `--exact` | Exact phrase match |
+| `--timelimit D/W/M/Y` | Time filter (day/week/month/year) |
+| `--region CODE` | Region (us-en, de-de, wt-wt) |
+| `--categories CAT` | Category (images, news, videos) - triggers SearXNG |
 | `--json` | Output raw JSON |
-| `--verbose` | Show which backend is being used |
+| `-v, --verbose` | Show backend used |
 
 ## Backend Selection
 
-Automatic selection:
-1. **SearXNG** - Used if credentials configured (privacy, more engines)
-2. **DuckDuckGo** - Default fallback
+| Query Type | Backend | Reason |
+|------------|---------|--------|
+| General search | Duck API | Reliable results |
+| `--categories images/news` | SearXNG | Better media aggregation |
+| `--searxng` flag | SearXNG | Explicit choice |
+| `--api` flag | Duck API | Explicit choice |
 
-## Tip: Create an Alias
+## Examples
 
 ```bash
-echo "alias web-search='~/.pi/agent/skills/web-search/search'" >> ~/.zshrc
+# Code examples
+./search "python asyncio" --site github.com
+
+# Research papers
+./search "transformer architecture" --filetype pdf
+
+# Recent news
+./search "AI regulation" --timelimit w
+
+# Exact error messages
+./search "TypeError: NoneType has no attribute" --exact
+
+# Exclude video results
+./search "python tutorial" --exclude youtube,video
+
+# Debug backend selection
+./search "test" -v
+# Output: # Backend: duck
+```
+
+## Alias Setup
+
+```bash
+echo "alias ws='~/.pi/agent/skills/web-search/search'" >> ~/.zshrc
 source ~/.zshrc
 
-# Then use:
-web-search "your query" --site github.com
+ws "your query" --site docs.python.org
 ```

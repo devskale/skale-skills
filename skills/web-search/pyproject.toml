@@ -5,7 +5,6 @@ description = "Web search skill with automatic backend selection"
 requires-python = ">=3.8"
 dependencies = [
     "requests>=2.31.0",
-    "credgoo>=0.1.0",
 ]
 
 [project.scripts]
