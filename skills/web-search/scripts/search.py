@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Web Search - Unified search with automatic backend selection.
-Supports DuckDuckGo API (with multiple engine backends) and SearXNG.
+Web Search - Unified search with public and private backends.
+Defaults to public SearXNG instances (no credentials needed).
+Supports private Duck API and SearXNG with credentials for better results.
 """
 
 import argparse
@@ -31,21 +32,27 @@ except ImportError:
 
 DUCK_API_URL = os.environ.get("DUCK_API_URL", "https://amd1.mooo.com/api/duck/search")
 
-# Search engine backends available through the Duck API
-DUCK_BACKENDS = ["auto", "all", "bing", "brave", "duckduckgo", "google", "mojeek", "yandex", "yahoo", "wikipedia"]
+# Public SearXNG instances (no auth required)
+PUBLIC_SEARXNG_INSTANCES = [
+    "https://searx.be",
+    "https://search.bus-hit.me", 
+    "https://search.rowie.at",
+    "https://searx.fmac.xyz",
+]
+
+# Private instance (if configured)
+PRIVATE_SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
 
 
 # =============================================================================
-# Credentials
+# Credentials (Optional)
 # =============================================================================
 
 def get_bearer_token() -> Optional[str]:
     """Get bearer token from env, credgoo, or .env file."""
-    # Environment variable
     if token := os.environ.get("WEB_SEARCH_BEARER"):
         return token
     
-    # Credgoo (suppress output)
     if get_api_key:
         try:
             import io
@@ -56,7 +63,6 @@ def get_bearer_token() -> Optional[str]:
         except Exception:
             pass
     
-    # Local .env file
     env_file = Path(__file__).parent.parent / ".env"
     if env_file.exists():
         for line in env_file.read_text().splitlines():
@@ -67,7 +73,17 @@ def get_bearer_token() -> Optional[str]:
 
 
 def get_searxng_credentials() -> Optional[Dict[str, str]]:
-    """Get SearXNG credentials. Format: URL@USERNAME@PASSWORD"""
+    """Get SearXNG credentials if configured."""
+    # Environment variable: URL or URL@USER@PASS
+    if PRIVATE_SEARXNG_URL:
+        if "@" in PRIVATE_SEARXNG_URL:
+            parts = PRIVATE_SEARXNG_URL.split("@")
+            if len(parts) == 3:
+                return {"url": parts[0], "user": parts[1], "pass": parts[2]}
+        else:
+            return {"url": PRIVATE_SEARXNG_URL, "user": "", "pass": ""}
+    
+    # Credgoo
     if get_api_key:
         try:
             import io
@@ -76,12 +92,16 @@ def get_searxng_credentials() -> Optional[Dict[str, str]]:
                 cred = get_api_key("searx")
             if cred:
                 parts = cred.split("@")
-                if len(parts) == 3:
-                    return {"url": parts[0], "user": parts[1], "pass": parts[2]}
+                if len(parts) >= 1:
+                    return {
+                        "url": parts[0],
+                        "user": parts[1] if len(parts) > 1 else "",
+                        "pass": parts[2] if len(parts) > 2 else ""
+                    }
         except Exception:
             pass
     
-    # Local fallback file
+    # Local config file
     config_file = Path.home() / ".config/api_keys/searx.json"
     if config_file.exists():
         try:
@@ -98,38 +118,30 @@ def get_searxng_credentials() -> Optional[Dict[str, str]]:
 
 
 # =============================================================================
-# Backend Selection Strategy
+# Backend Selection
 # =============================================================================
 
 def select_backend(args: argparse.Namespace) -> str:
-    """
-    Select the best backend based on query type and available credentials.
-    
-    Strategy:
-    - Duck API: Best for general search, reliable results
-    - SearXNG: Best for images/news/videos aggregation
-    
-    Selection logic:
-    1. User explicitly chose --api (duck) or --searxng → honor it
-    2. Image/video/news categories → SearXNG (better aggregation)
-    3. Default → Duck API (more reliable)
-    """
+    """Select backend based on args and available credentials."""
     # Explicit choice
     if args.api:
         return "duck"
     if args.searxng:
         return "searxng"
     
-    # Category-based: images/news/videos better on SearXNG
-    if args.categories and get_searxng_credentials():
-        return "searxng"
+    # Duck API only if token available
+    if get_bearer_token():
+        # Images/news better on SearXNG
+        if args.categories:
+            return "searxng"
+        return "duck"
     
-    # Default to Duck API (more reliable)
-    return "duck"
+    # Default to public SearXNG
+    return "searxng"
 
 
 # =============================================================================
-# Duck API Search
+# Duck API Search (requires token)
 # =============================================================================
 
 def search_duck(
@@ -146,10 +158,7 @@ def search_duck(
     page: int = 1,
     bearer: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """
-    Search using the Duck API with advanced filters.
-    All filter operators are handled by the API directly.
-    """
+    """Search using Duck API (requires token)."""
     if not requests:
         raise RuntimeError("requests library required. Run: uv pip install requests")
     
@@ -165,8 +174,6 @@ def search_duck(
         "page": page,
     }
     
-    # Optional filters (API handles these directly)
-    # Note: backend parameter not supported by API, kept for future compatibility
     if site:
         params["site"] = site
     if filetype:
@@ -192,7 +199,7 @@ def search_duck(
 
 
 # =============================================================================
-# SearXNG Search
+# SearXNG Search (public or private)
 # =============================================================================
 
 def search_searxng(
@@ -202,12 +209,10 @@ def search_searxng(
     engines: Optional[str] = None,
     time_range: Optional[str] = None,
     language: str = "en",
+    instance_url: Optional[str] = None,
+    auth: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Search using SearXNG (privacy-focused metasearch)."""
-    creds = get_searxng_credentials()
-    if not creds:
-        return {"error": "SearXNG credentials not configured. Add 'searx' to credgoo."}
-    
+    """Search using SearXNG (public or private instance)."""
     params = {
         "q": query,
         "format": "json",
@@ -222,40 +227,50 @@ def search_searxng(
     if time_range:
         params["time_range"] = time_range
     
-    url = f"{creds['url']}/search?{urllib.parse.urlencode(params)}"
+    # Try private instance first, then public instances
+    instances_to_try = []
+    if instance_url:
+        instances_to_try.append(instance_url)
+    instances_to_try.extend(PUBLIC_SEARXNG_INSTANCES)
     
-    try:
-        req = urllib.request.Request(url)
-        auth = __import__("base64").b64encode(f"{creds['user']}:{creds['pass']}".encode()).decode()
-        req.add_header("Authorization", f"Basic {auth}")
-        
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode())
-            if "results" in data:
-                data["results"] = data["results"][:max_results]
-            return data
-    except Exception as e:
-        return {"error": f"SearXNG failed: {e}"}
+    for instance in instances_to_try:
+        url = f"{instance}/search?{urllib.parse.urlencode(params)}"
+        try:
+            req = urllib.request.Request(url)
+            if auth:
+                req.add_header("Authorization", f"Basic {auth}")
+            
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+                if "results" in data:
+                    data["results"] = data["results"][:max_results]
+                    data["_instance"] = instance
+                return data
+        except Exception:
+            continue
+    
+    return {"error": "All SearXNG instances failed"}
 
 
 # =============================================================================
 # Output Formatting
 # =============================================================================
 
-def format_results(results: Union[List, Dict], backend: str, query: str, limit: int = 10) -> str:
+def format_results(results: Union[List, Dict], backend: str, query: str, limit: int = 10, verbose: bool = False) -> str:
     """Format search results as markdown."""
-    # Handle errors
     if isinstance(results, dict) and "error" in results:
         return f"**Error:** {results['error']}"
     if isinstance(results, list) and results and "error" in results[0]:
         return f"**Error:** {results[0]['error']}"
     
-    # Normalize results
     items = results if isinstance(results, list) else results.get("results", [])
     if not items:
         return f"No results found for '{query}'."
     
     lines = [f"# Results for '{query}'\n"]
+    
+    if verbose and isinstance(results, dict) and "_instance" in results:
+        lines.append(f"_Instance: {results['_instance']}_\n")
     
     for i, r in enumerate(items[:limit], 1):
         title = r.get("title", "No title")
@@ -265,11 +280,10 @@ def format_results(results: Union[List, Dict], backend: str, query: str, limit: 
         
         lines.append(f"{i}. [**{title}**]({url})")
         if snippet:
-            # Truncate long snippets
             if len(snippet) > 200:
                 snippet = snippet[:197] + "..."
             lines.append(f"   {snippet}")
-        if source and backend == "searxng":
+        if source:
             lines.append(f"   _Source: {source}_")
         lines.append("")
     
@@ -277,53 +291,48 @@ def format_results(results: Union[List, Dict], backend: str, query: str, limit: 
 
 
 # =============================================================================
-# Main Entry Point
+# Main
 # =============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Web search with automatic backend selection",
+        description="Web search - works out of the box with public instances",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s "react hooks tutorial"
   %(prog)s "python async" --site github.com --max 20
-  %(prog)s "machine learning" --backend google --timelimit w
+  %(prog)s "cats" --categories images
+  %(prog)s "AI news" --categories news --time-range day
   %(prog)s "error fix" --exact
-  %(prog)s "cats" --categories images --searxng
-  %(prog)s "news today" --backend brave --timelimit d
 
-Backend Selection (automatic by default):
-  - Duck API: General search, specific engines (google, bing, brave)
-  - SearXNG: Images, news, videos (better aggregation)
+Backends:
+  - Public SearXNG: Default, no setup required
+  - Duck API: Set WEB_SEARCH_BEARER for advanced filters
+  - Private SearXNG: Set SEARXNG_URL or add to credgoo
         """
     )
     
-    # Required
     parser.add_argument("query", help="Search query")
-    
-    # Result options
     parser.add_argument("--max", type=int, default=10, help="Max results (default: 10)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Show backend used")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Show backend info")
     
-    # Duck API filters (passed directly to API)
-    parser.add_argument("--site", help="Filter by domain (site:)")
+    # Filters
+    parser.add_argument("--site", help="Filter by domain")
     parser.add_argument("--filetype", help="Filter by file type (pdf, txt, etc.)")
     parser.add_argument("--inurl", help="Filter by URL fragment")
     parser.add_argument("--exclude", help="Comma-separated terms to exclude")
     parser.add_argument("--exact", action="store_true", help="Exact phrase match")
-    parser.add_argument("--timelimit", choices=["d", "w", "m", "y"],
+    parser.add_argument("--timelimit", "--time-limit", choices=["d", "w", "m", "y"],
                         help="Time filter: day/week/month/year")
     parser.add_argument("--region", default="wt-wt", help="Region (e.g., us-en, de-de)")
-    parser.add_argument("--safesearch", choices=["off", "moderate", "strict"], default="off")
     parser.add_argument("--page", type=int, default=1, help="Results page")
     
     # SearXNG options
-    parser.add_argument("--categories", help="Category filter (images, news, videos)")
-    parser.add_argument("--engines", help="Comma-separated engines for SearXNG")
-    parser.add_argument("--time-range", dest="time_range",
-                        choices=["day", "week", "month", "year"],
+    parser.add_argument("--categories", help="Category (images, news, videos)")
+    parser.add_argument("--engines", help="Comma-separated engines")
+    parser.add_argument("--time-range", choices=["day", "week", "month", "year"],
                         help="Time range (SearXNG)")
     
     # Backend selection
@@ -338,13 +347,11 @@ Backend Selection (automatic by default):
     if args.verbose:
         print(f"# Backend: {backend}", file=sys.stderr)
     
-    # Get credentials for Duck API
-    bearer = get_bearer_token()
-    
     # Execute search
     if backend == "duck":
+        bearer = get_bearer_token()
         if not bearer:
-            print("Error: WEB_SEARCH_BEARER not set. Configure credentials first.", file=sys.stderr)
+            print("Error: WEB_SEARCH_BEARER not set. Use --searxng for public search.", file=sys.stderr)
             sys.exit(1)
         
         results = search_duck(
@@ -357,24 +364,35 @@ Backend Selection (automatic by default):
             exact=args.exact,
             timelimit=args.timelimit,
             region=args.region,
-            safesearch=args.safesearch,
-            page=args.page,
             bearer=bearer,
         )
     else:
+        creds = get_searxng_credentials()
+        instance_url = creds["url"] if creds else None
+        auth = None
+        if creds and creds.get("user") and creds.get("pass"):
+            auth = __import__("base64").b64encode(
+                f"{creds['user']}:{creds['pass']}".encode()
+            ).decode()
+        
         results = search_searxng(
             query=args.query,
             max_results=args.max,
             categories=args.categories,
             engines=args.engines,
-            time_range=args.time_range,
+            time_range=args.time_range or (args.timelimit[0] if args.timelimit else None),
+            instance_url=instance_url,
+            auth=auth,
         )
     
     # Output
     if args.json:
+        # Remove internal keys before JSON output
+        if isinstance(results, dict) and "_instance" in results:
+            del results["_instance"]
         print(json.dumps(results, indent=2))
     else:
-        print(format_results(results, backend, args.query, args.max))
+        print(format_results(results, backend, args.query, args.max, args.verbose))
 
 
 if __name__ == "__main__":

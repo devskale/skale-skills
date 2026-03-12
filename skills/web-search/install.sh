@@ -11,15 +11,14 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Create venv and install base dependencies
+# Create venv and install dependencies
 echo "Creating virtual environment..."
 uv venv
 
 echo "Installing dependencies..."
 uv pip install requests
 
-# Install credgoo from skale.dev
-echo "Installing credgoo..."
+echo "Installing credgoo (credential manager)..."
 uv pip install -r https://skale.dev/credgoo
 
 echo ""
@@ -27,8 +26,14 @@ echo "✓ Installation complete!"
 echo ""
 echo "Usage:"
 echo "  ./search \"your query\""
-echo "  ./search \"react hooks\" --site github.com --max 10"
 echo ""
-echo "Credentials:"
-echo "  Duck API:  credgoo add WEB_SEARCH_BEARER"
-echo "  SearXNG:   credgoo add searx  # URL@USERNAME@PASSWORD"
+echo "Works out-of-the-box with public SearXNG instances."
+echo ""
+echo "Optional credentials for better results:"
+echo ""
+echo "  Duck API (advanced filters):"
+echo "    credgoo add WEB_SEARCH_BEARER"
+echo ""
+echo "  Private SearXNG (better reliability):"
+echo "    credgoo add searx"
+echo "    # Format: http://host@username@password"
