@@ -23,7 +23,7 @@ web-search "query" -v                      # Verbose (show backend)
 |--------|-------------|
 | `--max N` | Max results (default: 10) |
 | `--categories CAT` | images, news, videos |
-| `--time-range DAY/WEEK/MONTH/YEAR` | Time filter |
+| `--time-range RANGE` | Time filter (lowercase: day, week, month, year) |
 | `--json` | Output raw JSON |
 | `-v, --verbose` | Show backend used |
 
@@ -50,6 +50,10 @@ credgoo add WEB_SEARCH_BEARER
 credgoo add searx
 # Enter: http://localhost:8080@username@password
 ```
+
+## Edge Cases
+
+- `--time-range` values must be **lowercase**: `day`, `week`, `month`, `year` (not `DAY`, `WEEK`, etc.)
 
 ## Install
 
