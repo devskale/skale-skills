@@ -12,6 +12,11 @@
       "rate_limit": "50/day",
       "notes": "markdown.new - Cloudflare API, clean markdown, JS rendering option"
     },
+    "chrome": {
+      "platforms": ["Darwin", "Linux", "Windows"],
+      "requires_install": false,
+      "notes": "Headless Chrome - handles Cloudflare/JS challenges via virtual-time-budget"
+    },
     "chawan": {
       "platforms": ["Darwin", "Linux"],
       "requires_install": true,
@@ -52,6 +57,6 @@
     "Linux": ["jina", "markdown", "chawan", "w3m", "lynx"],
     "Windows": ["jina", "markdown"]
   },
-  "fallback_order": ["jina", "markdown", "chawan", "w3m", "lynx"],
-  "timeout": 30
+  "fallback_order": ["jina", "markdown", "chrome", "chawan", "w3m", "lynx"],
+  "timeout": 45
 }

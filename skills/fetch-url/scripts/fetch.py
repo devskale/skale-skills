@@ -78,6 +78,9 @@ SITE_TOOL_HINTS = {
     "github.com": ["jina", "markdown"],
     "medium.com": ["jina"],
     "wikipedia.org": ["jina"],
+    # Sites behind aggressive Cloudflare/JS challenges
+    "firmenabc.at": ["chrome"],
+    "www.firmenabc.at": ["chrome"],
 }
 
 
@@ -320,8 +323,111 @@ def fetch_with_lynx(url: str, timeout: int = 30) -> str:
         raise RuntimeError("Lynx not found. Install with 'brew install lynx' (macOS) or 'sudo apt-get install lynx' (Linux)")
 
 
+def _html_to_text(html: str) -> str:
+    """Convert raw HTML to readable text, stripping noise like cookie banners."""
+    import html as html_mod
+
+    # Try to extract TYPO3SEARCH content markers first (Austrian business sites)
+    typo3 = re.search(r'TYPO3SEARCH_begin-->(.*?)<!--TYPO3SEARCH_end', html, flags=re.DOTALL)
+    if typo3:
+        html = typo3.group(1)
+    else:
+        # No TYPO3 markers — strip nav/header/footer for cleaner output
+        for tag in ['header', 'nav', 'footer']:
+            html = re.sub(rf'<{tag}[^>]*>.*?</{tag}>', '', html, flags=re.DOTALL | re.IGNORECASE)
+
+    # Remove HTML comments
+    html = re.sub(r'<!--.*?-->', '', html, flags=re.DOTALL)
+
+    # Remove cookie consent, banner, GDPR overlays (aggressive multi-line removal)
+    for kw in ['cookie', 'consent', 'cookiebot', 'gdpr', 'popup', 'overlay',
+                'iab', 'cc-window', 'onetrust', 'cmp']:
+        html = re.sub(rf'<[^>]*{kw}[^>]*>.*?(?:</div>|</section>|</aside>)', '', html,
+                       flags=re.DOTALL | re.IGNORECASE)
+
+    # Remove script, style, svg, noscript tags
+    for tag in ['script', 'style', 'svg', 'noscript']:
+        html = re.sub(rf'<{tag}[^>]*>.*?</{tag}>', '', html, flags=re.DOTALL | re.IGNORECASE)
+
+    # Convert block-level tags to newlines, inline tags to spaces
+    html = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
+    html = re.sub(r'</?(p|div|h[1-6]|li|tr|section|article|header|footer|main|table|td|th|dd|dt|dl|blockquote|pre|ul|ol)[^>]*>', '\n', html, flags=re.IGNORECASE)
+    html = re.sub(r'<[^>]+>', ' ', html)
+
+    # Decode HTML entities
+    html = html_mod.unescape(html)
+
+    # Clean up whitespace
+    lines = [line.strip() for line in html.split('\n')]
+    lines = [l for l in lines if l and len(l) > 1]
+    text = '\n'.join(lines)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+
+def _find_chrome() -> Optional[str]:
+    """Find Chrome/Chromium executable on the system."""
+    candidates = [
+        # macOS
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Google Chrome Beta.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+        # Linux
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/chromium",
+        # Windows
+        os.path.expandvars(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"),
+    ]
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    # Try PATH
+    for name in ['google-chrome', 'google-chrome-stable', 'chromium-browser', 'chromium', 'chrome']:
+        try:
+            result = subprocess.run(['which', name], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
+    return None
+
+
+def fetch_with_chrome(url: str, timeout: int = 45) -> str:
+    """Fetch a webpage using headless Chrome. Handles Cloudflare JS challenges."""
+    chrome_path = _find_chrome()
+    if not chrome_path:
+        raise RuntimeError("Chrome/Chromium not found. Install Google Chrome or Chromium.")
+
+    try:
+        cmd = [
+            chrome_path,
+            '--headless=new',
+            '--disable-gpu',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--run-all-compositor-stages-before-draw',
+            f'--virtual-time-budget={timeout * 250}',  # Allow JS to execute
+            '--dump-dom',
+            url
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=timeout)
+        html = result.stdout
+        if not html or not html.strip():
+            raise RuntimeError("Chrome returned empty content")
+        return _html_to_text(html)
+
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"Chrome timed out for URL: {url}")
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Chrome failed: {e.stderr}")
+
+
 def fetch_with_chawan(url: str, timeout: int = 30) -> str:
-    """Fetch a webpage using Chawan browser."""
+    """Fetch a webpage using Chawan browser."""""
     try:
         cmd = ['cha', '-d', url]
 
@@ -376,6 +482,8 @@ def fetch_with_tool(tool: str, url: str, links: bool = False, bearer: str = None
         return fetch_with_w3m(url, links, timeout)
     elif tool == 'lynx':
         return fetch_with_lynx(url, timeout)
+    elif tool == 'chrome':
+        return fetch_with_chrome(url, timeout)
     elif tool == 'chawan':
         return fetch_with_chawan(url, timeout)
     elif tool == 'markdown':
@@ -528,7 +636,7 @@ Examples:
     )
 
     parser.add_argument('url', help='URL to fetch')
-    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'chawan', 'markdown', 'jina', 'api'], 
+    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'chawan', 'chrome', 'markdown', 'jina', 'api'], 
                         default='auto', help='Tool to use (default: auto)')
     parser.add_argument('--links', action='store_true', help='Display link numbers (w3m only)')
     parser.add_argument('--clean', '-c', action='store_true', default=True, 
