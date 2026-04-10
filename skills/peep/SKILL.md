@@ -28,7 +28,8 @@ After installation, configure peep with default settings:
 peep whoami          # Check logged-in account
 peep read <url/id>   # Read a tweet
 peep 1234567890      # Shorthand for read
-peep home            # Home timeline
+peep home            # Home timeline (For You)
+peep home --following  # Following feed
 peep search "query"  # Search tweets
 peep mentions        # Your mentions
 peep user-tweets @x  # User's tweets
@@ -36,7 +37,7 @@ peep bookmarks       # Your bookmarks
 peep tweet "hello"   # Post a tweet (confirm first!)
 ```
 
-**Note:** JSON output is enabled by default in the config file. Use `--plain` for human-readable output without emojis/colors.
+**Note:** Use `--json` for JSON output and `--plain` for human-readable output without emojis/colors.
 
 ## Commands
 
@@ -57,10 +58,12 @@ peep tweet "hello"   # Post a tweet (confirm first!)
 | `peep likes` | Your liked tweets |
 | `peep bookmarks` | Your bookmarks |
 | `peep unbookmark <id...>` | Remove bookmarks |
-| `peep lists` | Your Twitter lists |
+| `peep lists` | Your owned Twitter lists |
+| `peep lists --member-of` | Lists you're a member of |
 | `peep list-timeline <id>` | Tweets from a list |
 | `peep news` / `peep trending` | AI-curated news |
 | `peep about <user>` | Account origin/location info |
+| `peep query-ids [--fresh]` | Inspect/refresh cached GraphQL query IDs |
 | `peep tweet "text"` | Post a tweet |
 | `peep reply <id> "text"` | Reply to a tweet |
 | `peep follow <user>` | Follow a user |
@@ -73,6 +76,8 @@ peep tweet "hello"   # Post a tweet (confirm first!)
 | `--json` | JSON output |
 | `--json-full` | JSON with raw API response |
 | `--plain` | Plain output (no emoji/color) |
+| `--no-emoji` | Disable emoji output |
+| `--no-color` | Disable ANSI colors |
 | `--timeout <ms>` | Request timeout |
 | `--cookie-source <source>` | Cookie source: chrome, firefox, safari (repeatable) |
 | `--chrome-profile <name>` | Chrome profile name (default: Profile 2) |
@@ -208,3 +213,30 @@ peep --cookie-timeout 60000 whoami   # 60 seconds
 - [News & Trending](references/news.md) - Explore tabs, filters, AI-curated content
 - [Media](references/media.md) - Image/video uploads, supported formats
 - [JSON Output](references/json.md) - Schema, fields, pagination format
+
+## When Things Break
+
+### Stale Query IDs (most common)
+
+X rotates GraphQL query IDs frequently. If commands fail with HTTP 404 or unexpected errors:
+```bash
+peep query-ids --fresh    # Force refresh from X's frontend JS bundles
+```
+
+### Rate Limited (429)
+
+X rate-limits GraphQL requests. Wait a few minutes and retry. For bulk operations, use `--delay`:
+```bash
+peep bookmarks --all --delay 2000   # 2s between pages
+```
+
+### Expired Cookies (403)
+
+Cookies expire after a period of inactivity. Re-authenticate in your browser:
+1. Open x.com in Chrome/Firefox and log in
+2. Run `peep check` to verify cookies are readable
+3. If stuck, try `peep --cookie-source chrome whoami`
+
+### Lists DecodeException
+
+`peep lists` may show `DecodeException` errors for certain list banners — this is an X server-side issue. The lists data is still returned and usable.
