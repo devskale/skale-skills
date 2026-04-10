@@ -42,8 +42,8 @@ Add `--json-full` for raw API response in `_raw` field.
   "username": "username",
   "name": "Display Name",
   "description": "Bio text",
-  "followersCount,
-  "following": 1000Count": 500,
+  "followersCount": 500,
+  "followingCount": 1000,
   "isBlueVerified": true,
   "profileImageUrl": "https://...",
   "createdAt": "2020-01-01T00:00:00.000Z"

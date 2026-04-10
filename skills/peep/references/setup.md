@@ -36,9 +36,6 @@ cat > ~/.config/peep/config.json5 << 'EOF'
 
   // Max quoted tweet depth
   quoteDepth: 1,
-
-  // Output format (true = JSON output by default)
-  json: true,
 }
 EOF
 ```
@@ -97,7 +94,6 @@ ls "$env:APPDATA\Mozilla\Firefox\Profiles\"
 | `cookieTimeoutMs` | Cookie extraction timeout in milliseconds | `30000` |
 | `timeoutMs` | API request timeout in milliseconds | `20000` |
 | `quoteDepth` | Maximum quoted tweet depth | `1` |
-| `json` | Enable JSON output by default | `true` |
 
 ## Cookie Source Options
 
