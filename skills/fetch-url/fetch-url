@@ -1,5 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Fetch URL - Extract text from any webpage
 # Usage: fetch-url "https://example.com" [--tool jina] [--verbose]
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR" && exec uv run scripts/fetch.py "$@"
