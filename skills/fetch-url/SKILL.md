@@ -54,6 +54,5 @@ credgoo add FETCH_URL_BEARER
 
 ```bash
 cd ~/.pi/agent/skills/fetch-url
-./install.sh
-ln -sf $(pwd)/fetch-url ~/.local/bin/fetch-url  # Make global
+./install.sh  # Installs deps + creates ~/.local/bin/fetch-url wrapper
 ```

@@ -11,23 +11,26 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Create venv and install base dependencies
-echo "Creating virtual environment..."
-uv venv
+# Sync dependencies from pyproject.toml (creates venv automatically)
+echo "Syncing dependencies..."
+uv sync
 
-echo "Installing dependencies..."
-uv pip install requests
-
-# Install credgoo from skale.dev
-echo "Installing credgoo..."
-uv pip install -r https://skale.dev/credgoo
+# Create wrapper in ~/.local/bin for global access
+# Uses exec with absolute path instead of symlink (works on Windows/MSYS2)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+mkdir -p "$HOME/.local/bin"
+cat > "$HOME/.local/bin/fetch-url" << EOF
+#!/usr/bin/env bash
+exec "$SCRIPT_DIR/fetch-url" "\$@"
+EOF
+chmod +x "$HOME/.local/bin/fetch-url"
 
 echo ""
 echo "✓ Installation complete!"
 echo ""
 echo "Usage:"
-echo "  uv run scripts/fetch.py \"https://example.com\""
-echo "  uv run scripts/fetch.py \"https://reddit.com/r/python\""
+echo "  fetch-url \"https://example.com\""
+echo "  fetch-url \"https://reddit.com/r/python\""
 echo ""
 echo "Credentials (optional, for API tool only):"
 echo "  credgoo add FETCH_URL_BEARER"
