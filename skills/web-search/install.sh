@@ -11,15 +11,9 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Create venv and install dependencies
-echo "Creating virtual environment..."
-uv venv
-
-echo "Installing dependencies..."
-uv pip install requests
-
-echo "Installing credgoo (credential manager)..."
-uv pip install -r https://skale.dev/credgoo
+# Sync dependencies from pyproject.toml (creates venv automatically)
+echo "Syncing dependencies..."
+uv sync
 
 echo ""
 echo "✓ Installation complete!"
