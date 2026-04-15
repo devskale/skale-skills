@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 # Resolve symlinks to get the actual script directory
-SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR" && exec uv run scripts/search.py "$@"
