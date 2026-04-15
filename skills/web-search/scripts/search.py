@@ -6,6 +6,7 @@ Supports private Duck API and SearXNG with credentials for better results.
 """
 
 import argparse
+import io
 import json
 import os
 import sys
@@ -13,6 +14,21 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
+# Fix Windows console encoding: reconfigure stdout to UTF-8 so that
+# Unicode characters from search results (✓, →, ☎, etc.) don't
+# crash on cp1252 terminals.
+if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        # Fallback: wrap in a TextIOWrapper that won't crash on unencodable chars
+        try:
+            sys.stdout = io.TextIOWrapper(
+                sys.stdout.buffer, encoding='utf-8', errors='replace'
+            )
+        except Exception:
+            pass
 
 # Optional dependencies with graceful fallback
 try:
