@@ -16,26 +16,12 @@ Extract text from any webpage. Works globally.
 
 ```bash
 cd ~/.pi/agent/skills/fetch-url
-./install.sh   # Installs deps + creates ~/.local/bin/fetch-url wrapper
+./install.sh   # Installs deps + credgoo + creates ~/.local/bin/fetch-url wrapper
 ```
 
-### 2. Install credgoo (optional, for API tool only)
+> `./install.sh` runs `uv sync` which installs credgoo automatically. No separate install needed.
 
-Most users don't need this — the default tools (jina, w3m, chrome) work without credentials.
-
-```bash
-uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
-```
-
-See: https://skale.dev/credgoo
-
-Then add the API bearer token:
-
-```bash
-credgoo add FETCH_URL_BEARER
-```
-
-### 3. Optional browsers (for better fallback tools)
+### 2. Optional browsers (for better fallback tools)
 
 ```bash
 # Debian/Ubuntu
@@ -45,7 +31,7 @@ sudo apt-get install w3m lynx
 brew install w3m lynx chawan
 ```
 
-### 4. Verify
+### 3. Verify
 
 ```bash
 fetch-url "https://example.com" -v   # Should show which tool was used

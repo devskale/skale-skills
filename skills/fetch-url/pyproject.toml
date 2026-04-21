@@ -10,7 +10,11 @@ authors = [
 ]
 dependencies = [
     "requests>=2.31.0",
+    "credgoo",
 ]
+
+[tool.uv.sources]
+credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
 
 [build-system]
 requires = ["hatchling"]

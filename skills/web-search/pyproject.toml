@@ -5,4 +5,8 @@ description = "Web search skill with automatic backend selection"
 requires-python = ">=3.8"
 dependencies = [
     "requests>=2.31.0",
+    "credgoo",
 ]
+
+[tool.uv.sources]
+credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
