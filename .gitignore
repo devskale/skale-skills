@@ -36,3 +36,6 @@ transcripts/
 # Skiller build artifacts
 skiller/python3.14/
 skiller_index.json
+
+# User profiling output (sensitive personal data)
+profile.md
