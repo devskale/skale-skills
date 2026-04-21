@@ -8,7 +8,7 @@ metadata:
 
 # Web Search
 
-Search the web. Works globally without setup.
+Search the web. Works globally.
 
 ## Setup
 
@@ -20,15 +20,9 @@ cd ~/.pi/agent/skills/web-search
 ln -sf $(pwd)/search ~/.local/bin/web-search  # Make global
 ```
 
-### 2. Install credgoo (recommended for private backends)
+> `./install.sh` runs `uv sync` which installs credgoo automatically. No separate install needed.
 
-```bash
-uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
-```
-
-See: https://skale.dev/credgoo
-
-### 3. Configure backends (optional but recommended)
+### 2. Configure backends (optional but recommended)
 
 Public SearXNG instances are used by default — no setup needed. For better reliability and rate limits, configure a private SearXNG instance:
 
@@ -57,7 +51,7 @@ export SEARXNG_URL="https://your-instance.example.com@username@password"
 credgoo add WEB_SEARCH_BEARER
 ```
 
-### 4. Verify
+### 3. Verify
 
 ```bash
 web-search "test query" -v   # Should show: Backend: searxng
