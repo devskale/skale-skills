@@ -2,7 +2,7 @@
 name = "web-search-skill"
 version = "1.0.0"
 description = "Web search skill with automatic backend selection"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "requests>=2.31.0",
     "credgoo",
