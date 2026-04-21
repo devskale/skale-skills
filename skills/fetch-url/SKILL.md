@@ -3,18 +3,60 @@ name: fetch-url
 description: Fetch and extract readable text content from web pages. Auto-selects best tool with smart fallback. Use when the user wants to read articles, documentation, or scrape text content from web pages. Works on Reddit, StackOverflow, GitHub, docs sites, and more.
 metadata:
   author: skale
-  version: "2.4"
+  version: "2.6"
 ---
 
 # Fetch URL
 
 Extract text from any webpage. Works globally.
 
+## Setup
+
+### 1. Install the skill
+
+```bash
+cd ~/.pi/agent/skills/fetch-url
+./install.sh   # Installs deps + creates ~/.local/bin/fetch-url wrapper
+```
+
+### 2. Install credgoo (optional, for API tool only)
+
+Most users don't need this — the default tools (jina, w3m, chrome) work without credentials.
+
+```bash
+uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
+```
+
+See: https://skale.dev/credgoo
+
+Then add the API bearer token:
+
+```bash
+credgoo add FETCH_URL_BEARER
+```
+
+### 3. Optional browsers (for better fallback tools)
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install w3m lynx
+
+# macOS
+brew install w3m lynx chawan
+```
+
+### 4. Verify
+
+```bash
+fetch-url "https://example.com" -v   # Should show which tool was used
+```
+
 ## Usage
 
 ```bash
 fetch-url "https://example.com"           # Auto-selects best tool
 fetch-url "https://reddit.com/r/python"   # Works on blocked sites
+fetch-url "URL" --tool jina              # Force specific tool
 fetch-url "URL" -v                        # Verbose (show tool used)
 ```
 
@@ -41,18 +83,3 @@ fetch-url "URL" -v                        # Verbose (show tool used)
 - **Reddit**: `w3m` may only return navigation elements; try `--tool jina` for post content
 - **StackOverflow**: May redirect to different questions; verify URL is canonical
 - **Wikipedia**: Can return empty results; try `--tool w3m` as fallback
-
-## Credentials (Optional)
-
-Only needed for `--tool api` mode. Most users don't need this.
-
-```bash
-credgoo add FETCH_URL_BEARER
-```
-
-## Install
-
-```bash
-cd ~/.pi/agent/skills/fetch-url
-./install.sh  # Installs deps + creates ~/.local/bin/fetch-url wrapper
-```
