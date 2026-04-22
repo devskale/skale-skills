@@ -16,12 +16,12 @@ echo "Syncing dependencies..."
 uv sync
 
 # Create wrapper in ~/.local/bin for global access
-# Uses exec with absolute path instead of symlink (works on Windows/MSYS2)
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# cd into skill dir so relative paths (scripts/fetch.py) resolve correctly
+SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$HOME/.local/bin"
 cat > "$HOME/.local/bin/fetch-url" << EOF
 #!/usr/bin/env bash
-exec "$SCRIPT_DIR/fetch-url" "\$@"
+cd "$SKILL_DIR" && exec uv run scripts/fetch.py "\$@"
 EOF
 chmod +x "$HOME/.local/bin/fetch-url"
 

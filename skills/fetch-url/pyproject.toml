@@ -3,7 +3,7 @@ name = "fetch-url-skill"
 version = "2.1.0"
 description = "Fetch URL content using text-based browsers or APIs"
 readme = "SKILL.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "skale"},
