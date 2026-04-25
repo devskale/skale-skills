@@ -4,58 +4,39 @@
 
 ### Finding Documentation
 ```bash
-# Official docs for a library
-uv run scripts/search.py "react hooks" --site react.dev
-
-# API reference with specific filetype
-uv run scripts/search.py "python requests" --site docs.python-requests.org --filetype html
-
-# GitHub repositories
-uv run scripts/search.py "rust web framework" --site github.com
+web-search "react hooks" --site react.dev
+web-search "python requests" --site docs.python-requests.org
+web-search "rust web framework" --site github.com
 ```
 
 ### Finding Code Examples
 ```bash
-# Code snippets (exclude videos/tutorials)
-uv run scripts/search.py "python asyncio example" --exclude youtube,video
-
-# Stack Overflow answers
-uv run scripts/search.py "TypeError NoneType" --site stackoverflow.com
-
-# Gists and snippets
-uv run scripts/search.py "docker compose" --site gist.github.com
+web-search "python asyncio example" --exclude youtube,reddit
+web-search "TypeError NoneType" --site stackoverflow.com
+web-search "docker compose" --site gist.github.com
 ```
 
 ### Research & Papers
 ```bash
-# Academic papers
-uv run scripts/search.py "machine learning transformers" --filetype pdf
-
-# Research with time filter
-uv run scripts/search.py "LLM benchmarks 2024" --filetype pdf --timelimit y
+web-search "machine learning transformers" --filetype pdf
+web-search "LLM benchmarks 2024" --filetype pdf --timelimit y
 ```
 
 ### News & Current Events
 ```bash
-# Latest news
-uv run scripts/search.py "AI regulation" --timelimit d --max 20
-
-# News from specific region
-uv run scripts/search.py "tech news" --backend google --region us-en --timelimit w
+web-search "AI regulation" --timelimit d --max 20
+web-search "tech news" --time-range week --max 20
 ```
 
 ### Troubleshooting Error Messages
 ```bash
-# Exact error message search
-uv run scripts/search.py "TypeError: 'NoneType' object is not iterable" --exact
-
-# Exclude forums you don't want
-uv run scripts/search.py "npm install fails" --exclude quora,reddit
+web-search "TypeError: 'NoneType' object is not iterable" --exact
+web-search "npm install fails" --exclude quora,reddit
 ```
 
 ## Query Building Rules
 
-The script transforms flags into search operators:
+The Duck API backend transforms flags into search operators:
 
 | Input | Query Sent to API |
 |-------|-------------------|
@@ -64,49 +45,56 @@ The script transforms flags into search operators:
 | `--exclude youtube python` | `python -youtube` |
 | `--exact "to be or not to be"` | `"to be or not to be"` |
 
-**Combine flags freely:**
-```bash
-# Multiple filters together
-uv run scripts/search.py "api tutorial" --site docs.python.org --exclude video --timelimit m --max 15
-```
-
-**Use operators directly in query:**
-```bash
-# Same as --site flag
-uv run scripts/search.py "site:github.com rust async"
-```
+**Note:** These operators only work with the Duck API backend (requires `WEB_SEARCH_BEARER`). The SearXNG backend ignores `--site`, `--filetype`, `--exclude`, `--exact`, `--inurl`, and `--timelimit`.
 
 ## Options Reference
+
+### General
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--max N` | 10 | Number of results (1-100) |
-| `--page N` | 1 | Page number for pagination |
+| `--page N` | 1 | Results page |
+| `--json` | off | Output as JSON |
+| `-v, --verbose` | off | Show backend name (printed to stderr) |
+
+### Duck API Filters (requires `WEB_SEARCH_BEARER`)
+
+| Option | Default | Description |
+|--------|---------|-------------|
 | `--site DOMAIN` | - | Limit to domain (e.g., github.com) |
 | `--filetype EXT` | - | File extension (pdf, doc, txt, etc.) |
 | `--inurl TEXT` | - | URL must contain text |
 | `--exclude TERMS` | - | Comma-separated terms to exclude |
-| `--timelimit TIME` | - | `d`=day, `w`=week, `m`=month, `y`=year |
-| `--region CODE` | wt-wt | Language-region (us-en, de-de, etc.) |
-| `--backend NAME` | duckduckgo | Search provider |
 | `--exact` | false | Exact phrase match (wrap in quotes) |
-| `--proxy URL` | - | Proxy: `socks5h://127.0.0.1:9150` |
-| `--timeout SEC` | 30 | Request timeout |
+| `--timelimit {d,w,m,y}` | - | Time filter: d=day, w=week, m=month, y=year |
+| `--region CODE` | wt-wt | Language-region (us-en, de-de, etc.) |
+
+### SearXNG Options (default, no credentials needed)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--categories CAT` | general | Category: images, news, videos |
+| `--engines LIST` | all | Comma-separated engines (e.g., google,bing) |
+| `--time-range {day,week,month,year}` | - | Time filter (works on both backends, auto-mapped for Duck) |
+| `--language LANG` | en | Search language (e.g., en, de, ja). SearXNG backend only. |
+| `--region CODE` | wt-wt | Language-region (us-en, de-de, etc.) |
+
+### Backend Selection
+
+| Option | Description |
+|--------|-------------|
+| `--api` | Force Duck API backend |
+| `--searxng` | Force SearXNG backend |
+
+Default backend selection: Duck API if `WEB_SEARCH_BEARER` is set (except for `--categories`), otherwise SearXNG.
 
 ## Backends
 
-| Backend | Best For |
-|---------|----------|
-| `duckduckgo` | General search (default, most reliable) |
-| `google` | Broader results, news |
-| `bing` | Alternative to Google |
-| `brave` | Privacy-focused, tech content |
-| `wikipedia` | Encyclopedia articles only |
-| `mojeek` | Independent index |
-
-**Note:** Some backends may return 404 if the API doesn't support them. Default (`duckduckgo`) is most reliable.
-
-**Tip:** If one backend returns poor results, try another.
+| Backend | Credentials | Filters | Best For |
+|---------|-------------|---------|----------|
+| **Duck API** | `WEB_SEARCH_BEARER` required | `--site`, `--filetype`, `--exclude`, `--exact`, `--inurl`, `--timelimit` | General search, domain filtering, file types |
+| **SearXNG** | None (public instances) | `--categories`, `--engines`, `--time-range` | Images, news, videos, no-credential search |
 
 ## Region Codes
 
@@ -130,55 +118,52 @@ Set `WEB_SEARCH_BEARER` token via (in priority order):
    export WEB_SEARCH_BEARER="your_token"
    ```
 
-2. **Credgoo** (if available):
+2. **Credgoo:**
    ```bash
-   credgoo  # service name: web-search
+   credgoo add WEB_SEARCH_BEARER
    ```
 
-3. **.env file** in skill root directory (auto-loaded):
+3. **.env file** in skill root directory (same level as `SKILL.md`):
    ```
    WEB_SEARCH_BEARER=your_token
    ```
 
-**Note:** The `.env` file should be placed in the skill's root directory (same level as `SKILL.md`), not in `scripts/`.
+For private SearXNG:
+```bash
+credgoo add searx
+# Format: URL@username@password
+```
 
 ## Tips & Tricks
 
 ### Reduce Noise
 ```bash
-# Exclude common low-value sites
-uv run scripts/search.py "tutorial" --exclude pinterest,quora,facebook
-
-# Focus on documentation only
-uv run scripts/search.py "api" --site docs.* --filetype html
+web-search "tutorial" --exclude pinterest,quora,facebook
 ```
 
 ### Pagination
 ```bash
-# Get more results across pages
-uv run scripts/search.py "rust gui" --max 10 --page 1
-uv run scripts/search.py "rust gui" --max 10 --page 2
+web-search "rust gui" --max 10 --page 1
+web-search "rust gui" --max 10 --page 2
 ```
 
-### Regional Content
+### Backend Differences
 ```bash
-# German results for German topic
-uv run scripts/search.py "versicherung" --region de-de --backend google
-```
+# Duck API: supports --site filter
+web-search "react hooks" --site react.dev
 
-### Debugging Queries
-Add `--bearer` to test with a different token:
-```bash
-uv run scripts/search.py "test" --bearer "other_token"
+# SearXNG: supports --categories and --engines
+web-search "cute cats" --categories images
+web-search "test" --searxng --engines google,bing
 ```
 
 ## Troubleshooting
 
 | Error | Solution |
 |-------|----------|
-| "Bearer token is required" | Ensure `.env` file exists in skill root (not scripts/), or set env var |
-| "Error performing search" | Check network, verify API is accessible |
+| "Bearer token is required" | Set `WEB_SEARCH_BEARER` env var or use `--searxng` for public search |
+| "All SearXNG instances failed" | Check network; configure a private SearXNG instance via `credgoo add searx` |
 | "No results found" | Simplify query, try different backend |
-| 404 with specific backend | Some backends may not be supported; use default (duckduckgo) |
-| Timeout errors | Increase `--timeout 60` |
-| SSL errors | Check `--verify true/false` setting |
+| Filters ignored | Duck API filters (`--site`, `--filetype`, etc.) only work with Duck backend |
+| 404 on empty query | Provide a non-empty search query |
+| Exit code 1 | Search error — backend failure, auth error, or all instances down |
