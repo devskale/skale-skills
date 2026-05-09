@@ -39,3 +39,5 @@ skiller_index.json
 
 # User profiling output (sensitive personal data)
 profile.md
+
+tmp/
