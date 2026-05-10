@@ -7,6 +7,25 @@ description: "Drive headless Chrome from the CLI for web scraping, screenshots, 
 
 Rodney drives a persistent headless Chrome instance from the terminal. All commands share one long-running Chrome process — cookies, localStorage, and navigation state persist across invocations.
 
+## ⚠️ Usage: CLI Only — NOT an MCP Tool
+
+Rodney is a **CLI tool**, not an MCP server. Use it via the **bash** tool only. Never call `mcp("rodney")`.
+
+Every rodney session follows this pattern via bash:
+
+```bash
+rodney start                              # 1. Launch Chrome
+rodney open <url>                         # 2. Navigate
+rodney waitstable                         # 3. Wait for page to settle
+# ... interact, scrape, screenshot ...     # 4. Do your work
+rodney stop                               # 5. ALWAYS stop when done
+```
+
+**Important:**
+- Call each command as a separate bash invocation (e.g. `rodney start`, then `rodney open <url>`, etc.)
+- **Always `rodney stop`** when finished — otherwise Chrome runs forever
+- Combine start → open → waitstable → work → stop in every workflow
+
 ## Install
 
 ```bash
@@ -146,6 +165,7 @@ Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.
 - **Always `rodney stop`** when done — otherwise a Chrome process lingers indefinitely.
 - **`waitstable` is preferred** over `waitload` for SPAs and dynamic pages — `waitload` only fires on initial navigation, not on client-side renders.
 - **`js` results are stringified** — arrays and objects come back as JSON strings. Pipe through `python3 -m json.tool` or use `--json` flags where available.
+- **`js` does NOT support multi-line expressions** — it takes a single string argument. For complex logic, chain calls or use IIFEs on one line: `rodney js "(function(){ var els = document.querySelectorAll('.item'); return els[0].innerText; })()"`
 - **Selectors are CSS only** — no XPath. Use `rodney js` for complex queries.
 - **One Chrome process per session** — calling `rodney start` while already running is a no-op, not an error.
 - **`open` auto-adds `http://`** — for `https://` URLs, include the scheme explicitly.
