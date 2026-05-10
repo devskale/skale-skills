@@ -4,7 +4,7 @@
 
 Headless Chrome automation from the CLI. Scrape, screenshot, fill forms, export PDFs, accessibility audits, smoke tests.
 
-## Install
+## 1. Install rodney
 
 ```bash
 uv tool install rodney
@@ -12,23 +12,17 @@ uv tool install rodney
 
 Requires Chrome or Chromium.
 
-## Verify
+## 2. Add the skill to your project
 
 ```bash
-rodney start && rodney stop
-```
-
-## Add to a Pi Project
-
-```bash
-# In your project root
 mkdir -p .pi/skills
-ln -s /Users/johannwaldherr/code/skale-skills/skills/rodney .pi/skills/rodney
+git clone --depth 1 --filter=blob:none --sparse https://github.com/devskale/skale-skills.git /tmp/skale-skills
+cd /tmp/skale-skills && git sparse-checkout set skills/rodney
+cp -r skills/rodney .pi/skills/rodney
+rm -rf /tmp/skale-skills
 ```
 
-Done. Restart pi and the agent will have the rodney skill available.
-
-## Quick Test
+## 3. Verify
 
 ```bash
 rodney start
@@ -38,8 +32,4 @@ rodney screenshot page.png
 rodney stop
 ```
 
-## Skill Source
-
-- **Skill:** `/Users/johannwaldherr/code/skale-skills/skills/rodney/`
-- **Repo:** https://github.com/nicobailon/rodney
-- **Docs:** See `SKILL.md` and `references/` in the skill directory
+Done. Restart pi — the agent now has the rodney skill available.
