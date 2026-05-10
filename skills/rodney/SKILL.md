@@ -1,202 +1,132 @@
 ---
 name: rodney
-description: Chrome automation from CLI using rodney tool. Drive headless Chrome for web scraping, testing, screenshots, form filling, navigation, and accessibility checks. Use when user wants to automate browser interactions, scrape websites, take screenshots, test web pages, fill forms, or check accessibility. Supports persistent Chrome sessions, multi-step workflows, and shell scripting integration.
+description: "Drive headless Chrome from the CLI for web scraping, screenshots, form filling, PDF export, accessibility audits, and browser smoke tests. Use when the user wants to automate browser interactions, scrape dynamic pages (JS-rendered content), take page screenshots or element screenshots, fill and submit web forms, export pages as PDF, run accessibility checks, or assert page state in CI/CD pipelines. Triggers on mentions of: browser automation, headless Chrome, web scraping, page screenshots, form automation, accessibility testing, browser testing, rodney."
 ---
 
-# Rodney - Chrome Automation
+# Rodney — Chrome Automation
 
-Rodney drives a persistent headless Chrome instance from the command line. Each command connects to the same long-running Chrome process, enabling multi-step browser interactions from shell scripts.
+Rodney drives a persistent headless Chrome instance from the terminal. All commands share one long-running Chrome process — cookies, localStorage, and navigation state persist across invocations.
 
-## Quick Start
+## Install
 
-```bash
-rodney start                    # Launch headless Chrome
-rodney open https://example.com # Navigate to URL
-rodney title                    # Print page title
-rodney text "h1"                # Extract text from element
-rodney screenshot page.png      # Take screenshot
-rodney stop                     # Shut down Chrome
-```
-
-## Installation
-
-**Before using this skill, ensure rodney is installed and in PATH.**
-
-Verify installation:
-```bash
-which rodney && rodney --version
-```
-
-If not found, install using one of these methods:
-
-### Option 1: uv (recommended)
 ```bash
 uv tool install rodney
 ```
 
-Update to latest:
+Requires Chrome or Chromium. Set `ROD_CHROME_BIN` if not at default location.
+
+## Quick Start
+
 ```bash
-uv tool upgrade rodney
+rodney start                          # Launch headless Chrome
+rodney open https://example.com       # Navigate
+rodney text "h1"                      # Extract text
+rodney screenshot page.png            # Screenshot
+rodney stop                           # Shut down
 ```
 
-Or with pipx:
+## Commands
+
+### Navigation & Waiting
+
 ```bash
-pipx install rodney
-pipx upgrade rodney
+rodney open <url>           # Navigate (auto-adds http://)
+rodney back                 # Go back
+rodney forward              # Go forward
+rodney reload [--hard]      # Reload (bypass cache with --hard)
+rodney wait <selector>      # Wait for element to appear
+rodney waitload             # Wait for page load event
+rodney waitstable           # Wait until DOM stops changing
+rodney waitidle             # Wait for network idle
+rodney sleep <seconds>      # Fixed delay
 ```
 
-### Option 2: Build from source (requires Go 1.21+)
-```bash
-git clone https://github.com/simonw/rodney
-cd rodney
-go build -o rodney .
-sudo mv rodney /usr/local/bin/
-```
-
-Update to latest:
-```bash
-cd rodney
-git pull
-go build -o rodney .
-sudo mv rodney /usr/local/bin/
-```
-
-### Option 3: pip in virtual environment
-```bash
-uv pip install rodney
-# Ensure venv is activated before using rodney
-source .venv/bin/activate
-```
-
-Update to latest:
-```bash
-source .venv/bin/activate
-uv pip install --upgrade rodney
-```
-
-### Chrome/Chromium Requirement
-
-Rodney requires Chrome or Chromium. Set path if not at default:
+### Content Extraction
 
 ```bash
-# macOS
-export ROD_CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-
-# Linux (usually auto-detected)
-export ROD_CHROME_BIN="/usr/bin/google-chrome"
-```
-
-## Core Workflows
-
-### Web Scraping
-
-```bash
-rodney start
-rodney open https://example.com
-rodney waitstable
-title=$(rodney title)
-content=$(rodney text "article")
-links=$(rodney js 'Array.from(document.querySelectorAll("a")).map(a => a.href)')
-rodney stop
-```
-
-### Form Interaction
-
-```bash
-rodney start
-rodney open https://example.com/login
-rodney input "#email" "user@example.com"
-rodney input "#password" "secret"
-rodney click "button[type=submit]"
-rodney waitload
-rodney stop
+rodney title                        # Page title
+rodney url                          # Current URL
+rodney text <selector>              # Text content (one per match)
+rodney html [selector]              # HTML (full page or element)
+rodney attr <selector> <name>       # Attribute value
+rodney js <expression>              # Evaluate JS, return result
 ```
 
 ### Screenshots & PDFs
 
 ```bash
-rodney start
-rodney open https://example.com
-rodney screenshot -w 1920 -h 1080 full-page.png
-rodney screenshot-el ".chart" chart.png
-rodney pdf output.pdf
-rodney stop
+rodney screenshot [-w N -h N] [file]         # Viewport screenshot
+rodney screenshot-el <selector> [file]        # Element screenshot
+rodney pdf [file]                             # Export as PDF
 ```
 
-### Accessibility Testing
+### Interaction
 
 ```bash
-rodney start
-rodney open https://example.com
-rodney ax-tree --depth 3           # Dump accessibility tree
-rodney ax-find --role button       # Find all buttons
-rodney ax-find --role button --json | python3 -c "
-import json, sys
-buttons = json.load(sys.stdin)
-unnamed = [b for b in buttons if not b.get('name', {}).get('value')]
-if unnamed:
-    print(f'FAIL: {len(unnamed)} buttons missing accessible names')
-    sys.exit(1)
-print(f'PASS: all {len(buttons)} buttons have accessible names')
-"
-rodney stop
+rodney click <selector>            # Click element
+rodney input <selector> <text>     # Type into input
+rodney clear <selector>            # Clear input
+rodney select <selector> <value>   # Select dropdown option
+rodney submit <selector>           # Submit form
+rodney hover <selector>            # Hover
+rodney file <selector> <path>      # Set file on file input
+rodney download <selector> [file]  # Download href/src target
 ```
 
-### CI/CD Assertions
-
-Rodney uses exit codes: 0=success, 1=check failed, 2=error.
+### Tabs
 
 ```bash
-#!/bin/bash
-set -euo pipefail
-
-rodney start
-rodney open "https://myapp.com"
-rodney waitstable
-
-# These exit 1 if condition fails, 0 if passes
-rodney exists "h1"
-rodney visible "#main-content"
-rodney assert 'document.title' 'My App'
-rodney assert 'document.querySelector(".logged-in") !== null'
-
-rodney stop
+rodney pages                # List tabs (* marks active)
+rodney page <index>         # Switch tab
+rodney newpage [url]        # Open new tab
+rodney closepage [index]    # Close tab
 ```
 
-## Session Types
+### Assertions (exit 1 on failure)
 
-**Global session** (default): State in `~/.rodney/`
 ```bash
-rodney start
-rodney open https://example.com
+rodney exists <selector>                        # Element exists?
+rodney visible <selector>                       # Element visible?
+rodney count <selector>                         # Count matches
+rodney assert <expr> [expected] [-m msg]        # JS truthy or equality check
 ```
 
-**Local session**: State in `./.rodney/` (per-project isolation)
+### Accessibility
+
 ```bash
-rodney start --local
-rodney open https://example.com
+rodney ax-tree [--depth N] [--json]             # Dump accessibility tree
+rodney ax-find [--name N] [--role R] [--json]   # Find accessible nodes
+rodney ax-node <selector> [--json]              # Element accessibility info
 ```
 
-Auto-detection: If `./.rodney/state.json` exists, local session is used.
+## Sessions
 
-## Waiting Strategies
+| Type | State | Flag |
+|------|-------|------|
+| Global | `~/.rodney/` | default |
+| Local | `./.rodney/` | `--local` |
 
-| Command | Use Case |
-|---------|----------|
-| `wait <selector>` | Wait for element to appear |
-| `waitload` | Wait for page load event |
-| `waitstable` | Wait for DOM to stop changing |
-| `waitidle` | Wait for network idle |
-| `sleep <seconds>` | Fixed delay |
+Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.json` exists.
 
-## Environment Variables
+## Environment
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RODNEY_HOME` | `~/.rodney` | Data directory |
-| `ROD_CHROME_BIN` | `/usr/bin/google-chrome` | Chrome binary path |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `ROD_CHROME_BIN` | auto | Chrome binary path |
 | `ROD_TIMEOUT` | `30` | Element query timeout (seconds) |
+| `RODNEY_HOME` | `~/.rodney` | Data directory |
 
-## Full Command Reference
+## Gotchas
 
-See [references/commands.md](references/commands.md) for complete command list with all options.
+- **Always `rodney stop`** when done — otherwise a Chrome process lingers indefinitely.
+- **`waitstable` is preferred** over `waitload` for SPAs and dynamic pages — `waitload` only fires on initial navigation, not on client-side renders.
+- **`js` results are stringified** — arrays and objects come back as JSON strings. Pipe through `python3 -m json.tool` or use `--json` flags where available.
+- **Selectors are CSS only** — no XPath. Use `rodney js` for complex queries.
+- **One Chrome process per session** — calling `rodney start` while already running is a no-op, not an error.
+- **`open` auto-adds `http://`** — for `https://` URLs, include the scheme explicitly.
+- **Exit codes**: 0 = success, 1 = assertion failed, 2 = error (bad args, timeout, no browser).
+
+## References
+
+- **[references/commands.md](references/commands.md)** — Full command reference with all flags and options. Read when you need details on a specific command.
+- **[references/examples.md](references/examples.md)** — Ready-to-use workflow scripts for scraping, form filling, smoke tests, and accessibility audits.
