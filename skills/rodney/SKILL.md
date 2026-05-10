@@ -132,3 +132,4 @@ Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.
 - **[references/commands.md](references/commands.md)** — Full command reference with all flags and options. Read when you need details on a specific command.
 - **[references/examples.md](references/examples.md)** — Ready-to-use workflow scripts for scraping, form filling, smoke tests, and accessibility audits.
 - **[references/debugging.md](references/debugging.md)** — Non-obvious debugging patterns: screenshot time-series, form validation checks, exit code chaining, and visible-mode debugging.
+- **[references/dev-workflow.md](references/dev-workflow.md)** — Dev loop: reload-assess-iterate, page inspection without screenshots, DOM structure, accessibility tree, layout queries.
