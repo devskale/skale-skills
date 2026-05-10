@@ -1,5 +1,5 @@
 ---
-name: agents-md-best-practices
+name: agents-md-init
 description: "Create and update concise AGENTS.md files using proven best practices. Use when starting a new AGENTS.md, refactoring an overly long or confusing one, adding missing build/test commands, or capturing gotchas and verification steps. Triggers on: AGENTS.md, agent instructions, project guide, CLAUDE.md, cursor rules, copilot instructions, agent onboarding."
 disable-model-invocation: true
 ---
@@ -7,6 +7,10 @@ disable-model-invocation: true
 # AGENTS.md Best Practices
 
 Create and update AGENTS.md files so they are short, actionable, and focused on agent success. Keep under 100 lines when possible. Include only critical commands and workflows. Capture gotchas and verification steps over time. Emphasize progressive discovery via links to deeper docs.
+
+## References
+
+- [references/vendor-agents-docs/](references/vendor-agents-docs/) — official docs from Anthropic, OpenAI, GitHub Copilot, and OpenCode on agent instruction files
 
 ## When to use
 

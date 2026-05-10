@@ -32,6 +32,7 @@ transcripts/
 .claude
 .trae
 .gogcli
+skill/
 
 # Skiller build artifacts
 skiller/python3.14/
