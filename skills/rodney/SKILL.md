@@ -15,6 +15,30 @@ uv tool install rodney
 
 Requires Chrome or Chromium. Set `ROD_CHROME_BIN` if not at default location.
 
+## Project Setup
+
+To add rodney to a project, add this to the project's AGENTS.md:
+
+```markdown
+## Browser Automation
+
+Use rodney for headless Chrome automation (scraping, screenshots, forms, PDFs, a11y, smoke tests).
+
+### Setup
+1. Install: `uv tool install rodney`
+2. Verify: `rodney start && rodney stop`
+3. Link skill: `ln -s /path/to/skale-skills/skills/rodney .pi/skills/rodney`
+
+### Usage
+```bash
+rodney start
+rodney open https://example.com
+rodney waitstable
+rodney screenshot page.png
+rodney stop
+```
+```
+
 ## Quick Start
 
 ```bash
