@@ -4,7 +4,7 @@
 
 Headless Chrome automation from the CLI. Scrape, screenshot, fill forms, export PDFs, accessibility audits, smoke tests.
 
-## 1. Install rodney
+## 1. Install rodney (per machine, once)
 
 ```bash
 uv tool install rodney
