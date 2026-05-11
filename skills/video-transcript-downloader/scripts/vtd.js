@@ -171,7 +171,7 @@ async function getVideoMeta(url) {
     );
   const args = [
     "--print",
-    "%(upload_date)s|%(title).200B|%(id)s|%(view_count)s|%(like_count)s|%(uploader)s|%(duration)s|%(webpage_url)s",
+    "%(upload_date)s|%(title).200B|%(id)s|%(view_count)s|%(like_count)s|%(uploader)s|%(duration)s|%(webpage_url)s|%(tags)s",
     "--skip-download",
     url,
   ];
@@ -192,7 +192,12 @@ async function getVideoMeta(url) {
     uploader,
     duration,
     webpageUrl,
+    tagsRaw,
   ] = line.split("|");
+  let tags = [];
+  try {
+    tags = JSON.parse(tagsRaw?.replace(/'/g, '"') || "[]");
+  } catch {}
   return {
     uploadDate: uploadDate || null,
     title: title || null,
@@ -202,6 +207,7 @@ async function getVideoMeta(url) {
     uploader: uploader || "Unknown",
     duration: duration || "0",
     webpageUrl: webpageUrl || url,
+    tags,
   };
 }
 
@@ -225,6 +231,7 @@ async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
     `likes: ${meta.likeCount}`,
     `views: ${meta.viewCount}`,
     `duration: ${meta.duration}`,
+    ...(meta.tags?.length ? [`tags:`, ...meta.tags.map((t) => `  - ${t}`)] : []),
     "---",
     "",
   ].join("\n");
