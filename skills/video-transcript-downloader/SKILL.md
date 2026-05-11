@@ -25,12 +25,38 @@ Run the installation script to set up dependencies (including `yt-dlp` in a virt
 
 ## Transcript (default: save to current directory)
 
-Transcripts are saved to `./YYYY-MM-DD_title-short.md` (current directory) by default. This is the intended behavior for all transcript requests unless `--no-file` is explicitly requested.
+Transcripts are saved to `./YYYY-MM-DD_title-short.md` by default (uses video upload date, falls back to today). This is the intended behavior for all transcript requests unless `--no-file` is explicitly requested.
+
+Each transcript file includes YAML frontmatter with video metadata:
+
+```yaml
+---
+title: "Video Title"
+date: 2025-04-24
+id: RjfbvDXpFls
+url: https://www.youtube.com/watch?v=RjfbvDXpFls
+uploader: "Channel Name"
+likes: 12345
+views: 262000
+duration: 1105
+tags:
+  - ai
+  - software development
+  - ...
+---
+```
+
+Steer the output directory with `--transcript-dir`:
+
+```bash
+./scripts/vtd.js transcript --url 'https://…' --transcript-dir ./transcripts/
+```
 
 **Note for AI Agent:** When you run the `transcript` or `search` command, the script will output the path to the saved file. Your task is complete once the file is saved. Simply provide the file path to the user. Do not ask if they want to save it; it has already been saved.
 
 ```bash
 ./scripts/vtd.js transcript --url 'https://…'
+./scripts/vtd.js transcript --url 'https://…' --transcript-dir ./transcripts/
 ./scripts/vtd.js transcript --url 'https://…' --lang en
 ./scripts/vtd.js transcript --url 'https://…' --timestamps
 ./scripts/vtd.js transcript --url 'https://…' --keep-brackets
@@ -42,8 +68,8 @@ Transcripts are saved to `./YYYY-MM-DD_title-short.md` (current directory) by de
 Search for videos and download transcripts (default limit: 1). Auto-detects "top N" in query. Transcripts are saved to file by default.
 
 ```bash
-./scripts/vtd.js search "top 3 ai videos on reinforcement learning"
-./scripts/vtd.js search "nextjs tutorial" --limit 5
+./scripts/vtd.js search "top 3 ai videos on reinforcement learning" --transcript-dir ./transcripts/
+./scripts/vtd.js search "nextjs tutorial" --limit 5 --transcript-dir ./transcripts/
 ./scripts/vtd.js search "..." --no-file --timestamps
 ```
 
@@ -82,6 +108,7 @@ Prefer MP4 container without re-encoding (remux when possible):
 - By default, transcripts are saved to the current directory (`./`).
   - **Agent behavior:** If the script outputs a file path, the transcript is already saved. Inform the user of the location.
   - Use `--no-file` to print to stdout instead if User requests it.
+  - Use `--transcript-dir <path>` to control where transcripts are saved (default: current directory).
   - Pass extra `yt-dlp` args after `--` for `transcript` fallback, `download`, `audio`, `subs`, `formats`.
 
 ```bash
