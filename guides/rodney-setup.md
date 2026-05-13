@@ -33,3 +33,15 @@ rodney stop
 ```
 
 Done. Restart pi — the agent now has the rodney skill available.
+
+## Gotchas
+
+### MCP servers are lazy-loaded
+
+The pi-mcp-adapter connects MCP servers **lazily by default** — the rodney server will **not** be running after a restart. It only starts when you first call one of its tools. This is expected, not a bug.
+
+- `mcp({ })` may show the server as not connected. That's fine.
+- Just call the tool you need directly: `mcp({ tool: "rodney_open", args: '{"url": "https://example.com"}' })` — the server connects on demand.
+- Idle servers auto-disconnect after 10 minutes and reconnect on next use.
+
+
