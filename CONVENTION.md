@@ -11,6 +11,7 @@ skale-skills/
 ├── extensions/      # Extension source files (.ts or subdirs with index.ts)
 ├── prompts/         # Prompt template source files (.md)
 ├── notable/         # Reference cards for notable packages
+├── tests/           # Per-skill test suites (tests/<skill-name>/test.sh)
 ├── index-skills.py  # Reindex tool
 └── SKILL-INDEX.md   # Auto-generated index
 ```
@@ -202,3 +203,213 @@ ln -s ~/code/agents/skills/skale-skills/skills/web-search ~/.pi/agent/skills/web
 - Notable packages are documented, not activated — they live in `.pi/settings.json` for reference
 - **Skillpacks are the preferred pattern** for reusable multi-skill bundles (`~/code/agents/packs/<name>/`)
 - For project-local skills, use `.pi/skills/` in the project — no config needed
+
+---
+
+## Skill Best Practices
+
+Lessons learned from building and reviewing skills in this repo.
+
+### File Structure
+
+Every skill must have:
+
+```
+skill-name/
+├── SKILL.md           # Required: frontmatter + instructions
+├── pyproject.toml     # Required for Python: dependencies, version
+├── install.sh         # Required: creates ~/.local/bin/<command> symlink
+├── <command>          # Required: bash launcher with symlink resolution
+├── scripts/           # Optional: main Python/Node code
+├── references/        # Optional: detailed docs loaded on demand
+├── .env.example       # Required if skill uses credentials
+├── .gitignore         # Required: .venv/, .env, uv.lock, *.egg-info/, .last-update
+└── settings.json      # Optional: tool config, site hints, fallback order
+```
+
+Files that must **not** exist:
+- `requirements.txt` — use `pyproject.toml` instead
+- `.env` with real tokens — use credgoo or `.env.example` only
+- `*.egg-info/` — must be gitignored
+
+### SKILL.md
+
+**Frontmatter** — required fields:
+
+```yaml
+---
+name: skill-name          # Must match directory name
+description: What it does and when to use it. Include trigger words and file extensions.
+metadata:
+  author: org-name
+  version: "2.6.0"        # Must match pyproject.toml
+---
+```
+
+**Body** — keep it under 100 lines. Use `fetch-url "url"` not `cd ~/.pi/.../ && uv run scripts/...`.
+
+```markdown
+# Skill Name
+
+\`\`\`bash
+command "args"              # That's it.
+\`\`\`
+
+## Install
+## Usage
+## Options (table)
+## Configure (optional)
+## Troubleshooting (table)
+## Reference → links to references/
+```
+
+**Anti-patterns to avoid:**
+- Long `cd ~/.pi/agent/skills/<name> && uv run scripts/<file>` — use the installed command
+- Verbose explanations of basic concepts — agents are smart, give them what they don't know
+- Unlinked reference files — SKILL.md must mention every file in `references/`
+
+### Launcher (`<command>` file)
+
+The bash launcher must:
+
+1. **Resolve symlinks** — not hardcoded paths
+2. **Support `--update`** and **`--selfcheck`** flags
+3. **Auto-update** in background after 7 days
+4. **Write `.last-update`** timestamp
+
+Template:
+
+```bash
+#!/usr/bin/env bash
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+
+case "${1:-}" in
+    --update)    # git pull + uv sync + timestamp ;;
+    --selfcheck) # show version + last update ;;
+esac
+
+# Auto-update (7-day cycle, background, non-blocking)
+# ...
+
+cd "$SKILL_DIR" && exec uv run scripts/main.py "$@"
+```
+
+**Never use:** `readlink -f` (breaks on macOS), hardcoded absolute paths, `cd "/hardcoded/path"`.
+
+### install.sh
+
+```bash
+#!/usr/bin/env bash
+set -e
+SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SKILL_DIR"
+
+# 1. Ensure uv
+# 2. uv sync
+# 3. ln -sf "$SKILL_DIR/<launcher>" "$HOME/.local/bin/<command>"
+# 4. date +%s > "$SKILL_DIR/.last-update"
+```
+
+**Never use:** `cat > wrapper << EOF` with hardcoded paths — use symlinks instead.
+
+### Credentials
+
+**Always use credgoo.** Never hardcode tokens.
+
+Resolution order in Python:
+1. Environment variable
+2. credgoo (with `contextlib.redirect_stdout` to suppress output)
+3. `.env` file (last resort, gitignored)
+
+Check related keys as fallback (e.g. `WEB_SEARCH_BEARER` if `FETCH_URL_BEARER` not set).
+
+### Version Alignment
+
+Three places must agree:
+- `SKILL.md` → `metadata.version: "2.6.0"`
+- `pyproject.toml` → `version = "2.6.0"`
+- Test: version alignment check
+
+### Testing
+
+Every skill must have `tests/<skill-name>/test.sh`. Test categories:
+
+| Category | What to check |
+|----------|---------------|
+| Command available | `command -v <name>` |
+| Launcher flags | `--update`, `--selfcheck`, stamp file |
+| Help output | Key flags present |
+| Live smoke test | Real fetch/search against public APIs (resilient to network issues) |
+| Code quality | Type hints, docstrings, no macOS-incompatible patterns |
+| File structure | Required files exist, dead files don't |
+| `.gitignore` | Covers `.venv/`, `.env`, `uv.lock`, `*.egg-info/`, `.last-update` |
+| Version alignment | `pyproject.toml` == `SKILL.md` |
+
+Live network tests must be **resilient** — warn, don't fail on flakiness:
+
+```bash
+RESULT=$(command "test" --flag 2>&1) || true
+if echo "$RESULT" | grep -q "expected"; then
+    PASS=$((PASS + 1))
+else
+    echo "  WARN: no result (network?)"
+    PASS=$((PASS + 1))   # Don't FAIL on network issues
+fi
+```
+
+### Error Detection (fetch-url lesson)
+
+When building content validation:
+
+- **Scan only the first ~1500 chars** — real error pages are short
+- **Strong patterns** (1 hit = reject): "checking your browser", "ray id:", "please enable javascript"
+- **Weak patterns** (need 2+ hits): "cloudflare", "forbidden", "captcha", "access denied"
+- **Long content is always valid** — no error page is >3000 chars
+- A single word in a headline (e.g. "Cloudflare Turnstile...") must NOT reject the whole page
+
+### Site-Specific Tool Hints
+
+Put in `settings.json`, not hardcoded in Python:
+
+```json
+{
+  "site_tool_hints": {
+    "reddit.com": ["w3m", "lynx", "jina"],
+    "news.ycombinator.com": ["w3m", "lynx", "jina"],
+    "github.com": ["w3m", "jina", "markdown"]
+  }
+}
+```
+
+Priority: **free local tools first** (w3m, lynx), then free APIs (jina, markdown).
+
+### w3m Configuration
+
+Always set `accept_encoding identity` in w3m config — prevents gunzip errors on GitHub and other sites:
+
+```
+accept_encoding identity
+```
+
+### macOS Compatibility
+
+- Never use `readlink -f` — it's a GNU extension, doesn't exist on macOS
+- Use `BASH_SOURCE` for script path resolution, not `$0`
+- Test with `bash -n` to validate syntax before running
+- Avoid nested `$(cd "$(dirname ...)" && pwd)` inside `$(...)` — can break in bash 3.2
+
+### Python Style
+
+- **Type hints mandatory** for all function args and return values
+- **Google-style docstrings**
+- **Graceful fallback** for optional imports: `try: import requests; except ImportError: requests = None`
+- **Sanitize auth tokens** from error messages: `str(e).split("Authorization")[0]`
+- **Separate connect/read timeouts**: `timeout=(5, 15)` not `timeout=30`
+- **Error context**: capture `last_error` in loops instead of silently `continue`
