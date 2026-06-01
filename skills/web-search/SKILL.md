@@ -33,9 +33,21 @@ The install script will:
 Public SearXNG instances are used by default — no setup needed. For better reliability and rate limits, configure a private SearXNG instance:
 
 **Option A: Via credgoo** (recommended)
+
+First, install credgoo CLI if not already available:
 ```bash
-credgoo add searx
-# Enter URL@username@password, e.g.: http://localhost:8080@searxng@searxng23
+uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
+```
+
+First-time setup (interactive — enter bearer token, encryption key, Apps Script URL):
+```bash
+credgoo --setup
+```
+
+Then verify the SearXNG credential is accessible:
+```bash
+credgoo searx
+# Should print: URL@username@password, e.g.: http://localhost:8080@searxng@searxng23
 ```
 
 **Option B: Via config file** (`~/.config/api_keys/searx.json`)
@@ -54,7 +66,8 @@ export SEARXNG_URL="https://your-instance.example.com@username@password"
 
 **Duck API** (for advanced filters like `--site`, `--filetype`):
 ```bash
-credgoo add WEB_SEARCH_BEARER
+credgoo WEB_SEARCH_BEARER
+# Or set via env: export WEB_SEARCH_BEARER="your-token"
 ```
 
 ### 3. Verify
@@ -71,7 +84,7 @@ web-search "test query" -v
 | `web-search: command not found` | Add `~/.local/bin` to PATH: `export PATH="$HOME/.local/bin:$PATH"` |
 | `uv: command not found` | Run install again — it auto-installs uv, or manually: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | `No solution found when resolving dependencies` | Update the skill: `cd ~/.pi/agent/skills/web-search && git pull && ./install.sh` |
-| All SearXNG instances fail | Configure a private instance (see Option A–C above) or add a Duck API token |
+| All SearXNG instances fail | Configure a private instance (see Option A–C above) or get a Duck API token via `credgoo WEB_SEARCH_BEARER` |
 
 ## Usage
 
