@@ -271,15 +271,26 @@ def search_searxng(
         instances_to_try.append(instance_url)
     instances_to_try.extend(PUBLIC_SEARXNG_INSTANCES)
 
+    # SSL context: allow self-signed certs for private instances,
+    # strict verification for public instances
+    import ssl
+
     last_error: Optional[str] = None
-    for instance in instances_to_try:
+    for i, instance in enumerate(instances_to_try):
         url = f"{instance}/search?{urllib.parse.urlencode(params)}"
         try:
             req = urllib.request.Request(url)
             if auth:
                 req.add_header("Authorization", f"Basic {auth}")
 
-            with urllib.request.urlopen(req, timeout=(5, 15)) as resp:
+            # Private instance (index 0 if configured) may have self-signed cert
+            ssl_ctx = None
+            if i == 0 and instance_url and instance == instance_url:
+                ssl_ctx = ssl.create_default_context()
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+
+            with urllib.request.urlopen(req, timeout=15, context=ssl_ctx) as resp:
                 data = json.loads(resp.read().decode())
                 if "results" in data:
                     data["results"] = data["results"][:max_results]
