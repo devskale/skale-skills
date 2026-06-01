@@ -54,6 +54,9 @@ else
     echo "    $SKILL_DIR/search \"test query\" -v"
 fi
 
+# ── 5. Write update timestamp ──────────────────────────────────────────────
+date +%s > "$SKILL_DIR/.last-update"
+
 echo ""
 echo "✓ Installation complete!"
 echo ""
