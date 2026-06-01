@@ -5,7 +5,6 @@ Skills not maintained here. Install from upstream sources.
 ## Quick Install
 
 ```bash
-# Best skill managers
 skiller install <name>              # from crawled index
 npx @anthropic-ai/skills add <name> # Anthropic skills
 openskills install <org>/<repo>     # openskills CLI
@@ -44,16 +43,17 @@ skiller install <name>           # install skill
 npx @anthropic-ai/skills add <name>
 ```
 
-## Common Skills (get upstream, don't maintain locally)
+## Recommended Skills (get upstream, don't maintain locally)
 
-| Skill | Best Source | Install |
-|-------|-------------|---------|
-| **docx** | Anthropic | `npx @anthropic-ai/skills add docx` or `skiller install docx` |
-| **xlsx** | Anthropic | `npx @anthropic-ai/skills add xlsx` or `skiller install xlsx` |
-| **markdown-converter** | Community | `skiller search markdown` |
-| **command-creator** | Community | `skiller search command` |
-| **readme-write** | Community | `skiller search readme` |
-| **agent-skill-creator** | Community | `skiller search skill creator` |
+| Skill | What | Best Source |
+|-------|------|-------------|
+| **docx** | Create/edit Word documents | `npx @anthropic-ai/skills add docx` |
+| **xlsx** | Create/edit Excel spreadsheets | `npx @anthropic-ai/skills add xlsx` |
+| **markdown-converter** | Convert docs to markdown (markitdown) | `skiller search markdown` |
+| **command-creator** | Create agent commands | `skiller search command` |
+| **readme-write** | Generate README.md files | `skiller search readme` |
+| **agent-skill-creator** | Guide for creating skills | `skiller search skill creator` |
+| **oebb-scotty** | Austrian rail planner (ÖBB) | `skiller search oebb` |
 
 ## What We Maintain Here
 
@@ -62,10 +62,13 @@ Only **custom skills** we actively develop:
 - **fetch-url** — web content extraction with smart fallback
 - **web-search** — web search via SearXNG + Duck API
 - **video-transcript-downloader** — yt-dlp wrapper, downloads + transcripts
-- **youtube** — Invidious API video search
+- **youtube** — Invidious API video search with auto-fallback
 - **rodney** — headless Chrome automation
-- **oebb-scotty** — Austrian rail API
 - **todo** — TODO.md task tracking
 - **improve-skill** — skill improvement from session transcripts
 
-Everything else should come from upstream. Less duplication, less maintenance.
+## API Docs
+
+Reverse-engineered public APIs useful for agents:
+
+- **[api/ryanair/](api/ryanair/)** — Ryanair fare search (free, no auth)
