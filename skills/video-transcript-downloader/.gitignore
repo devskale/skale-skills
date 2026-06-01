@@ -1,4 +1,13 @@
-node_modules
+node_modules/
 npm-debug.log*
+package-lock.json
 package-lock.json.bak
-
+pnpm-lock.yaml
+.venv/
+*.egg-info/
+uv.lock
+.env
+test_output/
+test_transcripts/
+transcripts/
+.last-update

@@ -61,8 +61,8 @@ Only **custom skills** we actively develop:
 
 - **fetch-url** — web content extraction with smart fallback
 - **web-search** — web search via SearXNG + Duck API
-- **video-transcript-downloader** — yt-dlp wrapper
-- **youtube** — Invidious API wrapper
+- **video-transcript-downloader** — yt-dlp wrapper, downloads + transcripts
+- **youtube** — Invidious API video search
 - **rodney** — headless Chrome automation
 - **oebb-scotty** — Austrian rail API
 - **todo** — TODO.md task tracking
