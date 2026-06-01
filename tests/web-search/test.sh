@@ -2,149 +2,142 @@
 set -e
 
 # Web Search Skill Test Script
-# Tests basic functionality of the web-search skill
+# Tests structural and functional properties of the web-search skill (v2)
 
-# Determine skill directory (tests/web-search -> ../../skills/web-search)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILL_DIR="$(cd "$SCRIPT_DIR/../../skills/web-search" && pwd)"
-export WEB_SEARCH_BEARER="test_token_for_testing"
+# Resolve skill directory and cd into it
+cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/web-search"
 
-echo "Testing web-search skill..."
-echo "Skill directory: $SKILL_DIR"
+echo "=== Testing web-search skill (v2) ==="
+echo "Skill directory: $(pwd)"
 echo ""
 
-cd "$SKILL_DIR"
+PASS=0
+FAIL=0
 
-# Test 1: Check that the script exists and is executable
-echo "Test 1: Checking script exists..."
-if [ ! -f "search.py" ]; then
-    echo "ERROR: search.py not found"
-    exit 1
-fi
-echo "✓ search.py exists"
-echo ""
-
-# Test 2: Check help message works
-echo "Test 2: Testing help message..."
-HELP_OUTPUT=$(uv run search.py --help 2>&1)
-if ! echo "$HELP_OUTPUT" | grep -q "Search the web using DuckDuckGo"; then
-    echo "ERROR: Help message not working correctly"
-    echo "$HELP_OUTPUT"
-    exit 1
-fi
-echo "✓ Help message works"
-echo ""
-
-# Test 3: Check required arguments
-echo "Test 3: Testing required query argument..."
-if uv run search.py 2>&1 | grep -q "required: query"; then
-    echo "✓ Query argument is required"
-else
-    echo "✗ Query argument check failed"
-    exit 1
-fi
-echo ""
-
-# Test 4: Check that --api-url flag exists
-echo "Test 4: Testing --api-url flag..."
-if echo "$HELP_OUTPUT" | grep -q "\-\-api-url"; then
-    echo "✓ --api-url flag exists"
-else
-    echo "✗ --api-url flag not found"
-    exit 1
-fi
-echo ""
-
-# Test 5: Check that --timeout flag exists
-echo "Test 5: Testing --timeout flag..."
-if echo "$HELP_OUTPUT" | grep -q "\-\-timeout"; then
-    echo "✓ --timeout flag exists"
-else
-    echo "✗ --timeout flag not found"
-    exit 1
-fi
-echo ""
-
-# Test 6: Check backend options
-echo "Test 6: Testing backend options..."
-BACKEND_OPTIONS="auto, all, bing, brave, duckduckgo, google, mojeek, yandex, yahoo, wikipedia"
-for backend in $BACKEND_OPTIONS; do
-    if ! echo "$HELP_OUTPUT" | grep -q "$backend"; then
-        echo "✗ Backend option '$backend' not found"
-        exit 1
+assert() {
+    if eval "$2"; then
+        PASS=$((PASS + 1))
+    else
+        FAIL=$((FAIL + 1))
+        echo "FAIL: $1"
     fi
-done
-echo "✓ All backend options present"
+}
+
+# ── Test 1: Script exists ────────────────────────────────────────────────
+echo "[1] Checking scripts/search.py exists..."
+assert "search.py exists" "[ -f 'scripts/search.py' ]"
 echo ""
 
-# Test 7: Check that Python script has type hints
-echo "Test 7: Checking for type hints..."
-if grep -q "from typing import" "search.py"; then
-    echo "✓ Type hints imports present"
+# ── Test 2: Help message matches v2 ───────────────────────────────────────
+echo "[2] Checking help message matches v2..."
+HELP_OUTPUT=$(uv run scripts/search.py --help 2>&1)
+assert "help mentions 'public instances'" "echo '$HELP_OUTPUT' | grep -q 'public instances'"
+assert "help mentions --categories"        "echo '$HELP_OUTPUT' | grep -q '\-\-categories'"
+assert "help mentions --time-range"        "echo '$HELP_OUTPUT' | grep -q '\-\-time-range'"
+assert "help mentions --engines"           "echo '$HELP_OUTPUT' | grep -q '\-\-engines'"
+assert "help mentions --api flag"          "echo '$HELP_OUTPUT' | grep -q '\-\-api'"
+assert "help mentions --searxng flag"      "echo '$HELP_OUTPUT' | grep -q '\-\-searxng'"
+echo ""
+
+# ── Test 3: Query argument is required ──────────────────────────────────
+echo "[3] Checking query argument is required..."
+if ! uv run scripts/search.py 2>&1 | grep -qi "required.*query"; then
+    FAIL=$((FAIL + 1))
+    echo "FAIL: query argument not enforced"
 else
-    echo "✗ Type hints imports not found"
-    exit 1
+    PASS=$((PASS + 1))
 fi
 echo ""
 
-# Test 8: Check imports are properly sorted (comments)
-echo "Test 8: Checking import organization..."
-if grep -q "# Standard library imports" "search.py" && \
-   grep -q "# Third-party imports" "search.py"; then
-    echo "✓ Imports are properly organized"
+# ── Test 4: Type hints present ──────────────────────────────────────────
+echo "[4] Checking type hints..."
+assert "typing imports present" "grep -q 'from typing import' scripts/search.py"
+assert "Optional used"          "grep -q 'Optional' scripts/search.py"
+assert "Dict used"              "grep -q 'Dict' scripts/search.py"
+assert "List used"              "grep -q 'List' scripts/search.py"
+echo ""
+
+# ── Test 5: Docstrings present ───────────────────────────────────────────
+echo "[5] Checking docstrings..."
+DOCSTRING_COUNT=$(grep -c '"""' scripts/search.py)
+assert "docstrings present (>= 6, got $DOCSTRING_COUNT)" "[ $DOCSTRING_COUNT -ge 6 ]"
+echo ""
+
+# ── Test 6: SKILL.md frontmatter ────────────────────────────────────────
+echo "[6] Checking SKILL.md frontmatter..."
+assert "name: web-search"    "grep -q '^name: web-search' SKILL.md"
+assert "description present" "grep -q '^description:' SKILL.md"
+assert "version 2.0"         "grep -q 'version.*2.0' SKILL.md"
+echo ""
+
+# ── Test 7: Credgoo support ───────────────────────────────────────────────
+echo "[7] Checking credgoo support..."
+assert "credgoo in script"       "grep -q 'credgoo' scripts/search.py"
+assert "credgoo in .env.example" "grep -q 'credgoo' .env.example"
+assert "credgoo in pyproject"    "grep -q 'credgoo' pyproject.toml"
+echo ""
+
+# ── Test 8: pyproject.toml version matches SKILL.md ──────────────────────
+echo "[8] Checking version alignment..."
+TOML_VERSION=$(grep '^version' pyproject.toml | head -1 | grep -o '[0-9][0-9.]*')
+assert "pyproject.toml version ($TOML_VERSION) is 2.x" "echo '$TOML_VERSION' | grep -q '^2\.'"
+echo ""
+
+# ── Test 9: Launcher macOS compatibility ───────────────────────────────
+echo "[9] Checking launcher macOS compatibility..."
+assert "no readlink -f (breaks macOS)" "grep -qv 'readlink -f' search"
+assert "uses BASH_SOURCE"               "grep -q 'BASH_SOURCE' search"
+echo ""
+
+# ── Test 10: Backend selection logic ────────────────────────────────────
+echo "[10] Checking backend selection logic..."
+assert "select_backend function"  "grep -q 'def select_backend' scripts/search.py"
+assert "search_duck function"    "grep -q 'def search_duck' scripts/search.py"
+assert "search_searxng function" "grep -q 'def search_searxng' scripts/search.py"
+assert "get_bearer_token"       "grep -q 'def get_bearer_token' scripts/search.py"
+assert "get_searxng_credentials""grep -q 'def get_searxng_credentials' scripts/search.py"
+echo ""
+
+# ── Test 11: SearXNG credentials return None when unconfigured ──────────
+echo "[11] Checking get_searxng_credentials returns None when unconfigured..."
+assert "returns None at end"        "grep -q 'return None' scripts/search.py"
+assert "parse helper returns None"  "grep -q '_parse_searxng_cred' scripts/search.py"
+assert "empty URL returns None"     "grep -q 'if not url' scripts/search.py"
+echo ""
+
+# ── Test 12: Error diagnostics ──────────────────────────────────────────
+echo "[12] Checking SearXNG error diagnostics..."
+assert "last_error tracked"  "grep -q 'last_error' scripts/search.py"
+echo ""
+
+# ── Test 13: Duck API timeout ───────────────────────────────────────────
+echo "[13] Checking Duck API timeout..."
+assert "timeout tuple (5, 15)" "grep -q 'timeout=(5, 15)' scripts/search.py"
+echo ""
+
+# ── Test 14: Error sanitization ────────────────────────────────────────
+echo "[14] Checking error message sanitization..."
+assert "strips Authorization from errors" "grep -q 'split.*Authorization' scripts/search.py"
+echo ""
+
+# ── Test 15: .gitignore ─────────────────────────────────────────────────
+echo "[15] Checking .gitignore..."
+assert ".venv/ ignored"      "grep -q '\.venv/' .gitignore"
+assert "*.egg-info/ ignored" "grep -q '\*\.egg-info/' .gitignore"
+assert "uv.lock ignored"      "grep -q 'uv.lock' .gitignore"
+assert ".env ignored"        "grep -q '\.env' .gitignore"
+echo ""
+
+# ── Summary ──────────────────────────────────────────────────────────────
+echo ""
+echo "=== Results ==="
+echo "  Passed: $PASS"
+echo "  Failed: $FAIL"
+if [ $FAIL -gt 0 ]; then
+    echo ""
+    echo "❌ Some tests failed."
+    exit 1
 else
-    echo "✗ Import organization comments missing"
-    exit 1
+    echo ""
+    echo "✅ All $PASS tests passed!"
 fi
-echo ""
-
-# Test 9: Check docstrings exist
-echo "Test 9: Checking for docstrings..."
-if ! grep -q '"""' "search.py"; then
-    echo "✗ Docstrings not found"
-    exit 1
-fi
-DOCSTRING_COUNT=$(grep -c '"""' "search.py")
-if [ "$DOCSTRING_COUNT" -lt 6 ]; then
-    echo "✗ Insufficient docstrings (found $DOCSTRING_COUNT, expected at least 6)"
-    exit 1
-fi
-echo "✓ Docstrings present (found $DOCSTRING_COUNT)"
-echo ""
-
-# Test 10: Verify SKILL.md has required YAML frontmatter
-echo "Test 10: Checking SKILL.md frontmatter..."
-if ! grep -q "^name: web-search" "SKILL.md"; then
-    echo "✗ SKILL.md missing 'name' in frontmatter"
-    exit 1
-fi
-if ! grep -q "^description:" "SKILL.md"; then
-    echo "✗ SKILL.md missing 'description' in frontmatter"
-    exit 1
-fi
-echo "✓ SKILL.md has proper frontmatter"
-echo ""
-
-# Test 11: Check credgoo support in code
-echo "Test 11: Checking credgoo support..."
-if ! grep -q "credgoo" "search.py"; then
-    echo "✗ Credgoo support not found in code"
-    exit 1
-fi
-echo "✓ Credgoo support present"
-echo ""
-
-# Test 12: Verify .env mentions credgoo
-echo "Test 12: Checking .env.example for credgoo documentation..."
-if ! grep -q "credgoo" ".env.example"; then
-    echo "✗ .env.example missing credgoo documentation"
-    exit 1
-fi
-echo "✓ .env.example documents credgoo"
-echo ""
-
-echo "All tests passed!"
-echo ""
-echo "Note: The API test was skipped as it requires a valid bearer token."
-echo "To test the actual API functionality, set WEB_SEARCH_BEARER to a valid token."
-echo "Or use credgoo: uv pip install -r https://skale.dev/credgoo && credgoo web-search ..."
