@@ -121,6 +121,10 @@ web-search "query" -v                      # Verbose (show backend)
 - `-v, --verbose` output goes to **stderr** — safe to pipe stdout.
 - Exit codes: `0` = success, `1` = search error (backend failure, auth error, all instances down).
 
+## Reference
+
+See [references/INDEX.md](references/INDEX.md) for detailed examples, region codes, backend comparison, authentication options, and troubleshooting.
+
 ## Future Considerations
 
 ### Obscura (headless browser)

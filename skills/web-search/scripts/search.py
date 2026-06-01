@@ -88,32 +88,47 @@ def get_bearer_token() -> Optional[str]:
     return None
 
 
+def _parse_searxng_cred(cred: str) -> Optional[Dict[str, str]]:
+    """Parse a SearXNG credential string (URL or URL@USER@PASS).
+
+    Returns None if the URL part is empty.
+    """
+    if not cred:
+        return None
+    parts = cred.split("@")
+    url = parts[0]
+    if not url:
+        return None
+    return {
+        "url": url,
+        "user": parts[1] if len(parts) > 1 else "",
+        "pass": parts[2] if len(parts) > 2 else "",
+    }
+
+
 def get_searxng_credentials() -> Optional[Dict[str, str]]:
-    """Get SearXNG credentials if configured."""
+    """Get SearXNG credentials if configured.
+
+    Returns:
+        Dict with url/user/pass keys, or None if nothing is configured.
+    """
     # Environment variable: URL or URL@USER@PASS
     if PRIVATE_SEARXNG_URL:
-        if "@" in PRIVATE_SEARXNG_URL:
-            parts = PRIVATE_SEARXNG_URL.split("@")
-            if len(parts) == 3:
-                return {"url": parts[0], "user": parts[1], "pass": parts[2]}
-        else:
-            return {"url": PRIVATE_SEARXNG_URL, "user": "", "pass": ""}
+        result = _parse_searxng_cred(PRIVATE_SEARXNG_URL)
+        if result:
+            return result
 
     # Credgoo
     if get_api_key:
         try:
-            import io
             import contextlib
+            import io
             with contextlib.redirect_stdout(io.StringIO()):
                 cred = get_api_key("searx")
             if cred:
-                parts = cred.split("@")
-                if len(parts) >= 1:
-                    return {
-                        "url": parts[0],
-                        "user": parts[1] if len(parts) > 1 else "",
-                        "pass": parts[2] if len(parts) > 2 else ""
-                    }
+                result = _parse_searxng_cred(cred)
+                if result:
+                    return result
         except Exception:
             pass
 
@@ -122,11 +137,13 @@ def get_searxng_credentials() -> Optional[Dict[str, str]]:
     if config_file.exists():
         try:
             data = json.loads(config_file.read_text())
-            return {
-                "url": data.get("url", ""),
-                "user": data.get("username", ""),
-                "pass": data.get("password", "")
-            }
+            url = data.get("url", "")
+            if url:
+                return {
+                    "url": url,
+                    "user": data.get("username", ""),
+                    "pass": data.get("password", ""),
+                }
         except Exception:
             pass
 
@@ -207,11 +224,14 @@ def search_duck(
     }
 
     try:
-        resp = requests.get(DUCK_API_URL, params=params, headers=headers, timeout=30)
+        resp = requests.get(
+            DUCK_API_URL, params=params, headers=headers, timeout=(5, 15),
+        )
         resp.raise_for_status()
         return resp.json().get("results", [])
     except requests.RequestException as e:
-        return [{"error": f"Search failed: {e}"}]
+        safe_msg = str(e).split("Authorization")[0].rstrip(": ,")
+        return [{"error": f"Search failed: {safe_msg}"}]
     except Exception as e:
         return [{"error": f"Unexpected error: {e}"}]
 
@@ -251,6 +271,7 @@ def search_searxng(
         instances_to_try.append(instance_url)
     instances_to_try.extend(PUBLIC_SEARXNG_INSTANCES)
 
+    last_error: Optional[str] = None
     for instance in instances_to_try:
         url = f"{instance}/search?{urllib.parse.urlencode(params)}"
         try:
@@ -258,16 +279,18 @@ def search_searxng(
             if auth:
                 req.add_header("Authorization", f"Basic {auth}")
 
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=(5, 15)) as resp:
                 data = json.loads(resp.read().decode())
                 if "results" in data:
                     data["results"] = data["results"][:max_results]
                     data["_instance"] = instance
                 return data
-        except Exception:
+        except Exception as exc:
+            last_error = f"{instance}: {exc}"
             continue
 
-    return {"error": f"All SearXNG instances failed (tried {len(instances_to_try)})"}
+    detail = f" ({last_error})" if last_error else ""
+    return {"error": f"All SearXNG instances failed (tried {len(instances_to_try)}).{detail}"}
 
 
 # =============================================================================
