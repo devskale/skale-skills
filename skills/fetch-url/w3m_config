@@ -19,3 +19,6 @@ display_link 0
 
 # Set user agent string to avoid blocking
 user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Don't request compressed content (avoids gunzip errors on GitHub etc.)
+accept_encoding identity
