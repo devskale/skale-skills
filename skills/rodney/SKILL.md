@@ -171,7 +171,6 @@ Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.
 - **`open` auto-adds `http://`** — for `https://` URLs, include the scheme explicitly.
 - **Exit codes**: 0 = success, 1 = assertion failed, 2 = error (bad args, timeout, no browser).
 - **Heavy React apps** (booking sites, SPAs with autocomplete dropdowns) may timeout on `click`/`input`. Workaround: use the site's public API directly (most airlines, travel sites have one), or use `rodney js` to set values programmatically.
-- **Ryanair example**: Instead of `rodney click` on the booking form, call the fare API directly. See [references/api/ryanair.md](references/api/ryanair.md) for documented endpoints.
 
 ## References
 
