@@ -1127,12 +1127,58 @@ Enterprise AWS workflows, compliance-sensitive use cases, IP-bound session requi
 
 ---
 
+### 11.7 sweet-cookie — Inline-First Cookie Extraction (steipete)
+
+**What:** TypeScript library (with Go sibling) that extracts cookies from local browser profiles — Chrome, Edge, Firefox, Safari. No native addons; uses `node:sqlite` + OS keychain helpers. Includes a Chrome MV3 extension for exporting app-bound encrypted cookies.
+
+```bash
+npx @steipete/sweet-cookie x.com                    # Extract cookies for domain
+npx @steipete/sweet-cookie x.com --browser chrome --format header
+```
+
+```ts
+import { getCookies, toCookieHeader } from '@steipete/sweet-cookie'
+const { cookies, warnings } = await getCookies({ url: 'https://x.com/' })
+const header = toCookieHeader(cookies, { dedupeByName: true })
+```
+
+### Strengths
+- ✅ **Zero native addons** — `node:sqlite` + shell-out to `security`/`powershell`
+- ✅ Multi-browser: Chrome, Edge, Firefox, Safari (macOS only for Safari)
+- ✅ Multi-profile support (`ALL_PROFILES` sentinel discovers everything)
+- ✅ Handles Chromium v20 App-Bound Encryption gracefully (skips + warns, doesn't crash)
+- ✅ Chrome MV3 extension export for cases where local reads can't decrypt
+- ✅ Inline cookie files (`JSON`/`base64`) as fallback — no browser DB needed
+- ✅ CLI + library — use from scripts or from `node`/`bun`
+- ✅ Battle-tested in production (peep, willhaben skills)
+
+### Weaknesses
+- ❌ Extract-only — not a browser automation tool, needs another tool to use the cookies
+- ❌ v20 App-Bound cookies silently skipped (warning emitted, cookie missing)
+- ❌ Cookies go stale as your real browser session changes
+- ❌ Node ≥22 or Bun required
+
+### Best for
+Skills/scripts that need your browser's auth cookies injected into `fetch()`/`requests` without launching any browser. The lightest-weight path from "I'm logged in on my Mac" to "my script has a valid session".
+
+### In Use
+- [willhaben](https://github.com/johannwaldherr/willhaben) — auth via sweet-cookie cookies for willhaben.at scraping
+- [peep](https://github.com/johannwaldherr/peep) — X/Twitter CLI, reads browser cookies for GraphQL API auth
+
+### Links
+- Repo → [steipete/sweet-cookie](https://github.com/steipete/sweet-cookie) (TS/JS + Go version)
+- npm → [`@steipete/sweet-cookie`](https://www.npmjs.com/package/@steipete/sweet-cookie)
+- Go → [`steipete/sweetcookie`](https://github.com/steipete/sweetcookie)
+
+---
+
 ### Session Management Tools Comparison
 
 | Tool | Approach | Gets your real Chrome? | Encrypted? | Cost | Best for |
 |------|----------|------------------------|------------|------|----------|
-| **agentauth-py** | Decrypts Chrome cookies | ✅ **yes** (with macOS/Linux decryption) | ✅ AES-256 vault | Free | Plug into Playwright/requests/LangChain |
-| **Hangwin mcp-chrome** | Extension + HTTP bridge | ✅ yes (extension runs in your Chrome) | N/A | Free | MCP clients wanting no debug port |
+| **agentauth-py** | Decrypts Chrome cookies | ✅ **yes** (macOS/Linux) | ✅ AES-256 vault | Free | Plug into Playwright/requests/LangChain |
+| **sweet-cookie** | Reads browser cookie DBs | ✅ **yes** (all browsers) | ✅ (via OS keychain) | Free | Scripts needing cookies without a browser |
+| **Hangwin mcp-chrome** | Extension + HTTP bridge | ✅ yes (extension) | N/A | Free | MCP clients, no debug port |
 | **Playwright MCP Bridge** | Microsoft extension | ✅ yes (auth required) | N/A | Free | Enterprise, human-in-loop |
 | **YetiBrowser MCP** | Extension + diff | ✅ yes | N/A (local-only) | Free | Token-efficient, Firefox |
 | **Airtop** | Cloud browser | ❌ cloud | ✅ managed | Paid | OAuth/2FA workflows |
