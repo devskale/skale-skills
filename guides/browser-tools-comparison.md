@@ -551,7 +551,7 @@ Debugging, inspecting a live session, "what's on my screen right now" workflows.
 
 ## 3. agent-browser (Vercel Labs)
 
-**What:** Rust CLI + daemon. Token-efficient a11y-tree snapshots with `@ref` element IDs. Designed specifically for AI agent loops.
+**What:** Rust CLI + daemon. Token-efficient a11y-tree snapshots with `@ref` element IDs. Designed specifically for AI agent loops. **Best-in-class for session reuse.**
 
 ```bash
 brew install agent-browser
@@ -567,22 +567,51 @@ agent-browser close
 - ✅ Network interception (`network route`, `network capture`)
 - ✅ Batch mode — chain multiple actions in one call
 - ✅ Diff support (`diff snapshot`, `diff screenshot`)
-- ✅ State save/load (full session persistence)
+- ✅ **Chrome profile import** — `--profile "Default"` copies your Chrome profile to a temp dir (read-only snapshot) and launches with your cookies/sessions
+- ✅ **State import from running Chrome** — `--auto-connect state save` connects to Chrome and saves auth state to JSON
+- ✅ **Session persistence** — `--session-name myapp` auto-saves/restores state across restarts
+- ✅ **State encryption** — AES-256-GCM with `AGENT_BROWSER_ENCRYPTION_KEY` env var
 - ✅ Rust daemon — fast, low memory, no Node.js runtime
 - ✅ Debug dashboard at `localhost:4848`
 
+### Session Reuse Features (the most important)
+
+agent-browser has the **most complete session-reuse story** of any tool in this comparison:
+
+```bash
+# 1. Reuse your existing Chrome profile (read-only snapshot, temp dir)
+agent-browser --profile Default open https://gmail.com
+agent-browser --profile "Work" open https://app.example.com
+
+# 2. Import auth from your running Chrome
+chrome --remote-debugging-port=9222  # (requires --user-data-dir workaround since 136)
+agent-browser --auto-connect state save ./my-auth.json
+agent-browser --state ./my-auth.json open https://app.example.com/dashboard
+
+# 3. Persistent sessions (auto-save/restore)
+agent-browser --session-name myapp open https://example.com
+# From now on, state auto-saves/restores for "myapp"
+
+# 4. Encrypted state
+export AGENT_BROWSER_ENCRYPTION_KEY=$(openssl rand -hex 32)
+agent-browser --session-name secure-session open example.com
+```
+
+> **Note on `--profile` + Chrome 136+:** the `--profile` flag copies your Chrome's profile to a temp dir. With App-Bound Encryption (Chrome 136+), this **may not decrypt cookies/passwords** in some scenarios. For reliable auth transfer, use `--auto-connect state save` (works against your real running Chrome) or the `--state <file>` import flow.
+
 ### Weaknesses
 - ❌ No built-in assertion/test primitives
-- ❌ `--profile` bug loses active page (known issue)
+- ❌ `--profile` has known bug with active page loss (avoid on Windows while Chrome running)
 - ❌ Windows ARM64 broken as of 0.25.x
 - ❌ Requires daemon running (vs rodney's fire-and-forget CLI)
 - ❌ Newer project — less battle-tested than rodney
 
 ### Best for
-Agent loops where token cost matters, complex interactions needing semantic locators, network-level work.
+Agent loops where token cost matters, complex interactions needing semantic locators, network-level work, **and any workflow that needs to reuse your Chrome sessions**.
 
 ### Links
 - Setup → [guides/vcl-agent-browser.md](vcl-agent-browser.md)
+- Sessions guide → [agent-browser.dev/sessions](https://agent-browser.dev/sessions)
 - Repo → [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser)
 
 ---
