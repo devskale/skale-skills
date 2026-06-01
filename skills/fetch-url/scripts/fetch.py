@@ -79,7 +79,7 @@ _DEFAULT_SITE_TOOL_HINTS = {
     "news.ycombinator.com": ["w3m", "lynx", "jina"],
     "wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
     "en.wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
-    "github.com": ["jina", "markdown", "w3m"],
+    "github.com": ["w3m", "jina", "markdown"],
     "docs.python.org": ["jina", "w3m", "lynx"],
     "developer.mozilla.org": ["jina", "w3m", "lynx"],
     "medium.com": ["jina", "markdown", "w3m"],
