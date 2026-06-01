@@ -1,14 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
-cd "$(dirname "$0")"
+SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SKILL_DIR"
 
-echo "Installing dependencies for video-transcript-downloader..."
+echo "Installing video-transcript-downloader..."
+
+# Ensure ~/.local/bin exists
+mkdir -p "$HOME/.local/bin"
 
 # Check/Install uv
 if ! command -v uv &> /dev/null; then
-    echo "uv is not installed. Installing uv..."
+    echo "uv not found. Installing..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    # Ensure uv is in PATH for this session
     if [ -f "$HOME/.cargo/env" ]; then
         source "$HOME/.cargo/env"
     else
@@ -16,28 +19,27 @@ if ! command -v uv &> /dev/null; then
     fi
 fi
 
-echo "Using uv to manage Python environment..."
-
-# Create venv if missing
+# Create venv + install yt-dlp
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."
     uv venv
 fi
-
-# Install dependencies (yt-dlp)
 echo "Installing yt-dlp..."
-# uv automatically detects the .venv in the current directory
 uv pip install yt-dlp
 
-# Install Node dependencies
+# Node dependencies
 if command -v pnpm &> /dev/null; then
-    echo "Installing Node dependencies with pnpm..."
+    echo "Installing Node dependencies (pnpm)..."
     pnpm install
 elif command -v npm &> /dev/null; then
-    echo "pnpm not found, using npm..."
+    echo "Installing Node dependencies (npm)..."
     npm install
 else
-    echo "Warning: Neither pnpm nor npm found. Node dependencies might be missing."
+    echo "Warning: No pnpm/npm found. Node deps may be missing."
 fi
 
-echo "Installation complete!"
+# Create symlink
+ln -sf "$SKILL_DIR/vtd" "$HOME/.local/bin/vtd"
+date +%s > "$SKILL_DIR/.last-update"
+
+echo "Done. Use: vtd transcript --url 'https://...'"

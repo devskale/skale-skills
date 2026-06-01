@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# vtd — Video Transcript Downloader (yt-dlp + youtube-transcript-plus)
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+
+case "${1:-}" in
+    --update|--self-update)
+        cd "$SKILL_DIR"
+        echo "Updating video-transcript-downloader..."
+        git pull 2>&1 || true
+        date +%s > "$STAMP_FILE"
+        echo "Updated."
+        exit 0
+        ;;
+    --selfcheck)
+        version=$(grep '"version"' package.json 2>/dev/null | grep -o '[0-9][0-9.]*' || echo "?")
+        last=""
+        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || stat -f "%Sm" "$STAMP_FILE" 2>/dev/null || echo "never")
+        has_node=$([ -d "$SKILL_DIR/node_modules" ] && echo "yes" || echo "no")
+        has_venv=$([ -d "$SKILL_DIR/.venv" ] && echo "yes" || echo "no")
+        echo "vtd v${version}"
+        echo "  dir:  $SKILL_DIR"
+        echo "  last: ${last}"
+        echo "  node: $has_node"
+        echo "  venv: $has_venv"
+        exit 0
+        ;;
+    --install)
+        cd "$SKILL_DIR"
+        echo "Installing video-transcript-downloader..."
+        mkdir -p "$HOME/.local/bin"
+        # Python venv for yt-dlp
+        if command -v uv &>/dev/null; then
+            uv venv 2>/dev/null || true
+            uv pip install yt-dlp 2>/dev/null || true
+        fi
+        # Node deps
+        if command -v pnpm &>/dev/null; then
+            pnpm install 2>/dev/null
+        elif command -v npm &>/dev/null; then
+            npm install 2>/dev/null
+        fi
+        ln -sf "$SKILL_DIR/vtd" "$HOME/.local/bin/vtd"
+        date +%s > "$STAMP_FILE"
+        echo "Done. Use: vtd transcript --url 'https://...'"
+        exit 0
+        ;;
+esac
+
+# Auto-update after 7 days
+if [ -f "$STAMP_FILE" ]; then
+    last=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age=$(( (now - last) / 86400 ))
+    if [ "$age" -gt 7 ]; then
+        (cd "$SKILL_DIR" && git pull 2>/dev/null && date +%s > "$STAMP_FILE") &
+    fi
+fi
+
+cd "$SKILL_DIR" && exec node scripts/vtd.js "$@"
