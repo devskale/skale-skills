@@ -11,3 +11,4 @@ dist/
 build/
 .env
 uv.lock
+.last-update

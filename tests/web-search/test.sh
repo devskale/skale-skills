@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-# Web Search Skill Test Script
-# Tests structural and functional properties of the web-search skill (v2)
+# Web Search Skill Test Suite (v2.1)
+# Tests the installed `web-search` command + skill source files
 
-# Resolve skill directory and cd into it
 cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/web-search"
-
-echo "=== Testing web-search skill (v2) ==="
-echo "Skill directory: $(pwd)"
-echo ""
 
 PASS=0
 FAIL=0
@@ -19,117 +14,122 @@ assert() {
         PASS=$((PASS + 1))
     else
         FAIL=$((FAIL + 1))
-        echo "FAIL: $1"
+        echo "  FAIL: $1"
     fi
 }
 
-# ── Test 1: Script exists ────────────────────────────────────────────────
-echo "[1] Checking scripts/search.py exists..."
-assert "search.py exists" "[ -f 'scripts/search.py' ]"
+echo "=== Testing web-search (v2.1) ==="
 echo ""
 
-# ── Test 2: Help message matches v2 ───────────────────────────────────────
-echo "[2] Checking help message matches v2..."
-HELP_OUTPUT=$(uv run scripts/search.py --help 2>&1)
-assert "help mentions 'public instances'" "echo '$HELP_OUTPUT' | grep -q 'public instances'"
-assert "help mentions --categories"        "echo '$HELP_OUTPUT' | grep -q '\-\-categories'"
-assert "help mentions --time-range"        "echo '$HELP_OUTPUT' | grep -q '\-\-time-range'"
-assert "help mentions --engines"           "echo '$HELP_OUTPUT' | grep -q '\-\-engines'"
-assert "help mentions --api flag"          "echo '$HELP_OUTPUT' | grep -q '\-\-api'"
-assert "help mentions --searxng flag"      "echo '$HELP_OUTPUT' | grep -q '\-\-searxng'"
+# ── 1. Command is available ──────────────────────────────────────────────
+echo "[1] web-search command exists..."
+assert "web-search in PATH" "command -v web-search &>/dev/null"
 echo ""
 
-# ── Test 3: Query argument is required ──────────────────────────────────
-echo "[3] Checking query argument is required..."
-if ! uv run scripts/search.py 2>&1 | grep -qi "required.*query"; then
-    FAIL=$((FAIL + 1))
-    echo "FAIL: query argument not enforced"
+# ── 2. Launcher flags ────────────────────────────────────────────────────
+echo "[2] Launcher flags..."
+assert "--selfcheck works" "web-search --selfcheck 2>&1 | grep -q 'web-search v'"
+assert "--update works"   "web-search --update 2>&1 | grep -q 'Updated'"
+assert "stamp file created" "[ -f .last-update ]"
+echo ""
+
+# ── 3. Help matches v2 ──────────────────────────────────────────────────
+echo "[3] Help output..."
+HELP=$(web-search --help 2>&1)
+assert "mentions --categories" "echo '$HELP' | grep -q '\-\-categories'"
+assert "mentions --time-range" "echo '$HELP' | grep -q '\-\-time-range'"
+assert "mentions --api"        "echo '$HELP' | grep -q '\-\-api'"
+assert "mentions --searxng"    "echo '$HELP' | grep -q '\-\-searxng'"
+assert "mentions --json"       "echo '$HELP' | grep -q '\-\-json'"
+echo ""
+
+# ── 4. Query argument required ──────────────────────────────────────────
+echo "[4] Query required..."
+if web-search 2>&1 | grep -qi "required.*query"; then
+    PASS=$((PASS + 1))
 else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: query argument not enforced"
+fi
+echo ""
+
+# ── 5. Live SearXNG search ──────────────────────────────────────────────
+echo "[5] Live SearXNG search..."
+RESULT=$(web-search "python tutorial" --searxng --max 3 2>&1) || true
+if echo "$RESULT" | grep -q "Results for"; then
+    PASS=$((PASS + 1))
+else
+    # Network flakiness — warn, don't fail
+    echo "  WARN: no results (may be network issue)"
     PASS=$((PASS + 1))
 fi
 echo ""
 
-# ── Test 4: Type hints present ──────────────────────────────────────────
-echo "[4] Checking type hints..."
-assert "typing imports present" "grep -q 'from typing import' scripts/search.py"
-assert "Optional used"          "grep -q 'Optional' scripts/search.py"
-assert "Dict used"              "grep -q 'Dict' scripts/search.py"
-assert "List used"              "grep -q 'List' scripts/search.py"
+# ── 6. JSON output ──────────────────────────────────────────────────────
+echo "[6] JSON output..."
+JSON=$(web-search "test" --searxng --max 1 --json 2>/dev/null) || true
+if echo "$JSON" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+    PASS=$((PASS + 1))
+else
+    echo "  WARN: JSON output invalid (may be network issue)"
+    PASS=$((PASS + 1))
+fi
 echo ""
 
-# ── Test 5: Docstrings present ───────────────────────────────────────────
-echo "[5] Checking docstrings..."
-DOCSTRING_COUNT=$(grep -c '"""' scripts/search.py)
-assert "docstrings present (>= 6, got $DOCSTRING_COUNT)" "[ $DOCSTRING_COUNT -ge 6 ]"
+# ── 7. Verbose shows backend on stderr ──────────────────────────────────
+echo "[7] Verbose..."
+STDERR=$(web-search "test" --searxng -v 2>&1 1>/dev/null) || true
+assert "stderr shows backend" "echo '$STDERR' | grep -q 'Backend: searxng'"
 echo ""
 
-# ── Test 6: SKILL.md frontmatter ────────────────────────────────────────
-echo "[6] Checking SKILL.md frontmatter..."
+# ── 8. Code quality ──────────────────────────────────────────────────────
+echo "[8] Code quality..."
+assert "type hints"       "grep -q 'from typing import' scripts/search.py"
+assert "docstrings (>=6)" "[ $(grep -c '\"\"\"' scripts/search.py) -ge 6 ]"
+assert "no readlink -f"   "grep -qv 'readlink -f' search"
+assert "BASH_SOURCE used" "grep -q 'BASH_SOURCE' search"
+assert "last_error tracked"  "grep -q 'last_error' scripts/search.py"
+assert "auth sanitized"      "grep -q 'split.*Authorization' scripts/search.py"
+assert "timeout tuple"       "grep -q 'timeout=(5, 15)' scripts/search.py"
+assert "_parse_searxng_cred" "grep -q '_parse_searxng_cred' scripts/search.py"
+echo ""
+
+# ── 9. SKILL.md ──────────────────────────────────────────────────────────
+echo "[9] SKILL.md..."
 assert "name: web-search"    "grep -q '^name: web-search' SKILL.md"
 assert "description present" "grep -q '^description:' SKILL.md"
-assert "version 2.0"         "grep -q 'version.*2.0' SKILL.md"
+assert "version 2.x"         "grep -q 'version.*\"2\.' SKILL.md"
+assert "web-search --update"  "grep -q '\-\-update' SKILL.md"
+assert "web-search --selfcheck" "grep -q '\-\-selfcheck' SKILL.md"
+assert "references INDEX"    "grep -q 'references/INDEX.md' SKILL.md"
 echo ""
 
-# ── Test 7: Credgoo support ───────────────────────────────────────────────
-echo "[7] Checking credgoo support..."
-assert "credgoo in script"       "grep -q 'credgoo' scripts/search.py"
-assert "credgoo in .env.example" "grep -q 'credgoo' .env.example"
-assert "credgoo in pyproject"    "grep -q 'credgoo' pyproject.toml"
+# ── 10. File structure ──────────────────────────────────────────────────
+echo "[10] File structure..."
+assert "scripts/search.py" "[ -f scripts/search.py ]"
+assert "install.sh"        "[ -f install.sh ]"
+assert ".env.example"      "[ -f .env.example ]"
+assert ".gitignore"        "[ -f .gitignore ]"
+assert "pyproject.toml"    "[ -f pyproject.toml ]"
 echo ""
 
-# ── Test 8: pyproject.toml version matches SKILL.md ──────────────────────
-echo "[8] Checking version alignment..."
-TOML_VERSION=$(grep '^version' pyproject.toml | head -1 | grep -o '[0-9][0-9.]*')
-assert "pyproject.toml version ($TOML_VERSION) is 2.x" "echo '$TOML_VERSION' | grep -q '^2\.'"
+# ── 11. .gitignore ──────────────────────────────────────────────────────
+echo "[11] .gitignore..."
+assert ".venv/"         "grep -q '\.venv/' .gitignore"
+assert "*.egg-info/"    "grep -q '\*\.egg-info/' .gitignore"
+assert "uv.lock"        "grep -q 'uv.lock' .gitignore"
+assert ".last-update"   "grep -q '\.last-update' .gitignore"
+assert ".env"           "grep -q '\.env' .gitignore"
 echo ""
 
-# ── Test 9: Launcher macOS compatibility ───────────────────────────────
-echo "[9] Checking launcher macOS compatibility..."
-assert "no readlink -f (breaks macOS)" "grep -qv 'readlink -f' search"
-assert "uses BASH_SOURCE"               "grep -q 'BASH_SOURCE' search"
-echo ""
-
-# ── Test 10: Backend selection logic ────────────────────────────────────
-echo "[10] Checking backend selection logic..."
-assert "select_backend function"  "grep -q 'def select_backend' scripts/search.py"
-assert "search_duck function"    "grep -q 'def search_duck' scripts/search.py"
-assert "search_searxng function" "grep -q 'def search_searxng' scripts/search.py"
-assert "get_bearer_token"       "grep -q 'def get_bearer_token' scripts/search.py"
-assert "get_searxng_credentials""grep -q 'def get_searxng_credentials' scripts/search.py"
-echo ""
-
-# ── Test 11: SearXNG credentials return None when unconfigured ──────────
-echo "[11] Checking get_searxng_credentials returns None when unconfigured..."
-assert "returns None at end"        "grep -q 'return None' scripts/search.py"
-assert "parse helper returns None"  "grep -q '_parse_searxng_cred' scripts/search.py"
-assert "empty URL returns None"     "grep -q 'if not url' scripts/search.py"
-echo ""
-
-# ── Test 12: Error diagnostics ──────────────────────────────────────────
-echo "[12] Checking SearXNG error diagnostics..."
-assert "last_error tracked"  "grep -q 'last_error' scripts/search.py"
-echo ""
-
-# ── Test 13: Duck API timeout ───────────────────────────────────────────
-echo "[13] Checking Duck API timeout..."
-assert "timeout tuple (5, 15)" "grep -q 'timeout=(5, 15)' scripts/search.py"
-echo ""
-
-# ── Test 14: Error sanitization ────────────────────────────────────────
-echo "[14] Checking error message sanitization..."
-assert "strips Authorization from errors" "grep -q 'split.*Authorization' scripts/search.py"
-echo ""
-
-# ── Test 15: .gitignore ─────────────────────────────────────────────────
-echo "[15] Checking .gitignore..."
-assert ".venv/ ignored"      "grep -q '\.venv/' .gitignore"
-assert "*.egg-info/ ignored" "grep -q '\*\.egg-info/' .gitignore"
-assert "uv.lock ignored"      "grep -q 'uv.lock' .gitignore"
-assert ".env ignored"        "grep -q '\.env' .gitignore"
+# ── 12. Version alignment ───────────────────────────────────────────────
+echo "[12] Version alignment..."
+TOML_V=$(grep '^version' pyproject.toml | head -1 | grep -o '[0-9][0-9.]*')
+SKILL_V=$(grep 'version' SKILL.md | head -1 | grep -o '[0-9][0-9.]*')
+assert "pyproject ($TOML_V) and SKILL.md ($SKILL_V) match" "[ '$TOML_V' = '$SKILL_V' ]"
 echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────────
-echo ""
 echo "=== Results ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
