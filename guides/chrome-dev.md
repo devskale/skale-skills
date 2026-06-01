@@ -44,3 +44,13 @@ You should see ~29 tools available.
 - **Start Chrome Beta** before using the tools — the server connects to the running browser
 - Config goes in `.mcp.json` (project) or `~/.config/mcp/mcp.json` (global), **not** in `.pi/settings.json`
 - Add `--headless` for headless mode, `--slim` for fewer tools (faster startup)
+
+## Gotchas
+
+### MCP servers are lazy-loaded
+
+The pi-mcp-adapter connects MCP servers **lazily by default** — the chrome-devtools server will **not** be running after a restart. It only starts when you first call one of its tools. This is expected, not a bug.
+
+- `mcp({ })` may show the server as not connected. That's fine.
+- Just call the tool you need directly — the server connects on demand.
+- Idle servers auto-disconnect after 10 minutes and reconnect on next use.
