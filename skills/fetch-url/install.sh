@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-cd "$(dirname "$0")"
+SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SKILL_DIR"
 
 echo "Installing fetch-url skill..."
 
@@ -11,19 +12,29 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Sync dependencies from pyproject.toml (creates venv automatically)
+# Sync dependencies
 echo "Syncing dependencies..."
 uv sync
 
-# Create wrapper in ~/.local/bin for global access
-# cd into skill dir so relative paths (scripts/fetch.py) resolve correctly
-SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
-mkdir -p "$HOME/.local/bin"
-cat > "$HOME/.local/bin/fetch-url" << EOF
-#!/usr/bin/env bash
-cd "$SKILL_DIR" && exec uv run scripts/fetch.py "\$@"
-EOF
-chmod +x "$HOME/.local/bin/fetch-url"
+# Create symlink to launcher (not hardcoded path)
+BIN_DIR="$HOME/.local/bin"
+SYMLINK="$BIN_DIR/fetch-url"
+mkdir -p "$BIN_DIR"
+
+if [ -L "$SYMLINK" ] || [ -f "$SYMLINK" ]; then
+    if [ "$(readlink "$SYMLINK" 2>/dev/null)" != "$SKILL_DIR/fetch-url" ]; then
+        echo "  Removing old wrapper at $SYMLINK"
+        rm -f "$SYMLINK"
+    fi
+fi
+
+if [ ! -L "$SYMLINK" ]; then
+    ln -sf "$SKILL_DIR/fetch-url" "$SYMLINK"
+    echo "  Created symlink: $SYMLINK → $SKILL_DIR/fetch-url"
+fi
+
+# Write update timestamp
+date +%s > "$SKILL_DIR/.last-update"
 
 echo ""
 echo "✓ Installation complete!"
@@ -32,8 +43,12 @@ echo "Usage:"
 echo "  fetch-url \"https://example.com\""
 echo "  fetch-url \"https://reddit.com/r/python\""
 echo ""
-echo "Credentials (optional, for API tool only):"
+echo "Update:"
+echo "  fetch-url --update"
+echo "  fetch-url --selfcheck"
+echo ""
+echo "Credentials (optional, for API tool):"
 echo "  credgoo add FETCH_URL_BEARER"
 echo ""
-echo "Optional browsers (macOS/Linux):"
+echo "Optional browsers (for better results):"
 echo "  brew install w3m lynx chawan"

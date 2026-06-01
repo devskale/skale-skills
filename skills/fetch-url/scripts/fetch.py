@@ -41,43 +41,55 @@ DEFAULT_API_URL = "https://amd1.mooo.com/api/fetch_url"
 MARKDOWN_NEW_URL = "https://markdown.new"
 JINA_READER_URL = "https://r.jina.ai"
 
-# Error patterns that indicate blocked/failed responses
-ERROR_PATTERNS = [
+# Strong error patterns: these never appear in legitimate article content.
+# Any single match in the first 1500 chars is a definitive block.
+STRONG_ERROR_PATTERNS = [
     r"been blocked by network security",
     r"blocked by network security",
-    r"error 403",
-    r"error 429",
-    r"access denied",
     r"just a moment",
     r"checking your browser",
-    r"captcha",
-    r"cloudflare",
     r"please enable javascript",
     r"security verification",
     r"ray id:",
-    r"you don't have permission",
+    r"you don.t have permission",
+]
+
+# Weak error patterns: can appear in article text (e.g. an HN headline
+# about Cloudflare, a Wikipedia article about captchas). Only treated as
+# a block when multiple patterns appear together in the first 1500 chars.
+WEAK_ERROR_PATTERNS = [
+    r"error 403",
+    r"error 429",
+    r"access denied",
+    r"captcha",
+    r"cloudflare",
     r"forbidden",
     r"rate limited",
 ]
 
+ERROR_PATTERNS = STRONG_ERROR_PATTERNS + WEAK_ERROR_PATTERNS
+
 # Site-specific tool preferences (domains that need specific tools)
 SITE_TOOL_HINTS = {
-    # Sites where w3m excels
-    "reddit.com": ["w3m", "lynx", "markdown"],
-    "www.reddit.com": ["w3m", "lynx", "markdown"],
-    "news.ycombinator.com": ["w3m", "jina"],
-    # Sites that block jina, use markdown fallback
-    "stackoverflow.com": ["markdown"],
-    "stackexchange.com": ["markdown"],
-    "superuser.com": ["markdown"],
-    "askubuntu.com": ["markdown"],
-    "serverfault.com": ["markdown"],
-    # Sites that work well with jina
-    "docs.python.org": ["jina"],
-    "developer.mozilla.org": ["jina"],
-    "github.com": ["jina", "markdown"],
-    "medium.com": ["jina"],
-    "wikipedia.org": ["jina"],
+    # Sites where w3m/lynx excel (text-heavy, simple HTML)
+    # Reddit: old.reddit.com works with w3m, new reddit blocks everything
+    "reddit.com": ["w3m", "lynx", "jina", "markdown"],
+    "www.reddit.com": ["w3m", "lynx", "jina", "markdown"],
+    "old.reddit.com": ["w3m", "lynx", "jina", "markdown"],
+    "news.ycombinator.com": ["w3m", "lynx", "jina"],
+    # Sites where jina is cleaner (complex HTML, lots of nav chrome)
+    "wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
+    "en.wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
+    "github.com": ["jina", "markdown", "w3m"],
+    "docs.python.org": ["jina", "w3m", "lynx"],
+    "developer.mozilla.org": ["jina", "w3m", "lynx"],
+    "medium.com": ["jina", "markdown", "w3m"],
+    # Sites that block text browsers, need API
+    "stackoverflow.com": ["markdown", "jina"],
+    "stackexchange.com": ["markdown", "jina"],
+    "superuser.com": ["markdown", "jina"],
+    "askubuntu.com": ["markdown", "jina"],
+    "serverfault.com": ["markdown", "jina"],
     # Sites behind aggressive Cloudflare/JS challenges
     "firmenabc.at": ["chrome"],
     "www.firmenabc.at": ["chrome"],
@@ -108,7 +120,7 @@ def get_default_settings() -> Dict[str, Any]:
             "Linux": ["jina", "markdown", "w3m", "lynx"],
             "Windows": ["jina", "markdown"]
         },
-        "fallback_order": ["jina", "markdown", "chawan", "w3m", "lynx"],
+        "fallback_order": ["w3m", "lynx", "jina", "markdown", "chawan"],
         "timeout": 30
     }
 
@@ -143,25 +155,31 @@ def check_tool_available(tool: str, settings: Dict[str, Any]) -> bool:
 
 
 def get_bearer_token() -> Optional[str]:
-    """Get bearer token from credgoo, environment variable, or .env file."""
+    """Get bearer token from env, credgoo, or .env file.
+
+    Checks FETCH_URL_BEARER first, then falls back to WEB_SEARCH_BEARER
+    (same token often works for both APIs).
+    """
     # Environment variable (highest priority)
-    if token := os.environ.get("FETCH_URL_BEARER"):
-        return token
+    for env_key in ("FETCH_URL_BEARER", "WEB_SEARCH_BEARER"):
+        if token := os.environ.get(env_key):
+            return token
     
     # Credgoo (suppress output)
     if get_api_key:
-        try:
-            with contextlib.redirect_stdout(io.StringIO()):
-                if token := get_api_key("FETCH_URL_BEARER"):
-                    return token
-        except Exception:
-            pass
+        for key in ("FETCH_URL_BEARER", "WEB_SEARCH_BEARER"):
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    if token := get_api_key(key):
+                        return token
+            except Exception:
+                pass
     
     # Local .env file
     env_file = SKILL_DIR / ".env"
     if env_file.exists():
         for line in env_file.read_text().splitlines():
-            if line.startswith("FETCH_URL_BEARER="):
+            if line.startswith(("FETCH_URL_BEARER=", "WEB_SEARCH_BEARER=")):
                 return line.split("=", 1)[1].strip()
     
     return None
@@ -196,16 +214,49 @@ def get_site_tool_hint(url: str) -> Optional[List[str]]:
     return None
 
 
+# How many chars to scan for error patterns.
+# Real error pages are short (<1000 chars). Article content mentioning
+# these words appears much deeper in the text.
+_ERROR_SCAN_WINDOW = 1500
+
+# Content above this size is almost certainly valid — no error page
+# is this long.
+_MIN_VALID_LENGTH = 3000
+
+
 def is_valid_content(content: str) -> bool:
-    """Check if content is valid (not an error page)."""
+    """Check if content is valid (not an error page).
+
+    Strategy:
+    - Empty/whitespace-only content is invalid.
+    - Content above _MIN_VALID_LENGTH chars is always valid.
+    - Scan only the first _ERROR_SCAN_WINDOW chars for error patterns.
+    - Strong patterns (e.g. "checking your browser"): any single hit = block.
+    - Weak patterns (e.g. "cloudflare"): need 2+ distinct hits = block.
+      A single "cloudflare" mention in an HN headline is not a block.
+    """
     if not content or not content.strip():
         return False
-    
-    content_lower = content.lower()
-    for pattern in ERROR_PATTERNS:
-        if re.search(pattern, content_lower, re.IGNORECASE):
+
+    # Long content is almost certainly real article text.
+    if len(content) >= _MIN_VALID_LENGTH:
+        return True
+
+    scan = content[:_ERROR_SCAN_WINDOW].lower()
+
+    # Strong patterns: any single match means block.
+    for pattern in STRONG_ERROR_PATTERNS:
+        if re.search(pattern, scan, re.IGNORECASE):
             return False
-    
+
+    # Weak patterns: need at least 2 distinct matches to indicate a block.
+    weak_hits = 0
+    for pattern in WEAK_ERROR_PATTERNS:
+        if re.search(pattern, scan, re.IGNORECASE):
+            weak_hits += 1
+    if weak_hits >= 2:
+        return False
+
     return True
 
 
@@ -306,7 +357,7 @@ def fetch_with_lynx(url: str, timeout: int = 30) -> str:
             lynx_path,
             url,
             '-dump',
-            '-cfg=', str(LYNX_CONFIG),
+            f'-cfg={LYNX_CONFIG}',
             '--display_charset=utf-8',
             '-accept_all_cookies',
             '-nomore'
@@ -569,6 +620,12 @@ def fetch_url(url: str, tool: str = 'auto', links: bool = False, use_api: bool =
     url = url.strip()
     if not url.startswith('http://') and not url.startswith('https://'):
         url = 'https://' + url
+
+    # Redirect www.reddit.com → old.reddit.com (works with w3m/lynx)
+    if re.match(r'https?://(www\.)?reddit\.com', url):
+        url = re.sub(r'https?://(www\.)?reddit\.com', 'https://old.reddit.com', url)
+        if verbose:
+            print(f"Redirected to old.reddit.com for text browser support", file=sys.stderr)
 
     # API mode doesn't use fallback
     if use_api:

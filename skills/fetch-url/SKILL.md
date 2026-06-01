@@ -8,64 +8,94 @@ metadata:
 
 # Fetch URL
 
-Extract text from any webpage. Works globally.
-
-## Setup
-
-### 1. Install the skill
-
 ```bash
-cd ~/.pi/agent/skills/fetch-url
-./install.sh   # Installs deps + credgoo + creates ~/.local/bin/fetch-url wrapper
+fetch-url "https://example.com"          # That's it.
 ```
 
-> `./install.sh` runs `uv sync` which installs credgoo automatically. No separate install needed.
+Extracts text from any webpage. Works globally after install.
 
-### 2. Optional browsers (for better fallback tools)
-
-```bash
-# Debian/Ubuntu
-sudo apt-get install w3m lynx
-
-# macOS
-brew install w3m lynx chawan
-```
-
-### 3. Verify
+## Install
 
 ```bash
-fetch-url "https://example.com" -v   # Should show which tool was used
+cd ~/.pi/agent/skills/fetch-url && ./install.sh
 ```
+
+Creates `fetch-url` in `~/.local/bin/`. Requires `uv` (auto-installed).
+
+## Update
+
+```bash
+fetch-url --update                       # Manual update (git pull + uv sync)
+fetch-url --selfcheck                    # Show version + last update date
+```
+
+Auto-updates in background every 7 days.
 
 ## Usage
 
 ```bash
 fetch-url "https://example.com"           # Auto-selects best tool
-fetch-url "https://reddit.com/r/python"   # Works on blocked sites
+fetch-url "https://reddit.com/r/python"   # Redirects to old.reddit.com, uses w3m
+fetch-url "https://news.ycombinator.com"  # Uses w3m (free, local)
 fetch-url "URL" --tool jina              # Force specific tool
-fetch-url "URL" -v                        # Verbose (show tool used)
+fetch-url "URL" -v                        # Verbose (shows tool + redirects)
 ```
 
 ## Options
 
 | Option | Description |
 |--------|-------------|
-| `--tool NAME` | jina, chrome, markdown, w3m, lynx, chawan |
-| `-v, --verbose` | Show which tool selected |
+| `--tool NAME` | w3m, lynx, jina, markdown, chrome, chawan |
+| `-v, --verbose` | Show tool selection and redirects |
 | `--no-clean` | Keep empty lines |
+| `--update` | Update the skill now |
+| `--selfcheck` | Show version and last update |
 
 ## Tools (Auto-Selected)
 
-| Tool | Best For |
+Priority: free local tools first (w3m, lynx), then free APIs (jina, markdown), then chrome.
+
+| Tool | Best For | Cost |
+|------|----------|------|
+| w3m | Reddit, HN, simple HTML sites | Free, local |
+| lynx | Wikipedia, text-heavy sites | Free, local |
+| jina | Docs, blogs, GitHub, Medium | Free API |
+| markdown | StackOverflow, fallback | Free API (50/day) |
+| chrome | Cloudflare/JS-protected sites | Free, needs Chrome |
+
+## Site-Specific Behavior
+
+| Site | Strategy |
 |------|----------|
-| jina | Docs, blogs, arXiv, Medium (default) |
-| chrome | Cloudflare/JS-protected sites (firmenabc.at, etc.) |
-| w3m | Reddit, Hacker News |
-| markdown | Fallback, GitHub |
+| Reddit | Auto-redirects to old.reddit.com, uses w3m |
+| HN | w3m (clean output) |
+| Wikipedia | jina (cleanest), lynx/w3m fallback |
+| GitHub | jina (clean markdown) |
+| StackOverflow | markdown (bypasses blocks) |
+| Medium | jina |
+| Cloudflare sites | Chrome headless |
 
-## Edge Cases
+## Configure (optional)
 
-- **Cloudflare-protected sites** (firmenabc.at, etc.): Auto-detected, uses `chrome` headless to solve JS challenges
-- **Reddit**: `w3m` may only return navigation elements; try `--tool jina` for post content
-- **StackOverflow**: May redirect to different questions; verify URL is canonical
-- **Wikipedia**: Can return empty results; try `--tool w3m` as fallback
+```bash
+# Credgoo for API tool
+credgoo add FETCH_URL_BEARER
+
+# Optional browsers for better fallback
+brew install w3m lynx chawan
+```
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `fetch-url: command not found` | Add `~/.local/bin` to PATH |
+| gunzip error on GitHub | Use `--tool jina` |
+| Empty result | Try `--tool jina` or `--tool chrome` |
+| Dependency error | `fetch-url --update` |
+
+## Reference
+
+See [references/sites.md](references/sites.md) for tool rankings per site.
+See [references/github.md](references/github.md) for GitHub raw URL patterns.
+See [references/troubleshooting.md](references/troubleshooting.md) for detailed fixes.

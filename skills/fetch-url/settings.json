@@ -57,6 +57,6 @@
     "Linux": ["jina", "markdown", "chawan", "w3m", "lynx"],
     "Windows": ["jina", "markdown"]
   },
-  "fallback_order": ["jina", "markdown", "chrome", "chawan", "w3m", "lynx"],
+  "fallback_order": ["w3m", "lynx", "jina", "markdown", "chawan"],
   "timeout": 45
 }

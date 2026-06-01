@@ -1,2 +1,56 @@
 #!/usr/bin/env bash
-cd "/Users/johannwaldherr/.pi/agent/skills/fetch-url" && exec uv run scripts/fetch.py "$@"
+# fetch-url launcher with symlink resolution + auto-update
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+AUTO_UPDATE_DAYS=7
+
+# ── Handle launcher-only flags ──
+case "${1:-}" in
+    --update)
+        echo "Updating fetch-url..."
+        cd "$SKILL_DIR"
+        [ -d ".git" ] && git pull --ff-only 2>&1 || true
+        uv sync --quiet 2>&1
+        date +%s > "$STAMP_FILE"
+        echo "✓ Updated $(date)"
+        exit 0
+        ;;
+    --selfcheck)
+        version=$(grep -o 'version.*"[^"]*"' "$SKILL_DIR/pyproject.toml" 2>/dev/null | head -1 | grep -o '[0-9][^"]*' || echo "?")
+        last="never"
+        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || cat "$STAMP_FILE")
+        echo "fetch-url v${version}"
+        echo "  dir:  $SKILL_DIR"
+        echo "  last: $last"
+        exit 0
+        ;;
+esac
+
+# ── Auto-update check (non-blocking) ──
+if [ -d "$SKILL_DIR/.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then
+        needs_update=true
+    else
+        last_ts=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        now_ts=$(date +%s)
+        [ $(( (now_ts - last_ts) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
+    fi
+    if $needs_update; then
+        (
+            cd "$SKILL_DIR"
+            git pull --ff-only --quiet 2>/dev/null
+            uv sync --quiet 2>/dev/null
+            date +%s > "$STAMP_FILE"
+        ) &>/dev/null &
+    fi
+fi
+
+# ── Run ──
+cd "$SKILL_DIR" && exec uv run scripts/fetch.py "$@"
