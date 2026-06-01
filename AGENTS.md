@@ -58,14 +58,52 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 
 | Guide | What |
 |-------|------|
-| [guides/browser-tools-comparison.md](guides/browser-tools-comparison.md) | Agent browser tools compared (10 tools, feature matrix, Chrome 136+ breaking changes) |
+| [guides/browser-tools-comparison.md](guides/browser-tools-comparison.md) | Agent browser tools compared (10+ tools, feature matrix, Chrome 136+ breaking changes, session reuse) |
 | [guides/chrome-dev.md](guides/chrome-dev.md) | Chrome DevTools MCP setup |
 | [guides/rodney-setup.md](guides/rodney-setup.md) | Rodney headless Chrome setup |
 | [guides/vcl-agent-browser.md](guides/vcl-agent-browser.md) | Vercel agent-browser setup |
 
-## Browser Automation — Chrome 136+ Breaking Change
+## Browser Automation — Chrome 136+ Breaking Changes
 
-> ⚠️ **`--remote-debugging-port=9222` on the default profile is no longer respected** (Chrome 136+, March 2025). Google blocked it for security — info-stealers were stealing cookies via CDP. You MUST use `--user-data-dir` pointing to a non-default directory. Even then, **App-Bound Encryption** (Chrome 136+) prevents decrypting cookies/passwords from a copied profile. For real-session reuse, use Chrome DevTools MCP `--autoConnect` (Chrome 146+) or `agent-browser --auto-connect state save`. Full details: [guides/browser-tools-comparison.md](guides/browser-tools-comparison.md).
+> ⚠️ **Current Chrome stable: v149** (June 2026). The Chrome 136+ restrictions are still in effect. **Do not assume `chrome --remote-debugging-port=9222` works** — it doesn't, on the default profile.
+
+### What is broken (since Chrome 136, March 2025)
+
+1. **`--remote-debugging-port=9222` is IGNORED on the default profile.**
+   - Chrome opens, but the debug port never listens. No error, no warning — just silent failure.
+   - Affects all `puppeteer.connect()`, `chromium.connectOverCDP()`, Puppeteer/Playwright MCP, agent-browser, etc.
+   - **Reason:** Google blocked it for security (info-stealers were stealing cookies via CDP).
+   - Source: [developer.chrome.com/blog/remote-debugging-port](https://developer.chrome.com/blog/remote-debugging-port)
+
+2. **`--user-data-dir=/some/path` is REQUIRED, but gives you a SEPARATE profile.**
+   - The flag works only when pointing to a non-default directory.
+   - That directory starts blank — none of your cookies, logins, or extensions.
+   - You can copy your real profile there, but see #3.
+
+3. **App-Bound Encryption (Chrome 136+) prevents decrypting copied profile data.**
+   - Cookies and passwords in the default profile are encrypted with a key tied to the OS user account + profile path.
+   - Chromium issue #394919677: *"app-bound will be changed to not decrypt data if a custom `--user-data-dir` is used."*
+   - **Result:** Copying `~/.../Google/Chrome/Default` to `/tmp/some-dir` does NOT give you working cookies.
+   - Source: [issues.chromium.org/issues/394919677](https://issues.chromium.org/issues/394919677)
+
+### What still works (in priority order)
+
+| Use case | Tool | How |
+|----------|------|-----|
+| **Reuse your real Chrome session (best)** | **Chrome DevTools MCP** | `--autoConnect` on Chrome 146+ stable. Toggle once in `chrome://inspect/#remote-debugging`. |
+| Reuse your Chrome cookies via Python (macOS/Linux) | **agentauth-py** | `pip install agentauth-py && agent-auth grab <domain>` — reverse-engineers App-Bound Encryption. |
+| Reuse real Chrome via MCP, no debug port | **Hangwin mcp-chrome** | Chrome extension + local bridge. |
+| Reuse real Chrome via MCP, with human-in-loop | **Playwright MCP Bridge Extension** | Microsoft's official extension, sideloaded. |
+| Just need a fresh isolated browser | **rodney** (our tool) | `rodney start && rodney open <url> && rodney stop`. Already in this repo. |
+| Need a stealth anti-detect browser | **CloakBrowser** (our testbed) | Stealth Chromium, own browser. |
+| Need an MCP for any browser | **Playwright MCP** | Cross-browser, no real-session reuse by default. |
+
+### Rules for any browser automation in this repo
+
+- **Never** write a doc, script, or guide that suggests `chrome --remote-debugging-port=9222` against the default profile — it doesn't work.
+- If you find a tutorial older than March 2025, **verify** before citing it.
+- For our own tools (rodney, CloakBrowser tests): they launch their own browser — Chrome 136+ doesn't affect them.
+- Full comparison + decision flows: [guides/browser-tools-comparison.md](guides/browser-tools-comparison.md)
 
 ## External Skills
 

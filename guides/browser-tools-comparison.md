@@ -55,6 +55,8 @@ date: 2026-06-01
 
 ### What Are Your ACTUAL Options? (Honest List, 2026)
 
+> ⚠️ **Current Chrome stable: v149** (June 2026). The Chrome 136+ restriction on `--remote-debugging-port` is **still in effect** — there's no workaround on the default profile. The old `chrome --remote-debugging-port=9222` against your daily Chrome **silently fails** (port never opens).
+
 Given the Chrome 136+ breaking change and the limitations of each tool, here are your **realistic** options for connecting to a browser that has your sessions:
 
 | # | Option | Gets your real Chrome? | Pros | Cons |
@@ -62,12 +64,22 @@ Given the Chrome 136+ breaking change and the limitations of each tool, here are
 | 1 | **Chrome DevTools MCP + `--autoConnect`** (Chrome 146+ stable) | ✅ **YES** | Your actual browser, your cookies, your tabs. Zero setup once enabled. | Requires Chrome 146+. Single-browser attachment. |
 | 2 | **Chrome DevTools MCP + `--browserUrl`** + manual Chrome launch with `--user-data-dir` | ❌ **separate profile** (blank) | Works on any Chrome. Full control. | Fresh profile — no your cookies unless you copy profile in. |
 | 3 | **Puppeteer / Playwright `connectOverCDP()` + `--user-data-dir=/tmp/other`** | ❌ **separate profile** (blank) | Programmatic control. Both headed/headless. | Same profile limitation. Also requires killing your daily Chrome first. |
-| 4 | **CloakBrowser Profile Manager** (Docker, self-hosted) | ❌ **own sessions, not yours** | Persistent cookies. Unique fingerprints. Free. | Not your Chrome's cookies. New persona. |
-| 5 | **Rodney / agent-browser** (own browser) | ❌ own | Simple. | No your sessions. |
-| 6 | **Cloud tools** (Browserbase, CF Browser Run) | ❌ cloud only | No local install. | Not your browser. |
-| ~~7~~ | ~~Claude Computer Use~~ | ~~✅ yes (desktop)~~ | — | **Ruled out** by user. |
+| 4 | **agentauth-py** (decrypts Chrome cookies) | ✅ **YES** (defeats App-Bound Encryption) | Works on macOS/Linux. Plugs into Playwright/requests/LangChain. | macOS/Linux only. 3rd-party tool. |
+| 5 | **Hangwin mcp-chrome** (extension + local bridge) | ✅ **yes** (no debug port needed) | No command-line browser launch. More stable than raw CDP. | Extension + bridge to install. |
+| 6 | **Playwright MCP Bridge Extension** (Microsoft) | ✅ **yes** (auth required) | Perfect state preservation. Microsoft-maintained. | Sideload extension. Manual authorization per session. |
+| 7 | **agent-browser `--auto-connect state save`** | ✅ **yes** (if Chrome was launched with debug port + custom profile) | All-in-one Rust CLI. State encryption. | Requires manual Chrome launch with `--user-data-dir`. |
+| 8 | **CloakBrowser Profile Manager** (Docker, self-hosted) | ❌ **own sessions, not yours** | Persistent cookies. Unique fingerprints. Free. | Not your Chrome's cookies. New persona. |
+| 9 | **Rodney / agent-browser** (own browser only) | ❌ own | Simple. | No your sessions. |
+| 10 | **Cloud tools** (Browserbase, CF Browser Run, Airtop, Bedrock AgentCore) | ❌ cloud only | No local install. | Not your browser. |
+| ~~11~~ | ~~Claude Computer Use~~ | ~~✅ yes (desktop)~~ | — | **Ruled out** by user. |
+| ~~12~~ | ~~Puppeteer / Playwright `connectOverCDP()` against default Chrome profile~~ | ~~was ✅~~ | — | **BROKEN since Chrome 136** — `--remote-debugging-port` ignored on default profile. Don't waste time trying. |
 
-**Bottom line:** The *only* way to get your *real* Chrome with your real cookies (without Claude) is **option 1: Chrome DevTools MCP + `--autoConnect`**. Everything else means an isolated/separate browser.
+**Bottom line:** To get your *real* Chrome with your real cookies (without Claude), your real options are:
+1. **Chrome DevTools MCP + `--autoConnect`** (cleanest, if Chrome 146+)
+2. **agentauth-py** (most reliable, defeats encryption, macOS/Linux)
+3. **Extension-based MCPs** (Hangwin, Playwright MCP Bridge) — no debug port drama
+
+The old `chrome --remote-debugging-port=9222` pattern is dead. Don't rely on tutorials older than March 2025.
 
 ### ⚠️ Breaking Change: Chrome 136+ Killed the Old CDP Connect Method
 
@@ -584,7 +596,11 @@ agent-browser --profile Default open https://gmail.com
 agent-browser --profile "Work" open https://app.example.com
 
 # 2. Import auth from your running Chrome
-chrome --remote-debugging-port=9222  # (requires --user-data-dir workaround since 136)
+# ⚠️ Chrome 136+ (current stable 149): --remote-debugging-port on default profile is BLOCKED.
+#    You MUST use --user-data-dir pointing to a non-default directory (clean profile).
+#    If you need your actual Chrome session: use Chrome DevTools MCP --autoConnect (Tier 1) instead,
+#    or agentauth-py to decrypt + import cookies.
+chrome --remote-debugging-port=9222 --user-data-dir=/tmp/agent-debug-profile
 agent-browser --auto-connect state save ./my-auth.json
 agent-browser --state ./my-auth.json open https://app.example.com/dashboard
 
@@ -901,6 +917,227 @@ Chromium-only workflows, CDP-heavy instrumentation, teams already invested in Ch
 - Community MCP → [Xandon/puppeteer-mcp-server](https://github.com/Xandon/puppeteer-mcp-server)
 - Core lib → [pptr.dev](https://pptr.dev/) · [github.com/puppeteer/puppeteer](https://github.com/puppeteer/puppeteer) (88k+ ⭐)
 - Setup guide → [MCP Puppeteer Server Setup 2026](https://markaicode.com/mcp-puppeteer-server-browser-automation-claude/)
+
+---
+
+## 11. Browser Session Management Tools (Specialized)
+
+> A new class of tools focused specifically on **browser session reuse** — not full browser automation, but solving the "I want my cookies/login state across tools" problem.
+
+These don't fit neatly into the "compare browsers" table above, so they get their own section.
+
+### 11.1 agentauth-py — Chrome Cookie Vault
+
+**What:** Python SDK that reads & decrypts cookies from your actual Chrome's cookie database (defeats App-Bound Encryption on macOS/Linux). Stores them in an encrypted vault. Plug into Playwright/requests/LangChain/n8n.
+
+```bash
+pip install agentauth-py
+agent-auth grab linkedin.com        # grabs LinkedIn cookies from your Chrome
+# Cookies now stored in encrypted vault
+
+from agent_auth import Vault
+vault = Vault()
+cookies = vault.get_session("linkedin.com")
+
+# Use with Playwright
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    context = browser.new_context()
+    context.add_cookies(cookies)
+    page = context.new_page()
+    page.goto("https://linkedin.com/feed")  # Already authenticated!
+```
+
+### Strengths
+- ✅ **Defeats Chrome 136+ App-Bound Encryption** (reverse-engineered on macOS/Linux)
+- ✅ Multi-profile support (`--profile "Work"`)
+- ✅ Encrypted vault storage (AES-256)
+- ✅ Export/import for syncing to remote servers (scp-friendly)
+- ✅ LangChain, n8n, Playwright integrations built-in
+- ✅ Works with **requests** (no browser needed for API calls)
+- ✅ MIT licensed
+- ✅ Full audit logging
+
+### Weaknesses
+- ❌ macOS/Linux only (Windows DPAPI is harder — would need a different approach)
+- ❌ 3rd-party tool, not a "browser" itself — needs another tool to use the cookies
+- ❌ Cookies will go stale as your real Chrome session changes
+- ❌ Some fingerprint-bound cookies (Cloudflare cf_clearance) may still get rejected
+
+### Best for
+Anyone who wants to **reuse their real Chrome sessions** with Playwright/Puppeteer/requests without launching their own browser. Solves the Chrome 136 encryption problem.
+
+### Links
+- PyPI → [`agentauth-py`](https://pypi.org/project/agentauth-py/)
+- How it works → [Reverse-Engineering Chrome's Cookie Encryption](https://dev.to/jacobgadek/reverse-engineering-chromes-cookie-encryption-to-authenticate-ai-agents-212i)
+- n8n node → [n8n-nodes-agentauth](https://www.npmjs.com/package/n8n-nodes-agentauth)
+
+---
+
+### 11.2 Hangwin mcp-chrome — Chrome Extension + Local Bridge
+
+**What:** Chrome extension that runs in your real Chrome + a local Node.js bridge (`mcp-chrome-bridge`). Your AI agent connects to the bridge via MCP. **No need to launch a separate browser, no need for `--remote-debugging-port`.**
+
+```json
+{
+  "mcpServers": {
+    "chrome-mcp": {
+      "type": "streamableHttp",
+      "url": "http://127.0.0.1:12306/mcp"
+    }
+  }
+}
+```
+
+### Strengths
+- ✅ **No debug port needed** — uses Chrome extension APIs (`chrome.tabs`, `chrome.debugger`)
+- ✅ **Streams via HTTP/WebSocket** — survives MCP client restarts
+- ✅ 23+ tools for browser control, network monitoring, content analysis
+- ✅ LLM-optimized screenshots (strips irrelevant UI)
+- ✅ Cross-tab management
+- ✅ More stable than raw CDP connections
+- ✅ ~6k+ GitHub stars, community mature
+
+### Weaknesses
+- ❌ Requires extension install + bridge process
+- ❌ Chrome only (no Firefox/Safari)
+- ❌ Extension not on Chrome Web Store (sideload from GitHub)
+- ❌ Enterprise policies may block extension install
+- ❌ Two processes to manage (extension + bridge)
+
+### Best for
+Anyone who wants session reuse **without the Chrome 136+ CDP complications** or command-line browser launches.
+
+### Links
+- Repo → [hangwin/mcp-chrome](https://github.com/hangwin/mcp-chrome)
+- DeepWiki → [hangwin/mcp-chrome](https://deepwiki.com/hangwin/mcp-chrome)
+
+---
+
+### 11.3 Playwright MCP Bridge Extension (Microsoft)
+
+**What:** Microsoft Playwright's official solution to the session-reuse paradox. Chrome extension that **manually authorizes** AI access to your current tab, then exposes the tab to Playwright MCP.
+
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--extension"]
+    }
+  }
+}
+```
+
+### Strengths
+- ✅ **Perfect identity state preservation** — extension runs in your browser context, inherits all your cookies/localStorage/logins
+- ✅ **Human-in-the-loop security** — you must click "Connect" in the extension popup to authorize
+- ✅ Built on top of Playwright's robust framework
+- ✅ No need to launch a separate browser
+- ✅ Microsoft-maintained
+
+### Weaknesses
+- ❌ **Sideloading required** — not in Chrome Web Store, must download ZIP from GitHub Releases
+- ❌ Manual authorization per session (deliberate security choice)
+- ❌ Two-step setup (extension + MCP server)
+- ❌ Enterprise policies may block sideloading
+- ❌ One tab at a time typically
+
+### Best for
+Enterprise use cases, scenarios requiring human-in-the-loop authorization, anyone who needs to automate the exact tab they're looking at.
+
+### Links
+- Repo → [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) (with extension in releases)
+- Setup guide → [MCP Browser Session Reuse: Complete Technical Guide 2026](https://onpiste.work/blogs/38-mcp-browser-session-reuse-guide)
+
+---
+
+### 11.4 YetiBrowser MCP — Local-First, Firefox-Aware
+
+**What:** Open-source MCP server with extension-based session reuse. Emphasizes privacy, local data, and DOM diff for token efficiency.
+
+### Strengths
+- ✅ **DOM Snapshot Diff** — only sends page changes since last operation (huge token savings)
+- ✅ **Cross-browser** — Chrome + Firefox (rare in MCP ecosystem)
+- ✅ **Stealth by design** — reuses your real browser, fingerprint matches you perfectly
+- ✅ Privacy-first: no telemetry, no cloud
+- ✅ All data local
+
+### Weaknesses
+- ❌ Newer project, less battle-tested
+- ❌ Firefox support experimental
+- ❌ Smaller community
+
+### Best for
+Privacy-sensitive use cases, long-running agents where token cost matters, Firefox users.
+
+### Links
+- Listed in → [MCP Browser Session Reuse Guide](https://onpiste.work/blogs/38-mcp-browser-session-reuse-guide#yetibrowser-mcp)
+
+---
+
+### 11.5 Airtop — Cloud Browser with Native Auth
+
+**What:** Cloud-hosted browser that handles session persistence, OAuth, and 2FA as first-class features. Integrates with n8n, Claude, and any MCP client.
+
+### Strengths
+- ✅ **Manages auth flows natively** — OAuth, 2FA, session persistence built in
+- ✅ Cloud scale — many concurrent sessions
+- ✅ MCP server mode
+- ✅ n8n integration
+- ✅ No local browser dependency
+
+### Weaknesses
+- ❌ Paid service
+- ❌ Cloud-only (not your real browser)
+- ❌ Less control than local tools
+
+### Best for
+Cloud-native agent workflows, OAuth-heavy APIs, when you want to offload auth management.
+
+### Links
+- Site → [airtop.ai](https://www.airtop.ai/)
+- Comparison → [Browser Use vs Airtop 2026](https://www.skyvern.com/blog/browser-use-vs-airtop-which-is-better/)
+
+---
+
+### 11.6 AWS Bedrock AgentCore Browser — Cloud Browser with Profiles
+
+**What:** AWS-managed cloud browser with persistent profiles, proxy config, and extension support. Announced Feb 2026.
+
+### Strengths
+- ✅ **Persistent browser profiles** — cookies/localStorage survive sessions
+- ✅ **Proxy configuration** — stable egress IP for IP-bound sessions
+- ✅ **Browser extensions** — load Chrome extensions into sessions
+- ✅ AWS integration (Secrets Manager, IAM)
+- ✅ Compliance certifications (FedRAMP, HITRUST, PCI)
+
+### Weaknesses
+- ❌ AWS-only (vendor lock-in)
+- ❌ Cloud-only (not your real browser)
+- ❌ Costs add up at scale
+
+### Best for
+Enterprise AWS workflows, compliance-sensitive use cases, IP-bound session requirements.
+
+### Links
+- AWS blog → [Customize AI agent browsing with proxies, profiles, extensions in Bedrock AgentCore](https://aws.amazon.com/blogs/machine-learning/customize-ai-agent-browsing-with-proxies-profiles-and-extensions-in-amazon-bedrock-agentcore-browser/)
+- Docs → [Bedrock AgentCore Browser Tool](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool.html)
+
+---
+
+### Session Management Tools Comparison
+
+| Tool | Approach | Gets your real Chrome? | Encrypted? | Cost | Best for |
+|------|----------|------------------------|------------|------|----------|
+| **agentauth-py** | Decrypts Chrome cookies | ✅ **yes** (with macOS/Linux decryption) | ✅ AES-256 vault | Free | Plug into Playwright/requests/LangChain |
+| **Hangwin mcp-chrome** | Extension + HTTP bridge | ✅ yes (extension runs in your Chrome) | N/A | Free | MCP clients wanting no debug port |
+| **Playwright MCP Bridge** | Microsoft extension | ✅ yes (auth required) | N/A | Free | Enterprise, human-in-loop |
+| **YetiBrowser MCP** | Extension + diff | ✅ yes | N/A (local-only) | Free | Token-efficient, Firefox |
+| **Airtop** | Cloud browser | ❌ cloud | ✅ managed | Paid | OAuth/2FA workflows |
+| **AWS Bedrock AgentCore** | Cloud browser | ❌ cloud | ✅ AWS-managed | AWS pricing | Enterprise AWS |
+| **agent-browser** (built-in) | `--auto-connect state save` | ✅ yes | ✅ AES-256-GCM | Free | All-in-one solution |
 
 ---
 
