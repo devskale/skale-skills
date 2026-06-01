@@ -1,3 +1,10 @@
 #!/usr/bin/env bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks so SCRIPT_DIR points to the actual skill directory
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 cd "$SCRIPT_DIR" && exec uv run scripts/search.py "$@"
