@@ -22,14 +22,44 @@ from skiller.commands.base import Command
 
 
 def _load_env() -> None:
-    """Load environment variables from .env file if it exists."""
-    env_path = os.path.join(os.getcwd(), ".env")
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
-                if "=" in line and not line.startswith("#"):
-                    key, value = line.strip().split("=", 1)
-                    os.environ[key] = value
+    """Load environment variables from SKILLER_CONFIG directory .env if it exists.
+
+    Searches for .env next to the skiller_config.json that is active for the
+    current invocation (respects SKILLER_CONFIG env var or the upward-search
+    used by config loading). Falls back to cwd/.env for backwards compat.
+    """
+    from skiller.config import load_config
+
+    # Locate the config file the same way config.py does
+    candidates: list[str] = []
+    explicit = os.environ.get("SKILLER_CONFIG")
+    if explicit:
+        candidates.append(os.path.dirname(explicit))
+
+    cur = os.path.abspath(os.getcwd())
+    root = os.path.abspath(os.sep)
+    found = False
+    while cur != root:
+        for p in (os.path.join(cur, "skiller"), cur):
+            cfg = os.path.join(p, "skiller_config.json")
+            if os.path.isfile(cfg):
+                candidates.append(p)
+                found = True
+                break
+        if found:
+            break
+        cur = os.path.dirname(cur)
+
+    # Try each candidate directory for a .env file
+    for d in candidates:
+        env_path = os.path.join(d, ".env")
+        if os.path.exists(env_path):
+            with open(env_path, "r") as f:
+                for line in f:
+                    if "=" in line and not line.startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        os.environ.setdefault(key, value)
+            return
 
 
 def _get_headers() -> dict:
@@ -360,6 +390,9 @@ def _run(args: argparse.Namespace, config: dict) -> None:
     test_mode = getattr(args, "test", False)
     limit = getattr(args, "limit", 0)
     _load_env()
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        print(f"Using GITHUB_TOKEN from environment.")
     print(f"Crawling skills from {args.file}...")
     urls = _extract_urls(args.file)
     

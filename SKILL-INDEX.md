@@ -29,7 +29,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
 | 🟢 global | **fetch-url** | Fetch and extract readable text content from web pages. Auto-selects best tool with smart fallbac... | `~/.pi/agent/skills/fetch-url` |
-| 🟢 global | **peep** | X/Twitter CLI for reading, searching, posting, and managing bookmarks via cookie auth. | `~/.pi/agent/skills/peep` |
+| 🟢 global | **peep** | X/Twitter CLI for reading, searching, posting, and managing bookmarks via cookie auth. | [github.com/devskale/peep](https://github.com/devskale/peep) — skill lives in the repo at `.pi/skills/peep/` |
 | 🟢 global | **web-search** | Search the web with automatic backend selection. Works out-of-the-box with public SearXNG. Option... | `~/.pi/agent/skills/web-search` |
 
 ### Notable (from project packages)
