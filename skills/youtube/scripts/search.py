@@ -160,9 +160,11 @@ def search_instance(host: str, query: str, num: int, api_sort: str) -> Optional[
         if not data:
             return None
 
-        # Validate it's actual video results
-        if isinstance(data, list) and len(data) > 0 and ("title" in data[0] or "videoId" in data[0]):
-            return data[:num]
+        # Validate it's actual video results (skip garbage entries)
+        if isinstance(data, list) and len(data) > 0:
+            valid = [v for v in data if v.get("title") or v.get("videoId")]
+            if valid:
+                return valid[:num]
     except Exception:
         pass
     return None
@@ -224,7 +226,7 @@ def search_youtube(query: str, num: int = 5, sort_by: str = "relevance", verbose
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Search YouTube videos via Invidious API")
-    parser.add_argument("query", help="Search query")
+    parser.add_argument("query", nargs="?", default="", help="Search query")
     parser.add_argument(
         "--num", type=int, default=3, help="Number of results (default: 3)"
     )
