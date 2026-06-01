@@ -1,0 +1,8 @@
+.venv/
+*.egg-info/
+uv.lock
+.env
+.last-update
+.instance-cache.json
+node_modules/
+__pycache__/

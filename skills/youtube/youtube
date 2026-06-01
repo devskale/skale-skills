@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# youtube — Search YouTube videos via Invidious API
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+
+case "${1:-}" in
+    --update|--self-update)
+        cd "$SKILL_DIR"
+        echo "Updating youtube..."
+        git pull 2>&1 || true
+        date +%s > "$STAMP_FILE"
+        echo "Updated."
+        exit 0
+        ;;
+    --selfcheck)
+        version=$(grep 'version' pyproject.toml 2>/dev/null | head -1 | grep -o '[0-9][0-9.]*' || echo "?")
+        last=""
+        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || stat -f "%Sm" "$STAMP_FILE" 2>/dev/null || echo "never")
+        echo "youtube v${version}"
+        echo "  dir:  $SKILL_DIR"
+        echo "  last: ${last}"
+        exit 0
+        ;;
+    --install)
+        cd "$SKILL_DIR"
+        if command -v uv &>/dev/null; then
+            uv venv 2>/dev/null; uv sync 2>/dev/null
+        fi
+        ln -sf "$SKILL_DIR/youtube" "$HOME/.local/bin/youtube" 2>/dev/null || true
+        date +%s > "$STAMP_FILE"
+        echo "Installed."
+        exit 0
+        ;;
+esac
+
+# Auto-update after 7 days
+if [ -f "$STAMP_FILE" ]; then
+    last=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    age=$(( (now - last) / 86400 ))
+    if [ "$age" -gt 7 ]; then
+        (cd "$SKILL_DIR" && git pull 2>/dev/null && date +%s > "$STAMP_FILE") &
+    fi
+fi
+
+cd "$SKILL_DIR" && exec python3 scripts/search.py "$@"

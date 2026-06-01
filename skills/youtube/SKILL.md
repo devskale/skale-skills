@@ -1,52 +1,69 @@
 ---
 name: youtube
-description: Search YouTube videos via Invidious API. Use when the user wants to find, search for, or look up videos, or asks for video recommendations on a topic.
+description: "Search YouTube videos via Invidious API with automatic instance fallback. Use when the user wants to find, search for, or look up videos, or asks for video recommendations on a topic."
+metadata:
+  author: skale
+  version: "1.0.0"
 ---
 
-# YouTube Video Search
-
-Search YouTube videos using the Invidious API at `https://yt.tarka.dev`.
-
-## How to Search
-
-Run the included python script to search and get formatted results:
+# YouTube Search
 
 ```bash
-python3 search.py "<query>" [--num <number>] [--rank <relevance|date|views|rating>]
+youtube "clojure macros"
+youtube "rust lang" --rank views
+youtube "artificial intelligence" --num 5 --rank date -v
 ```
 
-Options:
-
-- `--num`: Number of results to return (default: 3)
-- `--rank`: Sort order (default: relevance). Choices: `relevance`, `date`, `views`, `rating`, `ranking`
-
-The script will output a markdown list of videos.
-
-## Example
-
-When user asks "find me a video about Clojure macros":
+## Install
 
 ```bash
-python3 search.py "Clojure macros"
+bash install.sh
 ```
 
-When user asks "show me the most viewed videos about rust":
+## Usage
 
-```bash
-python3 search.py "rust lang" --rank views
-```
+| Command | Description |
+|---------|-------------|
+| `youtube "query"` | Search, top 3 results |
+| `youtube "query" --num 10` | Return 10 results |
+| `youtube "query" --rank views` | Sort by views/date/rating/relevance |
+| `youtube "query" -v` | Verbose (show instance used) |
+| `youtube --discover` | Find working Invidious instances |
 
-When user asks "show me 3 recent videos about AI":
+## Options
 
-```bash
-python3 search.py "artificial intelligence" --num 3 --rank date
-```
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--num N` | 3 | Number of results |
+| `--rank` | relevance | Sort: relevance, date, views, rating |
+| `-v, --verbose` | off | Show which instance is used |
+| `--discover` | off | Re-discover instances from api.invidious.io |
 
-Output:
+## How It Works
 
-- [**Clojure Tutorial**](https://yt.tarka.dev/watch?v=ciGyHkDuPAE) by Derek Banas - 175K views - 8 years ago - Duration: 1:11:23
+1. Checks cached instances (`.instance-cache.json`, 4h TTL)
+2. Falls back to `https://api.invidious.io/instances.json` discovery
+3. Falls back to hardcoded instances
+4. Tries each in order until one returns results
 
-## Notes
+No API key needed. Uses the public Invidious API.
 
-- If the script fails, check your internet connection.
-- If no results are found, the script will output "No results found."
+## Output
+
+Each result is a markdown link:
+
+- [**Clojure Tutorial**](https://invidious.materialio.us/watch?v=ciGyHkDuPAE) by Derek Banas - 175K views - 8 years ago - Duration: 1:11:23
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| "all instances failed" | `youtube --discover` to refresh |
+| No results | Try different keywords |
+| Slow first run | Normal — discovers instances, then caches |
+
+## API Reference
+
+- Instances: https://api.invidious.io/instances.json
+- Docs: https://docs.invidious.io/api/
+- Search: `GET /api/v1/search?q=...&type=video&sort_by=relevance`
