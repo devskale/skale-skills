@@ -58,5 +58,24 @@
     "Windows": ["jina", "markdown"]
   },
   "fallback_order": ["w3m", "lynx", "jina", "markdown", "chawan"],
+  "site_tool_hints": {
+    "reddit.com": ["w3m", "lynx", "jina", "markdown"],
+    "www.reddit.com": ["w3m", "lynx", "jina", "markdown"],
+    "old.reddit.com": ["w3m", "lynx", "jina", "markdown"],
+    "news.ycombinator.com": ["w3m", "lynx", "jina"],
+    "wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
+    "en.wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
+    "github.com": ["jina", "markdown", "w3m"],
+    "docs.python.org": ["jina", "w3m", "lynx"],
+    "developer.mozilla.org": ["jina", "w3m", "lynx"],
+    "medium.com": ["jina", "markdown", "w3m"],
+    "stackoverflow.com": ["markdown", "jina"],
+    "stackexchange.com": ["markdown", "jina"],
+    "superuser.com": ["markdown", "jina"],
+    "askubuntu.com": ["markdown", "jina"],
+    "serverfault.com": ["markdown", "jina"],
+    "firmenabc.at": ["chrome"],
+    "www.firmenabc.at": ["chrome"]
+  },
   "timeout": 45
 }

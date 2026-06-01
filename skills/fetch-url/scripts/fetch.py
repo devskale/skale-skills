@@ -70,27 +70,24 @@ WEAK_ERROR_PATTERNS = [
 ERROR_PATTERNS = STRONG_ERROR_PATTERNS + WEAK_ERROR_PATTERNS
 
 # Site-specific tool preferences (domains that need specific tools)
-SITE_TOOL_HINTS = {
-    # Sites where w3m/lynx excel (text-heavy, simple HTML)
-    # Reddit: old.reddit.com works with w3m, new reddit blocks everything
+# Default site-specific tool preferences (overridden by settings.json "site_tool_hints").
+# Format: {"domain": ["tool1", "tool2", ...]}
+_DEFAULT_SITE_TOOL_HINTS = {
     "reddit.com": ["w3m", "lynx", "jina", "markdown"],
     "www.reddit.com": ["w3m", "lynx", "jina", "markdown"],
     "old.reddit.com": ["w3m", "lynx", "jina", "markdown"],
     "news.ycombinator.com": ["w3m", "lynx", "jina"],
-    # Sites where jina is cleaner (complex HTML, lots of nav chrome)
     "wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
     "en.wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
     "github.com": ["jina", "markdown", "w3m"],
     "docs.python.org": ["jina", "w3m", "lynx"],
     "developer.mozilla.org": ["jina", "w3m", "lynx"],
     "medium.com": ["jina", "markdown", "w3m"],
-    # Sites that block text browsers, need API
     "stackoverflow.com": ["markdown", "jina"],
     "stackexchange.com": ["markdown", "jina"],
     "superuser.com": ["markdown", "jina"],
     "askubuntu.com": ["markdown", "jina"],
     "serverfault.com": ["markdown", "jina"],
-    # Sites behind aggressive Cloudflare/JS challenges
     "firmenabc.at": ["chrome"],
     "www.firmenabc.at": ["chrome"],
 }
@@ -198,19 +195,26 @@ def extract_domain(url: str) -> str:
     return ""
 
 
-def get_site_tool_hint(url: str) -> Optional[List[str]]:
-    """Get preferred tools for a specific site based on domain."""
+def get_site_tool_hint(url: str, settings: Dict[str, Any] = None) -> Optional[List[str]]:
+    """Get preferred tools for a specific site based on domain.
+
+    Checks settings.json "site_tool_hints" first, falls back to defaults.
+    """
+    hints = _DEFAULT_SITE_TOOL_HINTS
+    if settings and "site_tool_hints" in settings:
+        hints = settings["site_tool_hints"]
+
     domain = extract_domain(url)
-    
+
     # Direct match
-    if domain in SITE_TOOL_HINTS:
-        return SITE_TOOL_HINTS[domain]
-    
+    if domain in hints:
+        return hints[domain]
+
     # Partial match (e.g., subdomain)
-    for site_domain, tools in SITE_TOOL_HINTS.items():
+    for site_domain, tools in hints.items():
         if domain.endswith(site_domain) or site_domain.endswith(domain):
             return tools
-    
+
     return None
 
 
@@ -566,9 +570,7 @@ def fetch_with_fallback(url: str, preferred_tool: str, settings: Dict[str, Any],
     has_auth = bool(bearer or get_bearer_token())
 
     # Check for site-specific tool hints
-    site_hints = get_site_tool_hint(url)
-    
-    # Build tool order: preferred first, then site hints, then fallbacks
+    site_hints = get_site_tool_hint(url, settings)
     tool_order = []
     if preferred_tool in available:
         tool_order.append(preferred_tool)
@@ -635,7 +637,7 @@ def fetch_url(url: str, tool: str = 'auto', links: bool = False, use_api: bool =
     # Auto-select tool if needed
     if tool == 'auto':
         # Check for site-specific preference first
-        site_hints = get_site_tool_hint(url)
+        site_hints = get_site_tool_hint(url, settings)
         available = get_available_tools(settings)
         
         if site_hints:
