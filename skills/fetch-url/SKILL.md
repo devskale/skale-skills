@@ -16,11 +16,17 @@ Extracts text from any webpage. Works globally after install.
 
 ## Install
 
+**Linux / macOS (bash):**
 ```bash
 cd ~/.pi/agent/skills/fetch-url && ./install.sh
 ```
 
-Creates `fetch-url` in `~/.local/bin/`. Requires `uv` (auto-installed).
+**Windows (cmd):**
+```cmd
+cd %USERPROFILE%\.pi\agent\skills\fetch-url && install.bat
+```
+
+Creates `fetch-url` in `~/.local/bin/` (`%USERPROFILE%\.local\bin\` on Windows). Requires `uv` (auto-installed).
 
 ## Update
 

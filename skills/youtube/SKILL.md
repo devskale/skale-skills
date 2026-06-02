@@ -16,8 +16,14 @@ youtube "artificial intelligence" --num 5 --rank date -v
 
 ## Install
 
+**Linux / macOS (bash):**
 ```bash
 bash install.sh
+```
+
+**Windows (cmd):**
+```cmd
+install.bat
 ```
 
 ## Usage

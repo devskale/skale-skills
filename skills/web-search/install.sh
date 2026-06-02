@@ -23,35 +23,32 @@ fi
 echo "  Syncing dependencies..."
 uv sync
 
-# ── 3. Create global symlink ───────────────────────────────────────────────
+# ── 3. Create global launcher ──────────────────────────────────────────────
+# We write a launcher script (not a symlink) because:
+#   - Windows Git Bash: ln -sf creates a silent copy, not a real symlink
+#   - macOS: may require Developer Tools for symlinks on some configs
+#   - Linux: works fine but launcher is equally good
+# The launcher embeds SKILL_DIR so it always finds scripts/search.py.
 BIN_DIR="$HOME/.local/bin"
-SYMLINK="$BIN_DIR/web-search"
+LAUNCHER="$BIN_DIR/web-search"
 mkdir -p "$BIN_DIR"
 
-# Remove stale symlink or file if it points elsewhere
-if [ -L "$SYMLINK" ] || [ -f "$SYMLINK" ]; then
-    if [ "$(readlink -f "$SYMLINK" 2>/dev/null || echo '')" != "$SKILL_DIR/search" ]; then
-        echo "  Removing old symlink at $SYMLINK"
-        rm -f "$SYMLINK"
-    fi
-fi
-
-if [ ! -L "$SYMLINK" ]; then
-    ln -sf "$SKILL_DIR/search" "$SYMLINK"
-    echo "  Created symlink: $SYMLINK → $SKILL_DIR/search"
-else
-    echo "  Symlink already exists: $SYMLINK"
-fi
+cat > "$LAUNCHER" << LAUNCHER_EOF
+#!/usr/bin/env bash
+cd "$SKILL_DIR" && exec uv run scripts/search.py "\$@"
+LAUNCHER_EOF
+chmod +x "$LAUNCHER"
+echo "  Created launcher: $LAUNCHER → $SKILL_DIR/scripts/search.py"
 
 # ── 4. Verify installation ─────────────────────────────────────────────────
 echo "  Verifying..."
-if OUTPUT=$("$SKILL_DIR/search" "test" -v 2>&1); then
+if OUTPUT=$("$LAUNCHER" "test" -v 2>&1); then
     # Extract backend name from stderr output like "# Backend: duck"
     BACKEND=$(echo "$OUTPUT" | sed -n 's/.*Backend: \([a-z]*\).*/\1/p' || echo "unknown")
     echo "  ✓ web-search works (backend: $BACKEND)"
 else
     echo "  ⚠ web-search installed but verification failed. Try running manually:"
-    echo "    $SKILL_DIR/search \"test query\" -v"
+    echo "    $LAUNCHER \"test query\" -v"
 fi
 
 # ── 5. Write update timestamp ──────────────────────────────────────────────
