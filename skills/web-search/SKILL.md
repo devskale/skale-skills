@@ -16,11 +16,17 @@ Works globally after install. No credentials needed (public SearXNG).
 
 ## Install
 
+**Linux / macOS (bash):**
 ```bash
 cd ~/.pi/agent/skills/web-search && ./install.sh
 ```
 
-Creates a `web-search` command in `~/.local/bin/`. Requires `uv` (auto-installed).
+**Windows (cmd):**
+```cmd
+cd %USERPROFILE%\.pi\agent\skills\web-search && install.bat
+```
+
+Creates a `web-search` command in `~/.local/bin/` (`%USERPROFILE%\.local\bin\` on Windows). Requires `uv` (auto-installed).
 
 ## Update
 
