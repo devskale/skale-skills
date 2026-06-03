@@ -17,8 +17,14 @@ vtd audio --url 'https://...'
 
 ## Install
 
+**Linux / macOS (bash):**
 ```bash
 bash install.sh
+```
+
+**Windows (cmd):**
+```cmd
+install.bat
 ```
 
 Requires: `uv`, `node` (with pnpm/npm), `ffmpeg` (for audio extraction).

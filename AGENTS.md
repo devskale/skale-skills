@@ -145,7 +145,8 @@ Always run the relevant test after modifying a skill.
 Every skill must have:
 - `SKILL.md` — frontmatter (`name`, `description`, `version`) + short usage instructions
 - Launcher script — symlink resolution, `--update`/`--selfcheck`, auto-update after 7 days
-- `install.sh` — creates `~/.local/bin/<command>` symlink
+- `install.sh` — creates `~/.local/bin/<command>` launcher (Linux/macOS)
+- `install.bat` — creates `%USERPROFILE%\.local\bin\<command>.bat` launcher (Windows)
 - `.gitignore` — `.venv/`, `.env`, `uv.lock`, `*.egg-info/`, `.last-update`
 - `tests/<name>/test.sh` — file structure, launcher flags, live smoke test, code quality
 
