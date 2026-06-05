@@ -1,0 +1,8 @@
+{
+  "name": "skale-skills",
+  "version": "1.0.0",
+  "private": true,
+  "pi": {
+    "extensions": ["./extensions/*.ts"]
+  }
+}
