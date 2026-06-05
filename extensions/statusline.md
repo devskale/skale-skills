@@ -38,7 +38,7 @@ pi -e ./extensions/statusline.ts
 ## Requirements
 
 - pi ≥ 0.78
-- macOS or Linux (uses `scutil --get ComputerName` on macOS, falls back to `hostname`)
+- macOS, Linux, or Windows (uses `scutil` on macOS, `hostname` on Windows, falls back to `os.hostname()` on Linux)
 
 ## Gotchas
 
