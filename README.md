@@ -14,6 +14,10 @@ A collection of reusable AI agent skills for enhancing coding and productivity w
 - **readme-write** - Generate and update README.md files
 - **searxng-search** - Search via SearXNG instance
 
+## Available Extensions (pi)
+
+- **statusline** - Custom pi footer with machine name branding, token stats, and context usage
+
 ## Using Skiller CLI
 
 `skiller` is a Python CLI tool included in this repository for discovering, installing, and managing AI agent skills.
