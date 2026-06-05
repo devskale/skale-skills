@@ -5,14 +5,21 @@
  */
 
 import { execSync } from "node:child_process";
+import { hostname } from "node:os";
 
-// macOS: clean device name without .local or -N suffix
 const getMachineName = (): string => {
 	try {
-		return execSync("scutil --get ComputerName", { encoding: "utf8" }).trim();
+		if (process.platform === "darwin") {
+			return execSync("scutil --get ComputerName", { encoding: "utf8" }).trim();
+		}
+		if (process.platform === "win32") {
+			return execSync("hostname", { encoding: "utf8" }).trim();
+		}
 	} catch {
-		return require("node:os").hostname().replace(/\.local$/, "");
+		// fallback
 	}
+	// Linux and fallback: strip .local suffix
+	return hostname().replace(/\.local$/, "");
 };
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -36,7 +43,8 @@ export default function (pi: ExtensionAPI) {
 				dispose: unsub,
 				invalidate() {},
 				render(width: number): string[] {
-					const cwd = ctx.cwd.replace(process.env.HOME || "", "~");
+					const home = process.env.HOME || process.env.USERPROFILE || "";
+					const cwd = ctx.cwd.replace(home, "~");
 
 					// Token stats
 					let input = 0;
