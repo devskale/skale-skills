@@ -1,13 +1,18 @@
 /**
- * Status Line Extension — skale.dev
+ * Status Line Extension — machine name footer
  *
- * Custom footer with skale.dev branding + session info.
+ * Custom footer showing machine name, cwd, token stats, context usage,
+ * model info, and extension statuses.
  */
 
 import { execSync } from "node:child_process";
 import { hostname } from "node:os";
+import type { AssistantMessage } from "@earendil-works/pi-ai";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
-const getMachineName = (): string => {
+// Cache machine name — never changes during session
+const machineName = (() => {
 	try {
 		if (process.platform === "darwin") {
 			return execSync("scutil --get ComputerName", { encoding: "utf8" }).trim();
@@ -18,12 +23,8 @@ const getMachineName = (): string => {
 	} catch {
 		// fallback
 	}
-	// Linux and fallback: strip .local suffix
 	return hostname().replace(/\.local$/, "");
-};
-import type { AssistantMessage } from "@earendil-works/pi-ai";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+})();
 
 const formatTokens = (n: number): string => {
 	if (n === 0) return "0";
@@ -31,6 +32,8 @@ const formatTokens = (n: number): string => {
 	if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
 	return `${n}`;
 };
+
+const HOME = process.env.HOME || process.env.USERPROFILE || "";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
@@ -43,8 +46,7 @@ export default function (pi: ExtensionAPI) {
 				dispose: unsub,
 				invalidate() {},
 				render(width: number): string[] {
-					const home = process.env.HOME || process.env.USERPROFILE || "";
-					const cwd = ctx.cwd.replace(home, "~");
+					const cwd = ctx.cwd.replace(HOME, "~");
 
 					// Token stats
 					let input = 0;
@@ -52,10 +54,10 @@ export default function (pi: ExtensionAPI) {
 					let cacheRead = 0;
 					for (const e of ctx.sessionManager.getBranch()) {
 						if (e.type === "message" && e.message.role === "assistant") {
-							const m = e.message as AssistantMessage;
-							input += m.usage.input;
-							output += m.usage.output;
-							cacheRead += (m.usage as any).cacheRead ?? 0;
+							const u = (e.message as AssistantMessage).usage as Record<string, number>;
+							input += u.input;
+							output += u.output;
+							cacheRead += u.cacheRead ?? 0;
 						}
 					}
 
@@ -71,24 +73,22 @@ export default function (pi: ExtensionAPI) {
 					const thinkingStr =
 						thinking && thinking !== "off" ? ` • ${thinking}` : "";
 					const provider = ctx.model?.provider ?? "";
-					const modelStr = provider ? `(${provider}) ${ctx.model?.id || ""}${thinkingStr}` : `${ctx.model?.id || ""}${thinkingStr}`;
+					const modelStr = provider
+						? `(${provider}) ${ctx.model?.id || ""}${thinkingStr}`
+						: `${ctx.model?.id || ""}${thinkingStr}`;
 
-					// Extension statuses (from other extensions, e.g. Z.ai)
+					// Extension statuses (from other extensions)
 					const statuses = footerData.getExtensionStatuses();
 					const statusStr = Array.from(statuses.values()).join(" ");
 
-					// Line 1: skale.dev + cwd
+					// Line 1: machine name + cwd
 					const l1left =
-						theme.fg("accent", getMachineName()) + theme.fg("dim", ` ${cwd}`);
+						theme.fg("accent", machineName) + theme.fg("dim", ` ${cwd}`);
 
 					// Line 2: tokens + context → model
 					let l2text = `↑${formatTokens(input)} ↓${formatTokens(output)}`;
-					if (cacheRead > 0) {
-						l2text += ` R${formatTokens(cacheRead)}`;
-					}
-					if (ctxStr) {
-						l2text += ` ${ctxStr}`;
-					}
+					if (cacheRead > 0) l2text += ` R${formatTokens(cacheRead)}`;
+					if (ctxStr) l2text += ` ${ctxStr}`;
 					const l2left = theme.fg("dim", l2text);
 					const l2right = theme.fg("dim", modelStr);
 					const p2 = " ".repeat(
