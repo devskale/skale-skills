@@ -22,6 +22,7 @@ openskills install <org>/<repo>     # openskills CLI
 | **mitsuhiko** | Agent scripts (Python) | https://github.com/mitsuhiko/agent-stuff |
 | **steipete** | Agent scripts | https://github.com/steipete/agent-scripts |
 | **openclaw** | Agent skills (handoff, autoreview, crabbox) | https://github.com/openclaw/agent-skills |
+| **mattpocock** | Engineering skills (grill-me, tdd, diagnose, triage) | https://github.com/mattpocock/skills |
 | **Vercel** | Agent skills | https://github.com/vercel-labs/agent-skills |
 | **skills.sh** | Skill marketplace/manager | https://skills.sh/ |
 | **skillsmp.com** | Skill marketplace | https://skillsmp.com/ |
@@ -50,13 +51,7 @@ npx @anthropic-ai/skills add <name>
 |-------|------|-------------|
 | **docx** | Create/edit Word documents | `npx @anthropic-ai/skills add docx` |
 | **xlsx** | Create/edit Excel spreadsheets | `npx @anthropic-ai/skills add xlsx` |
-| **markdown-converter** | Convert docs to markdown (markitdown) | `skiller search markdown` |
-| **command-creator** | Create agent commands | `skiller search command` |
-| **readme-write** | Generate README.md files | `skiller search readme` |
-| **agent-skill-creator** | Guide for creating skills | `skiller search skill creator` |
 | **oebb-scotty** | Austrian rail planner (ÖBB) | `skiller search oebb` |
-| **agent-browser** | Browser automation CLI (profile reuse, a11y snapshots) | `brew install agent-browser` |
-| **browser-use** | AI browser agent (LLM-driven, Python framework) | `pip install 'browser-use[cli]'` |
 
 ## What We Maintain Here
 
@@ -67,8 +62,13 @@ Only **custom skills** we actively develop:
 - **video-transcript-downloader** — yt-dlp wrapper, downloads + transcripts
 - **youtube** — Invidious API video search with auto-fallback
 - **rodney** — headless Chrome automation
+- **browser-use** — persistent browser automation with session continuity
 - **todo** — TODO.md task tracking
 - **improve-skill** — skill improvement from session transcripts
+- **agent-skill-creator** — guide for creating skills for any AI agent
+- **agents-md-init** — create and update AGENTS.md files
+- **command-creator** — create custom commands for Pi and OpenCode
+- **readme-write** — generate and update README.md files
 
 ## API Docs
 
