@@ -1625,6 +1625,7 @@ These tools **can** be composed:
 | Claude Computer Use | [platform.claude.com/docs/computer-use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/computer-use-tool) |
 | Browserbase | [github.com/browserbase/mcp-server-browserbase](https://github.com/browserbase/mcp-server-browserbase) · [browserbase.com](https://www.browserbase.com/) |
 | Cloudflare Browser Run | [blog.cloudflare.com/browser-run-for-ai-agents](https://blog.cloudflare.com/browser-run-for-ai-agents/) |
+| mitsuhiko/web-browser | [github.com/mitsuhiko/agent-stuff/…/web-browser](https://github.com/mitsuhiko/agent-stuff/blob/main/skills/web-browser/SKILL.md) — minimal CDP CLI toolkit (start, nav, eval, screenshot, pick, dismiss-cookies, mobile emulate). Clean but isolated-profile only; no real-session reuse. |
 
 ### Chrome Connection (Critical)
 | Link | What |
