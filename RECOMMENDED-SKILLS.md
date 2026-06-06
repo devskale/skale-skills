@@ -21,6 +21,7 @@ openskills install <org>/<repo>     # openskills CLI
 | **OpenAI** | Official OpenAI skills | https://github.com/openai/skills |
 | **mitsuhiko** | Agent scripts (Python) | https://github.com/mitsuhiko/agent-stuff |
 | **steipete** | Agent scripts | https://github.com/steipete/agent-scripts |
+| **openclaw** | Agent skills (handoff, autoreview, crabbox) | https://github.com/openclaw/agent-skills |
 | **Vercel** | Agent skills | https://github.com/vercel-labs/agent-skills |
 | **skills.sh** | Skill marketplace/manager | https://skills.sh/ |
 | **skillsmp.com** | Skill marketplace | https://skillsmp.com/ |
@@ -54,6 +55,8 @@ npx @anthropic-ai/skills add <name>
 | **readme-write** | Generate README.md files | `skiller search readme` |
 | **agent-skill-creator** | Guide for creating skills | `skiller search skill creator` |
 | **oebb-scotty** | Austrian rail planner (ÖBB) | `skiller search oebb` |
+| **agent-browser** | Browser automation CLI (profile reuse, a11y snapshots) | `brew install agent-browser` |
+| **browser-use** | AI browser agent (LLM-driven, Python framework) | `pip install 'browser-use[cli]'` |
 
 ## What We Maintain Here
 
