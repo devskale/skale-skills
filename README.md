@@ -98,6 +98,48 @@ Supported agents: opencode, pi, qwen, claude, gemini, codex, trae.
 
 ## Installation
 
+### Using Pi (native package install)
+
+Skale-skills is a [pi package](https://pi.dev/packages) — pi can install and selectively load skills, extensions, and prompts.
+
+**Install everything:**
+
+```bash
+pi install git:github.com/devskale/skale-skills
+```
+
+**Selective install — only load what you want** by editing `~/.pi/agent/settings.json`:
+
+```json
+{
+  "packages": [{
+    "source": "git:github.com/devskale/skale-skills",
+    "extensions": ["extensions/statusline.ts"],
+    "skills": ["skills/fetch-url", "skills/web-search", "skills/youtube"],
+    "prompts": []
+  }]
+}
+```
+
+Filtering syntax:
+- Omit a key → load all of that type
+- `[]` → load none
+- `"skills/fetch-url"` → load only this skill
+- `"!skills/todo"` → exclude a specific skill
+
+**Try without installing:**
+
+```bash
+pi -e git:github.com/devskale/skale-skills
+```
+
+**Symlink individual skills (local dev):**
+
+```bash
+ln -s ~/code/agents/skills/skale-skills/skills/fetch-url ~/.pi/agent/skills/fetch-url
+ln -s ~/code/agents/skills/skale-skills/skills/web-search ~/.pi/agent/skills/web-search
+```
+
 ### Using OpenSkills (recommended)
 
 OpenSkills provides universal skill management for multiple AI agents.
