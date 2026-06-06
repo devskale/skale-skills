@@ -1,8 +1,10 @@
 {
   "name": "skale-skills",
   "version": "1.0.0",
-  "private": true,
+  "keywords": ["pi-package"],
   "pi": {
-    "extensions": ["./extensions/*.ts"]
+    "extensions": ["./extensions/*.ts"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
   }
 }
