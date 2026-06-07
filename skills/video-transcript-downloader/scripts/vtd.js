@@ -170,44 +170,28 @@ async function getVideoMeta(url) {
       "missing yt-dlp; install `yt-dlp` and ensure it is on PATH",
     );
   const args = [
-    "--print",
-    "%(upload_date)s|%(title).200B|%(id)s|%(view_count)s|%(like_count)s|%(uploader)s|%(duration)s|%(webpage_url)s|%(tags)s",
-    "--skip-download",
+    "--dump-json",
+    "--no-download",
     url,
   ];
   const r = await run(ytdlp, args);
   if (r.code !== 0) throw new Error(r.out.trim() || "yt-dlp metadata failed");
-  const line = r.out
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .find((l) => l.split("|").length >= 3);
-  if (!line) return {};
-  const [
-    uploadDate,
-    title,
-    id,
-    viewCount,
-    likeCount,
-    uploader,
-    duration,
-    webpageUrl,
-    tagsRaw,
-  ] = line.split("|");
-  let tags = [];
+  let info;
   try {
-    tags = JSON.parse(tagsRaw?.replace(/'/g, '"') || "[]");
-  } catch {}
+    info = JSON.parse(r.out.trim());
+  } catch {
+    return {};
+  }
   return {
-    uploadDate: uploadDate || null,
-    title: title || null,
-    id: id || null,
-    viewCount: viewCount || "0",
-    likeCount: likeCount || "0",
-    uploader: uploader || "Unknown",
-    duration: duration || "0",
-    webpageUrl: webpageUrl || url,
-    tags,
+    uploadDate: info.upload_date || null,
+    title: (info.title || null)?.slice(0, 200),
+    id: info.id || null,
+    viewCount: String(info.view_count || "0"),
+    likeCount: String(info.like_count || "0"),
+    uploader: info.uploader || "Unknown",
+    duration: String(info.duration || "0"),
+    webpageUrl: info.webpage_url || url,
+    tags: info.tags || [],
   };
 }
 
@@ -552,9 +536,8 @@ async function cmdSearch({
   // ytsearchN:query
   const searchArg = `ytsearch${searchLimit}:${query}`;
   const args = [
-    "--print",
-    "%(upload_date)s|%(title).200B|%(id)s",
-    "--skip-download",
+    "--dump-json",
+    "--no-download",
     searchArg,
   ];
 
@@ -563,6 +546,7 @@ async function cmdSearch({
   const r = await run(ytdlp, args);
   if (r.code !== 0) die("search failed: " + r.out);
 
+  // --dump-json prints one JSON object per video, each on its own line
   const lines = r.out
     .split("\n")
     .map((s) => s.trim())
@@ -575,10 +559,12 @@ async function cmdSearch({
 
   console.error(`Found ${lines.length} videos. Processing...`);
 
-  for (const line of lines) {
-    const parts = line.split("|");
-    if (parts.length < 3) continue;
-    const [uploadDate, title, id] = parts;
+  for (const raw of lines) {
+    let info;
+    try { info = JSON.parse(raw); } catch { continue; }
+    const uploadDate = info.upload_date || null;
+    const title = (info.title || null)?.slice(0, 200);
+    const id = info.id;
     const meta = { uploadDate, title, id };
     const url = `https://www.youtube.com/watch?v=${id}`;
 
