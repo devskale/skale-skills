@@ -52,6 +52,7 @@ npx @anthropic-ai/skills add <name>
 | **docx** | Create/edit Word documents | `npx @anthropic-ai/skills add docx` |
 | **xlsx** | Create/edit Excel spreadsheets | `npx @anthropic-ai/skills add xlsx` |
 | **oebb-scotty** | Austrian rail planner (ÖBB) | `skiller search oebb` |
+| **peep** | X/Twitter — read, search, post, bookmarks, trending | [devskale/peep](https://github.com/devskale/peep) |
 
 ## What We Maintain Here
 

@@ -42,3 +42,14 @@ skiller_index.json
 profile.md
 
 tmp/
+
+# Testbed / benchmark runtime data
+testbed/
+prd.md
+bench_results/
+
+# OpenChrome session data
+.openchrome/
+
+# Upstream skills (not maintained here)
+skills/browser-use/
