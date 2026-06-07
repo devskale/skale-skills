@@ -54,11 +54,11 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 |-----|------|
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 
-### Browser Automation — [docs/browser-use/](docs/browser-use/)
+### Browser Automation — [docs/browser-use/](docs/browser-use/) → [README](docs/browser-use/README.md)
 
 | Doc | What |
 |-----|------|
-| [browser-tools-comparison.md](docs/browser-use/browser-tools-comparison.md) | Agent browser tools compared (10+ tools, feature matrix, Chrome 136+ breaking changes, session reuse) |
+| [browser-tools-comparison.md](docs/browser-use/browser-tools-comparison.md) | Agent browser tools compared (10+ tools, feature matrix, Chrome 136+ breaking changes) |
 | [browser-session-reuse.md](docs/browser-use/browser-session-reuse.md) | Strategies for reusing real Chrome sessions |
 | [openchrome-usage.md](docs/browser-use/openchrome-usage.md) | OpenChrome skill usage guide |
 | [chrome-dev.md](docs/browser-use/chrome-dev.md) | Chrome DevTools MCP setup |
