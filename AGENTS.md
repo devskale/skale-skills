@@ -54,14 +54,21 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 |-----|------|
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 
-## Guides
+### Browser Automation — [docs/browser-use/](docs/browser-use/)
+
+| Doc | What |
+|-----|------|
+| [browser-tools-comparison.md](docs/browser-use/browser-tools-comparison.md) | Agent browser tools compared (10+ tools, feature matrix, Chrome 136+ breaking changes, session reuse) |
+| [browser-session-reuse.md](docs/browser-use/browser-session-reuse.md) | Strategies for reusing real Chrome sessions |
+| [openchrome-usage.md](docs/browser-use/openchrome-usage.md) | OpenChrome skill usage guide |
+| [chrome-dev.md](docs/browser-use/chrome-dev.md) | Chrome DevTools MCP setup |
+| [vcl-agent-browser.md](docs/browser-use/vcl-agent-browser.md) | Vercel agent-browser setup |
+
+### Other Guides
 
 | Guide | What |
 |-------|------|
-| [guides/browser-tools-comparison.md](guides/browser-tools-comparison.md) | Agent browser tools compared (10+ tools, feature matrix, Chrome 136+ breaking changes, session reuse) |
-| [guides/chrome-dev.md](guides/chrome-dev.md) | Chrome DevTools MCP setup |
 | [guides/rodney-setup.md](guides/rodney-setup.md) | Rodney headless Chrome setup |
-| [guides/vcl-agent-browser.md](guides/vcl-agent-browser.md) | Vercel agent-browser setup |
 
 ## Browser Automation — Chrome 136+ Breaking Changes
 
@@ -103,7 +110,7 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 - **Never** write a doc, script, or guide that suggests `chrome --remote-debugging-port=9222` against the default profile — it doesn't work.
 - If you find a tutorial older than March 2025, **verify** before citing it.
 - For our own tools (rodney, CloakBrowser tests): they launch their own browser — Chrome 136+ doesn't affect them.
-- Full comparison + decision flows: [guides/browser-tools-comparison.md](guides/browser-tools-comparison.md)
+- Full comparison + decision flows: [docs/browser-use/browser-tools-comparison.md](docs/browser-use/browser-tools-comparison.md)
 
 ## External Skills
 
