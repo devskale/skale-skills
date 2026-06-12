@@ -1,16 +1,26 @@
 # statusline
 
-Custom pi footer with machine name branding + session stats.
+Cloned built-in pi footer + machine name branding on line 1.
 
 ```
-jMacAir ~/code/my-project                                    (zai) glm-5.1 • low
-↑102k ↓20k R2.0M 28.5%/205k (auto)
+jMacAir ~/code/my-project (main) • session-name
+↑102k ↓20k R2.0M W50.3k CH80.2% $0.042 28.5%/205k (auto)              (zai) glm-5.1 • low
 Z.ai:6% (4h 9m 42s)
 ```
 
-- **Line 1**: machine name + cwd → provider + model + thinking level
-- **Line 2**: token stats (↑in ↓out RcacheRead) + context usage
-- **Line 3**: extension statuses from other extensions (e.g. Z.ai)
+Identical to the built-in footer with **one addition**: machine name (`jMacAir`) prepended on line 1.
+
+### What it includes (full parity with built-in)
+
+- **Line 1**: `machineName` + cwd + `(git-branch)` + `• sessionName`
+- **Line 2**: `↑in ↓out RcacheRead WcacheWrite CHhitRate% $cost (sub)` + colored context `%` + right-aligned model/provider/thinking
+- **Line 3**: extension statuses (e.g. Z.ai usage)
+
+### Context % coloring
+
+- Normal: plain
+- \>70%: warning (yellow)
+- \>90%: error (red)
 
 ## Install
 
@@ -39,9 +49,3 @@ pi -e ./extensions/statusline.ts
 
 - pi ≥ 0.78
 - macOS, Linux, or Windows (uses `scutil` on macOS, `hostname` on Windows, falls back to `os.hostname()` on Linux)
-
-## Gotchas
-
-- `setFooter()` replaces the built-in footer entirely — extension statuses from `setStatus()` don't render automatically. Collect them via `footerData.getExtensionStatuses()`.
-- `getContextUsage()` returns `NaN`/`0` for `limit` on first render. Guard with `usage && usage.limit > 0`.
-- `setTitle()` gets overwritten by pi during lifecycle events. Re-assert on `agent_end` if you need it.
