@@ -199,12 +199,11 @@ export default function (pi: ExtensionAPI) {
 					if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}`);
 					if (totalCacheRead) statsParts.push(`R${formatTokens(totalCacheRead)}`);
 					if (totalCacheWrite) statsParts.push(`W${formatTokens(totalCacheWrite)}`);
-					if (
-						(totalCacheRead > 0 || totalCacheWrite > 0) &&
-						latestCacheHitRate !== undefined
-					) {
-						statsParts.push(`CH${latestCacheHitRate.toFixed(1)}%`);
-					}
+
+					const chPart =
+						(totalCacheRead > 0 || totalCacheWrite > 0) && latestCacheHitRate !== undefined
+							? `CH${latestCacheHitRate.toFixed(1)}%`
+							: null;
 
 					// Cost with "(sub)" indicator if using OAuth subscription
 					const usingSubscription = ctx.model
@@ -232,6 +231,14 @@ export default function (pi: ExtensionAPI) {
 					statsParts.push(contextPercentStr);
 
 					let statsLeft = statsParts.join(" ");
+
+					// Try adding CH rate — skip if line won't fit
+					if (chPart) {
+						const withCh = statsLeft + " " + chPart;
+						if (visibleWidth(withCh) < width * 0.6) {
+							statsLeft = withCh;
+						}
+					}
 
 					// ── Line 2 right side: model + thinking + Z.ai usage ──
 					const modelName = ctx.model?.id || "no-model";
