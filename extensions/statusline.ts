@@ -3,9 +3,9 @@
  *
  * Exact parity with the built-in footer, with two additions:
  *   Line 1: machineName cwd (branch) • sessionName
- *   Line 2 right side: Z.ai:XX% (Xh Xm Xs) when using Z.ai provider
+ *   Line 2 right side: Z.ai:XX% (XhXm) when using Z.ai provider
  *
- * Fully replaces the separate @alexanderfortin/pi-zai-usage extension.
+ * Progressive skip when line 2 is tight: (auto) → CH → R
  */
 
 import { execSync } from "node:child_process";
@@ -68,7 +68,7 @@ const ZAI_FETCH_COOLDOWN_MS = 30_000;
 
 interface ZaiUsage {
 	percentage: number;
-	usage: number; // total token limit
+	usage: number;
 	timeRemaining?: string;
 }
 
@@ -78,25 +78,40 @@ function isZaiProvider(provider: string | undefined): boolean {
 
 function formatTimeRemainingFromEpochMs(ms: number): string {
 	const now = Date.now();
-	if (ms < now) return "0h 0m 0s";
+	if (ms < now) return "0h0m";
 	const totalSeconds = Math.round((ms - now) / 1000);
 	const hours = Math.floor(totalSeconds / 3600);
 	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	if (hours > 0) return `${hours}h ${minutes}m`;
+	if (hours > 0) return `${hours}h${minutes}m`;
 	if (minutes > 0) return `${minutes}m`;
 	return `${totalSeconds}s`;
 }
 
-async function fetchZaiUsage(modelRegistry: { getApiKeyForProvider(p: string): Promise<string | undefined> }): Promise<ZaiUsage | undefined> {
+async function fetchZaiUsage(modelRegistry: {
+	getApiKeyForProvider(p: string): Promise<string | undefined>;
+}): Promise<ZaiUsage | undefined> {
 	const apiKey = await modelRegistry.getApiKeyForProvider("zai");
 	if (!apiKey) return undefined;
-	const response = await fetch(ZAI_USAGE_API_URL, { headers: { Authorization: `Bearer ${apiKey}` } });
+	const response = await fetch(ZAI_USAGE_API_URL, {
+		headers: { Authorization: `Bearer ${apiKey}` },
+	});
 	if (!response.ok) return undefined;
-	const data = (await response.json()) as { data: { limits: Array<{ type: string; percentage: number; nextResetTime?: number }> } };
+	const data = (await response.json()) as {
+		data: {
+			limits: Array<{
+				type: string;
+				percentage: number;
+				usage?: number;
+				nextResetTime?: number;
+			}>;
+		};
+	};
 	const tokensLimit = data.data.limits.find((l) => l.type === "TOKENS_LIMIT");
 	if (!tokensLimit) return undefined;
-	const usageVal = typeof tokensLimit.usage === "number" ? tokensLimit.usage : 0;
-	const result: ZaiUsage = { percentage: tokensLimit.percentage, usage: usageVal };
+	const result: ZaiUsage = {
+		percentage: tokensLimit.percentage,
+		usage: typeof tokensLimit.usage === "number" ? tokensLimit.usage : 0,
+	};
 	if (tokensLimit.nextResetTime) {
 		result.timeRemaining = formatTimeRemainingFromEpochMs(tokensLimit.nextResetTime);
 	}
@@ -109,7 +124,13 @@ export default function (pi: ExtensionAPI) {
 	let cachedZaiUsage: ZaiUsage | undefined;
 	let lastZaiFetchTime = 0;
 
-	async function refreshZaiUsage(ctx: { model?: { provider: string } | undefined; modelRegistry: { getApiKeyForProvider(p: string): Promise<string | undefined> } }, force = false): Promise<ZaiUsage | undefined> {
+	async function refreshZaiUsage(
+		ctx: {
+			model?: { provider: string } | undefined;
+			modelRegistry: { getApiKeyForProvider(p: string): Promise<string | undefined> };
+		},
+		force = false,
+	): Promise<ZaiUsage | undefined> {
 		if (!isZaiProvider(ctx.model?.provider)) {
 			cachedZaiUsage = undefined;
 			return undefined;
@@ -127,12 +148,15 @@ export default function (pi: ExtensionAPI) {
 		return cachedZaiUsage;
 	}
 
-	function renderZaiUsage(usage: ZaiUsage | undefined, theme: { fg(c: string, t: string): string }): string {
+	function renderZaiUsage(
+		usage: ZaiUsage | undefined,
+		theme: { fg(c: string, t: string): string },
+	): string {
 		if (!usage) return "";
 		const pct = Math.round(usage.percentage * 10) / 10;
 		let s = theme.fg("accent", `${pct}%`);
 		if (usage.timeRemaining) {
-			s += theme.fg("dim", ` (${usage.timeRemaining.replace(/ /g, "")})`);
+			s += theme.fg("dim", ` (${usage.timeRemaining})`);
 		}
 		return s;
 	}
@@ -140,7 +164,6 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		if (ctx.mode !== "tui") return;
 
-		// Initial Z.ai fetch
 		await refreshZaiUsage(ctx, true);
 
 		ctx.ui.setFooter((tui, theme, footerData) => {
@@ -150,7 +173,7 @@ export default function (pi: ExtensionAPI) {
 				dispose: unsub,
 				invalidate() {},
 				render(width: number): string[] {
-					// ── Token stats (from ALL entries, not just post-compaction) ──
+					// ── Token stats ──
 					let totalInput = 0;
 					let totalOutput = 0;
 					let totalCacheRead = 0;
@@ -166,97 +189,34 @@ export default function (pi: ExtensionAPI) {
 							totalCacheRead += u.cacheRead ?? 0;
 							totalCacheWrite += u.cacheWrite ?? 0;
 							totalCost += u.cost?.total ?? 0;
-							const latestPromptTokens = u.input + (u.cacheRead ?? 0) + (u.cacheWrite ?? 0);
+							const latestPromptTokens =
+								u.input + (u.cacheRead ?? 0) + (u.cacheWrite ?? 0);
 							latestCacheHitRate =
-								latestPromptTokens > 0 ? ((u.cacheRead ?? 0) / latestPromptTokens) * 100 : undefined;
+								latestPromptTokens > 0
+									? ((u.cacheRead ?? 0) / latestPromptTokens) * 100
+									: undefined;
 						}
 					}
 
 					// ── Context usage ──
 					const contextUsage = ctx.getContextUsage();
-					const contextWindow = contextUsage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
+					const contextWindow =
+						contextUsage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
 					const contextPercentValue = contextUsage?.percent ?? 0;
-					const contextPercent = contextUsage?.percent !== null ? contextPercentValue.toFixed(1) : "?";
+					const contextPercent =
+						contextUsage?.percent !== null ? contextPercentValue.toFixed(1) : "?";
 
 					// ── Line 1: machineName + cwd (branch) • sessionName ──
 					let pwd = formatCwdForFooter(ctx.sessionManager.getCwd(), HOME);
-
 					const branch = footerData.getGitBranch();
-					if (branch) {
-						pwd = `${pwd} (${branch})`;
-					}
-
+					if (branch) pwd = `${pwd} (${branch})`;
 					const sessionName = ctx.sessionManager.getSessionName();
-					if (sessionName) {
-						pwd = `${pwd} • ${sessionName}`;
-					}
+					if (sessionName) pwd = `${pwd} • ${sessionName}`;
+					const l1left =
+						theme.fg("accent", machineName) + theme.fg("dim", ` ${pwd}`);
 
-					const l1left = theme.fg("accent", machineName) + theme.fg("dim", ` ${pwd}`);
-
-					// ── Line 2: stats ──
-					const statsParts: string[] = [];
-					if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}`);
-					if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}`);
-					const rPart = totalCacheRead ? `R${formatTokens(totalCacheRead)}` : null;
-					if (totalCacheWrite) statsParts.push(`W${formatTokens(totalCacheWrite)}`);
-
-					const chPart =
-						(totalCacheRead > 0 || totalCacheWrite > 0) && latestCacheHitRate !== undefined
-							? `CH${latestCacheHitRate.toFixed(1)}%`
-							: null;
-
-					// Cost with "(sub)" indicator if using OAuth subscription
-					const usingSubscription = ctx.model
-						? ctx.modelRegistry.isUsingOAuth(ctx.model)
-						: false;
-					if (totalCost || usingSubscription) {
-						const costStr = `$${totalCost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`;
-						statsParts.push(costStr);
-					}
-
-					// Colorize context % based on usage
-					const autoIndicator = " (auto)";
-					const contextPercentDisplay =
-						contextPercent === "?"
-							? `?/${formatTokens(contextWindow)}${autoIndicator}`
-							: `${contextPercent}%/${formatTokens(contextWindow)}${autoIndicator}`;
-					let contextPercentStr: string;
-					if (contextPercentValue > 90) {
-						contextPercentStr = theme.fg("error", contextPercentDisplay);
-					} else if (contextPercentValue > 70) {
-						contextPercentStr = theme.fg("warning", contextPercentDisplay);
-					} else {
-						contextPercentStr = contextPercentDisplay;
-					}
-					statsParts.push(contextPercentStr);
-
-					let statsLeft = statsParts.join(" ");
-
-					// Try adding R and CH — skip progressively if line won't fit
-					if (rPart) {
-						const withR = statsLeft + " " + rPart;
-						if (visibleWidth(withR) < width * 0.55) {
-							statsLeft = withR;
-							if (chPart) {
-								const withCh = statsLeft + " " + chPart;
-								if (visibleWidth(withCh) < width * 0.6) {
-									statsLeft = withCh;
-								}
-							}
-						}
-					}
-
-					// ── Line 2 right side: model + thinking + Z.ai usage ──
+					// ── Build right side first (to know available space) ──
 					const modelName = ctx.model?.id || "no-model";
-					let statsLeftWidth = visibleWidth(statsLeft);
-
-					if (statsLeftWidth > width) {
-						statsLeft = truncateToWidth(statsLeft, width, "...");
-						statsLeftWidth = visibleWidth(statsLeft);
-					}
-
-					const minPadding = 2;
-
 					let rightSideWithoutProvider = modelName;
 					if (ctx.model?.reasoning) {
 						const thinkingLevel = pi.getThinkingLevel() || "off";
@@ -269,27 +229,114 @@ export default function (pi: ExtensionAPI) {
 					let rightSide = rightSideWithoutProvider;
 					if (footerData.getAvailableProviderCount() > 1 && ctx.model) {
 						rightSide = `(${ctx.model.provider}) ${rightSideWithoutProvider}`;
-						if (statsLeftWidth + minPadding + visibleWidth(rightSide) > width) {
-							rightSide = rightSideWithoutProvider;
+					}
+
+					const zaiStr = renderZaiUsage(cachedZaiUsage, theme);
+					if (zaiStr) rightSide = `${rightSide} ${zaiStr}`;
+
+					const rightSideWidth = visibleWidth(rightSide);
+					const available = width - rightSideWidth - 2; // 2 = min padding
+
+					// ── Build stats left side with progressive skip ──
+					// Skip order when tight: (auto) → CH → R
+					const coreParts: string[] = [];
+					if (totalInput) coreParts.push(`↑${formatTokens(totalInput)}`);
+					if (totalOutput) coreParts.push(`↓${formatTokens(totalOutput)}`);
+					if (totalCacheWrite)
+						coreParts.push(`W${formatTokens(totalCacheWrite)}`);
+
+					const usingSubscription = ctx.model
+						? ctx.modelRegistry.isUsingOAuth(ctx.model)
+						: false;
+					if (totalCost || usingSubscription) {
+						coreParts.push(
+							`$${totalCost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`,
+						);
+					}
+
+					// Context % (colored)
+					const contextBase =
+						contextPercent === "?"
+							? `?/${formatTokens(contextWindow)}`
+							: `${contextPercent}%/${formatTokens(contextWindow)}`;
+					let contextPercentStr: string;
+					if (contextPercentValue > 90) {
+						contextPercentStr = theme.fg("error", contextBase + " (auto)");
+					} else if (contextPercentValue > 70) {
+						contextPercentStr = theme.fg("warning", contextBase + " (auto)");
+					} else {
+						contextPercentStr = contextBase + " (auto)";
+					}
+
+					const rPart = totalCacheRead
+						? `R${formatTokens(totalCacheRead)}`
+						: null;
+					const chPart =
+						(totalCacheRead > 0 || totalCacheWrite > 0) &&
+						latestCacheHitRate !== undefined
+							? `CH${latestCacheHitRate.toFixed(1)}%`
+							: null;
+
+					// Build full left, then strip if needed
+					let statsLeft = [
+						...coreParts,
+						rPart,
+						chPart,
+						contextPercentStr,
+					]
+						.filter(Boolean)
+						.join(" ");
+
+					// Progressive skip: (auto) → CH → R
+					if (visibleWidth(statsLeft) > available) {
+						// Drop (auto)
+						const noAuto =
+							contextPercentValue > 90
+								? theme.fg("error", contextBase)
+								: contextPercentValue > 70
+									? theme.fg("warning", contextBase)
+									: contextBase;
+						statsLeft = [...coreParts, rPart, chPart, noAuto]
+							.filter(Boolean)
+							.join(" ");
+
+						if (visibleWidth(statsLeft) > available) {
+							// Drop CH
+							statsLeft = [...coreParts, rPart, noAuto]
+								.filter(Boolean)
+								.join(" ");
+
+							if (visibleWidth(statsLeft) > available) {
+								// Drop R
+								statsLeft = [...coreParts, noAuto]
+									.filter(Boolean)
+									.join(" ");
+							}
 						}
 					}
 
-					// Append Z.ai usage to the right side when using Z.ai provider
-					const zaiStr = renderZaiUsage(cachedZaiUsage, theme);
-					if (zaiStr) {
-						rightSide = `${rightSide} ${zaiStr}`;
+					// ── Compose line 2 ──
+					let statsLeftWidth = visibleWidth(statsLeft);
+					if (statsLeftWidth > width) {
+						statsLeft = truncateToWidth(statsLeft, width, "...");
+						statsLeftWidth = visibleWidth(statsLeft);
 					}
 
-					const rightSideWidth = visibleWidth(rightSide);
-					const totalNeeded = statsLeftWidth + minPadding + rightSideWidth;
+					const totalNeeded = statsLeftWidth + 2 + rightSideWidth;
 					let statsLine: string;
 					if (totalNeeded <= width) {
-						const padding = " ".repeat(width - statsLeftWidth - rightSideWidth);
+						const padding = " ".repeat(
+							width - statsLeftWidth - rightSideWidth,
+						);
 						statsLine = statsLeft + padding + rightSide;
 					} else {
-						const availableForRight = width - statsLeftWidth - minPadding;
+						const availableForRight = width - statsLeftWidth - 2;
 						if (availableForRight > 0) {
-							const truncatedRight = truncateToWidth(rightSide, availableForRight, "");
+							const truncatedRight = truncateToWidth(
+								rightSide,
+								availableForRight,
+								"",
+							);
 							const truncatedRightWidth = visibleWidth(truncatedRight);
 							const padding = " ".repeat(
 								Math.max(0, width - statsLeftWidth - truncatedRightWidth),
@@ -300,7 +347,6 @@ export default function (pi: ExtensionAPI) {
 						}
 					}
 
-					// Dim stats and model (handle color codes in context %)
 					const dimStatsLeft = theme.fg("dim", statsLeft);
 					const remainder = statsLine.slice(statsLeft.length);
 					const dimRemainder = theme.fg("dim", remainder);
@@ -317,7 +363,9 @@ export default function (pi: ExtensionAPI) {
 							.sort(([a], [b]) => a.localeCompare(b))
 							.map(([, text]) => sanitizeStatusText(text));
 						const statusLine = sortedStatuses.join(" ");
-						lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
+						lines.push(
+							truncateToWidth(statusLine, width, theme.fg("dim", "...")),
+						);
 					}
 
 					return lines;
