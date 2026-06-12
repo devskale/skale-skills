@@ -197,7 +197,7 @@ export default function (pi: ExtensionAPI) {
 					const statsParts: string[] = [];
 					if (totalInput) statsParts.push(`↑${formatTokens(totalInput)}`);
 					if (totalOutput) statsParts.push(`↓${formatTokens(totalOutput)}`);
-					if (totalCacheRead) statsParts.push(`R${formatTokens(totalCacheRead)}`);
+					const rPart = totalCacheRead ? `R${formatTokens(totalCacheRead)}` : null;
 					if (totalCacheWrite) statsParts.push(`W${formatTokens(totalCacheWrite)}`);
 
 					const chPart =
@@ -232,11 +232,17 @@ export default function (pi: ExtensionAPI) {
 
 					let statsLeft = statsParts.join(" ");
 
-					// Try adding CH rate — skip if line won't fit
-					if (chPart) {
-						const withCh = statsLeft + " " + chPart;
-						if (visibleWidth(withCh) < width * 0.6) {
-							statsLeft = withCh;
+					// Try adding R and CH — skip progressively if line won't fit
+					if (rPart) {
+						const withR = statsLeft + " " + rPart;
+						if (visibleWidth(withR) < width * 0.55) {
+							statsLeft = withR;
+							if (chPart) {
+								const withCh = statsLeft + " " + chPart;
+								if (visibleWidth(withCh) < width * 0.6) {
+									statsLeft = withCh;
+								}
+							}
 						}
 					}
 
