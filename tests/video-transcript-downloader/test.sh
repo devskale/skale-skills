@@ -34,7 +34,7 @@ echo ""
 echo "[2] SKILL.md frontmatter..."
 assert "name: video-transcript-downloader" "grep -q '^name: video-transcript-downloader' SKILL.md"
 assert "description"        "grep -q '^description:' SKILL.md"
-assert "version 1.0"       "grep -q 'version.*\"1\\.0' SKILL.md"
+assert "version 1.x"       "grep -q 'version.*\"1\\.' SKILL.md"
 assert "short commands"    "grep -q '^vtd ' SKILL.md"
 echo ""
 
@@ -47,6 +47,7 @@ assert "has --install"      "grep -q '\-\-install' vtd"
 assert "has BASH_SOURCE"   "grep -q 'BASH_SOURCE' vtd"
 assert "no readlink -f"    "! grep -q 'readlink -f' vtd"
 assert "runs node"         "grep -q 'node scripts/vtd.js' vtd"
+assert "captures invoked PWD" "grep -q 'VTD_INVOKED_PWD' vtd"
 echo ""
 
 # ── 4. install.sh ─────────────────────────────────────────────────────
