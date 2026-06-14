@@ -28,6 +28,21 @@ openskills install <org>/<repo>     # openskills CLI
 | **skillsmp.com** | Skill marketplace | https://skillsmp.com/ |
 | **context7** | Skill manager | https://context7.com/?tab=skills |
 
+## Where to Find Extensions
+
+| Source | What | URL |
+|--------|------|-----|
+| **earendil-works (pi)** | Official pi extension examples | https://github.com/earendil-works/pi/tree/main/packages/coding-agent/examples/extensions |
+| **ogulcancelik** | Community pi extensions library | https://github.com/ogulcancelik/pi-extensions |
+
+## Local Extensions
+
+We maintain a few extensions in [`extensions/`](extensions/):
+
+| Extension | What |
+|-----------|------|
+| **statusline** | Custom pi footer with machine name branding + session stats |
+
 ## Skill Managers
 
 ```bash
@@ -44,6 +59,19 @@ skiller install <name>           # install skill
 # Anthropic skills
 npx @anthropic-ai/skills add <name>
 ```
+
+## Recommended Extensions (install with `pi install`)
+
+| Extension | What | Install |
+|-----------|------|---------|
+| **pi-herdr** | Herdr pane/tab/workspace orchestration from pi | `pi install npm:@ogulcancelik/pi-herdr` |
+| **pi-web-browse** | Web search + page fetch via headless browser (CDP). Bypasses bot protection, persistent daemon for speed. Use when `fetch-url` and `web-search` get blocked. | `pi install npm:@ogulcancelik/pi-web-browse` |
+
+## Recommended Tools
+
+| Tool | What | Install |
+|------|------|---------|
+| **herdr** | Agent terminal multiplexer — workspaces, tabs, panes with agent awareness | `brew install herdr` or `curl -fsSL https://herdr.dev/install.sh \| sh` |
 
 ## Recommended Skills (get upstream, don't maintain locally)
 
