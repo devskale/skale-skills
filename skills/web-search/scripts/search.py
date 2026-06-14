@@ -6,6 +6,7 @@ Supports private Duck API and SearXNG with credentials for better results.
 """
 
 import argparse
+import glob
 import io
 import json
 import os
@@ -36,10 +37,43 @@ try:
 except ImportError:
     requests = None  # type: ignore
 
+# Prefer a globally-installed credgoo (`uv tool install credgoo`) over the copy
+# bundled in this skill's venv. We do it by inserting the global tool's
+# site-packages at the front of sys.path before importing, so `import credgoo`
+# resolves global-first. No subprocess, no re-resolution. If no global install
+# exists, the bundled copy (kept so `--update` stays self-contained) is used.
+_global_credgoo_sp = glob.glob(
+    os.path.join(
+        os.environ.get("UV_TOOL_DIR", str(Path.home() / ".local/share/uv/tools/credgoo")),
+        "lib", "*", "site-packages",
+    )
+)
+if _global_credgoo_sp and _global_credgoo_sp[0] not in sys.path:
+    sys.path.insert(0, _global_credgoo_sp[0])
+
 try:
     from credgoo import get_api_key
 except ImportError:
     get_api_key = None  # type: ignore
+
+
+def credgoo_get(service: str) -> Optional[str]:
+    """Fetch a key via credgoo. Failures are loud (stderr), never silently masked."""
+    if get_api_key is None:
+        print(
+            "credgoo unavailable. Install globally: "
+            "uv tool install \"credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo\"",
+            file=sys.stderr,
+        )
+        return None
+    try:
+        key = get_api_key(service)
+    except Exception as e:
+        print(f"credgoo error for '{service}': {e}", file=sys.stderr)
+        return None
+    if not key:
+        print(f"credgoo returned no key for '{service}'", file=sys.stderr)
+    return key
 
 
 # =============================================================================
@@ -65,27 +99,11 @@ PRIVATE_SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
 # =============================================================================
 
 def get_bearer_token() -> Optional[str]:
-    """Get bearer token from env, credgoo, or .env file."""
+    """Get bearer token from env or credgoo. No silent fallbacks."""
     if token := os.environ.get("WEB_SEARCH_BEARER"):
         return token
 
-    if get_api_key:
-        try:
-            import io
-            import contextlib
-            with contextlib.redirect_stdout(io.StringIO()):
-                if token := get_api_key("WEB_SEARCH_BEARER"):
-                    return token
-        except Exception:
-            pass
-
-    env_file = Path(__file__).parent.parent / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            if line.startswith("WEB_SEARCH_BEARER="):
-                return line.split("=", 1)[1].strip()
-
-    return None
+    return credgoo_get("WEB_SEARCH_BEARER")
 
 
 def _parse_searxng_cred(cred: str) -> Optional[Dict[str, str]]:
@@ -118,34 +136,11 @@ def get_searxng_credentials() -> Optional[Dict[str, str]]:
         if result:
             return result
 
-    # Credgoo
-    if get_api_key:
-        try:
-            import contextlib
-            import io
-            with contextlib.redirect_stdout(io.StringIO()):
-                cred = get_api_key("searx")
-            if cred:
-                result = _parse_searxng_cred(cred)
-                if result:
-                    return result
-        except Exception:
-            pass
-
-    # Local config file
-    config_file = Path.home() / ".config/api_keys/searx.json"
-    if config_file.exists():
-        try:
-            data = json.loads(config_file.read_text())
-            url = data.get("url", "")
-            if url:
-                return {
-                    "url": url,
-                    "user": data.get("username", ""),
-                    "pass": data.get("password", ""),
-                }
-        except Exception:
-            pass
+    # Credgoo (no silent fallback to searx.json — that masked failures)
+    if cred := credgoo_get("searx"):
+        result = _parse_searxng_cred(cred)
+        if result:
+            return result
 
     return None
 
