@@ -1,75 +1,75 @@
 ---
 name: youtube
-description: "Search YouTube videos via Invidious API with automatic instance fallback. Use when the user wants to find, search for, or look up videos, or asks for video recommendations on a topic."
+description: "Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives. Use when the user wants to find videos, look up a topic, get video recommendations, or asks about YouTube content. Defaults to longform (20min+), recent (18mo), high-relevance results with a combined recency+views+duration+relevance score."
 metadata:
   author: skale
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # YouTube Search
 
+Defaults to finding the kind of video you actually want to watch: **fresh, long, on-topic, with traction**. Not 3-minute explainers.
+
 ```bash
-youtube "clojure macros"
-youtube "rust lang" --rank views
-youtube "artificial intelligence" --num 5 --rank date -v
+youtube "rust async programming"          # fresh longform, deep-ranked
+youtube "AI agents deep dive podcast"     # finds podcasts/lectures
+youtube "rust async" --rank views         # raw: pure view sort (legacy)
+youtube "AI agents" --fresh 3m            # last 3 months only
+youtube "rust async" --any-length         # include shorts
 ```
 
 ## Install
 
-**Linux / macOS (bash):**
 ```bash
-bash install.sh
+bash install.sh        # Linux/macOS
+install.bat            # Windows
 ```
 
-**Windows (cmd):**
-```cmd
-install.bat
-```
+No API key. Uses the public Invidious API with automatic instance fallback.
 
-## Usage
+## Deep Mode (default)
 
-| Command | Description |
-|---------|-------------|
-| `youtube "query"` | Search, top 3 results |
-| `youtube "query" --num 10` | Return 10 results |
-| `youtube "query" --rank views` | Sort by views/date/rating/relevance |
-| `youtube "query" -v` | Verbose (show instance used) |
-| `youtube --discover` | Find working Invidious instances |
+Fetches a large candidate pool, filters by freshness + views + duration, then re-ranks with a combined score:
 
-## Options
+| Factor | Weight | How |
+|--------|--------|-----|
+| Recency | 0.35 | Exponential decay, 6-month half-life |
+| Views | 0.25 | Log-scale: 1K→0.50, 1M→1.0 |
+| Duration | 0.15 | 30min→0.5, 60min+→1.0 (rewards longform) |
+| Relevance | 0.25 | API rank position |
+
+**Default filters:** longform (≥20min), last 18 months, ≥1K views.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--num N` | 3 | Number of results |
-| `--rank` | relevance | Sort: relevance, date, views, rating |
-| `-v, --verbose` | off | Show which instance is used |
-| `--discover` | off | Re-discover instances from api.invidious.io |
+| `--num N` | 5 | Results to return |
+| `--fresh SPEC` | 18m | Max age: `3m`, `6m`, `1y`, `2w`, `14d`, `all` |
+| `--min-views N` | 1000 | View count floor |
+| `--any-length` | off | Include shorts (disable longform filter) |
+| `-v` | off | Show mode, instance, scores |
+
+## Raw Mode
+
+`--rank` disables deep mode and returns results in single-dimension API order:
+
+```bash
+youtube "query" --rank relevance    # YouTube's default
+youtube "query" --rank views        # most viewed
+youtube "query" --rank date         # newest
+youtube "query" --rank rating       # highest rated
+```
+
+## Gotchas
+
+- **Invidious `duration` API filter is leaky** — shorts slip into `duration=2` (long). Deep mode re-checks duration client-side; raw mode does not.
+- **Invidious `date` param is unreliable** across instances (returns stale results regardless of value). Deep mode filters freshness client-side instead.
+- **Fewer results than `--num`?** Deep mode filters aggressively. If only 4 of 20 candidates pass, you get 4. Use `--fresh all`, `--any-length`, or lower `--min-views` to widen.
+- **"all instances failed"** → run `youtube --discover` to refresh the instance cache (4h TTL).
+- **Watch links point to the Invidious instance, not youtube.com.** Swap the host if you need native YouTube links.
 
 ## How It Works
 
-1. Checks cached instances (`.instance-cache.json`, 4h TTL)
-2. Falls back to `https://api.invidious.io/instances.json` discovery
-3. Falls back to hardcoded instances
-4. Tries each in order until one returns results
-
-No API key needed. Uses the public Invidious API.
-
-## Output
-
-Each result is a markdown link:
-
-- [**Clojure Tutorial**](https://invidious.materialio.us/watch?v=ciGyHkDuPAE) by Derek Banas - 175K views - 8 years ago - Duration: 1:11:23
-
-## Troubleshooting
-
-| Issue | Fix |
-|-------|-----|
-| "all instances failed" | `youtube --discover` to refresh |
-| No results | Try different keywords |
-| Slow first run | Normal — discovers instances, then caches |
-
-## API Reference
-
-- Instances: https://api.invidious.io/instances.json
-- Docs: https://docs.invidious.io/api/
-- Search: `GET /api/v1/search?q=...&type=video&sort_by=relevance`
+1. Instance resolution: cache (`.instance-cache.json`, 4h TTL) → discover via `api.invidious.io` → hardcoded fallbacks
+2. Search: `GET /api/v1/search?q=...&type=video&sort_by=relevance&duration=2`
+3. Deep mode: filter (views/duration/age) → score → sort → return top N
+4. Each instance is tried in order until one returns valid results

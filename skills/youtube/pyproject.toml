@@ -1,7 +1,7 @@
 [project]
 name = "youtube-skill"
-version = "1.0.0"
-description = "Search YouTube videos via Invidious API"
+version = "1.1.0"
+description = "Search YouTube for fresh, long, deep content via Invidious API with smart ranking"
 requires-python = ">=3.9"
 
 [build-system]
