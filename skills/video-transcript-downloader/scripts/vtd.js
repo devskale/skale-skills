@@ -168,7 +168,7 @@ function slugifyForFile(input) {
   return base || "video";
 }
 
-function buildTranscriptFilename({ uploadDate, title, id }) {
+function buildTranscriptFilename({ uploadDate, title, id, uploader }) {
   let datePart;
   if (uploadDate && /^\d{8}$/.test(uploadDate)) {
     datePart = `${uploadDate.slice(0, 4)}-${uploadDate.slice(4, 6)}-${uploadDate.slice(6, 8)}`;
@@ -179,11 +179,12 @@ function buildTranscriptFilename({ uploadDate, title, id }) {
     const dd = String(now.getDate()).padStart(2, "0");
     datePart = `${yyyy}-${mm}-${dd}`;
   }
-  // Include video ID to prevent filename collisions when running in parallel
-  const idPart = id ? `_${id}` : "";
-  const baseNameSource = title || "video";
-  const slug = slugifyForFile(baseNameSource);
-  return `${datePart}${idPart}_${slug}.md`;
+  // Channel slug (truncated to 25 chars; falls back to video id when unknown).
+  // The full video id stays in frontmatter for collision-proofing.
+  const channelSource = uploader && uploader !== "Unknown" ? uploader : id || "unknown";
+  const channelSlug = slugifyForFile(channelSource).slice(0, 25) || "unknown";
+  const titleSlug = slugifyForFile(title || "video");
+  return `${datePart}_${channelSlug}_${titleSlug}.md`;
 }
 
 async function getVideoMeta(url) {
@@ -602,7 +603,7 @@ async function cmdSearch({
     const uploadDate = info.upload_date || null;
     const title = (info.title || null)?.slice(0, 200);
     const id = info.id;
-    const meta = { uploadDate, title, id, chapters: normalizeChapters(info.chapters) };
+    const meta = { uploadDate, title, id, uploader: info.uploader || "Unknown", chapters: normalizeChapters(info.chapters) };
     const url = `https://www.youtube.com/watch?v=${id}`;
 
     console.error(`Processing [${id}] ${title}...`);
