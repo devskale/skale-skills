@@ -13,6 +13,7 @@ vtd transcript --url 'https://www.youtube.com/watch?v=...'
 vtd search "top 3 AI videos"
 vtd download --url 'https://...'
 vtd audio --url 'https://...'
+vtd chapters --url 'https://...'            # print video chapters (fast, no transcript fetch)
 ```
 
 ## Install
@@ -90,3 +91,4 @@ vtd download --url 'https://...' -- --format 137+140       # specific format
 - Non-YouTube: always uses yt-dlp subtitles
 - Default output is a single clean paragraph
 - Transcript files include YAML frontmatter with video metadata
+- **Chapters**: if a video has chapter markers, they are embedded at the top of every saved transcript file (after frontmatter, before body). Use `vtd chapters --url ...` for quick stdout lookup without downloading the transcript. Videos without chapters are unaffected.
