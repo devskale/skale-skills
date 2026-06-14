@@ -65,6 +65,8 @@ assert "has transcript"  "grep -q 'transcript' scripts/vtd.js"
 assert "has search"      "grep -q 'cmdSearch' scripts/vtd.js"
 assert "has download"    "grep -q 'cmdDownload' scripts/vtd.js"
 assert "has audio"       "grep -q 'cmdAudio' scripts/vtd.js"
+assert "has chapters"    "grep -q 'cmdChapters' scripts/vtd.js"
+assert "has formatChapters" "grep -q 'function formatChapters' scripts/vtd.js"
 echo ""
 
 # ── 6. .gitignore ────────────────────────────────────────────────────
@@ -84,11 +86,13 @@ echo ""
 
 # ── 8. Help output ───────────────────────────────────────────────────
 echo "[8] Help output..."
-HELP=$(vtd --help 2>&1)
-assert "mentions transcript" "echo '$HELP' | grep -q 'transcript'"
-assert "mentions download"   "echo '$HELP' | grep -q 'download'"
-assert "mentions audio"      "echo '$HELP' | grep -q 'audio'"
-assert "mentions search"     "echo '$HELP' | grep -q 'search'"
+vtd --help > /tmp/vtd_help.txt 2>&1
+assert "mentions transcript" "grep -q 'transcript' /tmp/vtd_help.txt"
+assert "mentions download"   "grep -q 'download' /tmp/vtd_help.txt"
+assert "mentions audio"      "grep -q 'audio' /tmp/vtd_help.txt"
+assert "mentions search"     "grep -q 'search' /tmp/vtd_help.txt"
+assert "mentions chapters"   "grep -q 'chapters' /tmp/vtd_help.txt"
+rm -f /tmp/vtd_help.txt
 echo ""
 
 # ── 9. selfcheck ─────────────────────────────────────────────────────

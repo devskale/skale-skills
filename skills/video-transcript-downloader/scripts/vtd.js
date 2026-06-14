@@ -136,6 +136,27 @@ function formatTimestamp(seconds) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+function normalizeChapters(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((ch) => ({
+      start_time: Number(ch.start_time ?? ch.start ?? 0),
+      title: String(ch.title || "").trim(),
+    }))
+    .filter((ch) => Number.isFinite(ch.start_time))
+    .sort((a, b) => a.start_time - b.start_time);
+}
+
+function formatChapters(chapters) {
+  if (!chapters || chapters.length === 0) return "";
+  const lines = chapters.map((ch) => {
+    const ts = formatTimestamp(ch.start_time);
+    const title = ch.title || "(untitled)";
+    return `- ${ts} ${title}`;
+  });
+  return "## Chapters\n" + lines.join("\n") + "\n";
+}
+
 function slugifyForFile(input) {
   const base = String(input || "video")
     .normalize("NFKD")
@@ -202,6 +223,7 @@ async function getVideoMeta(url) {
     duration: String(info.duration || "0"),
     webpageUrl: info.webpage_url || url,
     tags: info.tags || [],
+    chapters: normalizeChapters(info.chapters),
   };
 }
 
@@ -235,11 +257,11 @@ async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
     "",
   ].join("\n");
 
-  fs.writeFileSync(
-    fullPath,
-    frontmatter + String(text || "").trimEnd() + "\n",
-    "utf8",
-  );
+  const chaptersSection = formatChapters(meta.chapters);
+  let body = "";
+  if (chaptersSection) body += "\n" + chaptersSection + "\n";
+  body += String(text || "").trimEnd() + "\n";
+  fs.writeFileSync(fullPath, frontmatter + body, "utf8");
   debug(`Saved transcript to: ${fullPath}`);
   return fullPath;
 }
@@ -580,7 +602,7 @@ async function cmdSearch({
     const uploadDate = info.upload_date || null;
     const title = (info.title || null)?.slice(0, 200);
     const id = info.id;
-    const meta = { uploadDate, title, id };
+    const meta = { uploadDate, title, id, chapters: normalizeChapters(info.chapters) };
     const url = `https://www.youtube.com/watch?v=${id}`;
 
     console.error(`Processing [${id}] ${title}...`);
@@ -599,6 +621,20 @@ async function cmdSearch({
       console.error(`Failed to process ${url}: ${e.message}`);
     }
   }
+}
+
+async function cmdChapters({ url }) {
+  if (!url) die("missing --url");
+  let meta;
+  try {
+    meta = await getVideoMeta(url);
+  } catch (e) {
+    die(e.message);
+  }
+  if (!meta.chapters || meta.chapters.length === 0) {
+    die("No chapters found for this video.");
+  }
+  process.stdout.write(formatChapters(meta.chapters));
 }
 
 async function cmdSubs({ url, lang, outputDir, extra }) {
@@ -719,6 +755,7 @@ function usage() {
     `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
     `  ${rel} subs       --url 'https://…' [--output-dir ~/Downloads] [--lang en] [-- <yt-dlp extra…>]`,
     `  ${rel} formats    --url 'https://…' [-- <yt-dlp extra…>]`,
+    `  ${rel} chapters   --url 'https://…'                          # print video chapters`,
   ].join("\n");
 }
 
@@ -738,10 +775,11 @@ async function main() {
   const timestamps = Boolean(opts.timestamps);
   const keepBrackets = Boolean(opts["keep-brackets"]);
   const extra = opts.extra || [];
+  const invokedPwd = process.env.VTD_INVOKED_PWD || process.cwd();
   const transcriptDir =
     typeof opts["transcript-dir"] === "string"
-      ? opts["transcript-dir"]
-      : path.join(process.env.VTD_INVOKED_PWD || process.cwd(), "transcripts");
+      ? path.resolve(invokedPwd, opts["transcript-dir"])
+      : path.join(invokedPwd, "transcripts");
 
   const toFileArg = opts["to-file"];
   let toFile = true; // Default
@@ -809,6 +847,10 @@ async function main() {
   }
   if (cmd === "formats") {
     await cmdFormats({ url, extra });
+    return;
+  }
+  if (cmd === "chapters") {
+    await cmdChapters({ url });
     return;
   }
 
