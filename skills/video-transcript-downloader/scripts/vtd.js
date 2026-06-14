@@ -158,9 +158,11 @@ function buildTranscriptFilename({ uploadDate, title, id }) {
     const dd = String(now.getDate()).padStart(2, "0");
     datePart = `${yyyy}-${mm}-${dd}`;
   }
-  const baseNameSource = title || id || "video";
+  // Include video ID to prevent filename collisions when running in parallel
+  const idPart = id ? `_${id}` : "";
+  const baseNameSource = title || "video";
   const slug = slugifyForFile(baseNameSource);
-  return `${datePart}_${slug}.md`;
+  return `${datePart}${idPart}_${slug}.md`;
 }
 
 async function getVideoMeta(url) {
@@ -176,9 +178,17 @@ async function getVideoMeta(url) {
   ];
   const r = await run(ytdlp, args);
   if (r.code !== 0) throw new Error(r.out.trim() || "yt-dlp metadata failed");
+  // yt-dlp may mix stderr progress info with stdout JSON;
+  // extract the JSON object (starts with "{" ) from the combined output.
+  let jsonStr = r.out.trim();
+  const jsonStart = jsonStr.indexOf("{");
+  if (jsonStart >= 0) {
+    const jsonEnd = jsonStr.lastIndexOf("}") + 1;
+    jsonStr = jsonStr.slice(jsonStart, jsonEnd);
+  }
   let info;
   try {
-    info = JSON.parse(r.out.trim());
+    info = JSON.parse(jsonStr);
   } catch {
     return {};
   }
@@ -197,7 +207,12 @@ async function getVideoMeta(url) {
 
 async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
   if (!meta) {
-    meta = await getVideoMeta(url);
+    try {
+      meta = await getVideoMeta(url);
+    } catch(e) {
+      debug(`getVideoMeta failed: ${e.message}`);
+      meta = { id: extractYouTubeId(url), title: null };
+    }
   }
   const filename = buildTranscriptFilename(meta);
   const dir = path.resolve(transcriptDir);
@@ -726,7 +741,7 @@ async function main() {
   const transcriptDir =
     typeof opts["transcript-dir"] === "string"
       ? opts["transcript-dir"]
-      : process.cwd();
+      : path.join(process.cwd(), "transcripts");
 
   const toFileArg = opts["to-file"];
   let toFile = true; // Default
