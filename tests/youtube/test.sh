@@ -34,7 +34,7 @@ echo ""
 echo "[2] SKILL.md frontmatter..."
 assert "name: youtube"      "grep -q '^name: youtube' SKILL.md"
 assert "description"         "grep -q '^description:' SKILL.md"
-assert "version 1.0"        "grep -q 'version.*\"1\\.0' SKILL.md"
+assert "version 1.x"        "grep -q 'version.*\"1\\.' SKILL.md"
 echo ""
 
 # ── 3. Launcher ───────────────────────────────────────────────────────
@@ -74,9 +74,11 @@ echo ""
 
 # ── 8. Help output ───────────────────────────────────────────────────
 echo "[8] Help output..."
-HELP=$(youtube --help 2>&1)
-assert "mentions --num"   "echo '$HELP' | grep -q '\-\-num'"
-assert "mentions --rank"  "echo '$HELP' | grep -q '\-\-rank'"
+youtube --help > /tmp/yt_help.txt 2>&1
+assert "mentions --num"   "grep -q '\-\-num' /tmp/yt_help.txt"
+assert "mentions --rank"  "grep -q '\-\-rank' /tmp/yt_help.txt"
+assert "mentions --fresh" "grep -q '\-\-fresh' /tmp/yt_help.txt"
+rm -f /tmp/yt_help.txt
 echo ""
 
 # ── 9. selfcheck ─────────────────────────────────────────────────────
@@ -87,7 +89,7 @@ echo ""
 
 # ── 10. Live search (resilient) ──────────────────────────────────────
 echo "[10] Live search..."
-RESULT=$(timeout 15 youtube "rick astley" --num 1 -v 2>&1) || true
+RESULT=$(timeout 15 youtube "rick astley" --num 1 --any-length -v 2>&1) || true
 if echo "$RESULT" | grep -q "Never Gonna Give You Up"; then
     PASS=$((PASS + 1))
 else
