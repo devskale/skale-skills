@@ -63,4 +63,9 @@ if [ -f "$STAMP_FILE" ]; then
     fi
 fi
 
+# Capture where the user invoked us BEFORE we cd into the skill dir.
+# The default --transcript-dir (./transcripts/) resolves relative to THIS
+# directory, not the skill dir, so downloads land where the user expects.
+export VTD_INVOKED_PWD="$PWD"
+
 cd "$SKILL_DIR" && exec node scripts/vtd.js "$@"

@@ -143,7 +143,7 @@ function slugifyForFile(input) {
     .replace(/[^a-zA-Z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase()
-    .slice(0, 60);
+    .slice(0, 80);
   return base || "video";
 }
 
@@ -741,7 +741,7 @@ async function main() {
   const transcriptDir =
     typeof opts["transcript-dir"] === "string"
       ? opts["transcript-dir"]
-      : path.join(process.cwd(), "transcripts");
+      : path.join(process.env.VTD_INVOKED_PWD || process.cwd(), "transcripts");
 
   const toFileArg = opts["to-file"];
   let toFile = true; // Default

@@ -3,7 +3,7 @@ name: video-transcript-downloader
 description: "Download videos, audio, subtitles, and clean paragraph-style transcripts from YouTube and any other yt-dlp supported site. Transcripts are saved to file by default. Use when asked to download this video, save this clip, rip audio, get subtitles, get transcript, or to troubleshoot yt-dlp/ffmpeg and formats/playlists."
 metadata:
   author: skale
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Video Transcript Downloader
