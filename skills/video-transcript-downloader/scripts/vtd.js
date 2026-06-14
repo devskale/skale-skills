@@ -157,6 +157,110 @@ function formatChapters(chapters) {
   return "## Chapters\n" + lines.join("\n") + "\n";
 }
 
+// ── Segment cleaning (offset-preserving) ─────────────────────────────────────
+// Offsets are normalized to MILLISECONDS everywhere internally.
+// youtube-transcript-plus returns offset in SECONDS; parseSrt/Vtt return ms.
+
+function cleanSegmentsWithOffset(segments, { keepBrackets } = {}) {
+  const cleaned = [];
+  let prev = "";
+  for (const seg of segments) {
+    const rawText = typeof seg === "object" ? seg.text : seg;
+    const offset =
+      typeof seg === "object" && Number.isFinite(seg.offset)
+        ? seg.offset
+        : cleaned.length
+          ? cleaned[cleaned.length - 1].offset
+          : 0;
+    const s = String(rawText || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!s) continue;
+    const withoutTags = s.replace(/<[^>]+>/g, "").trim();
+    const withoutBrackets = keepBrackets
+      ? withoutTags
+      : withoutTags.replace(/\[[^\]]*\]/g, "").trim();
+    const withoutCurlies = withoutBrackets
+      .replace(/\{[^}]+\}/g, "")
+      .replace(/♪/g, "")
+      .trim();
+    const t = withoutCurlies.replace(/\s+/g, " ").trim();
+    if (!t) continue;
+    if (t === prev) continue;
+    if (prev && t.startsWith(prev)) {
+      const newPart = t.slice(prev.length).trim();
+      if (newPart) cleaned.push({ offset, text: newPart });
+    } else if (prev && t.includes(prev)) {
+      const idx = t.indexOf(prev);
+      const newPart = (t.slice(0, idx) + t.slice(idx + prev.length)).trim();
+      if (newPart) cleaned.push({ offset, text: newPart });
+    } else {
+      cleaned.push({ offset, text: t });
+    }
+    prev = t;
+  }
+  return cleaned;
+}
+
+function assignChapterIndex(offsetMs, chapters) {
+  const offsetS = offsetMs / 1000;
+  let idx = 0;
+  for (let i = 0; i < chapters.length; i++) {
+    if (chapters[i].start_time <= offsetS) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+// Build the output body from cleaned segments. Three mutually-exclusive modes:
+//   timestamps === true  -> "[MM:SS] text" lines
+//   chapters present     -> sectioned: "### MM:SS Title\n\ntext"
+//   otherwise            -> single paragraph
+function bodyFromCleaned(cleaned, { timestamps, chapters }) {
+  if (timestamps) {
+    return cleaned
+      .map((s) => `[${formatTimestamp(s.offset / 1000)}] ${s.text}`)
+      .join("\n");
+  }
+  if (chapters && chapters.length > 0) {
+    const buckets = chapters.map(() => []);
+    for (const s of cleaned) {
+      buckets[assignChapterIndex(s.offset, chapters)].push(s.text);
+    }
+    const parts = [];
+    for (let i = 0; i < chapters.length; i++) {
+      const text = buckets[i].join(" ").replace(/\s+/g, " ").trim();
+      if (!text) continue;
+      const ts = formatTimestamp(chapters[i].start_time);
+      const title = chapters[i].title || "(untitled)";
+      parts.push(`### ${ts} ${title}\n\n${text}`);
+    }
+    return parts.join("\n\n");
+  }
+  return cleaned.map((s) => s.text).join(" ").replace(/\s+/g, " ").trim();
+}
+
+// ── Segment fetchers (both return {offset(ms), text}) ────────────────────────
+
+async function fetchYoutubeSegments(id, lang) {
+  const transcript = await YoutubeTranscript.fetchTranscript(id, { lang });
+  return transcript.map((e) => ({
+    offset: Math.round((Number(e.offset) || 0) * 1000),
+    text: decodeHtmlEntities(e.text),
+  }));
+}
+
+async function fetchYtDlpSegments(url, lang, extra) {
+  const { tmpDir, subtitlePath } = await ytDlpSubtitlesToTemp({ url, lang, extra });
+  try {
+    const raw = fs.readFileSync(subtitlePath, "utf8");
+    const segs = subtitlePath.endsWith(".srt") ? parseSrt(raw) : parseVtt(raw);
+    return segs.map((s) => ({ offset: s.offset, text: decodeHtmlEntities(s.text) }));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 function slugifyForFile(input) {
   const base = String(input || "video")
     .normalize("NFKD")
@@ -268,50 +372,16 @@ async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
 }
 
 function cleanSegments(segments, { keepBrackets } = {}) {
-  const cleaned = [];
-  let prev = "";
-
-  for (const seg of segments) {
-    // Handle both string segments and object segments {text, offset}
-    const rawText = typeof seg === "object" ? seg.text : seg;
-    const s = String(rawText || "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!s) continue;
-
-    // Subtitles often contain HTML-ish tags; strip them.
-    const withoutTags = s.replace(/<[^>]+>/g, "").trim();
-    const withoutBrackets = keepBrackets
-      ? withoutTags
-      : withoutTags.replace(/\[[^\]]*\]/g, "").trim();
-    const withoutCurlies = withoutBrackets
-      .replace(/\{[^}]+\}/g, "")
-      .replace(/♪/g, "")
-      .trim();
-    const t = withoutCurlies.replace(/\s+/g, " ").trim();
-    if (!t) continue;
-    if (t === prev) continue;
-    // Dedup heuristic: captions often repeat previous line with a longer suffix.
-    if (prev && t.startsWith(prev)) {
-      const newPart = t.slice(prev.length).trim();
-      if (newPart) cleaned.push(newPart);
-    } else if (prev && t.includes(prev)) {
-      // Another common pattern: current line contains previous line in the middle.
-      const idx = t.indexOf(prev);
-      const newPart = (t.slice(0, idx) + t.slice(idx + prev.length)).trim();
-      if (newPart) cleaned.push(newPart);
-    } else {
-      cleaned.push(t);
-    }
-    prev = t;
-  }
-
-  return cleaned;
+  // Retained for backward compatibility; cleanSegmentsWithOffset is preferred.
+  return cleanSegmentsWithOffset(segments, { keepBrackets }).map((s) => s.text);
 }
 
 function toParagraph(segments, { keepBrackets } = {}) {
-  const cleaned = cleanSegments(segments, { keepBrackets });
-  return cleaned.join(" ").replace(/\s+/g, " ").trim();
+  return cleanSegmentsWithOffset(segments, { keepBrackets })
+    .map((s) => s.text)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function parseTime(str) {
@@ -429,115 +499,55 @@ async function downloadTranscript({
 }) {
   if (!url) throw new Error("missing url");
 
+  // Fetch metadata once: chapters drive sectioning, and meta drives filename + frontmatter.
+  if (!meta) {
+    try {
+      meta = await getVideoMeta(url);
+    } catch (e) {
+      debug(`getVideoMeta failed: ${e.message}`);
+      meta = { id: extractYouTubeId(url), title: null };
+    }
+  }
+
+  // Fetch transcript segments with offsets normalized to milliseconds.
+  // Preferred: youtube-transcript-plus (fast, no files). Fallback: yt-dlp subtitles.
+  let segments = [];
   if (isYouTubeUrl(url)) {
     const id = extractYouTubeId(url);
     if (id) {
       try {
-        // Preferred path: direct transcript fetch (no yt-dlp / no files).
-        const transcript = await YoutubeTranscript.fetchTranscript(id, {
-          lang,
-        });
-        if (timestamps) {
-          const lines = transcript.map((entry) => {
-            const ts = formatTimestamp(entry.offset / 1000);
-            const text = decodeHtmlEntities(entry.text)
-              .replace(/\s+/g, " ")
-              .trim();
-            return `[${ts}] ${text}`;
-          });
-          const output = lines.join("\n");
-          if (toFile) {
-            const filePath = await saveTranscriptToFile({
-              text: output,
-              url,
-              transcriptDir,
-              meta,
-            });
-            process.stdout.write(
-              `The transcript is extensive. It's saved to: ${filePath}\n`,
-            );
-          } else {
-            process.stdout.write(output + "\n");
-          }
-          return;
-        }
-        const paragraph = toParagraph(
-          transcript.map((e) => decodeHtmlEntities(e.text)),
-          { keepBrackets },
-        );
-        if (!paragraph) throw new Error("empty transcript");
-        if (toFile) {
-          const filePath = await saveTranscriptToFile({
-            text: paragraph,
-            url,
-            transcriptDir,
-            meta,
-          });
-          process.stdout.write(
-            `The transcript is extensive. It's saved to: ${filePath}\n`,
-          );
-        } else {
-          process.stdout.write(paragraph + "\n");
-        }
-        return;
+        segments = await fetchYoutubeSegments(id, lang);
       } catch (e) {
-        // Fallback to yt-dlp if direct fetch fails
+        debug(`youtube transcript fetch failed: ${e.message}; falling back to yt-dlp`);
       }
     }
   }
+  if (segments.length === 0) {
+    segments = await fetchYtDlpSegments(url, lang, extra);
+  }
+  if (segments.length === 0) throw new Error("empty transcript");
 
-  const { tmpDir, subtitlePath } = await ytDlpSubtitlesToTemp({
-    url,
-    lang,
-    extra,
+  const cleaned = cleanSegmentsWithOffset(segments, { keepBrackets });
+  if (cleaned.length === 0) throw new Error("empty transcript after cleaning");
+
+  // Body format priority: --timestamps > chapters (sectioned) > single paragraph.
+  const body = bodyFromCleaned(cleaned, {
+    timestamps,
+    chapters: meta.chapters,
   });
 
-  try {
-    const raw = fs.readFileSync(subtitlePath, "utf8");
-    const segments = subtitlePath.endsWith(".srt")
-      ? parseSrt(raw)
-      : parseVtt(raw);
-
-    if (timestamps) {
-      const lines = segments.map((entry) => {
-        const ts = formatTimestamp(entry.offset / 1000);
-        const text = decodeHtmlEntities(entry.text).replace(/\s+/g, " ").trim();
-        return `[${ts}] ${text}`;
-      });
-      const output = lines.join("\n");
-      if (toFile) {
-        const filePath = await saveTranscriptToFile({
-          text: output,
-          url,
-          transcriptDir,
-          meta,
-        });
-        process.stdout.write(
-          `The transcript is extensive. It's saved to: ${filePath}\n`,
-        );
-      } else {
-        process.stdout.write(output + "\n");
-      }
-      return;
-    }
-
-    const paragraph = toParagraph(segments, { keepBrackets });
-    if (!paragraph) throw new Error("empty transcript from subtitles");
-    if (toFile) {
-      const filePath = await saveTranscriptToFile({
-        text: paragraph,
-        url,
-        transcriptDir,
-        meta,
-      });
-      process.stdout.write(
-        `The transcript is extensive. It's saved to: ${filePath}\n`,
-      );
-    } else {
-      process.stdout.write(paragraph + "\n");
-    }
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+  if (toFile) {
+    const filePath = await saveTranscriptToFile({
+      text: body,
+      url,
+      transcriptDir,
+      meta,
+    });
+    process.stdout.write(
+      `The transcript is extensive. It's saved to: ${filePath}\n`,
+    );
+  } else {
+    process.stdout.write(body + "\n");
   }
 }
 

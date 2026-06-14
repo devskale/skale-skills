@@ -89,6 +89,7 @@ vtd download --url 'https://...' -- --format 137+140       # specific format
 
 - YouTube: fetches transcript via `youtube-transcriptPlus` first, falls back to yt-dlp subtitles
 - Non-YouTube: always uses yt-dlp subtitles
-- Default output is a single clean paragraph
+- **Default output is sectioned by chapters**: if the video has chapter markers, the body is split into `### MM:SS Title` sections (one paragraph per chapter), with a `## Chapters` table of contents at the top. Videos without chapters fall back to a single clean paragraph.
 - Transcript files include YAML frontmatter with video metadata
-- **Chapters**: if a video has chapter markers, they are embedded at the top of every saved transcript file (after frontmatter, before body). Use `vtd chapters --url ...` for quick stdout lookup without downloading the transcript. Videos without chapters are unaffected.
+- `--timestamps` overrides sectioning: emits `[MM:SS] text` lines with real per-segment times (use for precise quoting)
+- Use `vtd chapters --url ...` for quick stdout chapter lookup without downloading the transcript
