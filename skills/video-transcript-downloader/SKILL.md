@@ -45,7 +45,7 @@ vtd transcript --url 'https://...' --transcript-dir ./t/  # output directory
 
 ## Search
 
-Search and auto-download transcripts (saves to file by default):
+Search and **auto-download a transcript for each result** (saves to file by default). This is for retrieval, not link discovery — if you only want a list of video links, use the separate `youtube` skill instead, which is lighter (no yt-dlp, no transcript fetch).
 
 ```bash
 vtd search "reinforcement learning" --limit 3 --transcript-dir ./transcripts/
