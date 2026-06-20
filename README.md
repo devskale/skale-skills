@@ -37,6 +37,9 @@ A pi package with skills, extensions, and prompts for AI coding agents. Works wi
 
 ### Pi (native)
 
+> See [docs/installation.md](docs/installation.md) for precedence rules and the
+> `Tool "heartbeat" conflicts with ...` gotcha before editing settings files.
+
 ```bash
 # Install everything
 pi install git:github.com/devskale/skale-skills
