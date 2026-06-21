@@ -1,7 +1,7 @@
 {
   "custom_subdirs": ["dev"],
   "discovery_dirs": [
-    "/Users/johannwaldherr/code/skale-skills"
+    "/Users/johannwaldherr/code/agents/skills/skale-skills"
   ],
   "agent_dirs": {
     "default": {

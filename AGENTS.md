@@ -117,13 +117,13 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 Install from upstream, don't maintain locally:
 
 ```bash
-# Browse and discover
-skiller search <query>           # search crawled index
-skiller crawl                    # refresh index from GitHub repos
-
 # Install
-skiller install <name>           # from index
+skiller install <name>           # install a local skill across agents
 npx @anthropic-ai/skills add <name>  # Anthropic skills
+openskills install <org>/<repo>  # openskills CLI
+
+# Browse and discover
+# https://skills.sh  ·  `skiller discovery <dir>` (scan a local dir)
 openskills install <org>/<repo>  # openskills CLI
 
 # Also check: https://skills.sh
@@ -184,6 +184,6 @@ cd skiller && uv venv && source .venv/bin/activate && uv pip install -e .
 skiller --help
 ```
 
-Key commands: `crawl`, `search`, `install`, `remove`, `list`.
+Key commands: `discovery`, `install`, `remove`, `list`.
 
 See `skiller/` and `CONVENTION.md` for full details.
