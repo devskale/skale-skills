@@ -1,43 +1,29 @@
 # Skiller
 
-Helper script to discover, install, and manage skills for AI agents.
+Install and manage **your own** skills across multiple AI agents from one place.
+
+Skiller's one unique job: take a skill that lives in a local directory and
+install it into every agent's skill folder at once (pi, claude, opencode, qwen,
+gemini, codex, trae). For discovering *external* skills, use
+[skills.sh](https://skills.sh), `openskills`, or
+`npx @anthropic-ai/skills add <name>` instead.
 
 ## Setup
 
-1. Ensure you have `uv` installed. If not, install it from https://pypi.org/project/uv/
+Requires `uv` (https://pypi.org/project/uv/).
 
-2. Navigate to the `skiller` directory:
+```bash
+cd skiller
+uv venv && source .venv/bin/activate
+uv pip install -e .
+skiller            # runs the interactive TUI when called with no args
+```
 
-   ```bash
-   cd skiller
-   ```
+Or install as a global command:
 
-3. Create a virtual environment using uv:
-
-   ```bash
-   uv venv
-   ```
-
-4. Activate the virtual environment:
-
-   ```bash
-   source .venv/bin/activate  # On Unix/macOS
-   # or on Windows: .venv\Scripts\activate
-   ```
-
-5. Install the package in editable mode:
-
-   ```bash
-   uv pip install -e .
-   ```
-
-6. Run the script:
-
-   ```bash
-   skiller
-   ```
-
-   Running without arguments displays the help message.
+```bash
+uv tool install -e .     # editable, tracks this checkout
+```
 
 ## Commands
 
@@ -54,11 +40,8 @@ skiller discovery [dir]
 
 **Example:**
 ```bash
-# Discover skills in current directory
-skiller discovery
-
-# Discover skills in a specific directory
-skiller discovery ../other-skills
+skiller discovery                    # scan current directory
+skiller discovery ../other-skills    # scan a specific directory
 ```
 
 ### list
@@ -73,11 +56,8 @@ skiller list [--agent AGENT]
 
 **Example:**
 ```bash
-# List all installed skills
-skiller list
-
-# List skills for a specific agent
-skiller list --agent claude
+skiller list                  # all agents
+skiller list --agent claude   # one agent
 ```
 
 ### install
@@ -96,19 +76,10 @@ skiller install [skill ...] [--agent AGENT] [--path-type user|project] [--test] 
 
 **Example:**
 ```bash
-# Interactive mode - select skills and agents
-skiller install
-
-# Install a specific skill
-skiller install readme-write
-
-# Install multiple skills
-skiller install readme-write docx xlsx
-
-# Test installation (dry run)
-skiller install readme-write --test
-
-# Install for a specific agent
+skiller install                          # interactive
+skiller install readme-write             # one skill
+skiller install readme-write docx xlsx   # several at once
+skiller install readme-write --test      # dry run
 skiller install readme-write --agent claude --path-type user
 ```
 
@@ -127,79 +98,11 @@ skiller remove [skill] [--agent AGENT] [--path-type user|project|all] [--test]
 
 **Example:**
 ```bash
-# Interactive mode - select skills to remove
-skiller remove
-
-# Remove a specific skill
-skiller remove readme-write
-
-# Test removal (dry run)
-skiller remove readme-write --test
-
-# Remove from specific agent
+skiller remove                          # interactive
+skiller remove readme-write             # one skill
+skiller remove readme-write --test      # dry run
 skiller remove readme-write --agent claude --path-type user
 ```
-
-### crawl
-Crawl external sites to discover and index skills.
-
-```bash
-skiller crawl [--file FILE] [--delay SECONDS] [--test] [--limit N] [--workers N]
-```
-
-**Options:**
-- `--file` - Path to markdown file containing skill sites (default: skill-sites.md)
-- `--delay` - Delay in seconds between requests (default: 0.5)
-- `--test` - Test mode - show what would be crawled without saving
-- `--limit` - Limit number of repos to crawl (0 = no limit, default: 0)
-- `--workers` - Number of parallel workers for fetching descriptions (default: 5)
-
-**Example:**
-```bash
-# Crawl all repos from skill-sites.md
-skiller crawl
-
-# Crawl in test mode (preview only)
-skiller crawl --test
-
-# Crawl only 5 repos for quick testing
-skiller crawl --limit 5
-
-# Crawl with more parallelism
-skiller crawl --workers 10
-
-# Crawl with custom delay and limit
-skiller crawl --delay 1.0 --limit 3
-```
-
-**Features:**
-- **Efficient**: Uses GitHub Tree API (1 request per repo vs 10-50+ before)
-- **Parallel**: Fetches skill descriptions concurrently
-- **Validation**: Validates all discovered skills have required fields
-- **Rate Limit Handling**: Respects GitHub rate limits with exponential backoff
-- **Test Mode**: Preview results without saving to index
-
-### search
-Search for skills in the local index.
-
-```bash
-skiller search [query] [--json]
-```
-
-**Options:**
-- `query` - Search query for skill names or descriptions
-- `--json` - Output results in JSON format
-
-**Example:**
-```bash
-# Search for skills
-skiller search "spreadsheet"
-
-# Search with JSON output
-skiller search "video" --json
-```
-
-**Note:** The index is created by running `skiller crawl` first.
 
 ## Global Test Mode
 
@@ -207,12 +110,10 @@ All destructive operations support `--test` mode:
 
 - `install --test` - Preview installations without copying files
 - `remove --test` - Preview removals without deleting files
-- `crawl --test` - Preview crawl results without saving to index
 
 ## Environment Variables
 
-- `GITHUB_TOKEN` - Optional GitHub personal access token for higher rate limits
-- `SKILLER_CONFIG` - Optional path to custom configuration file
+- `SKILLER_CONFIG` - Optional path to a custom configuration file
 
 ## Configuration
 
@@ -224,11 +125,12 @@ Skiller uses a configuration file to define agent paths. The default configurati
   "agent_dirs": {
     "default": {"user": ["~/.config/opencode/skill"], "project": [".opencode/skill"]},
     "opencode": {"user": ["~/.config/opencode/skill"], "project": [".opencode/skill"]},
-    "qwen": {"user": ["~/.qwen/skills"], "project": [".qwen/skills"]},
-    "claude": {"user": ["~/.claude/skills"], "project": [".claude/skills"]},
-    "gemini": {"user": ["~/.gemini/skills"], "project": [".gemini/skills"]},
-    "codex": {"user": ["~/.codex/skills", "/etc/codex/skills"], "project": [".codex/skills", "../.codex/skills"]},
-    "trae": {"user": ["~/.trae/skills"], "project": [".trae/skills"]}
+    "pi":       {"user": ["~/.pi/skills"], "project": [".pi/skills"]},
+    "qwen":     {"user": ["~/.qwen/skills"], "project": [".qwen/skills"]},
+    "claude":   {"user": ["~/.claude/skills"], "project": [".claude/skills"]},
+    "gemini":   {"user": ["~/.gemini/skills"], "project": [".gemini/skills"]},
+    "codex":    {"user": ["~/.codex/skills", "/etc/codex/skills"], "project": [".codex/skills", "../.codex/skills"]},
+    "trae":     {"user": ["~/.trae/skills"], "project": [".trae/skills"]}
   }
 }
 ```
@@ -237,6 +139,21 @@ Skiller uses a configuration file to define agent paths. The default configurati
 1. `SKILLER_CONFIG` environment variable
 2. Development tree: `skiller/skiller_config.json` or `skiller_config.json`
 3. Packaged config: `skiller_config.json`
+
+## Discovering External Skills
+
+Skiller no longer ships a crawler/index. To find skills maintained elsewhere:
+
+```bash
+# Live marketplaces (always current)
+#   https://skills.sh
+
+# Anthropic's official skills (docx, xlsx, ...)
+npx @anthropic-ai/skills add <name>
+
+# Multi-source installer
+openskills install <org>/<repo>
+```
 
 ## Development
 
@@ -251,21 +168,18 @@ uv pip install -e .
 ```
 skiller/
 ├── skiller/
-│   ├── cli.py              # CLI entry point
-│   ├── commands/             # Command implementations
+│   ├── cli.py            # CLI entry point
+│   ├── commands/         # Command implementations
 │   │   ├── base.py       # Command dataclass
-│   │   ├── discovery.py   # Discover skills
-│   │   ├── install.py    # Install skills
+│   │   ├── discovery.py  # Discover skills in a dir
+│   │   ├── install.py    # Install skills to agents
 │   │   ├── list_cmd.py   # List installed skills
-│   │   ├── remove.py     # Remove skills
-│   │   ├── crawl.py      # Crawl external sites
-│   │   └── search.py     # Search index
-│   ├── core.py             # Core helpers (parsing, validation)
-│   ├── config.py           # Configuration loading
-│   └── ui.py              # Interactive UI helpers
+│   │   └── remove.py     # Remove skills from agents
+│   ├── core.py           # Core helpers (parsing, validation)
+│   ├── config.py         # Configuration loading
+│   └── ui.py             # Interactive UI helpers
 ├── pyproject.toml        # Python package config
-├── skiller_config.json   # Default configuration
-└── skiller_index.json    # Generated skill index (after crawl)
+└── skiller_config.json   # Default configuration
 ```
 
 ## License

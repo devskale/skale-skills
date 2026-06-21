@@ -5,7 +5,7 @@ Skills not maintained here. Install from upstream sources.
 ## Quick Install
 
 ```bash
-skiller install <name>              # from crawled index
+skiller install <name>              # install a local skill across agents
 npx @anthropic-ai/skills add <name> # Anthropic skills
 openskills install <org>/<repo>     # openskills CLI
 ```
@@ -51,10 +51,9 @@ npm install -g openskills
 openskills install <org>/<repo>
 openskills install <org>/<repo>/<skill>   # specific skill
 
-# skiller — search and install from crawled index
-skiller crawl                    # build index from skill-sites.md
-skiller search <query>           # find skills
+# skiller — install local skills across multiple agents (pi, claude, opencode, ...)
 skiller install <name>           # install skill
+skiller remove <name>            # remove skill
 
 # Anthropic skills
 npx @anthropic-ai/skills add <name>
@@ -79,7 +78,7 @@ npx @anthropic-ai/skills add <name>
 |-------|------|-------------|
 | **docx** | Create/edit Word documents | `npx @anthropic-ai/skills add docx` |
 | **xlsx** | Create/edit Excel spreadsheets | `npx @anthropic-ai/skills add xlsx` |
-| **oebb-scotty** | Austrian rail planner (ÖBB) | `skiller search oebb` |
+| **oebb-scotty** | Austrian rail planner (ÖBB) | [skills.sh](https://skills.sh) (search) |
 | **peep** | X/Twitter — read, search, post, bookmarks, trending | [devskale/peep](https://github.com/devskale/peep) |
 
 ## What We Maintain Here
