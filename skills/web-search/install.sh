@@ -23,22 +23,26 @@ fi
 echo "  Syncing dependencies..."
 uv sync
 
-# ── 3. Create global launcher ──────────────────────────────────────────────
-# We write a launcher script (not a symlink) because:
-#   - Windows Git Bash: ln -sf creates a silent copy, not a real symlink
-#   - macOS: may require Developer Tools for symlinks on some configs
-#   - Linux: works fine but launcher is equally good
-# The launcher embeds SKILL_DIR so it always finds scripts/search.py.
+# ── 3. Create global launcher (symlink to the repo launcher) ───────────────
+# Symlink to the tracked `search` launcher (same pattern as fetch-url) so that
+# --update / --selfcheck / auto-update behavior is consistent across installs.
+# The launcher resolves its own SKILL_DIR via symlink, so no hardcoded path.
+# Windows users use install.bat instead.
 BIN_DIR="$HOME/.local/bin"
 LAUNCHER="$BIN_DIR/web-search"
 mkdir -p "$BIN_DIR"
 
-cat > "$LAUNCHER" << LAUNCHER_EOF
-#!/usr/bin/env bash
-cd "$SKILL_DIR" && exec uv run scripts/search.py "\$@"
-LAUNCHER_EOF
-chmod +x "$LAUNCHER"
-echo "  Created launcher: $LAUNCHER → $SKILL_DIR/scripts/search.py"
+if [ -L "$LAUNCHER" ] || [ -f "$LAUNCHER" ]; then
+    if [ "$(readlink "$LAUNCHER" 2>/dev/null)" != "$SKILL_DIR/search" ]; then
+        echo "  Removing old launcher at $LAUNCHER"
+        rm -f "$LAUNCHER"
+    fi
+fi
+
+if [ ! -L "$LAUNCHER" ]; then
+    ln -sf "$SKILL_DIR/search" "$LAUNCHER"
+    echo "  Created symlink: $LAUNCHER → $SKILL_DIR/search"
+fi
 
 # ── 4. Verify installation ─────────────────────────────────────────────────
 echo "  Verifying..."
@@ -48,7 +52,8 @@ if OUTPUT=$("$LAUNCHER" "test" -v 2>&1); then
     echo "  ✓ web-search works (backend: $BACKEND)"
 else
     echo "  ⚠ web-search installed but verification failed. Try running manually:"
-    echo "    $LAUNCHER \"test query\" -v"
+    echo "    web-search \"test query\" -v"
+    echo "    web-search --selfcheck   # (checks credgoo health too)"
 fi
 
 # ── 5. Write update timestamp ──────────────────────────────────────────────
@@ -63,13 +68,18 @@ echo "  web-search \"cats\" --categories images # Image search"
 echo "  web-search \"news\" --categories news    # News search"
 echo "  web-search \"query\" -v                 # Verbose (show backend)"
 echo ""
+echo "Update / health:"
+echo "  web-search --update                    # git pull + uv sync"
+echo "  web-search --selfcheck                 # version + credgoo health"
+echo ""
 echo "Works out-of-the-box with public SearXNG instances."
 echo ""
 echo "Optional credentials for better results:"
 echo ""
-echo "  Install credgoo CLI first:"
+echo "  Install credgoo CLI first (from git, so it stays upgradeable):"
 echo "    uv tool install \"credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo\""
 echo "    credgoo --setup"
+echo "    uv tool upgrade credgoo               # keep it current"
 echo ""
 echo "  Duck API (advanced filters like --site, --filetype):"
 echo "    credgoo WEB_SEARCH_BEARER"
