@@ -53,6 +53,42 @@ package loads exactly once:
 { "packages": ["git:github.com/devskale/skale-skills"] }
 ```
 
+## Selective loading (filter package resources)
+
+The git package ships **all** skills and extensions declared in its manifest. Loading
+everything is rarely what you want — each loaded skill adds its name + description to the
+system prompt catalog (progressive disclosure keeps the *body* out of context, but the
+*catalog* is always in). Install only what you use (typically 4–8 skills); loading all of a
+large collection causes context rot and routing competition.
+
+Use the **object form** to whitelist specific resources:
+
+```jsonc
+// ~/.pi/agent/settings.json
+{
+  "packages": [
+    {
+      "source": "git:github.com/devskale/skale-skills",
+      "skills": ["d2", "rodney", "fetch-url", "web-search"],  // only these load
+      "extensions": ["./extensions/*.ts"]                     // omit a key to load all of a type
+    }
+  ]
+}
+```
+
+Filter syntax (layers over the manifest, narrows what it declares):
+- Omit a key → load **all** resources of that type the package provides.
+- `[]` → load **none** of that type (e.g. `"extensions": []` for skills-only).
+- `["name1", "name2"]` → load only named skills (by directory name).
+- `!pattern` → exclude matches; `+path` / `-path` → force include/exclude an exact path.
+
+Toggle resources interactively without editing JSON: `pi config` opens a TUI to enable/disable
+any skill / extension / prompt / theme from installed packages.
+
+> When migrating from loose symlinks to the package, **remove the loose copies** — see
+> [Loose-file conflicts](#loose-file-conflicts) below. Otherwise both identities load and pi
+> emits `[Skill conflicts]` at startup.
+
 ## Loose-file conflicts (the other vectors)
 
 The identity rule above covers `settings.json` entries. But pi **also** auto-loads any

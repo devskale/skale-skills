@@ -40,8 +40,16 @@ ln -s ~/code/skale-skills/skills/<name> ~/.pi/agent/skills/<name>
 Use this to test one skill against the live agent. **Must be removed before shipping** (see
 [Cleanup](#cleanup) below), otherwise it conflicts with the git package.
 
-> ⚠ Never hand-copy an extension's `.ts` into `~/.pi/agent/extensions/` to test it. That leaves
-> a loose-file conflict. Use setup **A** instead.
+> ⚠ Never register this repo's skills or extensions via global local-path entries in
+> `settings.json` (e.g. `"extensions": ["~/code/skale-skills/.../statusline.ts"]` or
+> `"skills": ["~/code/skale-skills/skills/d2"]`) while the git package is also installed.
+> A local path and a git URL are **different identities** — pi loads both and emits
+> `[Skill conflicts]` / `Tool "..." conflicts` at startup, even if the files are byte-identical.
+> This is the same anti-pattern as hand-copying a `.ts` into `~/.pi/agent/extensions/`, or
+> symlinking a skill into `~/.pi/agent/skills/`, next to a package install.
+>
+> For live dev, use setup **A** (project-path package) — it scopes the local identity to the
+> repo dir only, so it never co-loads with the global git package elsewhere.
 
 ## The loop
 
