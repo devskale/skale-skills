@@ -9,14 +9,17 @@ metadata:
 
 # D2 — Diagrams as Code
 
-> **Status: v0.0.1 — work in progress.** Gotchas are failure-backed (earned
-> building architecture/data-flow/auditflow diagrams for kontext.one). Still
-> missing: sequence-diagram + ER-class guidance, composition (layers/steps)
-> recipes, tests/test.sh, and a real .d2 library. To resume, read
-> **`WORKLOG.md`** (full state, earned gotchas, artifacts, next steps), then
-> dogfood on a new diagram and fold every correction back into Gotchas.
+> **v0.0.1 — WIP.** Gotchas are failure-backed. Missing: sequence/ER guides,
+> composition recipes, tests, a .d2 library. Resume: read **`WORKLOG.md`**.
 
-D2 turns text into diagrams. The `d2` binary is installed via `brew install d2`. No scripts needed here — this is a knowledge skill.
+D2 turns text into diagrams. Knowledge skill — no scripts.
+
+## Install
+
+```bash
+openskills install devskale/skale-skills/skills/d2   # GitHub → pi, claude, opencode, …
+```
+Or clone + add to pi config (`~/.pi/agent/settings.json`): `"skills": ["~/code/skale-skills/skills/d2"]`. Requires `d2`: `brew install d2`.
 
 ## The Render Loop
 

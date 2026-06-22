@@ -97,6 +97,7 @@ Only **custom skills** we actively develop:
 - **agents-md-init** — create and update AGENTS.md files
 - **command-creator** — create custom commands for Pi and OpenCode
 - **readme-write** — generate and update README.md files
+- **d2** — diagrams as code (D2 language). `openskills install devskale/skale-skills/skills/d2`
 
 ## API Docs
 
