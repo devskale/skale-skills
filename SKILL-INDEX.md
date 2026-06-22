@@ -14,13 +14,14 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 - **Repo:** https://github.com/nicobailon/pi-web-access
 - **Provides:** librarian (skill)
 - **Config:** optional API keys in `~/.pi/web-search.json` (Exa, Perplexity, Gemini)
-- **Scope:** project
+- **Scope:** project (`.pi/settings.json`)
 
 
 ## Global Packages
 
 - `npm:pi-mcp-adapter`
-- `npm:@alexanderfortin/pi-zai-usage`
+- `npm:@ogulcancelik/pi-herdr`
+- `npm:@ff-labs/pi-fff`
 
 ## Skills
 
@@ -28,15 +29,12 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
+| 🟢 global | **d2** | Draw diagrams as code from text using the D2 language (d2lang.com). Use when the user wants to cr... | `~/.pi/agent/skills/d2` |
 | 🟢 global | **fetch-url** | Fetch and extract readable text content from web pages. Auto-selects best tool with smart fallbac... | `~/.pi/agent/skills/fetch-url` |
-| 🟢 global | **peep** | X/Twitter CLI for reading, searching, posting, and managing bookmarks via cookie auth. | [github.com/devskale/peep](https://github.com/devskale/peep) — skill lives in the repo at `.pi/skills/peep/` |
+| 🟢 global | **rodney** | Drive headless Chrome from the CLI for web scraping, screenshots, form filling, PDF export, acces... | `~/.pi/agent/skills/rodney` |
+| 🟢 global | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts from YouTube and any oth... | `~/.pi/agent/skills/video-transcript-downloader` |
 | 🟢 global | **web-search** | Search the web with automatic backend selection. Works out-of-the-box with public SearXNG. Option... | `~/.pi/agent/skills/web-search` |
-
-### Notable (from project packages)
-
-| Status | Name | Description | Source |
-|--------|------|-------------|--------|
-| 📝 notable | **librarian** | Research open-source libraries with evidence-backed answers and GitHub permalinks. Use when the u... | `pkg:pi-web-access` |
+| 🟢 global | **youtube** | Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives. Use when the u... | `~/.pi/agent/skills/youtube` |
 
 ### Available (not installed)
 
@@ -44,30 +42,25 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 |--------|------|-------------|
 | ⚪ available | **agent-skill-creator** | Guide for creating effective skills for any AI agent (Claude, Trae, Gemini, OpenCode, Qwen, etc.)... |
 | ⚪ available | **agents-md-init** | Create and update concise AGENTS.md files using proven best practices. Use when starting a new AG... |
+| ⚪ available | **browser-use** | Fast, persistent browser automation with session continuity across sequential agent commands. Sup... |
 | ⚪ available | **command-creator** | Create custom commands for Pi (prompt templates) or OpenCode. Define command prompts, arguments, ... |
-| ⚪ available | **docx** | Comprehensive document creation, editing, and analysis with support for tracked changes, comments... |
 | ⚪ available | **improve-skill** | Analyze coding agent session transcripts to improve existing skills or create new ones. Use when ... |
-| ⚪ available | **markdown-converter** | Convert documents to Markdown using markitdown. Use when you need to extract text and convert PDF... |
-| ⚪ available | **oebb-scotty** | Austrian rail travel planner (ÖBB Scotty). Use when planning train journeys in Austria, checking ... |
-| ⚪ available | **play-browser** | Allows to interact with web pages by performing actions such as clicking buttons, filling out for... |
 | ⚪ available | **readme-write** | Create and update README.md files with proper structure, badges, and sections. |
-| ⚪ available | **rodney** | Drive headless Chrome from the CLI for web scraping, screenshots, form filling, PDF export, acces... |
-| ⚪ available | **searxng-search** | DEPRECATED - Use web-search skill instead (auto-selects best backend) |
 | ⚪ available | **todo** | Create and manage TODO.md task tracking files for complex multi-step work. Use when starting a la... |
-| ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts from YouTube and any oth... |
-| ⚪ available | **web-browser** | Allows to interact with web pages by performing actions such as clicking buttons, filling out for... |
-| ⚪ available | **xlsx** | Comprehensive spreadsheet creation, editing, and analysis with support for formulas, formatting, ... |
-| ⚪ available | **youtube** | Search YouTube videos via Invidious API. Use when the user wants to find, search for, or look up ... |
 
 ## Extensions
 
 ### Active
 
-_None._
+| Status | Name | Description | Source |
+|--------|------|-------------|--------|
+| 🟢 global | **statusline** | /** | `~/.pi/agent/extensions/statusline` |
 
 ### Available (not installed)
 
-_None._
+| Status | Name | Description |
+|--------|------|-------------|
+| ⚪ available | **heartbeat** | /** |
 
 ## Prompts
 
