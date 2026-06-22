@@ -2,17 +2,31 @@
  * Status Line Extension — machine name + built-in footer parity + Z.ai usage
  *
  * Content parity with the built-in footer (same token/context/model rendering),
- * with three intentional changes vs. the built-in:
- *   Line 1: machineName prepended → machineName cwd (branch) • sessionName
- *   Line 2 right: Z.ai usage appended (XX% (XhXm)) when provider starts with "zai"
- *   Line 2 left:  stats order ↑↓W $cost | R CH | ctx% (R and CH are droppable),
- *                not the built-in ↑↓R W CH $cost — re-grouped to support skip.
- * Progressive skip when line 2 is tight: (auto) → CH → R
+ * with intentional changes vs. the built-in:
+ *
+ *   Line 1: machineName prepended and ALWAYS kept first →
+ *             jMacAir ~/code/my-project (main) • session-name
+ *           On narrow terminals, progressively drops session → branch,
+ *           then truncates cwd, but never the machine name.
+ *
+ *   Line 2 right: Z.ai usage LEADS the right cluster so it survives truncation:
+ *             zai 6% (4h09m) glm-5.1 • low
+ *           The redundant "(zai)" provider prefix is dropped when on Z.ai.
+ *           % is color-coded: accent < 50% ≤ warning < 80% ≤ error.
+ *
+ *   Line 2 left: stats ↑↓W $cost | R CH | ctx% — re-grouped to support
+ *           progressive skip on narrow terminals: (auto) → CH → R.
+ *
+ * Mirrors built-in features:
+ *   - `xp` marker when PI_EXPERIMENTAL=1 (pi ≥ 0.79.5)
+ *   - context % coloring (warning >70%, error >90%)
+ *   - cache-hit rate (CH), cache read/write (R/W), cost with (sub) indicator
+ *   - extension statuses on line 3
  *
  * Caveat: "(auto)" is always appended after the context %. The built-in footer
- * hides it when auto-compaction is disabled, but ExtensionContext does not
- * expose the auto-compaction flag, so we cannot replicate that. Compaction is
- * enabled by default, so this is accurate in the common case.
+ * hides it when auto-compaction is disabled (session.autoCompactionEnabled),
+ * but ExtensionContext does not expose that flag, so we cannot replicate it.
+ * Compaction is enabled by default, so this is accurate in the common case.
  */
 
 import { execSync } from "node:child_process";
@@ -36,6 +50,9 @@ const machineName = (() => {
 	}
 	return hostname().replace(/\.local$/, "");
 })();
+
+// Mirrors pi core's areExperimentalFeaturesEnabled() (not in public exports).
+const isExperimental = process.env.PI_EXPERIMENTAL === "1";
 
 // ── Helpers (cloned from built-in footer.js) ──────────────────────────────────
 
@@ -68,10 +85,19 @@ function formatCwdForFooter(cwd: string, home: string): string {
 
 const HOME = process.env.HOME || process.env.USERPROFILE || "";
 
+/** Pick a theme color for a Z.ai usage percentage. */
+function zaiColor(pct: number): string {
+	if (pct >= 80) return "error";
+	if (pct >= 50) return "warning";
+	return "accent";
+}
+
 // ── Z.ai usage ────────────────────────────────────────────────────────────────
 
 const ZAI_USAGE_API_URL = "https://api.z.ai/api/monitor/usage/quota/limit";
 const ZAI_FETCH_COOLDOWN_MS = 30_000;
+const ZAI_FETCH_TIMEOUT_MS = 8_000;
+const ZAI_PERIODIC_REFRESH_MS = 3 * 60_000; // keep time-to-window fresh while idle
 
 interface ZaiUsage {
 	percentage: number;
@@ -85,11 +111,11 @@ function isZaiProvider(provider: string | undefined): boolean {
 
 function formatTimeRemainingFromEpochMs(ms: number): string {
 	const now = Date.now();
-	if (ms < now) return "0h0m";
+	if (ms < now) return "0m";
 	const totalSeconds = Math.round((ms - now) / 1000);
 	const hours = Math.floor(totalSeconds / 3600);
 	const minutes = Math.floor((totalSeconds % 3600) / 60);
-	if (hours > 0) return `${hours}h${minutes}m`;
+	if (hours > 0) return `${hours}h${String(minutes).padStart(2, "0")}m`;
 	if (minutes > 0) return `${minutes}m`;
 	return `${totalSeconds}s`;
 }
@@ -101,6 +127,7 @@ async function fetchZaiUsage(modelRegistry: {
 	if (!apiKey) return undefined;
 	const response = await fetch(ZAI_USAGE_API_URL, {
 		headers: { Authorization: `Bearer ${apiKey}` },
+		signal: AbortSignal.timeout(ZAI_FETCH_TIMEOUT_MS),
 	});
 	if (!response.ok) return undefined;
 	const data = (await response.json()) as {
@@ -127,9 +154,15 @@ async function fetchZaiUsage(modelRegistry: {
 
 // ── Extension entry point ─────────────────────────────────────────────────────
 
+interface TuiLike {
+	requestRender(): void;
+}
+
 export default function (pi: ExtensionAPI) {
 	let cachedZaiUsage: ZaiUsage | undefined;
 	let lastZaiFetchTime = 0;
+	let periodicTimer: ReturnType<typeof setInterval> | undefined;
+	let tuiRef: TuiLike | undefined;
 
 	async function refreshZaiUsage(
 		ctx: {
@@ -149,6 +182,7 @@ export default function (pi: ExtensionAPI) {
 		try {
 			cachedZaiUsage = await fetchZaiUsage(ctx.modelRegistry);
 			lastZaiFetchTime = now;
+			tuiRef?.requestRender();
 		} catch {
 			// keep previous cache on error
 		}
@@ -161,11 +195,32 @@ export default function (pi: ExtensionAPI) {
 	): string {
 		if (!usage) return "";
 		const pct = Math.round(usage.percentage * 10) / 10;
-		let s = theme.fg("accent", `${pct}%`);
+		let s = theme.fg(zaiColor(pct), `zai ${pct}%`);
 		if (usage.timeRemaining) {
 			s += theme.fg("dim", ` (${usage.timeRemaining})`);
 		}
 		return s;
+	}
+
+	function startPeriodicRefresh(ctx: {
+		model?: { provider: string } | undefined;
+		modelRegistry: { getApiKeyForProvider(p: string): Promise<string | undefined> };
+	}): void {
+		stopPeriodicRefresh();
+		periodicTimer = setInterval(() => {
+			if (isZaiProvider(ctx.model?.provider)) {
+				void refreshZaiUsage(ctx);
+			}
+		}, ZAI_PERIODIC_REFRESH_MS);
+		// Don't keep the event loop alive just for quota polling.
+		periodicTimer.unref?.();
+	}
+
+	function stopPeriodicRefresh(): void {
+		if (periodicTimer) {
+			clearInterval(periodicTimer);
+			periodicTimer = undefined;
+		}
 	}
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -174,13 +229,14 @@ export default function (pi: ExtensionAPI) {
 		await refreshZaiUsage(ctx, true);
 
 		ctx.ui.setFooter((tui, theme, footerData) => {
+			tuiRef = tui;
 			const unsub = footerData.onBranchChange(() => tui.requestRender());
 
 			return {
 				dispose: unsub,
 				invalidate() {},
 				render(width: number): string[] {
-					// ── Token stats ──
+					// ── Token stats (cumulative across all session entries) ──
 					let totalInput = 0;
 					let totalOutput = 0;
 					let totalCacheRead = 0;
@@ -190,7 +246,7 @@ export default function (pi: ExtensionAPI) {
 
 					for (const entry of ctx.sessionManager.getEntries()) {
 						if (entry.type === "message" && entry.message.role === "assistant") {
-							const u = (entry.message as AssistantMessage).usage as Record<string, number>;
+							const u = (entry.message as AssistantMessage).usage;
 							totalInput += u.input;
 							totalOutput += u.output;
 							totalCacheRead += u.cacheRead ?? 0;
@@ -213,113 +269,125 @@ export default function (pi: ExtensionAPI) {
 					const contextPercent =
 						contextUsage?.percent !== null ? contextPercentValue.toFixed(1) : "?";
 
-					// ── Line 1: machineName + cwd (branch) • sessionName ──
-					let pwd = formatCwdForFooter(ctx.sessionManager.getCwd(), HOME);
+					// ── Line 1: machineName (always) + cwd (branch) • sessionName ──
+					const machinePrefix = theme.fg("accent", machineName);
+					const machineWidth = visibleWidth(machinePrefix);
+					const cwdStr = formatCwdForFooter(ctx.sessionManager.getCwd(), HOME);
 					const branch = footerData.getGitBranch();
-					if (branch) pwd = `${pwd} (${branch})`;
 					const sessionName = ctx.sessionManager.getSessionName();
-					if (sessionName) pwd = `${pwd} • ${sessionName}`;
-					const l1left =
-						theme.fg("accent", machineName) + theme.fg("dim", ` ${pwd}`);
 
-					// ── Build right side first (to know available space) ──
+					const lines: string[] = [];
+
+					if (machineWidth >= width) {
+						// Absurdly narrow: show just the machine name, truncated.
+						lines.push(truncateToWidth(machinePrefix, width, theme.fg("dim", "...")));
+					} else {
+						// Candidate suffixes, longest → shortest. Machine always leads.
+						const variants: string[] = [];
+						if (branch && sessionName) variants.push(`${cwdStr} (${branch}) • ${sessionName}`);
+						if (branch) variants.push(`${cwdStr} (${branch})`);
+						variants.push(cwdStr);
+						const avail = width - machineWidth - 1; // 1 space gap after machine
+						let trailing = "";
+						for (const v of variants) {
+							if (visibleWidth(v) <= avail) {
+								trailing = v;
+								break;
+							}
+						}
+						if (!trailing) {
+							trailing = truncateToWidth(cwdStr, Math.max(0, avail), "...");
+						}
+						lines.push(machinePrefix + theme.fg("dim", ` ${trailing}`));
+					}
+
+					// ── Right cluster (line 2): Z.ai usage leads so it survives truncation ──
+					const isZai = isZaiProvider(ctx.model?.provider);
 					const modelName = ctx.model?.id || "no-model";
-					let rightSideWithoutProvider = modelName;
+
+					let modelCluster = modelName;
 					if (ctx.model?.reasoning) {
 						const thinkingLevel = pi.getThinkingLevel() || "off";
-						rightSideWithoutProvider =
+						modelCluster =
 							thinkingLevel === "off"
 								? `${modelName} • thinking off`
 								: `${modelName} • ${thinkingLevel}`;
 					}
-
-					let rightSide = rightSideWithoutProvider;
-					if (footerData.getAvailableProviderCount() > 1 && ctx.model) {
-						rightSide = `(${ctx.model.provider}) ${rightSideWithoutProvider}`;
+					// Drop the redundant "(zai)" provider prefix when showing Z.ai usage.
+					let providerPrefix = "";
+					if (!isZai && footerData.getAvailableProviderCount() > 1 && ctx.model) {
+						providerPrefix = `(${ctx.model.provider}) `;
 					}
+					const modelPart = providerPrefix + modelCluster;
 
-					const zaiStr = renderZaiUsage(cachedZaiUsage, theme);
-					if (zaiStr) rightSide = `${rightSide} ${zaiStr}`;
-
+					const zaiPart = renderZaiUsage(cachedZaiUsage, theme);
+					const rightSide = zaiPart ? `${zaiPart} ${modelPart}` : modelPart;
 					const rightSideWidth = visibleWidth(rightSide);
-					const available = width - rightSideWidth - 2; // 2 = min padding
 
-					// ── Build stats left side with progressive skip ──
-					// Skip order when tight: (auto) → CH → R
-					const coreParts: string[] = [];
-					if (totalInput) coreParts.push(`↑${formatTokens(totalInput)}`);
-					if (totalOutput) coreParts.push(`↓${formatTokens(totalOutput)}`);
-					if (totalCacheWrite)
-						coreParts.push(`W${formatTokens(totalCacheWrite)}`);
-
+					// ── Left stats (line 2): progressive skip (auto) → CH → R ──
 					const usingSubscription = ctx.model
 						? ctx.modelRegistry.isUsingOAuth(ctx.model)
 						: false;
+
+					const mandatory: string[] = [];
+					if (totalInput) mandatory.push(`↑${formatTokens(totalInput)}`);
+					if (totalOutput) mandatory.push(`↓${formatTokens(totalOutput)}`);
+					if (totalCacheWrite) mandatory.push(`W${formatTokens(totalCacheWrite)}`);
 					if (totalCost || usingSubscription) {
-						coreParts.push(
-							`$${totalCost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`,
-						);
+						mandatory.push(`$${totalCost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`);
 					}
 
-					// Context % (colored)
+					// Context % (colored), with attached (auto) suffix + xp marker.
 					const contextBase =
 						contextPercent === "?"
 							? `?/${formatTokens(contextWindow)}`
 							: `${contextPercent}%/${formatTokens(contextWindow)}`;
-					let contextPercentStr: string;
-					if (contextPercentValue > 90) {
-						contextPercentStr = theme.fg("error", contextBase + " (auto)");
-					} else if (contextPercentValue > 70) {
-						contextPercentStr = theme.fg("warning", contextBase + " (auto)");
-					} else {
-						contextPercentStr = contextBase + " (auto)";
-					}
+					const ctxColor = contextPercentValue > 90
+						? "error"
+						: contextPercentValue > 70
+							? "warning"
+							: "";
+					const xpSuffix = isExperimental
+						? ` ${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`
+						: "";
+					const ctxAutoText = ctxColor
+						? theme.fg(ctxColor, `${contextBase} (auto)`)
+						: `${contextBase} (auto)`;
+					const ctxBaseText = ctxColor
+						? theme.fg(ctxColor, contextBase)
+						: contextBase;
+					const ctxWithAuto = ctxAutoText + xpSuffix;
+					const ctxNoAuto = ctxBaseText + xpSuffix;
+					mandatory.push(ctxWithAuto);
 
-					const rPart = totalCacheRead
-						? `R${formatTokens(totalCacheRead)}`
-						: null;
+					const rPart = totalCacheRead ? `R${formatTokens(totalCacheRead)}` : null;
 					const chPart =
 						(totalCacheRead > 0 || totalCacheWrite > 0) &&
 						latestCacheHitRate !== undefined
 							? `CH${latestCacheHitRate.toFixed(1)}%`
 							: null;
 
-					// Build full left, then strip if needed
-					let statsLeft = [
-						...coreParts,
-						rPart,
-						chPart,
-						contextPercentStr,
-					]
-						.filter(Boolean)
-						.join(" ");
+					// Droppable, most-expendable first: (auto) → CH → R.
+					// Each entry maps to a transform of the mandatory context segment +
+					// which optional parts to include.
+					const levels: Array<{ ctx: string; r: string | null; ch: string | null }> = [
+						{ ctx: ctxWithAuto, r: rPart, ch: chPart },
+						{ ctx: ctxNoAuto, r: rPart, ch: chPart },
+						{ ctx: ctxNoAuto, r: rPart, ch: null },
+						{ ctx: ctxNoAuto, r: null, ch: null },
+					];
 
-					// Progressive skip: (auto) → CH → R
-					if (visibleWidth(statsLeft) > available) {
-						// Drop (auto)
-						const noAuto =
-							contextPercentValue > 90
-								? theme.fg("error", contextBase)
-								: contextPercentValue > 70
-									? theme.fg("warning", contextBase)
-									: contextBase;
-						statsLeft = [...coreParts, rPart, chPart, noAuto]
-							.filter(Boolean)
-							.join(" ");
+					// Replace the context placeholder in `mandatory` per level.
+					const ctxIdx = mandatory.length - 1; // ctxWithAuto is last mandatory
+					const minGap = 2;
+					const available = width - rightSideWidth - minGap;
 
-						if (visibleWidth(statsLeft) > available) {
-							// Drop CH
-							statsLeft = [...coreParts, rPart, noAuto]
-								.filter(Boolean)
-								.join(" ");
-
-							if (visibleWidth(statsLeft) > available) {
-								// Drop R
-								statsLeft = [...coreParts, noAuto]
-									.filter(Boolean)
-									.join(" ");
-							}
-						}
+					let statsLeft = "";
+					for (const lvl of levels) {
+						const optional = [lvl.r, lvl.ch].filter(Boolean) as string[];
+						const parts = [...mandatory.slice(0, ctxIdx), lvl.ctx, ...optional];
+						statsLeft = parts.join(" ");
+						if (visibleWidth(statsLeft) <= available) break;
 					}
 
 					// ── Compose line 2 ──
@@ -329,21 +397,15 @@ export default function (pi: ExtensionAPI) {
 						statsLeftWidth = visibleWidth(statsLeft);
 					}
 
-					const totalNeeded = statsLeftWidth + 2 + rightSideWidth;
+					const totalNeeded = statsLeftWidth + minGap + rightSideWidth;
 					let statsLine: string;
 					if (totalNeeded <= width) {
-						const padding = " ".repeat(
-							width - statsLeftWidth - rightSideWidth,
-						);
+						const padding = " ".repeat(width - statsLeftWidth - rightSideWidth);
 						statsLine = statsLeft + padding + rightSide;
 					} else {
-						const availableForRight = width - statsLeftWidth - 2;
+						const availableForRight = width - statsLeftWidth - minGap;
 						if (availableForRight > 0) {
-							const truncatedRight = truncateToWidth(
-								rightSide,
-								availableForRight,
-								"",
-							);
+							const truncatedRight = truncateToWidth(rightSide, availableForRight, "");
 							const truncatedRightWidth = visibleWidth(truncatedRight);
 							const padding = " ".repeat(
 								Math.max(0, width - statsLeftWidth - truncatedRightWidth),
@@ -357,11 +419,7 @@ export default function (pi: ExtensionAPI) {
 					const dimStatsLeft = theme.fg("dim", statsLeft);
 					const remainder = statsLine.slice(statsLeft.length);
 					const dimRemainder = theme.fg("dim", remainder);
-
-					const lines = [
-						truncateToWidth(l1left, width, theme.fg("dim", "...")),
-						dimStatsLeft + dimRemainder,
-					];
+					lines.push(dimStatsLeft + dimRemainder);
 
 					// ── Line 3: extension statuses ──
 					const extensionStatuses = footerData.getExtensionStatuses();
@@ -370,15 +428,15 @@ export default function (pi: ExtensionAPI) {
 							.sort(([a], [b]) => a.localeCompare(b))
 							.map(([, text]) => sanitizeStatusText(text));
 						const statusLine = sortedStatuses.join(" ");
-						lines.push(
-							truncateToWidth(statusLine, width, theme.fg("dim", "...")),
-						);
+						lines.push(truncateToWidth(statusLine, width, theme.fg("dim", "...")));
 					}
 
 					return lines;
 				},
 			};
 		});
+
+		startPeriodicRefresh(ctx);
 	});
 
 	// Refresh Z.ai usage on model switch
@@ -395,5 +453,10 @@ export default function (pi: ExtensionAPI) {
 		if (isZaiProvider(ctx.model?.provider)) {
 			await refreshZaiUsage(ctx);
 		}
+	});
+
+	// Stop periodic quota polling on shutdown.
+	pi.on("session_shutdown", async () => {
+		stopPeriodicRefresh();
 	});
 }
