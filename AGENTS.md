@@ -52,6 +52,8 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 
 | Doc | What |
 |-----|------|
+| [docs/installation.md](docs/installation.md) | pi install, precedence, and conflict gotchas (canonical = git package) |
+| [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides |
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 
 ### Browser Automation — [docs/browser-use/](docs/browser-use/) → [README](docs/browser-use/README.md)
