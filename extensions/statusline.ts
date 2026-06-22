@@ -1,11 +1,18 @@
 /**
- * Status Line Extension — cloned built-in footer + machine name + Z.ai usage
+ * Status Line Extension — machine name + built-in footer parity + Z.ai usage
  *
- * Exact parity with the built-in footer, with two additions:
- *   Line 1: machineName cwd (branch) • sessionName
- *   Line 2 right side: Z.ai:XX% (XhXm) when using Z.ai provider
- *
+ * Content parity with the built-in footer (same token/context/model rendering),
+ * with three intentional changes vs. the built-in:
+ *   Line 1: machineName prepended → machineName cwd (branch) • sessionName
+ *   Line 2 right: Z.ai usage appended (XX% (XhXm)) when provider starts with "zai"
+ *   Line 2 left:  stats order ↑↓W $cost | R CH | ctx% (R and CH are droppable),
+ *                not the built-in ↑↓R W CH $cost — re-grouped to support skip.
  * Progressive skip when line 2 is tight: (auto) → CH → R
+ *
+ * Caveat: "(auto)" is always appended after the context %. The built-in footer
+ * hides it when auto-compaction is disabled, but ExtensionContext does not
+ * expose the auto-compaction flag, so we cannot replicate that. Compaction is
+ * enabled by default, so this is accurate in the common case.
  */
 
 import { execSync } from "node:child_process";
