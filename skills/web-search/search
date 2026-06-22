@@ -1,2 +1,81 @@
 #!/usr/bin/env bash
-cd "/Users/johannwaldherr/.pi/agent/skills/web-search" && exec uv run scripts/search.py "$@"
+# web-search launcher with symlink resolution + auto-update + credgoo health check
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+AUTO_UPDATE_DAYS=7
+
+# ── Handle launcher-only flags ──
+case "${1:-}" in
+    --update)
+        echo "Updating web-search..."
+        cd "$SKILL_DIR"
+        [ -d ".git" ] && git pull --ff-only 2>&1 || true
+        uv sync --quiet 2>&1
+        date +%s > "$STAMP_FILE"
+        echo "✓ Updated $(date)"
+        exit 0
+        ;;
+    --selfcheck)
+        version=$(grep -o 'version.*"[^"]*"' "$SKILL_DIR/pyproject.toml" 2>/dev/null | head -1 | grep -o '[0-9][^"]*' || echo "?")
+        last="never"
+        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || cat "$STAMP_FILE")
+        echo "web-search v${version}"
+        echo "  dir:  $SKILL_DIR"
+        echo "  last: $last"
+        echo ""
+        echo "credgoo:"
+        if command -v credgoo >/dev/null 2>&1; then
+            echo "  version: $(credgoo --version 2>&1)"
+            receipt="$HOME/.local/share/uv/tools/credgoo/uv-receipt.toml"
+            if [ -f "$receipt" ]; then
+                if grep -q 'directory = ' "$receipt"; then
+                    echo "  source:  ✗ local path (FROZEN — won't auto-update; reinstall from git, see below)"
+                elif grep -q 'git = ' "$receipt"; then
+                    echo "  source:  ✓ git (upgradeable: uv tool upgrade credgoo)"
+                else
+                    echo "  source:  ? unknown"
+                fi
+            fi
+            for svc in searx WEB_SEARCH_BEARER; do
+                if key=$(credgoo "$svc" 2>/dev/null) && [ -n "$key" ]; then
+                    echo "  $svc: ✓"
+                else
+                    echo "  $svc: ✗ (credgoo returned no key)"
+                fi
+            done
+        else
+            echo "  ✗ not installed"
+            echo "    uv tool install \"credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo\""
+        fi
+        exit 0
+        ;;
+esac
+
+# ── Auto-update check (non-blocking) ──
+if [ -d "$SKILL_DIR/.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then
+        needs_update=true
+    else
+        last_ts=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        now_ts=$(date +%s)
+        [ $(( (now_ts - last_ts) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
+    fi
+    if $needs_update; then
+        (
+            cd "$SKILL_DIR"
+            git pull --ff-only --quiet 2>/dev/null
+            uv sync --quiet 2>/dev/null
+            date +%s > "$STAMP_FILE"
+        ) &>/dev/null &
+    fi
+fi
+
+# ── Run ──
+cd "$SKILL_DIR" && exec uv run scripts/search.py "$@"
