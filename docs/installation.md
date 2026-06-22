@@ -53,6 +53,43 @@ package loads exactly once:
 { "packages": ["git:github.com/devskale/skale-skills"] }
 ```
 
+## Loose-file conflicts (the other vectors)
+
+The identity rule above covers `settings.json` entries. But pi **also** auto-loads any
+file dropped directly into two agent directories, and those collide with the git package just
+the same — they are *different identities* (a loose path vs. a git URL):
+
+| Dir | What pi loads there | Conflict symptom |
+|-----|---------------------|------------------|
+| `~/.pi/agent/skills/` | skill dirs or **symlinks** (e.g. `fetch-url`, `web-search`) | `[Skill conflicts]` warning at startup |
+| `~/.pi/agent/extensions/` | loose `.ts` extension files (e.g. `statusline.ts`) | loose file shadows/overrides the package copy |
+
+These get left behind after manual `install.sh` runs, hand-copies, or old symlink setups. They
+load **in addition to** the git package → conflict, even if byte-identical. Identity, not
+content, decides dedup.
+
+### How to check for them
+
+```bash
+ls ~/.pi/agent/skills/             # should be empty if the git package provides them
+ls ~/.pi/agent/extensions/         # only files NOT in the git package belong here
+```
+
+### Fix
+
+Delete the loose copies — the git package is the canonical source:
+
+```bash
+rm ~/.pi/agent/skills/<name>        # symlink or directory
+rm ~/.pi/agent/extensions/<name>.ts # loose file
+```
+
+> Do **not** "fix" this by making the loose file byte-identical to the package — that doesn't
+> change its identity, so the conflict persists. Delete it.
+
+See [development.md](development.md) for the loop that produces these leftovers and how to
+avoid leaving them behind.
+
 ## Live dev setup (optional)
 
 If you actively develop this repo at `~/code/skale-skills` and want edits reflected live in pi,
