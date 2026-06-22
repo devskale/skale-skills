@@ -14,33 +14,68 @@ you work — they're how you get live feedback. The problem is leaving them in p
 work ships: they then collide with the git package on every startup (see
 [installation.md → Loose-file conflicts](installation.md#loose-file-conflicts)).
 
-## Two supported dev setups
+## Dev setups
 
-### A. Project-path package (preferred — scoped, conflict-free)
+> **Identity caveat (verified from pi source).** A local-path package and a git package are
+> *different identities*, so they **both load** → `[conflicts]` at startup, resolved by
+> precedence (project-local wins, so your working tree is served). The warning is noise,
+> not breakage — but it appears on every startup while the override is in place. For
+> conflict-free iteration prefer the **session-only flags** (setup A) over a persistent
+> package entry (setup B). See the skaleshare guide §19 for the full precedence/identity
+> model.
 
-Point a **project** setting at your local checkout, only under the repo dir. See
-[installation.md → Live dev setup](installation.md#live-dev-setup-optional) for the full
-rationale. In short:
+### A. Session-only override (preferred — zero persistent state)
 
-```jsonc
-// ~/code/.pi/settings.json  (project-scoped, NOT global)
-{ "packages": ["~/code/skale-skills"] }
+Load the working tree for **one run** via a CLI flag. Nothing is written to settings, so
+there is no leftover to clean up and no conflict on any other project. The right flag
+depends on what you're dev'ing — **skills and extensions collide differently**:
+
+```bash
+cd ~/code/skale-skills
+
+# Skill dev — soft collision (first wins), package skill is skipped, warning only:
+pi --skill skills/d2/SKILL.md          # load one skill for this run (repeatable, additive)
+
+# Extension dev — HARD collision: same tool name = load error, not a warning.
+# Suppress the package's extensions first, then load yours:
+pi -ne -e ./extensions/statusline.ts   # -ne = no package extensions; -e = load this one
 ```
 
-This local-path identity loads **only** under `~/code`. Everywhere else the global git package
-wins. No conflict, live edits under the checkout, and pushes flow to the package after
-`pi update`.
+Why the split: skills collide on **name** (soft — loser skipped with a `[conflicts]`
+diagnostic, winner serves); extensions collide on **tool/command name** (hard — pi refuses
+to load the second one and errors out). So `pi -e .` on a whole package that also ships
+extensions will fail against an installed copy of the same package. `-ne` makes the
+extension dev path work by silencing the package's extensions for that run.
 
-### B. Symlink a single skill (quick check of one skill)
+Restart and the override is gone. Use this for iterating on a change you're about to ship.
+
+### B. Project-path package (persistent — for long dev sessions on one repo)
+
+```jsonc
+// ~/code/skale-skills/.pi/settings.json  (project-scoped, gitignored)
+{ "packages": ["."] }
+```
+
+Loads the working tree live in every session inside the repo. **Will emit `[conflicts]` at
+startup** (different identity from the global git package) — the project-local entry wins
+(rank 0) so your edits are served and the package copy is skipped. Fine functionally; noisy.
+Remove the file when dev is done.
+
+Never put a working-tree path in **global** settings while the git package is installed —
+that collides on *every* project, not just the one under dev.
+
+### C. Symlink a single skill (legacy — prefer setup A)
 
 ```bash
 ln -s ~/code/skale-skills/skills/<name> ~/.pi/agent/skills/<name>
 ```
 
-Use this to test one skill against the live agent. **Must be removed before shipping** (see
-[Cleanup](#cleanup) below), otherwise it conflicts with the git package.
+`pi --skill skills/<name>/SKILL.md` (setup A) does the same thing with **zero cleanup** and
+no persistent symlink to forget. This symlink form is retained only for workflows that need
+a skill live across many sessions without a settings file. **Must be removed before
+shipping** (see [Cleanup](#cleanup) below).
 
-> ⚠ Never register this repo's skills or extensions via global local-path entries in
+> ⚠ Never register this repo's skills or extensions via **global** local-path entries in
 > `settings.json` (e.g. `"extensions": ["~/code/skale-skills/.../statusline.ts"]` or
 > `"skills": ["~/code/skale-skills/skills/d2"]`) while the git package is also installed.
 > A local path and a git URL are **different identities** — pi loads both and emits
@@ -48,8 +83,9 @@ Use this to test one skill against the live agent. **Must be removed before ship
 > This is the same anti-pattern as hand-copying a `.ts` into `~/.pi/agent/extensions/`, or
 > symlinking a skill into `~/.pi/agent/skills/`, next to a package install.
 >
-> For live dev, use setup **A** (project-path package) — it scopes the local identity to the
-> repo dir only, so it never co-loads with the global git package elsewhere.
+> For live dev use setup **A** (session-only flags) — nothing is written to settings, so there
+> is no persistent override to collide. For a long dev session in one repo, setup **B** scopes
+> the local identity to that repo's `.pi/settings.json` (still emits conflicts, but only there).
 
 ## The loop
 
@@ -75,10 +111,12 @@ After step 4 the git package has your changes. Remove the temporary overrides so
 package is the sole source:
 
 ```bash
-# Setup A: nothing to do if you still want live dev.
-#           Remove ~/code/.pi/settings.json only when you're done developing this repo.
+# Setup A (session-only): nothing to do — the override is gone on restart by design.
 
-# Setup B: remove the symlink
+# Setup B (project-path package): remove the settings file when dev is done.
+rm ~/code/skale-skills/.pi/settings.json
+
+# Setup C (symlink): remove the symlink.
 rm ~/.pi/agent/skills/<name>
 
 # Any loose extension file you (or an old install) left behind:
