@@ -55,6 +55,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
 | 🟢 global | **statusline** | /** | `~/.pi/agent/extensions/statusline` |
+| 🟢 global | **imagegen** | Generate images from text (Pollinations/TU via uniinfer proxy); returns image + ASCII preview for iteration | `~/.pi/agent/extensions/imagegen` |
 
 ### Available (not installed)
 

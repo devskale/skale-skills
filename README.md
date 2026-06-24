@@ -26,6 +26,7 @@ A pi package with skills, extensions, and prompts for AI coding agents. Works wi
 | Extension | Description |
 |-----------|-------------|
 | **statusline** | Custom footer with machine name, token stats, context usage |
+| **imagegen** | Generate images from text (Pollinations/TU via uniinfer proxy); returns image + ASCII preview so the model can iterate. See [extensions/imagegen.md](extensions/imagegen.md) |
 
 ### Prompts
 
@@ -54,7 +55,7 @@ Selective install — edit `~/.pi/agent/settings.json`:
 {
   "packages": [{
     "source": "git:github.com/devskale/skale-skills",
-    "extensions": ["extensions/statusline.ts"],
+    "extensions": ["extensions/statusline.ts", "extensions/imagegen.ts"],
     "skills": ["skills/fetch-url", "skills/web-search", "skills/youtube"],
     "prompts": []
   }]
@@ -85,7 +86,7 @@ See [RECOMMENDED-SKILLS.md](RECOMMENDED-SKILLS.md) for external skills and [guid
 
 ```
 skills/          → 12 agent skills
-extensions/      → pi extensions (statusline)
+extensions/      → pi extensions (statusline, imagegen)
 prompts/         → prompt templates
 guides/          → setup guides (browser tools, Chrome DevTools, Rodney)
 api/             → reverse-engineered public APIs (Ryanair)
