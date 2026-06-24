@@ -98,7 +98,21 @@ the same — they are *different identities* (a loose path vs. a git URL):
 | Dir | What pi loads there | Conflict symptom |
 |-----|---------------------|------------------|
 | `~/.pi/agent/skills/` | skill dirs or **symlinks** (e.g. `fetch-url`, `web-search`) | `[Skill conflicts]` warning at startup |
-| `~/.pi/agent/extensions/` | loose `.ts` extension files (e.g. `statusline.ts`) | loose file shadows/overrides the package copy |
+| `~/.pi/agent/extensions/` | loose `.ts` extension files (e.g. `statusline.ts`) | **tool-registering extensions → hard error** (see below); event-only extensions → loose file shadows/overrides the package copy |
+
+#### Tool-registering extensions collide hard
+
+If the loose extension registers a tool (e.g. `generate_image` via `pi.registerTool()`),
+the collision is not a silent shadow — it's a fatal load error and pi won't start:
+
+```
+Error: Failed to load extension "...git/.../skale-skills/extensions/imagegen.ts":
+Tool "generate_image" conflicts with ~/.pi/agent/extensions/imagegen.ts
+```
+
+This is why `statusline` (event/widget only, no tool) tolerates a dev symlink, but
+`imagegen` (registers `generate_image`) does not — the git-package copy and the
+loose copy both try to register the same tool name.
 
 These get left behind after manual `install.sh` runs, hand-copies, or old symlink setups. They
 load **in addition to** the git package → conflict, even if byte-identical. Identity, not
@@ -122,6 +136,28 @@ rm ~/.pi/agent/extensions/<name>.ts # loose file
 
 > Do **not** "fix" this by making the loose file byte-identical to the package — that doesn't
 > change its identity, so the conflict persists. Delete it.
+
+#### Dev machine: keep the symlink, suppress the package copy instead
+
+If you develop this repo locally and want **live edits** via a symlink
+(`~/.pi/agent/extensions/imagegen.ts` → your checkout), you can't also let the
+git package load its extensions — the two copies conflict. On a dev machine,
+tell the git package to load **skills only** and let extensions come from your
+symlinks:
+
+```jsonc
+// ~/.pi/agent/settings.json (dev machine)
+{
+  "packages": [{
+    "source": "git:github.com/devskale/skale-skills",
+    "skills": ["fetch-url", "web-search"],
+    "extensions": []   // ← dev: extensions via symlinks, package = skills only
+  }]
+}
+```
+
+Event-only extensions (statusline) can coexist either way since they register
+no tool to clash on; tool-registering ones (imagegen) require this split.
 
 See [development.md](development.md) for the loop that produces these leftovers and how to
 avoid leaving them behind.
