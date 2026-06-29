@@ -7,11 +7,11 @@ purpose: >
   Compile AGENTS.md best practices for agents to use when building
   AGENTS.md files. Distilled from research, blog posts, official docs,
   and community experience. Designed as a reference, not a template.
+---
 
 **Part of the skaleshare documentation guide.**
 - Hub: `documentation-bestpractice.md` (local skaleshare collection) — broad principles, repo structure, Python/Next.js, web docs
 - Companion: [`agent-skills-best-practices.md`](agent-skills-best-practices.md) — SKILL.md format, progressive disclosure, skill taxonomy
----
 
 AGENTS.md Best Practices
 ========================
