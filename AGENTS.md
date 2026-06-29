@@ -56,6 +56,16 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 | [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides |
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 
+### Best Practices Guides (from skaleshare)
+
+Deep-dive authoring guides distilled from specs, research, and real-world skills/extensions.
+
+| Doc | What |
+|-----|------|
+| [docs/agent-skills-best-practices.md](docs/agent-skills-best-practices.md) | SKILL.md frontmatter, progressive disclosure (3-level), skill taxonomy, script bundling, security, failure modes |
+| [docs/agents-md-best-practices.md](docs/agents-md-best-practices.md) | AGENTS.md inclusion test, section structure, anti-patterns, size limits, nested files, cross-tool compat |
+| [docs/pi-extensions-best-practices.md](docs/pi-extensions-best-practices.md) | Pi extension patterns — tool registration, schema design, state/event lifecycle, mode awareness, gates, distribution |
+
 ### Browser Automation — [docs/browser-use/](docs/browser-use/) → [README](docs/browser-use/README.md)
 
 | Doc | What |
