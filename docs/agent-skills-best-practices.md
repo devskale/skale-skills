@@ -9,11 +9,11 @@ purpose: >
   official docs, community research, blog posts, and real-world skills.
   Agent-agnostic in scope. Examples reference the pi agent ecosystem
   where illustrative.
+---
 
 **Part of the skaleshare documentation guide.**
 - Hub: `documentation-bestpractice.md` (local skaleshare collection) — broad principles, repo structure, Python/Next.js, web docs
 - Companion: [`agents-md-best-practices.md`](agents-md-best-practices.md) — AGENTS.md content, anti-patterns, inclusion test, cross-tool compat
----
 
 Agent Skills Best Practices
 ============================
