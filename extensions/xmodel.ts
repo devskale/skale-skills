@@ -2,8 +2,11 @@
  * xmodel (/xm) — instant model + thinking-mode switching.  v0.1.0
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
- * Auto-vision: transiently switches to a vision model when an image appears
- * (read *.png, MCP screenshots, attached images), then restores on turn end.
+ * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
+ *   it is analysed by a VLM sub-model with a COMPRESSED context and the text
+ *   analysis is fed back to the main model — the main model never switches and
+ *   never blows its context window. (compressor → VLM → feedback. Set
+ *   _vision.mode="switch" for the legacy main-model-flip behaviour, "off" to disable.)
  * Rate-limit fallback: on 429/503/529, auto-switches to a free variant
  * (explicit preset.fallback → `${name}-free` → any *free* preset).
  *
@@ -31,8 +34,9 @@
  * (clamped to model capabilities automatically)
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { execFile, spawn } from "node:child_process";
 import { Type } from "typebox";
 import { StringEnum, type Api, type Model } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -56,6 +60,25 @@ interface PresetsConfig {
 	[name: string]: Preset;
 }
 
+type VisionMode = "delegate" | "switch" | "off";
+interface VisionConfig {
+	/** delegate = build a brief from recent msgs → single VLM sub-call → feed analysis back (default).
+	 *  switch  = old behaviour: flip the main model to vision for the turn.
+	 *  off     = do nothing. */
+	mode: VisionMode;
+	/** "provider/id" of the vision model for the sub-call. Auto-picked if unset. */
+	vlm?: string;
+	/** Optional "provider/id" of a fast model (e.g. your light preset) that summarises the
+	 *  last N messages into the task brief. Heuristic extraction if unset. Short timeout,
+	 *  falls back to heuristic on any error so a slow/dead model never blocks. */
+	compressor?: string;
+	/** Char budget for the task brief sent to the VLM. */
+	maxBriefChars: number;
+}
+function defaultVision(): VisionConfig {
+	return { mode: "delegate", maxBriefChars: 1500 };
+}
+
 function globalPresetsPath(): string {
 	return join(getAgentDir(), "xmodel.json");
 }
@@ -63,11 +86,33 @@ function globalPresetsPath(): string {
 function readRaw(path: string): PresetsConfig {
 	if (!existsSync(path)) return {};
 	try {
-		return JSON.parse(readFileSync(path, "utf-8")) as PresetsConfig;
+		const raw = JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
+		const out: PresetsConfig = {};
+		for (const [k, v] of Object.entries(raw)) {
+			if (k.startsWith("_")) continue; // reserved: _vision, etc.
+			out[k] = v as Preset;
+		}
+		return out;
 	} catch (err) {
 		console.error(`xmodel: failed to load ${path}: ${err}`);
 		return {};
 	}
+}
+
+function readVisionRaw(path: string): Partial<VisionConfig> {
+	if (!existsSync(path)) return {};
+	try {
+		const raw = JSON.parse(readFileSync(path, "utf-8")) as Record<string, any>;
+		return (raw && raw._vision) ? raw._vision : {};
+	} catch {
+		return {};
+	}
+}
+
+function loadVisionConfig(cwd: string, includeProject = true): VisionConfig {
+	let v: VisionConfig = { ...defaultVision(), ...readVisionRaw(globalPresetsPath()) };
+	if (includeProject) v = { ...v, ...readVisionRaw(join(cwd, CONFIG_DIR_NAME, "xmodel.json")) };
+	return v;
 }
 
 function writeGlobal(cfg: PresetsConfig): void {
@@ -95,6 +140,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	// --- auto-vision: transient switch to a vision model when an image appears ---
 	let autoVisionActive = false;
 	let preAutoVisionModel: Model<Api> | undefined;
+
+	// --- vision config (delegate / switch / off) ---
+	let visionCfg: VisionConfig = defaultVision();
 
 	// --- rate-limit fallback: switch to a free variant on 429/503/529 ---
 	let lastFallbackAt = 0;
@@ -493,17 +541,32 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- Optional system-prompt instructions for active preset ---
 	pi.on("before_agent_start", async (event, ctx) => {
-		// auto-vision: user attached images to this prompt → switch before the turn
-		if (event.images && event.images.length > 0) await ensureVision(ctx, "before_agent_start");
+		// auto-vision (switch mode only): user attached images to this prompt
+		if (visionCfg.mode === "switch" && event.images && event.images.length > 0) await ensureVision(ctx, "before_agent_start");
 		if (activePreset?.instructions) {
 			return { systemPrompt: `${event.systemPrompt}\n\n${activePreset.instructions}` };
 		}
 	});
 
-	// --- auto-vision: any tool result containing an image (read *.png, MCP screenshots, …) ---
+	// --- vision on tool results containing an image (read *.png, MCP screenshots, …) ---
 	pi.on("tool_result", async (event, ctx) => {
-		const hasImage = Array.isArray(event.content) && event.content.some((p: any) => p && p.type === "image");
-		if (hasImage) await ensureVision(ctx, "tool_result");
+		const images = Array.isArray(event.content) ? event.content.filter((p: any) => p && p.type === "image") : [];
+		if (images.length === 0) return;
+		if (isVisionCapable(ctx.model)) return; // main model sees images natively — nothing to do
+		const mode = visionCfg.mode;
+		if (mode === "off") return;
+		if (mode === "switch") {
+			await ensureVision(ctx, "tool_result");
+			return;
+		}
+		// delegate: compress → VLM (own context) → replace image with text analysis
+		try {
+			return await delegateVision(ctx, event, images);
+		} catch (e) {
+			debug("delegateVision threw", { err: String(e) });
+			ctx.ui.notify(`xmodel: vision delegate failed (${String(e)}) — leaving image as-is`, "warning");
+			return undefined;
+		}
 	});
 
 	// --- restore the pre-auto-vision model when the turn ends ---
@@ -659,9 +722,199 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		ctx.ui.notify(`xmodel: auto vision → ${vision.provider}/${vision.id}`, "info");
 	}
 
+	// =========================================================================
+	// Vision delegation pipeline:  compress → VLM (own context) → text feedback
+	// =========================================================================
+	const COMPRESSOR_TIMEOUT_MS = 30_000;
+	const VLM_TIMEOUT_MS = 90_000;
+	const VISION_BRIEF_SYS =
+		"You write a focused query for a vision model. Given the coding-agent conversation, output ONLY what the vision model should examine/answer about the upcoming image — the task goal plus any specific things to check. No preamble, no code dumps. Respect the char budget.";
+	const VISION_VLM_SYS =
+		"You are a vision analyst embedded in a coding agent. Given a task brief and one image, report concrete, actionable observations about the image in service of the task (UI state, visible text, errors, layout, discrepancies, colours). Be precise and concise. Output only the analysis.";
+
+	function runChildPi(opts: { model: string; systemPrompt: string; prompt: string; imageFile?: string; timeoutMs?: number }): Promise<string> {
+		return new Promise((resolve) => {
+			// --mode json -p (NOT bare --print): text mode tries TUI init that hangs on piped stdout.
+			// This is the same recipe the official pi-subagents package uses.
+			const args = [
+				"--mode", "json", "-p",
+				"--no-tools", "--no-extensions", "--no-context-files",
+				"--no-skills", "--no-prompt-templates", "--no-themes",
+				"--model", opts.model,
+				"--system-prompt", opts.systemPrompt,
+			];
+			if (opts.imageFile) args.push(`@${opts.imageFile}`);
+			args.push(opts.prompt);
+			const timeoutMs = opts.timeoutMs ?? VLM_TIMEOUT_MS;
+			debug("runChildPi", { model: opts.model, hasImage: !!opts.imageFile, promptLen: opts.prompt.length, timeoutMs });
+			const proc = spawn("pi", args, { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
+			let out = "";
+			const timer = setTimeout(() => proc.kill("SIGTERM"), timeoutMs);
+			proc.stdout.on("data", (d: Buffer) => {
+				out += d.toString();
+				if (out.length > 8 << 20) proc.kill(); // cap memory
+			});
+			const finish = (reason: string) => {
+				clearTimeout(timer);
+				const text = extractFinalAssistantText(out);
+				debug("runChildPi done", { model: opts.model, reason, outLen: out.length, textLen: text.length });
+				resolve(text);
+			};
+			proc.on("close", () => finish("close"));
+			proc.on("error", () => finish("error"));
+		});
+	}
+
+	/** Parse JSONL stdout from `pi --mode json -p`; pull the last assistant text from the agent_end event. */
+	function extractFinalAssistantText(jsonl: string): string {
+		const lines = jsonl.split("\n");
+		let agentEnd: any = undefined;
+		for (let i = lines.length - 1; i >= 0; i--) {
+			const line = lines[i].trim();
+			if (!line) continue;
+			try {
+				const j = JSON.parse(line);
+				if (j && j.type === "agent_end") { agentEnd = j; break; }
+			} catch {}
+		}
+		const msgs: any[] = Array.isArray(agentEnd?.messages) ? agentEnd.messages : [];
+		for (let i = msgs.length - 1; i >= 0; i--) {
+			const m = msgs[i];
+			if (m && m.role === "assistant") {
+				const c = m.content;
+				if (typeof c === "string") return c.trim();
+				if (Array.isArray(c)) return c.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join(" ").trim();
+			}
+		}
+		return "";
+	}
+
+	function textOf(content: unknown): string {
+		if (typeof content === "string") return content;
+		if (Array.isArray(content)) {
+			return content.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join(" ");
+		}
+		return "";
+	}
+
+	/** Heuristic gather of recent user/assistant text to feed the compressor. */
+	function gatherRecentContext(ctx: ExtensionContext, maxChars = 8000): string {
+		const entries: any[] = (ctx.sessionManager as any).getEntries() ?? [];
+		const msgs: string[] = [];
+		for (const e of entries) {
+			if (!e || e.type !== "message") continue;
+			const m = e.message;
+			if (!m) continue;
+			const role = m.role;
+			if (role !== "user" && role !== "assistant") continue;
+			const t = textOf(m.content);
+			if (!t) continue;
+			msgs.push(`${role === "user" ? "USER" : "ASSISTANT"}: ${t}`);
+		}
+		let out = "";
+		for (const s of msgs.slice(-6)) {
+			const piece = s.length > 700 ? `${s.slice(0, 700)}…` : s;
+			if (out.length + piece.length > maxChars) break;
+			out += `${piece}\n`;
+		}
+		return out.trim();
+	}
+
+	/** Build a small task brief: the CURRENT main model writes a focused query for the VLM.
+	 *  Defaults to the active model (it understands the task best and is reliable);
+	 *  _vision.compressor overrides. Returns null if no model or it failed/timed out. */
+	async function buildBrief(ctx: ExtensionContext, cfg: VisionConfig): Promise<string | null> {
+		const compressor = cfg.compressor ?? (ctx.model ? `${(ctx.model as any).provider}/${(ctx.model as any).id}` : undefined);
+		if (!compressor) return null;
+		const raw = gatherRecentContext(ctx, cfg.maxBriefChars * 4);
+		debug("buildBrief", { compressor, rawLen: raw.length });
+		const brief = await runChildPi({
+			model: compressor,
+			systemPrompt: VISION_BRIEF_SYS,
+			prompt: `Char budget: ${cfg.maxBriefChars}. Write the vision query for the conversation below.\n\n---\n${raw}\n---`,
+			timeoutMs: COMPRESSOR_TIMEOUT_MS,
+		});
+		if (!brief) { debug("buildBrief failed/timeout → abort", { compressor }); return null; }
+		return brief.slice(0, cfg.maxBriefChars * 2);
+	}
+
+	function writeImageTmp(img: any): string {
+		const mt = (img.mimeType || "image/png") as string;
+		const ext = mt.includes("png") ? "png" : mt.includes("jpeg") || mt.includes("jpg") ? "jpg" : "png";
+		const p = join("/tmp", `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
+		writeFileSync(p, Buffer.from(img.data, "base64"));
+		return p;
+	}
+
+	/** Resolve the VLM ref string: explicit config, else auto-pick from registry. */
+	function resolveVlm(ctx: ExtensionContext): string | undefined {
+		if (visionCfg.vlm) return visionCfg.vlm;
+		const m = pickVisionModel(ctx);
+		return m ? `${(m as any).provider}/${(m as any).id}` : undefined;
+	}
+
+	/**
+	 * Delegate vision to a sub-model with a COMPRESSED context:
+	 * compress → [brief + image] → VLM → analysis text. Returns replacement tool_result content.
+	 * The main model never switches; it only ever sees the VLM's text analysis.
+	 */
+	async function delegateVision(ctx: ExtensionContext, event: any, images: any[]): Promise<{ content: any[] } | undefined> {
+		const vlm = resolveVlm(ctx);
+		if (!vlm) {
+			ctx.ui.notify("xmodel: image present but no vision model configured (set _vision.vlm)", "warning");
+			return undefined;
+		}
+		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", `👁 vision delegate → ${vlm}`));
+		ctx.ui.notify(`xmodel: vision delegate → compressing context + ${vlm} …`, "info");
+
+		const brief = await buildBrief(ctx, visionCfg);
+		if (brief === null) {
+			const reason = !visionCfg.compressor ? "no _vision.compressor set" : "compressor timed out / failed";
+			ctx.ui.setStatus("xmodel-vision", undefined);
+			ctx.ui.notify(`xmodel: vision delegate aborted (${reason}) — leaving image as-is`, "warning");
+			return undefined;
+		}
+		debug("delegateVision", { vlm, compressor: visionCfg.compressor, briefLen: brief.length, images: images.length });
+
+		const analyses: string[] = [];
+		for (const img of images) {
+			let tmp: string | undefined;
+			try {
+				tmp = writeImageTmp(img);
+				const analysis = await runChildPi({
+					model: vlm,
+					systemPrompt: VISION_VLM_SYS,
+					prompt: `Task brief:\n${brief}\n\nAnalyze the attached image in service of this task and report concrete findings.`,
+					imageFile: tmp,
+				});
+				analyses.push(analysis || "(vision model returned no analysis)");
+			} finally {
+				if (tmp) {
+					try { unlinkSync(tmp); } catch {}
+				}
+			}
+		}
+
+		// replace each image block with its text analysis; keep non-image blocks intact
+		const newContent: any[] = [];
+		let idx = 0;
+		for (const block of event.content as any[]) {
+			if (block && block.type === "image") {
+				const a = analyses[idx++] ?? "(vision analysis failed)";
+				newContent.push({ type: "text", text: `[xmodel vision · ${vlm}]: ${a}` });
+			} else {
+				newContent.push(block);
+			}
+		}
+		ctx.ui.setStatus("xmodel-vision", undefined);
+		ctx.ui.notify(`xmodel: vision delegate done (${images.length} img → ${vlm})`, "info");
+		return { content: newContent };
+	}
+
 	// --- Load + restore on session start ---
 	pi.on("session_start", async (_event, ctx) => {
 		presets = loadPresets(ctx.cwd, ctx.isProjectTrusted());
+		visionCfg = loadVisionConfig(ctx.cwd, ctx.isProjectTrusted());
 		reconstructActive(ctx);
 	});
 
