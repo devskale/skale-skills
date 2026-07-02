@@ -767,6 +767,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				clearTimeout(timer);
 				const text = extractFinalAssistantText(out);
 				debug("runChildPi done", { model: opts.model, reason, outLen: out.length, textLen: text.length });
+				if (!text) forensic("runChildPi empty", { model: opts.model, reason, outLen: out.length, imageFile: opts.imageFile, rawTail: out.slice(-400) });
 				resolve(text);
 			};
 			proc.on("close", () => finish("close"));
@@ -847,13 +848,30 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		return brief.slice(0, cfg.maxBriefChars * 2);
 	}
 
+	/** Forensic log — ALWAYS on (image-data debugging for MCP path). */
+	function forensic(tag: string, data: Record<string, unknown>): void {
+		try {
+			const fs2 = require("node:fs");
+			fs2.appendFileSync("/tmp/xmodel-forensic.log", `${new Date().toISOString()} [${tag}] ${JSON.stringify(data)}\n`);
+		} catch {}
+	}
+
 	function writeImageTmp(img: any): string {
 		const mt = (img.mimeType || "image/png") as string;
+		const rawData: string = typeof img.data === "string" ? img.data : "";
+		forensic("writeImageTmp in", { mimeType: mt, dataLen: rawData.length, dataHead: rawData.slice(0, 40), hasData: !!img.data });
 		// preserve the REAL extension (webp/gif/bmp previously fell through to .png → corrupted file → VLM saw garbage)
 		const sub = (mt.split("/")[1] || "png").toLowerCase();
 		const ext = /^(png|jpe?g|gif|webp|bmp|tiff?)$/.test(sub) ? sub.replace("jpeg", "jpg") : "png";
 		const p = join("/tmp", `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
-		writeFileSync(p, Buffer.from(img.data, "base64"));
+		let buf: Buffer;
+		try {
+			buf = rawData.startsWith("data:") ? Buffer.from(rawData.split(",")[1] ?? "", "base64") : Buffer.from(rawData, "base64");
+		} catch (e) {
+			buf = Buffer.alloc(0);
+		}
+		writeFileSync(p, buf);
+		forensic("writeImageTmp out", { path: p, fileBytes: buf.length, magic: buf.slice(0, 8).toString("hex") });
 		return p;
 	}
 
