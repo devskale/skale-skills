@@ -104,6 +104,20 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	const NEW = "✚  New preset";
 	const KEEP = "—  keep current";
 
+	function fmt(m: Model<Api> | undefined): string {
+		return m ? `${(m as any).provider ?? "?"}/${(m as any).id ?? "?"}` : "<none>";
+	}
+
+	/** Forensic log — append-only, off by default (set XMODEL_DEBUG=1). */
+	function debug(tag: string, data: Record<string, unknown>): void {
+		if (process.env.XMODEL_DEBUG !== "1") return;
+		try {
+			const line = `${new Date().toISOString()} [${tag}] ${JSON.stringify(data)}\n`;
+			const fs = require("node:fs");
+			fs.appendFileSync("/tmp/xmodel-debug.log", line);
+		} catch {}
+	}
+
 	function describe(p: Preset): string {
 		const parts: string[] = [];
 		if (p.provider && p.model) parts.push(`${p.provider}/${p.model}`);
@@ -480,7 +494,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	// --- Optional system-prompt instructions for active preset ---
 	pi.on("before_agent_start", async (event, ctx) => {
 		// auto-vision: user attached images to this prompt → switch before the turn
-		if (event.images && event.images.length > 0) await ensureVision(ctx);
+		if (event.images && event.images.length > 0) await ensureVision(ctx, "before_agent_start");
 		if (activePreset?.instructions) {
 			return { systemPrompt: `${event.systemPrompt}\n\n${activePreset.instructions}` };
 		}
@@ -489,17 +503,29 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	// --- auto-vision: any tool result containing an image (read *.png, MCP screenshots, …) ---
 	pi.on("tool_result", async (event, ctx) => {
 		const hasImage = Array.isArray(event.content) && event.content.some((p: any) => p && p.type === "image");
-		if (hasImage) await ensureVision(ctx);
+		if (hasImage) await ensureVision(ctx, "tool_result");
 	});
 
 	// --- restore the pre-auto-vision model when the turn ends ---
 	pi.on("agent_end", async (_event, ctx) => {
-		if (autoVisionActive) {
-			autoVisionActive = false;
-			if (preAutoVisionModel) await pi.setModel(preAutoVisionModel);
-			ctx.ui.setStatus("xmodel-vision", undefined);
-			updateStatus(ctx);
+		debug("agent_end", { autoVisionActive, visionWas: fmt(ctx.model), preAutoVision: fmt(preAutoVisionModel) });
+		if (!autoVisionActive) return;
+		autoVisionActive = false;
+		const target = preAutoVisionModel;
+		preAutoVisionModel = undefined;
+		ctx.ui.setStatus("xmodel-vision", undefined);
+		if (!target) return;
+		try {
+			const ok = await pi.setModel(target);
+			if (!ok) {
+				ctx.ui.notify(`xmodel: vision turn done but couldn't restore ${fmt(target)} (no API key) — still on ${fmt(ctx.model)}`, "warning");
+			} else {
+				ctx.ui.notify(`xmodel: vision turn done → restored ${fmt(target)}`, "info");
+			}
+		} catch (e) {
+			ctx.ui.notify(`xmodel: vision restore failed (${String(e)}) — still on ${fmt(ctx.model)}`, "warning");
 		}
+		updateStatus(ctx);
 	});
 
 	/**
@@ -612,7 +638,8 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	}
 
 	/** Transiently switch to a vision model if the current one can't see images. */
-	async function ensureVision(ctx: ExtensionContext): Promise<void> {
+	async function ensureVision(ctx: ExtensionContext, source: string): Promise<void> {
+		debug(`ensureVision(${source})`, { autoVisionActive, cur: fmt(ctx.model), visionCapable: isVisionCapable(ctx.model) });
 		if (autoVisionActive) return; // already switched this turn
 		if (isVisionCapable(ctx.model)) return; // already vision-capable
 		const vision = pickVisionModel(ctx);
@@ -621,6 +648,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			return;
 		}
 		preAutoVisionModel = ctx.model;
+		debug(`ensureVision(${source}) SWITCH`, { from: fmt(ctx.model), to: fmt(vision) });
 		const ok = await pi.setModel(vision);
 		if (!ok) {
 			ctx.ui.notify(`xmodel: couldn't switch to vision (${vision.provider}/${vision.id}) — no API key`, "warning");
