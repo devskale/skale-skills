@@ -559,7 +559,20 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- vision on tool results containing an image (read *.png, MCP screenshots, …) ---
 	pi.on("tool_result", async (event, ctx) => {
-		const images = Array.isArray(event.content) ? event.content.filter((p: any) => p && p.type === "image") : [];
+		let images = Array.isArray(event.content) ? event.content.filter((p: any) => p && p.type === "image") : [];
+		// RELIABILITY: MCP inline screenshots time out on large images. Tools that save to disk
+		// (e.g. chrome_devtools_take_screenshot with filePath) always succeed — detect the saved
+		// path in the text result, read the file, and delegate it just like an inline image.
+		if (images.length === 0 && visionCfg.mode !== "off" && !isVisionCapable(ctx.model)) {
+			const saved = detectSavedScreenshot(event.content);
+			if (saved) {
+				const synth = readImageFileBlock(saved);
+				if (synth) {
+					debug("tool_result: saved-screenshot path detected", { path: saved, bytes: synth._bytes });
+					images = [synth];
+				}
+			}
+		}
 		if (images.length === 0) return;
 		if (isVisionCapable(ctx.model)) return; // main model sees images natively — nothing to do
 		const mode = visionCfg.mode;
@@ -880,6 +893,27 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		} catch {}
 	}
 
+	/** Detect a screenshot/image saved to disk in a tool_result's text (e.g. chrome_devtools "Saved screenshot to /tmp/x.png"). */
+	function detectSavedScreenshot(content: unknown): string | undefined {
+		const text = Array.isArray(content) ? content.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join("\n") : "";
+		const m = text.match(/saved (?:screenshot|image|snapshot|capture)[^\n]*?\s(\/\S+\.(?:png|jpe?g|webp|gif|bmp))/i);
+		return m ? m[1] : undefined;
+	}
+
+	/** Read an image file from disk into a synthetic image block (base64 + mimeType) for delegation. */
+	function readImageFileBlock(filePath: string): any | undefined {
+		try {
+			if (!existsSync(filePath)) return undefined;
+			const buf = readFileSync(filePath);
+			if (!isValidImage(buf)) return undefined;
+			const ext = filePath.toLowerCase().split(".").pop() ?? "png";
+			const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : ext === "bmp" ? "image/bmp" : "image/png";
+			return { type: "image", data: buf.toString("base64"), mimeType, _bytes: buf.length };
+		} catch {
+			return undefined;
+		}
+	}
+
 	function isValidImage(buf: Buffer): boolean {
 		if (buf.length < 32) return false;
 		const h = buf;
@@ -971,7 +1005,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			}
 		}
 
-		// replace each image block with its text analysis; keep non-image blocks intact
+		// replace each image block with its text analysis; keep non-image blocks intact.
+		// if there are more analyses than inline image blocks (e.g. a saved-to-disk screenshot
+		// synthesised from a text result), append the leftover analyses as text.
 		const newContent: any[] = [];
 		let idx = 0;
 		for (const block of event.content as any[]) {
@@ -981,6 +1017,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			} else {
 				newContent.push(block);
 			}
+		}
+		while (idx < analyses.length) {
+			newContent.push({ type: "text", text: `[xmodel vision · ${vlm}]: ${analyses[idx++]}` });
 		}
 		ctx.ui.setStatus("xmodel-vision", undefined);
 		ctx.ui.notify(`xmodel: vision delegate done (${images.length} img → ${vlm})`, "info");
