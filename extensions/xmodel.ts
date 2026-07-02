@@ -757,17 +757,41 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			const timeoutMs = opts.timeoutMs ?? VLM_TIMEOUT_MS;
 			debug("runChildPi", { model: opts.model, hasImage: !!opts.imageFile, promptLen: opts.prompt.length, timeoutMs });
 			const proc = spawn("pi", args, { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
-			let out = "";
+			let deltaText = "";          // accumulated assistant text deltas (small, no image)
+			let lastMsgEndText = "";      // last assistant message_end text (small, no image)
+			let lineBuf = "";
+			let outLen = 0;
 			const timer = setTimeout(() => proc.kill("SIGTERM"), timeoutMs);
+			const onLine = (line: string) => {
+				line = line.trim();
+				if (!line) return;
+				try {
+					const j = JSON.parse(line);
+					// stream assistant text deltas (avoids parsing the giant agent_end that embeds the image)
+					if (j.type === "message_update" && j.assistantMessageEvent?.type === "text_delta") {
+						deltaText += j.assistantMessageEvent.delta || "";
+					} else if (j.type === "message_end" && j.message?.role === "assistant") {
+						const c = j.message.content;
+						lastMsgEndText = typeof c === "string" ? c : Array.isArray(c) ? c.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join(" ") : "";
+					}
+				} catch {}
+			};
 			proc.stdout.on("data", (d: Buffer) => {
-				out += d.toString();
-				if (out.length > 8 << 20) proc.kill(); // cap memory
+				const s = d.toString(); outLen += s.length;
+				if (outLen > 16 << 20) { proc.kill(); return; } // cap memory
+				lineBuf += s;
+				let nl: number;
+				while ((nl = lineBuf.indexOf("\n")) >= 0) {
+					onLine(lineBuf.slice(0, nl));
+					lineBuf = lineBuf.slice(nl + 1);
+				}
 			});
 			const finish = (reason: string) => {
 				clearTimeout(timer);
-				const text = extractFinalAssistantText(out);
-				debug("runChildPi done", { model: opts.model, reason, outLen: out.length, textLen: text.length });
-				if (!text) forensic("runChildPi empty", { model: opts.model, reason, outLen: out.length, imageFile: opts.imageFile, rawTail: out.slice(-400) });
+				onLine(lineBuf); // flush trailing partial line
+				const text = (deltaText.trim() || lastMsgEndText.trim());
+				debug("runChildPi done", { model: opts.model, reason, outLen, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
+				if (!text) forensic("runChildPi empty", { model: opts.model, reason, outLen, imageFile: opts.imageFile });
 				resolve(text);
 			};
 			proc.on("close", () => finish("close"));
