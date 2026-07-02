@@ -202,6 +202,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		name: string,
 		preset: Preset,
 		ctx: ExtensionContext,
+	opts: { transient?: boolean } = {},
 	): Promise<{ ok: true } | { ok: false; reason: string }> {
 		if (activeName === undefined) {
 			original = { model: ctx.model, thinkingLevel: pi.getThinkingLevel(), tools: pi.getActiveTools() };
@@ -209,6 +210,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		if (preset.provider && preset.model) {
 			const model = ctx.modelRegistry.find(preset.provider, preset.model);
 			if (!model) return { ok: false, reason: `model ${preset.provider}/${preset.model} not found` };
+			// Agent-initiated switch TO a vision model (from a non-vision one) is transient:
+			// remember the text model so agent_end restores it (no getting stuck on vision).
+			if (opts.transient && isVisionCapable(model) && !isVisionCapable(ctx.model)) {
+				preAutoVisionModel = ctx.model;
+				autoVisionActive = true;
+				debug("applyPreset transient vision", { from: fmt(ctx.model), to: fmt(model) });
+			}
 			const success = await pi.setModel(model);
 			if (!success) ctx.ui.notify(`xmodel: no API key for ${preset.provider}/${preset.model}`, "warning");
 		}
@@ -530,7 +538,8 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			if (!preset) {
 				return { content: [{ type: "text", text: `Unknown preset "${name}". Available: ${Object.keys(presets).sort().join(", ")}` }] };
 			}
-			const r = await applyPreset(name, preset, ctx);
+			// transient: if the agent switches itself to vision, auto-revert at turn end
+			const r = await applyPreset(name, preset, ctx, { transient: true });
 			if (!r.ok) throw new Error(r.reason);
 			return {
 				content: [{ type: "text", text: `Switched to "${name}": ${describe(preset)}. Next turn uses the new model.` }],
@@ -840,7 +849,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	function writeImageTmp(img: any): string {
 		const mt = (img.mimeType || "image/png") as string;
-		const ext = mt.includes("png") ? "png" : mt.includes("jpeg") || mt.includes("jpg") ? "jpg" : "png";
+		// preserve the REAL extension (webp/gif/bmp previously fell through to .png → corrupted file → VLM saw garbage)
+		const sub = (mt.split("/")[1] || "png").toLowerCase();
+		const ext = /^(png|jpe?g|gif|webp|bmp|tiff?)$/.test(sub) ? sub.replace("jpeg", "jpg") : "png";
 		const p = join("/tmp", `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
 		writeFileSync(p, Buffer.from(img.data, "base64"));
 		return p;
