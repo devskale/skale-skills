@@ -856,23 +856,35 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		} catch {}
 	}
 
-	function writeImageTmp(img: any): string {
+	function isValidImage(buf: Buffer): boolean {
+		if (buf.length < 32) return false;
+		const h = buf;
+		return (
+			(h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e && h[3] === 0x47) || // PNG
+			(h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff) || // JPEG
+			(h[0] === 0x47 && h[1] === 0x49 && h[2] === 0x46) || // GIF
+			(h[0] === 0x42 && h[1] === 0x4d) || // BMP
+			(h[0] === 0x52 && h[1] === 0x49 && h[2] === 0x46 && h[3] === 0x46 && h[8] === 0x57 && h[9] === 0x45 && h[10] === 0x42 && h[11] === 0x50) // WebP
+		);
+	}
+
+	function writeImageTmp(img: any): { path: string; valid: boolean; bytes: number } {
 		const mt = (img.mimeType || "image/png") as string;
 		const rawData: string = typeof img.data === "string" ? img.data : "";
 		forensic("writeImageTmp in", { mimeType: mt, dataLen: rawData.length, dataHead: rawData.slice(0, 40), hasData: !!img.data });
-		// preserve the REAL extension (webp/gif/bmp previously fell through to .png → corrupted file → VLM saw garbage)
 		const sub = (mt.split("/")[1] || "png").toLowerCase();
 		const ext = /^(png|jpe?g|gif|webp|bmp|tiff?)$/.test(sub) ? sub.replace("jpeg", "jpg") : "png";
 		const p = join("/tmp", `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
 		let buf: Buffer;
 		try {
 			buf = rawData.startsWith("data:") ? Buffer.from(rawData.split(",")[1] ?? "", "base64") : Buffer.from(rawData, "base64");
-		} catch (e) {
+		} catch {
 			buf = Buffer.alloc(0);
 		}
 		writeFileSync(p, buf);
-		forensic("writeImageTmp out", { path: p, fileBytes: buf.length, magic: buf.slice(0, 8).toString("hex") });
-		return p;
+		const valid = isValidImage(buf);
+		forensic("writeImageTmp out", { path: p, fileBytes: buf.length, valid, magic: buf.slice(0, 8).toString("hex") });
+		return { path: p, valid, bytes: buf.length };
 	}
 
 	/** Resolve the VLM ref string: explicit config, else auto-pick from registry. */
@@ -909,14 +921,25 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		for (const img of images) {
 			let tmp: string | undefined;
 			try {
-				tmp = writeImageTmp(img);
-				const analysis = await runChildPi({
-					model: vlm,
-					systemPrompt: VISION_VLM_SYS,
-					prompt: `Task brief:\n${brief}\n\nAnalyze the attached image in service of this task and report concrete findings.`,
-					imageFile: tmp,
-				});
-				analyses.push(analysis || "(vision model returned no analysis)");
+				const w = writeImageTmp(img);
+				tmp = w.path;
+				if (!w.valid) {
+					// empty/corrupt image data → do NOT call the VLM (it would hallucinate from the brief)
+					forensic("delegateVision SKIP invalid image", { bytes: w.bytes });
+					analyses.push("(xmodel: image data missing/corrupt in tool result — not analysed; the main model cannot see this image)");
+					continue;
+				}
+				let analysis = "";
+				for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
+					analysis = await runChildPi({
+						model: vlm,
+						systemPrompt: VISION_VLM_SYS,
+						prompt: `Task brief:\n${brief}\n\nAnalyze the attached image in service of this task and report concrete findings. If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+						imageFile: tmp,
+					});
+				}
+				if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
+				analyses.push(analysis || "(vision model returned no usable analysis — image may not have been received)");
 			} finally {
 				if (tmp) {
 					try { unlinkSync(tmp); } catch {}
