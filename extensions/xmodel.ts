@@ -144,6 +144,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	// --- vision config (delegate / switch / off) ---
 	let visionCfg: VisionConfig = defaultVision();
 
+	// tool_callId → start ms (to time screenshot/ MCP calls)
+	const callStart = new Map<string, number>();
+
 	// --- rate-limit fallback: switch to a free variant on 429/503/529 ---
 	let lastFallbackAt = 0;
 	const FALLBACK_COOLDOWN_MS = 30_000;
@@ -557,8 +560,18 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 	});
 
+	// --- time MCP / tool calls so we can see real screenshot latency vs the 60s MCP cap ---
+	pi.on("tool_call", async (event: any) => {
+		callStart.set(event.toolCallId, Date.now());
+	});
+
 	// --- vision on tool results containing an image (read *.png, MCP screenshots, …) ---
 	pi.on("tool_result", async (event, ctx) => {
+		const callMs = callStart.get(event.toolCallId);
+		if (callMs !== undefined) {
+			callStart.delete(event.toolCallId);
+			forensic("tool_call elapsed", { toolCallId: event.toolCallId, elapsedSec: ((Date.now() - callMs) / 1000).toFixed(1), hadImage: Array.isArray(event.content) && event.content.some((p: any) => p?.type === "image") });
+		}
 		let images = Array.isArray(event.content) ? event.content.filter((p: any) => p && p.type === "image") : [];
 		// RELIABILITY: MCP inline screenshots time out on large images. Tools that save to disk
 		// (e.g. chrome_devtools_take_screenshot with filePath) always succeed — detect the saved
@@ -774,6 +787,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			let lastMsgEndText = "";      // last assistant message_end text (small, no image)
 			let lineBuf = "";
 			let outLen = 0;
+			const t0 = Date.now();
 			const timer = setTimeout(() => proc.kill("SIGTERM"), timeoutMs);
 			const onLine = (line: string) => {
 				line = line.trim();
@@ -802,9 +816,11 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			const finish = (reason: string) => {
 				clearTimeout(timer);
 				onLine(lineBuf); // flush trailing partial line
+				const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 				const text = (deltaText.trim() || lastMsgEndText.trim());
-				debug("runChildPi done", { model: opts.model, reason, outLen, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
-				if (!text) forensic("runChildPi empty", { model: opts.model, reason, outLen, imageFile: opts.imageFile });
+				debug("runChildPi done", { model: opts.model, reason, outLen, elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
+				forensic("runChildPi done", { model: opts.model, reason, outLen, elapsedSec: elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none", imageFile: opts.imageFile });
+				if (!text) forensic("runChildPi empty", { model: opts.model, reason, outLen, elapsedSec: elapsed, imageFile: opts.imageFile });
 				resolve(text);
 			};
 			proc.on("close", () => finish("close"));
@@ -813,27 +829,8 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	}
 
 	/** Parse JSONL stdout from `pi --mode json -p`; pull the last assistant text from the agent_end event. */
-	function extractFinalAssistantText(jsonl: string): string {
-		const lines = jsonl.split("\n");
-		let agentEnd: any = undefined;
-		for (let i = lines.length - 1; i >= 0; i--) {
-			const line = lines[i].trim();
-			if (!line) continue;
-			try {
-				const j = JSON.parse(line);
-				if (j && j.type === "agent_end") { agentEnd = j; break; }
-			} catch {}
-		}
-		const msgs: any[] = Array.isArray(agentEnd?.messages) ? agentEnd.messages : [];
-		for (let i = msgs.length - 1; i >= 0; i--) {
-			const m = msgs[i];
-			if (m && m.role === "assistant") {
-				const c = m.content;
-				if (typeof c === "string") return c.trim();
-				if (Array.isArray(c)) return c.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join(" ").trim();
-			}
-		}
-		return "";
+	function extractFinalAssistantText(_jsonl: string): string {
+		return ""; // unused: runChildPi now stream-parses text_delta/message_end (see git 6302ffa)
 	}
 
 	function textOf(content: unknown): string {
