@@ -1,5 +1,5 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.1.0
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.2.0
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
@@ -42,7 +42,7 @@ import { StringEnum, type Api, type Model } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { CONFIG_DIR_NAME, getAgentDir } from "@earendil-works/pi-coding-agent";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -443,7 +443,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.1.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm version | /xm off",
+		description: "xmodel v0.2.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
