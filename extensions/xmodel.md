@@ -61,6 +61,17 @@ main model can't see images, xmodel routes it through a vision pipeline. The mod
 | `switch` | Legacy: flip the main model to a vision-capable model for the turn, then restore it at turn end. |
 | `off` | Do nothing — the image is left untouched (inline rendering if the terminal supports it). |
 
+### Seeing the image while delegating (`keepImage`)
+
+By default `delegate` *replaces* the image with the VLM's text analysis (so the TUI shows text
+only). Set **`keepImage: true`** to keep the original image inline in the result **and** append
+the analysis — i.e. you see the picture, the model still gets the text. Toggle it in `/xm settings`
+(→ **Keep image**) or set `"keepImage": true` under `_vision`.
+
+This is safe because pi-ai strips image parts for non-vision models at send time
+(`downgradeUnsupportedImages`) — the main model never receives the image bytes, only the
+analysis. So it costs you nothing on the model side; you just also get to look at the image.
+
 ### Two-tier config (global canonical + project override)
 
 `_vision` is read from both files and merged at the **field** level (project wins per field):
@@ -74,7 +85,8 @@ main model can't see images, xmodel routes it through a vision pipeline. The mod
     "mode": "delegate",          // delegate | switch | off
     "vlm": "opencode/claude-sonnet-4-6",   // optional; auto-picks if unset
     "compressor": "zai/glm-5.2",           // optional; uses active model if unset
-    "maxBriefChars": 1500
+    "maxBriefChars": 1500,
+    "keepImage": true            // delegate mode: also show the image inline (see above)
   }
 }
 ```
