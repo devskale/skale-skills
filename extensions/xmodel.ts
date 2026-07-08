@@ -1,5 +1,5 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.0
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.1
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
@@ -60,7 +60,7 @@ import {
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -92,6 +92,10 @@ interface VisionConfig {
 	compressor?: string;
 	/** Char budget for the task brief sent to the VLM. */
 	maxBriefChars: number;
+	/** In delegate mode, also keep the original image inline in the tool result so the
+	 *  human can see it. The non-vision main model still only receives the text analysis —
+	 *  pi-ai's `downgradeUnsupportedImages` strips image parts it can't process at send time. */
+	keepImage?: boolean;
 }
 function defaultVision(): VisionConfig {
 	return { mode: "delegate", maxBriefChars: 1500 };
@@ -524,6 +528,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			case "vlm": return `${visionCfg.vlm ?? "auto"} · ${src("vlm")}`;
 			case "compressor": return `${visionCfg.compressor ?? "active model"} · ${src("compressor")}`;
 			case "brief": return `${visionCfg.maxBriefChars} · ${src("maxBriefChars")}`;
+			case "keepImage": return `${visionCfg.keepImage ? "on" : "off"} · ${src("keepImage")}`;
 			default: return "";
 		}
 	}
@@ -537,6 +542,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			case "vlm": writeVisionField(cwd, scope, "vlm", value === "auto" ? undefined : value); break;
 			case "compressor": writeVisionField(cwd, scope, "compressor", value === "active model" ? undefined : value); break;
 			case "brief": writeVisionField(cwd, scope, "maxBriefChars", Number(value)); break;
+			case "keepImage": writeVisionField(cwd, scope, "keepImage", value === "on"); break;
 		}
 		visionCfg = loadVisionConfig(cwd, trusted);
 		if (id === "mode") updateVisionStatus(ctx);
@@ -551,6 +557,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			`vlm:        ${visionDisplay(cwd, trusted, "vlm")}`,
 			`compressor: ${visionDisplay(cwd, trusted, "compressor")}`,
 			`brief:      ${visionDisplay(cwd, trusted, "brief")}`,
+			`keepImage:  ${visionDisplay(cwd, trusted, "keepImage")}`,
 		];
 		ctx.ui.notify(`xmodel vision\n${lines.join("\n")}`, "info");
 	}
@@ -610,6 +617,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			const scopeValues = trusted ? ["global", "project"] : ["global"];
 			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). switch: flip main model to vision for the turn. off: do nothing.";
 			const BRIEF_HELP = "Char budget for the task brief sent to the VLM.";
+			const KEEP_HELP = "Keep the original image inline in the result (delegate mode only), alongside the VLM text analysis. The non-vision main model still only receives the analysis — pi-ai strips image parts it can't process.";
 			// NOTE: for `values`-cycle rows, currentValue MUST be a bare entry of `values`
 			// (SettingsList advances via values.indexOf(currentValue)). The source tier is
 			// shown in the description instead. Submenu rows (vlm/compressor) may use a
@@ -656,6 +664,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					currentValue: String(visionCfg.maxBriefChars),
 					values: ["500", "1000", "1500", "2000", "3000"],
 				},
+				{
+					id: "keepImage",
+					label: "Keep image",
+					description: `${KEEP_HELP}\nEffective from: ${visionFieldSource(cwd, trusted, "keepImage")}`,
+					currentValue: visionCfg.keepImage ? "on" : "off",
+					values: ["off", "on"],
+				},
 			];
 
 			const byId: Record<string, SettingItem> = {};
@@ -677,6 +692,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					applyVisionSetting(ctx, writeScope, id, newValue);
 					if (id === "mode") setSourcedDesc("mode", MODE_HELP, "mode");
 					else if (id === "brief") setSourcedDesc("brief", BRIEF_HELP, "maxBriefChars");
+					else if (id === "keepImage") setSourcedDesc("keepImage", KEEP_HELP, "keepImage");
 					else list.updateValue(id, visionDisplay(cwd, trusted, id)); // vlm/compressor: suffixed ok
 				},
 				() => done(undefined),
@@ -701,7 +717,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.3.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
+		description: "xmodel v0.3.1 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -1292,20 +1308,26 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			}
 		}
 
-		// replace each image block with its text analysis; keep non-image blocks intact.
-		// if there are more analyses than inline image blocks (e.g. a saved-to-disk screenshot
-		// synthesised from a text result), append the leftover analyses as text.
+		// Rebuild the tool result: keep non-image blocks; for each analysed image emit the
+		// VLM analysis text. With _vision.keepImage, ALSO keep the original image block inline
+		// so the human can see it — the non-vision main model never receives the image bytes
+		// (pi-ai's downgradeUnsupportedImages strips it at send time, leaving only the analysis).
+		const keep = !!visionCfg.keepImage;
 		const newContent: any[] = [];
 		let idx = 0;
 		for (const block of event.content as any[]) {
 			if (block && block.type === "image") {
 				const a = analyses[idx++] ?? "(vision analysis failed)";
+				if (keep) newContent.push(block); // show the original image inline
 				newContent.push({ type: "text", text: `[xmodel vision · ${vlm}]: ${a}` });
 			} else {
 				newContent.push(block);
 			}
 		}
+		// leftover analyses (e.g. a saved-to-disk screenshot synthesised from a text result,
+		// whose image block isn't in event.content) — also surface that image when keep is on.
 		while (idx < analyses.length) {
+			if (keep && images[idx]) newContent.push(images[idx]);
 			newContent.push({ type: "text", text: `[xmodel vision · ${vlm}]: ${analyses[idx++]}` });
 		}
 		ctx.ui.setStatus("xmodel-vision", undefined);
