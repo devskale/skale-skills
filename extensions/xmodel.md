@@ -10,9 +10,14 @@ Lives at `~/.pi/agent/extensions/xmodel.ts` (symlinked into the skale-skills rep
 | Command | What |
 |---|---|
 | `/xm <name>` | Switch to preset `<name>` (sets model + thinking level) |
-| `/xm off` | Disable the extension (stop auto-fallback) |
-| `/xm list` | Show available presets + active preset |
-| `/xm` | Same as `/xm list` |
+| `/xm` | Picker — switch preset (or `(off)`) |
+| `/xm settings` | **Vision hub** — pi-style settings list for the vision pipeline (mode, vlm, compressor, brief) with global/project scope |
+| `/xm vision [mode] [global\|project]` | Show, or set, the vision mode (`delegate` \| `switch` \| `off`) |
+| `/xm edit [name]` | Add/edit a preset (provider, model, thinking, instructions) |
+| `/xm rm [name]` | Remove a preset |
+| `/xm models [query]` | Browse provider/model from the live registry |
+| `/xm off` | Clear the active preset, restore defaults (**does not disable vision** — use `/xm vision off`) |
+| `/xm version` | Show version |
 
 ## Config
 
@@ -43,3 +48,42 @@ Presets live in `~/.pi/agent/xmodel.json` (project-local `.pi/xmodel.json` overr
 ## Status line
 
 When a fallback is active, the status line shows `↩ fallback: <preset>`. `retry-after` header is surfaced in the notification when the provider sends one.
+
+## Vision pipeline
+
+When an image appears (a `read` of `*.png`, an MCP screenshot, an attached image) and the
+main model can't see images, xmodel routes it through a vision pipeline. The mode lives under
+`_vision` in the config files and is controlled by **`/xm settings`** or **`/xm vision`**.
+
+| Mode | Behaviour |
+|---|---|
+| `delegate` *(default)* | Compress recent context → one VLM sub-call → feed the text analysis back. The main model never switches and never blows its context window. |
+| `switch` | Legacy: flip the main model to a vision-capable model for the turn, then restore it at turn end. |
+| `off` | Do nothing — the image is left untouched (inline rendering if the terminal supports it). |
+
+### Two-tier config (global canonical + project override)
+
+`_vision` is read from both files and merged at the **field** level (project wins per field):
+
+- global: `~/.pi/agent/xmodel.json` → `_vision` (canonical default)
+- project: `<cwd>/.pi/xmodel.json` → `_vision` (override; trusted projects only)
+
+```jsonc
+{
+  "_vision": {
+    "mode": "delegate",          // delegate | switch | off
+    "vlm": "opencode/claude-sonnet-4-6",   // optional; auto-picks if unset
+    "compressor": "zai/glm-5.2",           // optional; uses active model if unset
+    "maxBriefChars": 1500
+  }
+}
+```
+
+`/xm settings` shows each setting with its **effective value + source** (`· project` / `· global` /
+`· default`) and a **Write scope** row that picks which file edits go to — mirroring pi's own
+`/config` two-tier editor. `/xm vision delegate project` writes just that field to the project
+file. Changes take effect immediately and persist; no `/reload` needed.
+
+> **Note:** `/xm off` clears the active *preset* and restores model defaults. It does **not**
+> touch the vision mode. Use `/xm vision off` (or `/xm settings` → Vision mode → `off`) to
+> disable vision.

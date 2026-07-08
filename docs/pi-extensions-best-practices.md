@@ -232,6 +232,7 @@ export default function (pi: ExtensionAPI) {
 | **Don't write state to external files** | Use tool result `details` or `pi.appendEntry()` instead — files break branching |
 | **Don't mutate `event.input` without understanding the contract** | Mutations affect actual execution. No re-validation runs after your mutation. |
 | **Don't return error info as content** | Throw an `Error` instead — it sets `isError: true` for the LLM |
+| **Don't omit `details` on any return branch** | `details` is **required** on `AgentToolResult`, not optional. Every `return { content }` must include it (even `{}`) or strict typecheck fails |
 
 ### Signaling errors
 
@@ -558,14 +559,46 @@ const text = await ctx.ui.editor("Edit:", "default");
 
 ### Custom components — only when you need full control
 
-Use `ctx.ui.custom()` for complex interactions that built-in dialogs can't handle (multi-step wizards, games, complex navigation):
+Use `ctx.ui.custom()` for complex interactions that built-in dialogs can't handle (multi-step wizards, settings hubs, games). The factory receives `(tui, theme, keybindings, done)` and returns a `Component` — an object with `render(width): string[]` plus optional `invalidate()` and `handleInput(data)`. Call `done(value)` to close and resolve the promise.
+
+The canonical shape (from the built-in `tools.ts` example) wraps a `Container`, delegates input to the interactive child, and calls `tui.requestRender()` after each keystroke:
 
 ```typescript
-const result = await ctx.ui.custom<boolean>((tui, theme, keybindings, done) => {
-  // Return a Component with handleInput, render, invalidate
-  // Call done(value) to close and return
+import { Container, SettingsList, type SettingItem } from "@earendil-works/pi-tui";
+import { getSettingsListTheme } from "@earendil-works/pi-coding-agent";
+
+await ctx.ui.custom((tui, theme, _kb, done) => {
+  const items: SettingItem[] = [
+    { id: "autocompact", label: "Auto-compact", currentValue: "true", values: ["true", "false"] },
+    // `values` → cycles on Enter/Space; `submenu` → returns a Component picker
+  ];
+  const list = new SettingsList(items, 10, getSettingsListTheme(),
+    (id, value) => { /* apply change immediately */ },
+    () => done(undefined));              // Esc closes
+  const c = new Container();
+  c.addChild(new Text(theme.fg("accent", theme.bold("My settings")), 0, 0));
+  c.addChild(list);
+  return {
+    render: (w) => c.render(w),
+    invalidate: () => c.invalidate(),
+    handleInput: (d) => { list.handleInput?.(d); tui.requestRender(); },
+  };
 });
 ```
+
+### Reuse pi's own components for a native look
+
+You don't have to reimplement the settings UI — pi exports its real components from `@earendil-works/pi-tui`, and matching theme helpers from `@earendil-works/pi-coding-agent`. Mount them inside `ctx.ui.custom()` and your hub looks and behaves like pi's own `/config`:
+
+| Import | Use |
+|--------|-----|
+| `SettingsList`, `SettingItem` | Scrollable settings list — `values` cycles inline, `submenu` opens a picker |
+| `SelectList`, `SelectItem` | Searchable picker (ideal as a `submenu`) |
+| `Container`, `Text`, `Spacer`, `Box` | Layout primitives |
+| `DynamicBorder` | The same bordered framing pi's panels use |
+| `getSettingsListTheme()`, `getSelectListTheme()` | Theme fns closing over pi's *active* theme — pixel-matches pi's UI |
+
+Persist on every change (**write-through** — the native settings list has no Save button), and guard with `if (ctx.mode !== "tui")` falling back to a `notify` summary otherwise (see [§11](#11-mode-awareness--headless-is-real)).
 
 ### Rendering rules
 
@@ -881,6 +914,45 @@ const mockEntries = [
 
 Run pi in JSON mode and parse the event stream to verify tool calls, blocks, and messages.
 
+### 5. Typecheck against the installed SDK declarations
+
+Pi loads extensions via **jiti** (transpile-only — no typecheck), so type errors *never surface at runtime*. Close that gap by running `tsc` against the exact `.d.ts` pi loads. Set `baseUrl` to pi's `node_modules` and `moduleResolution: "bundler"`:
+
+```jsonc
+{
+  "compilerOptions": {
+    "strict": true, "noEmit": true, "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "baseUrl": "<pi>/node_modules",
+    "lib": ["ESNext", "DOM"], "types": ["node"]
+  },
+  "include": ["my-extension.ts"]
+}
+```
+
+Find pi's `node_modules` under the pnpm store (e.g. `…/@earendil-works/pi-coding-agent/<ver>/<hash>/node_modules`). Treat **zero strict errors** as the bar — it catches misuse the runtime never will: wrong argument shapes, a missing `details` on a tool return (see [§4](#4-tool-registration--dos-and-donts)), a typo'd `ctx.ui.custom` factory, an import that doesn't exist.
+
+### 6. Exercise logic headlessly via jiti + redirected config
+
+You don't need a live TUI to test command / file-merge / reconstruction logic. Load the real module through jiti with a mocked `pi`/`ctx`, and redirect the agent dir so writes land in a temp sandbox:
+
+```typescript
+process.env.PI_CODING_AGENT_DIR = mkdtempSync(join(tmpdir(), "ext-"));   // getAgentDir() honors this
+const jiti = createJiti(import.meta.url);
+const mod = await jiti.import(/* copy of your .ts placed where @earendil-works/* resolve */);
+const cmds = {}, events = {};
+await mod.default({
+  registerCommand: (n, d) => { cmds[n] = d; },
+  on: (e, f) => { events[e] = f; },
+  registerTool() {}, registerShortcut() {},
+});
+await events.session_start({}, mockCtx);                   // prime state from disk
+await cmds["my-ext"].handler("set foo global", mockCtx);     // drive a command
+assert(JSON.parse(readFileSync(cfgPath)).foo === "…");      // assert on real files
+```
+
+`mockCtx` only needs what your handler touches — typically `cwd`, `isProjectTrusted()`, `ui.{notify,setStatus,theme}`, `sessionManager.getEntries()`. This is how to cover two-tier merge, write-through, and reconstruction paths that static checks can't reach. (The copy-in-`node_modules` trick is because bare `@earendil-works/*` imports don't resolve from an arbitrary directory; the copy is byte-identical and removed after load.)
+
 ---
 
 ## 17. Security Considerations
@@ -1145,6 +1217,62 @@ const configPath = join(getAgentDir(), "my-ext-config.json");
 
 pi-vcc uses this pattern (`~/.pi/agent/pi-vcc-config.json`). pi-permission-system also uses `getAgentDir()` for its log directory.
 
+### 19.13 Round-Trip Config Writes Must Preserve Reserved Keys
+
+**Symptom:** Editing one setting silently wipes another from the config file — e.g. saving a preset deletes your `_vision` block, or a settings hub edit removes internal/comment keys.
+
+**Cause:** Your reader intentionally skips certain keys (reserved `_`-prefixed blocks, internal metadata) but your writer serializes the *filtered* object back over the file, clobbering everything the reader stripped.
+
+```typescript
+// ❌ readRaw() strips _-prefixed keys → save() wipes them
+function readRaw(path) { /* skips keys starting with _ */ }
+function save(cfg) { writeFileSync(path, JSON.stringify(cfg)); }   // _vision is gone!
+```
+
+**Fix:** Writers must read the *full* raw file, mutate, and preserve any key the reader skips. For single-field edits, merge-write just that field:
+
+```typescript
+function save(cfg: PresetsConfig) {
+  let full = existsSync(path) ? JSON.parse(readFileSync(path, "utf-8")) : {};
+  for (const k of Object.keys(full)) if (!k.startsWith("_")) delete full[k]; // drop stale presets
+  for (const [k, v] of Object.entries(cfg)) full[k] = v;                     // add current
+  writeFileSync(path, JSON.stringify(full, null, 2));                         // _-keys preserved
+}
+```
+
+Every code path that rewrites the config (`/edit`, `/rm`, a settings hub) must round-trip the reserved keys. A regression test that sets a reserved key, runs a rewrite, and asserts the key survives is worth its weight (see [§16](#16-testing-strategy)).
+
+### 19.14 Two-Tier Config — Global Canonical + Project Override
+
+**Pattern:** Store config at two levels — global (`getAgentDir()`, the canonical default) and project (`<cwd>/.pi/`, an override) — and merge at the **field** level so a project override pins only what it sets, inheriting the rest from global. This mirrors pi's own `/config` editor (Tab switches scope).
+
+```typescript
+import { getAgentDir, CONFIG_DIR_NAME } from "@earendil-works/pi-coding-agent";
+const globalPath = join(getAgentDir(), "my-ext.json");
+const projectPath = (cwd) => join(cwd, CONFIG_DIR_NAME, "my-ext.json");
+
+// field-level merge: project wins per key
+function load(cwd: string, trusted: boolean) {
+  return { ...defaults, ...read(globalPath), ...(trusted ? read(projectPath(cwd)) : {}) };
+}
+// single-field write to one tier, preserving every other key
+function writeField(cwd: string, scope: "global" | "project", key: string, value: unknown) {
+  const path = scope === "project" ? projectPath(cwd) : globalPath;
+  const raw = existsSync(path) ? JSON.parse(readFileSync(path, "utf-8")) : {};
+  if (value === undefined) delete raw[key]; else raw[key] = value;
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(raw, null, 2));
+}
+```
+
+**Three rules:**
+
+1. **Gate project reads/writes on `ctx.isProjectTrusted()`** — never read `.pi/` config from an untrusted project (see [§17](#17-security-considerations)).
+2. **Merge per-field, not per-object** — a project override `{ vlm: "x" }` must not copy global's `mode`/`maxBrief` into the project file (that pins them and silently breaks future global edits).
+3. **Show the source** — surface where each effective value came from (`· global` / `· project` / `· default`) so users know which tier to edit.
+
+**Testability:** `getAgentDir()` honors `PI_CODING_AGENT_DIR`, so point it at a temp dir and drive real read/write logic against sandbox files (see [§16](#16-testing-strategy)).
+
 ---
 
 ## 20. Community Patterns — What Production Extensions Do
@@ -1309,6 +1437,13 @@ Before shipping an extension, verify:
 - [ ] No hardcoded assumptions about other extensions
 - [ ] Optional peers loaded via `await import()` + try/catch (§19.6)
 
+### Config & UI
+- [ ] Config in `~/.pi/agent/` via `getAgentDir()`; project override under `<cwd>/.pi/` gated on `isProjectTrusted()`
+- [ ] Field-level merge for two-tier config (project pins only what it sets) (§19.14)
+- [ ] Round-trip writes preserve reserved/internal keys (§19.13)
+- [ ] Settings UI reuses pi components (`SettingsList`/`SelectList`) + theme helpers (§10)
+- [ ] Logic covered by a jiti + redirected-config test (§16.6)
+
 ### Distribution
 - [ ] `package.json` with `pi.extensions` entry
 - [ ] `peerDependencies` for `@earendil-works/pi-coding-agent` and `typebox`
@@ -1377,4 +1512,4 @@ Before shipping an extension, verify:
 
 ---
 
-*This guide is a living document. Patterns evolve as the extension API matures. Last updated: June 2026.*
+*This guide is a living document. Patterns evolve as the extension API matures. Last updated: July 2026.*

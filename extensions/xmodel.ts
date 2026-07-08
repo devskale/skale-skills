@@ -1,5 +1,5 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.2.0
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.0
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
@@ -20,6 +20,8 @@
  *   /xm rm [name]         remove a preset
  *   /xm models [query]    browse provider/model from the live registry
  *   /xm off               clear, restore defaults
+ *   /xm settings          vision hub — pi-style settings list (global + project tiers)
+ *   /xm vision [m] [g|p]  show / set vision mode (delegate|switch|off)
  *   Ctrl+Shift+F          cycle presets
  *   switch_model tool     agent (LLM) switches itself
  *   /xm version           show version
@@ -34,15 +36,31 @@
  * (clamped to model capabilities automatically)
  */
 
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { execFile, spawn } from "node:child_process";
 import { Type } from "typebox";
 import { StringEnum, type Api, type Model } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { CONFIG_DIR_NAME, getAgentDir } from "@earendil-works/pi-coding-agent";
+import {
+	CONFIG_DIR_NAME,
+	getAgentDir,
+	getSettingsListTheme,
+	getSelectListTheme,
+	DynamicBorder,
+} from "@earendil-works/pi-coding-agent";
+import {
+	Container,
+	SettingsList,
+	SelectList,
+	Spacer,
+	Text,
+	type Component,
+	type SettingItem,
+	type SelectItem,
+} from "@earendil-works/pi-tui";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -83,6 +101,10 @@ function globalPresetsPath(): string {
 	return join(getAgentDir(), "xmodel.json");
 }
 
+function projectPresetsPath(cwd: string): string {
+	return join(cwd, CONFIG_DIR_NAME, "xmodel.json");
+}
+
 function readRaw(path: string): PresetsConfig {
 	if (!existsSync(path)) return {};
 	try {
@@ -115,8 +137,48 @@ function loadVisionConfig(cwd: string, includeProject = true): VisionConfig {
 	return v;
 }
 
+/** Merge-write a single `_vision` field into the file at `path`, preserving presets + other `_vision` keys.
+ *  `value === undefined` removes the field (falls back to default / other tier). */
+function writeVisionField(cwd: string, scope: "global" | "project", field: string, value: unknown): void {
+	const path = scope === "project" ? projectPresetsPath(cwd) : globalPresetsPath();
+	let raw: Record<string, any> = {};
+	if (existsSync(path)) {
+		try {
+			raw = JSON.parse(readFileSync(path, "utf-8")) as Record<string, any>;
+		} catch {}
+	}
+	if (!raw._vision || typeof raw._vision !== "object") raw._vision = {};
+	if (value === undefined) delete raw._vision[field];
+	else raw._vision[field] = value;
+	try {
+		mkdirSync(dirname(path), { recursive: true });
+	} catch {}
+	writeFileSync(path, JSON.stringify(raw, null, 2) + "\n", "utf-8");
+}
+
+/** Where the effective value of a `_vision` field comes from (project wins, field-level merge). */
+function visionFieldSource(cwd: string, trusted: boolean, field: keyof VisionConfig): "project" | "global" | "default" {
+	if (trusted) {
+		const p = readVisionRaw(projectPresetsPath(cwd));
+		if (p[field] !== undefined) return "project";
+	}
+	const g = readVisionRaw(globalPresetsPath());
+	if (g[field] !== undefined) return "global";
+	return "default";
+}
+
 function writeGlobal(cfg: PresetsConfig): void {
-	writeFileSync(globalPresetsPath(), JSON.stringify(cfg, null, 2) + "\n", "utf-8");
+	// Preserve _-prefixed reserved blocks (e.g. _vision) that readRaw() strips,
+	// so /xm edit and /xm rm don't clobber the vision config.
+	let full: Record<string, any> = {};
+	if (existsSync(globalPresetsPath())) {
+		try {
+			full = JSON.parse(readFileSync(globalPresetsPath(), "utf-8")) as Record<string, any>;
+		} catch {}
+	}
+	for (const k of Object.keys(full)) if (!k.startsWith("_")) delete full[k];
+	for (const [k, v] of Object.entries(cfg)) full[k] = v;
+	writeFileSync(globalPresetsPath(), JSON.stringify(full, null, 2) + "\n", "utf-8");
 }
 
 function loadPresets(cwd: string, includeProject = true): PresetsConfig {
@@ -441,9 +503,205 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		await ctx.ui.select(`Available models (${Math.min(keys.length, 200)} of ${keys.length})`, keys.slice(0, 200));
 	}
 
+	// --- vision mode badge (persistent indicator, separate from the transient delegate badge) ---
+	function updateVisionStatus(ctx: ExtensionContext) {
+		const m = visionCfg.mode;
+		ctx.ui.setStatus(
+			"xmodel-vision-mode",
+			m === "off"
+				? ctx.ui.theme.fg("muted", "👁off")
+				: m === "switch"
+					? ctx.ui.theme.fg("warning", "👁switch")
+					: undefined, // delegate = default → no badge (less noise)
+		);
+	}
+
+	/** Effective value + source suffix for one vision setting (for display). */
+	function visionDisplay(cwd: string, trusted: boolean, id: string): string {
+		const src = (f: keyof VisionConfig) => visionFieldSource(cwd, trusted, f);
+		switch (id) {
+			case "mode": return `${visionCfg.mode} · ${src("mode")}`;
+			case "vlm": return `${visionCfg.vlm ?? "auto"} · ${src("vlm")}`;
+			case "compressor": return `${visionCfg.compressor ?? "active model"} · ${src("compressor")}`;
+			case "brief": return `${visionCfg.maxBriefChars} · ${src("maxBriefChars")}`;
+			default: return "";
+		}
+	}
+
+	/** Write one vision field to the chosen scope, re-merge from disk, refresh badge. */
+	function applyVisionSetting(ctx: ExtensionContext, scope: "global" | "project", id: string, value: string): void {
+		const cwd = ctx.cwd;
+		const trusted = ctx.isProjectTrusted();
+		switch (id) {
+			case "mode": writeVisionField(cwd, scope, "mode", value); break;
+			case "vlm": writeVisionField(cwd, scope, "vlm", value === "auto" ? undefined : value); break;
+			case "compressor": writeVisionField(cwd, scope, "compressor", value === "active model" ? undefined : value); break;
+			case "brief": writeVisionField(cwd, scope, "maxBriefChars", Number(value)); break;
+		}
+		visionCfg = loadVisionConfig(cwd, trusted);
+		if (id === "mode") updateVisionStatus(ctx);
+	}
+
+	/** Print the effective vision config (non-TUI fallback for /xm settings & /xm vision). */
+	function showVisionSummary(ctx: ExtensionContext) {
+		const trusted = ctx.isProjectTrusted();
+		const cwd = ctx.cwd;
+		const lines = [
+			`mode:       ${visionDisplay(cwd, trusted, "mode")}`,
+			`vlm:        ${visionDisplay(cwd, trusted, "vlm")}`,
+			`compressor: ${visionDisplay(cwd, trusted, "compressor")}`,
+			`brief:      ${visionDisplay(cwd, trusted, "brief")}`,
+		];
+		ctx.ui.notify(`xmodel vision\n${lines.join("\n")}`, "info");
+	}
+
+	/** pi-style SelectList picker for vlm/compressor, returned as a SettingsList submenu Component. */
+	function modelPicker(
+		ctx: ExtensionContext,
+		theme: any,
+		tui: any,
+		title: string,
+		sentinel: string,
+		filter: (m: Model<Api> | undefined) => boolean,
+		currentDisplay: string,
+		done: (selectedValue?: string) => void,
+		onSelect: (value: string) => void,
+	): Component {
+		const byProv = registryByProvider(ctx);
+		const opts: SelectItem[] = [
+			{ value: sentinel, label: sentinel === "auto" ? "auto (pick a vision model)" : "active model" },
+		];
+		for (const [pv, ids] of [...byProv.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+			for (const id of ids) {
+				const m = ctx.modelRegistry.find(pv, id);
+				if (!filter(m)) continue;
+				opts.push({ value: `${pv}/${id}`, label: `${pv}/${id}` });
+			}
+		}
+		const sel = new SelectList(opts, Math.min(opts.length, 12), getSelectListTheme());
+		// currentDisplay may be "auto · default" or "zai/glm-5.2 · global" — extract provider/id
+		const mm = /([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/.exec(currentDisplay ?? "");
+		const cur = mm ? mm[1] : sentinel;
+		const idx = opts.findIndex((o) => o.value === cur);
+		if (idx >= 0) sel.setSelectedIndex(idx);
+		sel.onSelect = (item) => { onSelect(item.value); done(item.value); };
+		sel.onCancel = () => done();
+		const wrap = new Container();
+		wrap.addChild(new Text(theme.fg("accent", theme.bold(title)), 0, 0));
+		wrap.addChild(new Spacer(1));
+		wrap.addChild(sel);
+		wrap.addChild(new Text(theme.fg("dim", "  Enter select · Esc back"), 0, 0));
+		return {
+			render: (w: number) => wrap.render(w),
+			invalidate: () => wrap.invalidate(),
+			handleInput: (d: string) => { sel.handleInput?.(d); tui.requestRender(); },
+		};
+	}
+
+	/** /xm settings — pi-style SettingsList hub over xmodel's own _vision store (TUI only). */
+	async function settingsHub(ctx: ExtensionContext) {
+		if (ctx.mode !== "tui") return showVisionSummary(ctx);
+		const trusted = ctx.isProjectTrusted();
+		const cwd = ctx.cwd;
+		let writeScope: "global" | "project" =
+			trusted && existsSync(projectPresetsPath(cwd)) ? "project" : "global";
+
+		await ctx.ui.custom((tui: any, theme: any, _kb: any, done: (r: undefined) => void) => {
+			const scopeValues = trusted ? ["global", "project"] : ["global"];
+			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). switch: flip main model to vision for the turn. off: do nothing.";
+			const BRIEF_HELP = "Char budget for the task brief sent to the VLM.";
+			// NOTE: for `values`-cycle rows, currentValue MUST be a bare entry of `values`
+			// (SettingsList advances via values.indexOf(currentValue)). The source tier is
+			// shown in the description instead. Submenu rows (vlm/compressor) may use a
+			// suffixed value — they don't cycle by indexOf.
+			const items: SettingItem[] = [
+				{
+					id: "scope",
+					label: "Write scope",
+					description: "Where changes are saved. global = ~/.pi/agent/xmodel.json (canonical); project = .pi/xmodel.json (override).",
+					currentValue: writeScope,
+					values: scopeValues,
+				},
+				{
+					id: "mode",
+					label: "Vision mode",
+					description: `${MODE_HELP}\nEffective from: ${visionFieldSource(cwd, trusted, "mode")}`,
+					currentValue: visionCfg.mode,
+					values: ["delegate", "switch", "off"],
+				},
+				{
+					id: "vlm",
+					label: "Vision model",
+					description: "provider/id of the VLM for the sub-call. Auto-picks a vision-capable model if unset.",
+					currentValue: visionDisplay(cwd, trusted, "vlm"),
+					submenu: (cv, d) =>
+						modelPicker(ctx, theme, tui, "Vision model", "auto", (m) => isVisionCapable(m), cv, d, (v) => {
+							applyVisionSetting(ctx, writeScope, "vlm", v);
+						}),
+				},
+				{
+					id: "compressor",
+					label: "Compressor",
+					description: "provider/id of a fast model that writes the task brief. Uses the active model if unset.",
+					currentValue: visionDisplay(cwd, trusted, "compressor"),
+					submenu: (cv, d) =>
+						modelPicker(ctx, theme, tui, "Compressor", "active model", () => true, cv, d, (v) => {
+							applyVisionSetting(ctx, writeScope, "compressor", v);
+						}),
+				},
+				{
+					id: "brief",
+					label: "Brief chars",
+					description: `${BRIEF_HELP}\nEffective from: ${visionFieldSource(cwd, trusted, "maxBriefChars")}`,
+					currentValue: String(visionCfg.maxBriefChars),
+					values: ["500", "1000", "1500", "2000", "3000"],
+				},
+			];
+
+			const byId: Record<string, SettingItem> = {};
+			for (const it of items) byId[it.id] = it;
+			const setSourcedDesc = (id: string, help: string, field: keyof VisionConfig) => {
+				if (byId[id]) byId[id].description = `${help}\nEffective from: ${visionFieldSource(cwd, trusted, field)}`;
+			};
+			let list: SettingsList;
+			list = new SettingsList(
+				items,
+				Math.min(items.length + 2, 15),
+				getSettingsListTheme(),
+				(id, newValue) => {
+					if (id === "scope") {
+						writeScope = newValue as "global" | "project";
+						ctx.ui.notify(`xmodel: writing to ${writeScope}`, "info");
+						return;
+					}
+					applyVisionSetting(ctx, writeScope, id, newValue);
+					if (id === "mode") setSourcedDesc("mode", MODE_HELP, "mode");
+					else if (id === "brief") setSourcedDesc("brief", BRIEF_HELP, "maxBriefChars");
+					else list.updateValue(id, visionDisplay(cwd, trusted, id)); // vlm/compressor: suffixed ok
+				},
+				() => done(undefined),
+			);
+
+			const container = new Container();
+			container.addChild(new DynamicBorder((s: string) => theme.fg("borderMuted", s)));
+			container.addChild(new Text(theme.fg("accent", theme.bold("xmodel settings")), 1, 0));
+			container.addChild(new Spacer(1));
+			container.addChild(list);
+			container.addChild(new Spacer(1));
+			container.addChild(new Text(theme.fg("dim", "  Enter/Space change · Esc close"), 1, 0));
+			container.addChild(new DynamicBorder((s: string) => theme.fg("borderMuted", s)));
+			return {
+				render: (w: number) => container.render(w),
+				invalidate: () => container.invalidate(),
+				handleInput: (d: string) => { list.handleInput?.(d); tui.requestRender(); },
+			};
+		});
+		updateVisionStatus(ctx);
+	}
+
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.2.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm version | /xm off",
+		description: "xmodel v0.3.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -463,6 +721,38 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			}
 			if (sub === "version" || sub === "-v" || sub === "--version") {
 				return ctx.ui.notify(`xmodel v${VERSION}`, "info");
+			}
+			if (sub === "settings" || sub === "config") {
+				return settingsHub(ctx);
+			}
+			if (sub === "vision") {
+				const trusted = ctx.isProjectTrusted();
+				const cwd = ctx.cwd;
+				const [modeTok, scopeTok] = restStr.split(/\s+/);
+				if (!modeTok) return showVisionSummary(ctx);
+				if (!["delegate", "switch", "off"].includes(modeTok)) {
+					ctx.ui.notify("xmodel: vision mode must be delegate | switch | off", "error");
+					return;
+				}
+				let scope: "global" | "project" = "global";
+				if (scopeTok === "project") scope = "project";
+				else if (scopeTok === "global") scope = "global";
+				else if (ctx.hasUI) {
+					const opts = ["global"];
+					if (trusted) opts.push("project");
+					const pick = await ctx.ui.select(`Write vision mode=${modeTok} to which config?`, opts);
+					if (!pick) return;
+					scope = pick.startsWith("project") ? "project" : "global";
+				}
+				if (scope === "project" && !trusted) {
+					ctx.ui.notify("xmodel: project config requires a trusted project (.pi)", "warning");
+					return;
+				}
+				writeVisionField(cwd, scope, "mode", modeTok);
+				visionCfg = loadVisionConfig(cwd, trusted);
+				updateVisionStatus(ctx);
+				ctx.ui.notify(`xmodel vision → ${modeTok} (${scope})`, "info");
+				return;
 			}
 
 			const name = raw;
@@ -530,16 +820,16 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			}
 			if (action === "off") {
 				await clearPreset(ctx);
-				return { content: [{ type: "text", text: "Switched back. Defaults restored." }] };
+				return { content: [{ type: "text", text: "Switched back. Defaults restored." }], details: { cleared: true } };
 			}
 
 			const name = (params as any).name as string | undefined;
 			if (!name) {
-				return { content: [{ type: "text", text: `Missing 'name'. Available: ${Object.keys(presets).sort().join(", ")}` }] };
+				return { content: [{ type: "text", text: `Missing 'name'. Available: ${Object.keys(presets).sort().join(", ")}` }], details: { presets: Object.keys(presets) } };
 			}
 			const preset = presets[name];
 			if (!preset) {
-				return { content: [{ type: "text", text: `Unknown preset "${name}". Available: ${Object.keys(presets).sort().join(", ")}` }] };
+				return { content: [{ type: "text", text: `Unknown preset "${name}". Available: ${Object.keys(presets).sort().join(", ")}` }], details: { presets: Object.keys(presets) } };
 			}
 			// transient: if the agent switches itself to vision, auto-revert at turn end
 			const r = await applyPreset(name, preset, ctx, { transient: true });
@@ -1027,6 +1317,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		presets = loadPresets(ctx.cwd, ctx.isProjectTrusted());
 		visionCfg = loadVisionConfig(ctx.cwd, ctx.isProjectTrusted());
+		updateVisionStatus(ctx);
 		reconstructActive(ctx);
 	});
 
