@@ -53,6 +53,22 @@ package loads exactly once:
 { "packages": ["git:github.com/devskale/skale-skills"] }
 ```
 
+**Two merge modes when the same package is in both scopes:**
+
+| Project entry | Behavior |
+|---|---|
+| plain `{ "source": "..." }` or string | **Replaces** the global entry for this project — re-list anything you want to keep. |
+| `{ "source": "...", "autoload": false }` | **Delta over global** — toggle only what changes; everything else is inherited. `pi config -l` writes this automatically. |
+
+```jsonc
+// .pi/settings.json — delta: add one skill for this project, inherit the rest from global
+{ "packages": [{
+  "source": "git:github.com/devskale/skale-skills",
+  "autoload": false,
+  "skills": ["+skills/rodney"]
+}]}
+```
+
 ## Selective loading (filter package resources)
 
 The git package ships **all** skills and extensions declared in its manifest. Loading
@@ -83,7 +99,9 @@ Filter syntax (layers over the manifest, narrows what it declares):
 - `!pattern` → exclude matches; `+path` / `-path` → force include/exclude an exact path.
 
 Toggle resources interactively without editing JSON: `pi config` opens a TUI to enable/disable
-any skill / extension / prompt / theme from installed packages.
+any skill / extension / prompt / theme from installed packages. It starts in global scope; press
+**Tab** to switch to project-local, or run `pi config -l` to start there with inherited global
+resources dimmed. In project mode it writes `autoload: false` delta entries (see above).
 
 > When migrating from loose symlinks to the package, **remove the loose copies** — see
 > [Loose-file conflicts](#loose-file-conflicts) below. Otherwise both identities load and pi
@@ -164,17 +182,18 @@ avoid leaving them behind.
 
 ## Live dev setup (optional)
 
-If you actively develop this repo at `~/code/skale-skills` and want edits reflected live in pi,
-point a **project** setting at the local checkout instead of relying on the global clone:
+A tempting shortcut is to point a project setting at a local checkout:
 
 ```jsonc
-// ~/code/.pi/settings.json
+// ~/code/.pi/settings.json — BROKEN if the global git package is also installed
 { "packages": ["~/code/skale-skills"] }
 ```
 
-This is a *local-path* identity scoped only under `~/code`, so it never co-loads with the git
-package elsewhere (e.g. inside `~/configs`). No conflict, and pushes from the dev tree still flow
-to the global git package after `pi update --extension git:github.com/devskale/skale-skills`.
+A local path is a **different identity** from the git URL. Project settings **merge** over global —
+they don't shadow a different identity — so under `~/code` both the local path *and* the global git
+package load and you hit the [conflict gotcha](#the-conflict-gotcha-read-this-before-editing-settings)
+above (different identities → both load).
 
-Trade-off: with the global git package installed, the **global clone** wins everywhere outside
-`~/code` — live edits only apply under the dev checkout.
+For live edits while developing this repo, follow the dev loop in [development.md](development.md)
+(edit → push → `pi update`), or on a dev machine tell the git package to load **skills only** and
+bring extensions in via symlinks (see [Loose-file conflicts](#loose-file-conflicts-the-other-vectors)).

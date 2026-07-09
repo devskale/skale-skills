@@ -25,16 +25,21 @@ pi install git:github.com/devskale/skale-skills
 
 Clones to `~/.pi/agent/git/github.com/devskale/skale-skills`, writes to `~/.pi/agent/settings.json`.
 
-### Default state (current global config)
+### Default state (minimal global install)
 
 ```jsonc
 // ~/.pi/agent/settings.json
 { "packages": [{
   "source": "git:github.com/devskale/skale-skills",
-  "skills": ["fetch-url", "web-search"],  // only these load; rest OFF
-  "extensions": []                        // all extensions OFF
+  "skills": ["fetch-url", "web-search"],                       // whitelist: only these load
+  "extensions": ["extensions/heartbeat.ts",
+                 "extensions/xmodel.ts",
+                 "extensions/statusline.ts"]   // plain paths = whitelist (not +path)
 }]}
 ```
+
+Use plain paths/names to whitelist (only these load). `+path` force-includes re-enable within
+an otherwise-on set — used alone they turn the whole type on (see gotcha below).
 
 **Filter semantics** (verified from pi source — these decide what loads):
 
@@ -48,22 +53,47 @@ Clones to `~/.pi/agent/git/github.com/devskale/skale-skills`, writes to `~/.pi/a
 
 Plain-name includes match by skill **directory name** (e.g. `"rodney"`). Paths match relative to package root (e.g. `"+skills/rodney/SKILL.md"`).
 
-### Turn skills/extensions on — two ways
+### Turn skills/extensions on
 
-**1. Interactive (`pi config`)** — recommended for ad-hoc toggling:
+**Interactive (`pi config`) — recommended:**
+
 ```bash
-pi config              # TUI: space=toggle, esc=close
-                        # shows BOTH scopes — toggle under (user) or (project)
+pi config            # TUI: space=toggle, Tab=switch scope, esc=close
+pi config -l         # start in (project) scope; inherited globals shown DIMMED
 ```
-Writes `+path`/`-path` patterns to the scope's settings; restart pi to apply.
 
-**2. Per-project opt-in** — when only some projects need a resource:
+`pi config` opens in (user) scope; press **Tab** to flip to (project). `pi config -l` opens
+straight in project mode where resources inherited from global are dimmed, so you see exactly
+what this project adds or removes. The TUI writes `+path`/`-path` patterns (and `autoload: false`)
+for you; restart pi to apply.
+
+**Project entries have two merge modes** — the key distinction:
+
+| Project entry | Behavior |
+|---|---|
+| plain `{ "source": "..." }` or string | **Replaces** the global entry for this project — re-list anything you want to keep. |
+| `{ "source": "...", "autoload": false }` | **Delta over global** — toggle only what changes; the rest is inherited. `pi config -l` writes this automatically. |
+
+```jsonc
+// .pi/settings.json — delta: add rodney for THIS project, inherit fetch-url/web-search from global
+{ "packages": [{
+  "source": "git:github.com/devskale/skale-skills",
+  "autoload": false,            // <- delta, not a replace
+  "skills": ["+skills/rodney"]
+}]}
+```
+
+> Project settings (`.pi/settings.json`) **merge** nested keys over global — never redeclare the
+> whole config. Same package identity in both scopes loads exactly once (no conflict). Identity =
+> git URL without ref / npm name / resolved local path.
+
+**Per-project install** (when the package itself should be project-scoped, not just its filters):
+
 ```bash
 cd ~/code/some-project
-pi install git:github.com/devskale/skale-skills -l   # -l → .pi/settings.json (project)
-pi config                                              # toggle what THIS project needs
+pi install git:github.com/devskale/skale-skills -l   # -l -> .pi/settings.json, clones to .pi/git/
+pi config -l                                          # toggle what THIS project needs
 ```
-The project entry **replaces** the global one for that project, so re-list anything you still want there.
 
 ### Howto: install a specific extension (e.g. statusline, xmodel)
 
