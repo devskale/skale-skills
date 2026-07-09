@@ -88,7 +88,7 @@ See [RECOMMENDED-SKILLS.md](RECOMMENDED-SKILLS.md) for external skills and [guid
 skills/          → 12 agent skills
 extensions/      → pi extensions (statusline, imagegen)
 prompts/         → prompt templates
-guides/          → setup guides (browser tools, Chrome DevTools, Rodney)
+guides/          → setup guides (browser tools, Chrome DevTools, Rodney, Impeccable)
 api/             → reverse-engineered public APIs (Ryanair)
 skiller/         → skill discovery CLI (Python)
 tests/           → per-skill test suites

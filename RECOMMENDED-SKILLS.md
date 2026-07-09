@@ -65,6 +65,7 @@ npx @anthropic-ai/skills add <name>
 |-----------|------|---------|
 | **pi-herdr** | Herdr pane/tab/workspace orchestration from pi | `pi install npm:@ogulcancelik/pi-herdr` |
 | **pi-web-browse** | Web search + page fetch via headless browser (CDP). Bypasses bot protection, persistent daemon for speed. Use when `fetch-url` and `web-search` get blocked. | `pi install npm:@ogulcancelik/pi-web-browse` |
+| **pi-mcp-adapter** | Use MCP servers in Pi without burning context — one proxy tool (~200 tokens) instead of hundreds; servers start on demand, optional direct-tool registration. | `pi install npm:pi-mcp-adapter` |
 
 ## Recommended Tools
 
@@ -80,6 +81,7 @@ npx @anthropic-ai/skills add <name>
 | **xlsx** | Create/edit Excel spreadsheets | `npx @anthropic-ai/skills add xlsx` |
 | **oebb-scotty** | Austrian rail planner (ÖBB) | [skills.sh](https://skills.sh) (search) |
 | **peep** | X/Twitter — read, search, post, bookmarks, trending | [devskale/peep](https://github.com/devskale/peep) |
+| **impeccable** | Design skill: shape, critique, harden, polish frontend UI + anti-pattern detector. Cross-harness (pi, Claude, Codex, Cursor, …). Setup guide: [`guides/impeccable-setup.md`](guides/impeccable-setup.md) | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) · `npx impeccable install` |
 
 ## What We Maintain Here
 
