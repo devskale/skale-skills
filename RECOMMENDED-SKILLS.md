@@ -61,6 +61,8 @@ npx @anthropic-ai/skills add <name>
 
 ## Recommended Extensions (install with `pi install`)
 
+> 💡 **Install `pi-mcp-adapter` first.** It's the most important pi extension — without it you can't use MCP servers (databases, browsers, external APIs) efficiently. One ~200-token proxy tool replaces hundreds of per-tool definitions that would otherwise burn your context window. This is the one install we suggest for every Pi setup: `pi install npm:pi-mcp-adapter`.
+
 | Extension | What | Install |
 |-----------|------|---------|
 | **pi-herdr** | Herdr pane/tab/workspace orchestration from pi | `pi install npm:@ogulcancelik/pi-herdr` |
