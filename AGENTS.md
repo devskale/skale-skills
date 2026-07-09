@@ -13,6 +13,82 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | vtd | `vtd transcript --url '...'` | 43 | Video/audio/transcript downloader (yt-dlp) |
 | rodney | `rodney start/open/stop` | 32 | Headless Chrome automation |
 
+## Installation (as a pi package)
+
+This repo is a **pi package** — `package.json` declares a `pi` manifest (`./skills`, `./extensions/*.ts`, `./prompts`). Install it; don't symlink individual files (symlinks + the package co-load as different identities → conflicts; see [docs/installation.md](docs/installation.md)).
+
+### Install once, globally
+
+```bash
+pi install git:github.com/devskale/skale-skills
+```
+
+Clones to `~/.pi/agent/git/github.com/devskale/skale-skills`, writes to `~/.pi/agent/settings.json`.
+
+### Default state (current global config)
+
+```jsonc
+// ~/.pi/agent/settings.json
+{ "packages": [{
+  "source": "git:github.com/devskale/skale-skills",
+  "skills": ["fetch-url", "web-search"],  // only these load; rest OFF
+  "extensions": []                        // all extensions OFF
+}]}
+```
+
+**Filter semantics** (verified from pi source — these decide what loads):
+
+| `skills` / `extensions` array | Result |
+|---|---|
+| key **omitted** | load **all** of that type |
+| `[]` | load **none** (explicitly off) |
+| `["name1", "name2"]` (plain) | load **only** named (whitelist) |
+| `"!pattern"` | exclude glob matches |
+| `"+path"` / `"-path"` | force include / exclude an exact path |
+
+Plain-name includes match by skill **directory name** (e.g. `"rodney"`). Paths match relative to package root (e.g. `"+skills/rodney/SKILL.md"`).
+
+### Turn skills/extensions on — two ways
+
+**1. Interactive (`pi config`)** — recommended for ad-hoc toggling:
+```bash
+pi config              # TUI: space=toggle, esc=close
+                        # shows BOTH scopes — toggle under (user) or (project)
+```
+Writes `+path`/`-path` patterns to the scope's settings; restart pi to apply.
+
+**2. Per-project opt-in** — when only some projects need a resource:
+```bash
+cd ~/code/some-project
+pi install git:github.com/devskale/skale-skills -l   # -l → .pi/settings.json (project)
+pi config                                              # toggle what THIS project needs
+```
+The project entry **replaces** the global one for that project, so re-list anything you still want there.
+
+### Howto: install a specific extension (e.g. statusline, xmodel)
+
+Extensions are `[]` (off) by default. To turn specific ones on **everywhere**, use **plain includes** (whitelist form):
+```jsonc
+// ~/.pi/agent/settings.json — change the package entry
+{ "packages": [{
+  "source": "git:github.com/devskale/skale-skills",
+  "skills": ["fetch-url", "web-search"],
+  "extensions": ["extensions/statusline.ts", "extensions/xmodel.ts"]  // only these load
+}]}
+```
+Or per-project via `pi config` after the `-l` install above.
+
+> ⚠️ **`+path` gotcha:** force-includes (`"+extensions/x.ts"`) re-enable within an otherwise-on set — used **alone** they turn the whole type on (plain-name whitelist is what limits loading). For "only these", use plain paths/names as above. The `pi config` TUI manages this for you; hand-editing is where it bites.
+
+> **Conflict rule:** tool-registering extensions (e.g. `imagegen.ts`) **cannot** co-load as both a package copy and a loose symlink — fatal error. Event-only extensions (`statusline`) tolerate it. Keep it simple: use the package, delete loose copies. Full detail: [docs/installation.md](docs/installation.md).
+
+### Update
+
+```bash
+pi update git:github.com/devskale/skale-skills   # one package
+pi update --all                                    # pi + all packages
+```
+
 ## Credentials — credgoo (First-Class Citizen)
 
 **All credentials go through credgoo.** No `.env` files with real tokens. No hardcoded secrets.
