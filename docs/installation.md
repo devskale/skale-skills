@@ -1,5 +1,7 @@
 # Installation & Precedence
 
+> **Operational runbook:** [install-runbook.md](install-runbook.md) — the fast detect → install → clean → verify procedure to add this repo's skills & extensions to a pi install. This doc is the deep *why* (identity, dedup, precedence); the runbook is the *what to type*.
+
 ## Recommended
 
 Install this package **once** from git, globally:

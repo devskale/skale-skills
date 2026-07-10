@@ -17,6 +17,8 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 
 This repo is a **pi package** — `package.json` declares a `pi` manifest (`./skills`, `./extensions/*.ts`, `./prompts`). Install it; don't symlink individual files (symlinks + the package co-load as different identities → conflicts; see [docs/installation.md](docs/installation.md)).
 
+> **Adding this repo's skills & extensions to a pi install?** Follow the [**Install Runbook**](docs/install-runbook.md) — a 4-step detect → install → clean → verify procedure with copy-pasteable diagnostics. It catches the loose-symlink/loose-file conflicts that bite a bare `pi install`. The deep *why* (identity, dedup, precedence) is in [docs/installation.md](docs/installation.md).
+
 ### Install once, globally
 
 ```bash
@@ -158,7 +160,8 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 
 | Doc | What |
 |-----|------|
-| [docs/installation.md](docs/installation.md) | pi install, precedence, and conflict gotchas (canonical = git package) |
+| [docs/install-runbook.md](docs/install-runbook.md) | Fast detect → install → clean → verify runbook to add this repo's skills & extensions to pi |
+| [docs/installation.md](docs/installation.md) | pi install, precedence, and conflict gotchas (canonical = git package) — the deep *why* |
 | [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides |
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 
