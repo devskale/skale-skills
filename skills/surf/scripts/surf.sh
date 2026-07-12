@@ -194,6 +194,11 @@ cmd_count() {
   run_js "$(printf '(function(){return String(document.querySelectorAll(%s).length)})()' "$(js_str "$sel")")"
 }
 cmd_attr()  { [ "${1-}" ] && [ "${2-}" ] || die "attr needs <selector> <name>"; run_js "$(printf '(function(){var e=document.querySelector(%s);return e?String(e.getAttribute(%s)):"NOT_FOUND"})()' "$(js_str "$1")" "$(js_str "$2")")"; }
+cmd_list() {
+  [ "${1-}" ] || die "list needs a selector"
+  run_js "$(printf 'JSON.stringify(Array.prototype.slice.call(document.querySelectorAll(%s),0,1000).map(function(e){return String(e.textContent).trim().slice(0,500)}))' "$(js_str "$1")")"
+}
+
 cmd_click() { [ "${1-}" ] || die "click needs a selector"
   run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});try{e.scrollIntoView({block:"center"})}catch(x){}e.click();return JSON.stringify({ok:true,tag:e.tagName})})()' "$(js_str "$1")")"; }
 cmd_fill()  { [ "${1-}" ] && [ "${2-}" ] || die "fill needs <selector> <value>"
@@ -503,6 +508,7 @@ main() {
     html)   cmd_html "$@" ;;
     attr)   cmd_attr "$@" ;;
     count)  cmd_count "$@" ;;
+    list)   cmd_list "$@" ;;
     exists)  cmd_exists "$@" ;;
     visible) cmd_visible "$@" ;;
     assert)  cmd_assert "$@" ;;
