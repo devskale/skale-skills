@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# surf launcher — symlink resolution + --update/--selfcheck + auto-update, then exec the logic.
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+AUTO_UPDATE_DAYS=7
+
+case "${1:-}" in
+    --version)
+        grep -oE 'VERSION="[^"]+"' "$SKILL_DIR/scripts/surf.sh" 2>/dev/null | head -1 | sed 's/VERSION=//; s/"//g' | xargs echo "surf"
+        exit 0
+        ;;
+    --update)
+        echo "Updating surf..."
+        cd "$SKILL_DIR"
+        [ -d "../../.git" ] && (cd "$SKILL_DIR/../.." && git pull --ff-only 2>&1) || true
+        date +%s > "$STAMP_FILE"
+        echo "✓ Updated $(date)"
+        exit 0
+        ;;
+    --selfcheck)
+        version=$(grep -oE 'VERSION="[^"]+"' "$SKILL_DIR/scripts/surf.sh" 2>/dev/null | head -1 | sed 's/VERSION="//; s/"//')
+        last="never"
+        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || cat "$STAMP_FILE")
+        echo "surf v${version:-?}"
+        echo "  dir:  $SKILL_DIR"
+        echo "  last: $last"
+        exit 0
+        ;;
+esac
+
+# Auto-update (non-blocking) — only if inside the skale-skills git repo
+if [ -d "$SKILL_DIR/../../.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then needs_update=true
+    else
+        last_ts=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        [ $(( ( $(date +%s) - last_ts ) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
+    fi
+    if $needs_update; then
+        ( cd "$SKILL_DIR/../.." && git pull --ff-only --quiet 2>/dev/null; date +%s > "$STAMP_FILE" ) &>/dev/null &
+    fi
+fi
+
+exec bash "$SKILL_DIR/scripts/surf.sh" "$@"

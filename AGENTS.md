@@ -183,6 +183,7 @@ Deep-dive authoring guides distilled from specs, research, and real-world skills
 | [browser-session-reuse.md](docs/browser-use/browser-session-reuse.md) | Strategies for reusing real Chrome sessions |
 | [openchrome-usage.md](docs/browser-use/openchrome-usage.md) | OpenChrome skill usage guide |
 | [chrome-dev.md](docs/browser-use/chrome-dev.md) | Chrome DevTools MCP setup |
+| [surf.md](docs/browser-use/surf.md) | Surf — drive your real Chrome via macOS AppleScript (vs rodney / chrome-devtools-mcp) |
 | [vcl-agent-browser.md](docs/browser-use/vcl-agent-browser.md) | Vercel agent-browser setup |
 
 ### Other Guides
