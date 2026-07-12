@@ -1,7 +1,7 @@
 ---
 name: surf-guide
 description: "Surf — lean macOS CLI to drive your real, logged-in Google Chrome via AppleScript. Setup, capabilities, recipes, and a head-to-head comparison with rodney and chrome-devtools-mcp."
-version: 0.1.0
+version: 1.0.0
 date: 2026-07-12
 ---
 
@@ -43,6 +43,7 @@ That single toggle is permanent and unlocks every JS command (`text`, `click`, `
 ### List & target tabs
 ```bash
 surf tabs                       # w1.t1  URL  |  title  (every window/tab)
+surf tabs --json                # [{window,tab,url,title}, ...]
 surf here                       # active/target tab: URL | title
 surf select w1.t3               # pin a tab — operate it in the background, no focus steal
 surf select reset               # back to active tab of front window
@@ -53,46 +54,63 @@ surf close                      # close the target/active tab
 ### Navigate
 ```bash
 surf open https://example.com   # navigate the target tab
-surf new https://example.com    # new tab (front window)
+surf new https://example.com    # new tab (a normal window)
 surf reload                     # reload target tab
-surf back                       # history.back()
-surf fwd                        # history.forward()
+surf back / surf fwd            # history.back() / forward()
 ```
 
-### Read the page
+### Wait (async-ready)
 ```bash
-surf title                      # document.title
-surf url                        # location.href
-surf text "h1"                  # textContent of first match (CSS selector)
+surf wait ".result" --timeout 20   # poll until element exists (exit 1 on timeout)
+surf wait-url "/checkout"          # poll until URL contains substring
+surf wait-stable                   # poll until the DOM stops changing
+```
+
+### Read  (tabs/here/text/count accept --json)
+```bash
+surf title / surf url           # document.title / location.href
+surf text "h1"                  # textContent of first match (CSS)
 surf html "article"             # outerHTML of first match
 surf attr "a.login" "href"      # attribute value
 surf count "a"                  # number of matches
-surf eval 'JSON.stringify({     # arbitrary JS, result stringified
-  title: document.title,
-  h1: document.querySelector("h1")?.innerText,
-  links: document.querySelectorAll("a").length
-})'
+surf list ".item-title"         # JSON array of all matches' text (scrape lists)
+surf eval 'JSON.stringify({...})'  # arbitrary JS, result stringified
+```
+
+### Assert (exit 1 on fail — CI-friendly)
+```bash
+surf exists ".result"           # exit 0 if present
+surf visible ".modal"           # exit 0 if present AND visible
+surf assert 'document.querySelectorAll(".row").length' '5'   # exit 0 if JS == expected
 ```
 
 ### Interact
 ```bash
 surf click "button#submit"      # scrolls into view, clicks first match
-surf fill "input[name=q]" "skyvern"   # sets value + fires input/change (React/Vue-safe)
+surf fill "input[name=q]" "x"   # sets value + fires input/change (React/Vue-safe)
+surf hover ".menu-item"         # mouseover/mouseenter
+surf select-option "select#c" "US"  # set a <select> value + fire change
+surf submit "form#checkout"     # submit the enclosing form (requestSubmit)
+surf scroll down 3              # scroll by N viewport-heights (down|up|top|bottom)
+surf scroll-to "h2"             # scroll element into view (center)
+surf press enter                # real key/chord: enter, tab, escape, a, cmd+a
 ```
 
 ### Screenshot
 ```bash
 surf shot                       # → ./surf-shot.png  (window rect, no shadow)
 surf shot ~/Desktop/before.png
+surf shot-el "h1" after.png     # one element (crop via sips)
 ```
 
 ### Meta
 ```bash
-surf --version                  # surf 0.1.0
+surf --version                  # surf 1.0.0
 surf --selfcheck                # version + dir + last update
 surf --update                   # git pull the skill
 surf help                       # full usage
 ```
+
 
 ## Recipes
 
