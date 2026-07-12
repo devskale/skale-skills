@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # surf — drive your REAL, logged-in Chrome from the CLI (macOS, AppleScript).
 # Logic script; invoked by the `surf` launcher after symlink resolution.
-VERSION="0.1.0"
+VERSION="0.2.0"
 set -euo pipefail
 
 APP="${SURF_APP:-Google Chrome}"
@@ -101,6 +101,57 @@ cmd_click() { [ "${1-}" ] || die "click needs a selector"
 cmd_fill()  { [ "${1-}" ] && [ "${2-}" ] || die "fill needs <selector> <value>"
   run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});e.focus();e.value=%s;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));return JSON.stringify({ok:true,tag:e.tagName})})()' "$(js_str "$1")" "$(js_str "$2")")"; }
 cmd_eval()  { [ "${1-}" ] || die "eval needs js"; run_js "$1"; }
+
+cmd_wait() {
+  local sel="" to="${SURF_WAIT_TIMEOUT:-15}" js deadline res
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --timeout) to="$2"; shift 2 ;;
+      --timeout=*) to="${1#--timeout=}"; shift ;;
+      *) sel="$1"; shift ;;
+    esac
+  done
+  [ -n "$sel" ] || die "wait needs a selector. e.g. surf wait \"h1\"  (variants: wait-url, wait-stable)"
+  js="$(printf '(function(){return document.querySelector(%s)?"FOUND":"pending"})()' "$(js_str "$sel")")"
+  deadline=$(( $(date +%s) + to ))
+  while :; do
+    res="$(run_js "$js" 2>/dev/null || true)"
+    [ "$res" = "FOUND" ] && { echo "found: $sel"; return 0; }
+    [ "$(date +%s)" -ge "$deadline" ] && { echo "surf: wait timeout (${to}s): $sel" >&2; return 1; }
+    sleep "${SURF_WAIT_INTERVAL:-0.3}"
+  done
+}
+
+cmd_wait_url() {
+  local sub="" to="${SURF_WAIT_TIMEOUT:-15}" deadline href
+  while [ $# -gt 0 ]; do
+    case "$1" in --timeout) to="$2"; shift 2 ;; --timeout=*) to="${1#*=}"; shift ;; *) sub="$1"; shift ;; esac
+  done
+  [ -n "$sub" ] || die "wait-url needs a substring"
+  deadline=$(( $(date +%s) + to ))
+  while :; do
+    href="$(run_js 'location.href' 2>/dev/null || true)"
+    case "$href" in *"$sub"*) echo "ok: $href"; return 0 ;; esac
+    [ "$(date +%s)" -ge "$deadline" ] && { echo "surf: wait-url timeout (${to}s): still $href" >&2; return 1; }
+    sleep "${SURF_WAIT_INTERVAL:-0.3}"
+  done
+}
+
+cmd_wait_stable() {
+  local to="${SURF_WAIT_TIMEOUT:-15}" iv="${SURF_WAIT_INTERVAL:-0.4}" deadline l1 l2
+  while [ $# -gt 0 ]; do
+    case "$1" in --timeout) to="$2"; shift 2 ;; --timeout=*) to="${1#*=}"; shift ;; *) shift ;; esac
+  done
+  deadline=$(( $(date +%s) + to ))
+  l1="$(run_js 'String(document.body && document.body.innerHTML.length||0)' 2>/dev/null || true)"
+  while :; do
+    sleep "$iv"
+    l2="$(run_js 'String(document.body && document.body.innerHTML.length||0)' 2>/dev/null || true)"
+    [ "$l1" = "$l2" ] && { echo "stable: ${l2} bytes"; return 0; }
+    l1="$l2"
+    [ "$(date +%s)" -ge "$deadline" ] && { echo "surf: wait-stable timeout (${to}s): still changing" >&2; return 1; }
+  done
+}
 
 cmd_close() {
   local tgt W T; tgt="$(get_target)"
@@ -203,6 +254,9 @@ surf — drive your real Chrome (macOS, AppleScript). No daemon/port/extension/a
   surf click "<sel>"              click first match (scrolls into view)
   surf fill  "<sel>" "<val>"      set value + fire input/change
   surf eval  "<js>"               run JS in target tab, print result
+  surf wait  "<sel>" [--timeout N] poll until element exists (exit 1 on timeout)
+  surf wait-url "<sub>" [--timeout N]  poll until URL contains substring
+  surf wait-stable [--timeout N]      poll until DOM stops changing
   surf shot  [<path>]             screenshot the window (PNG)
   surf setup                      one-time: enable Chrome JS-from-AppleScript
   surf --version | --selfcheck    version / install info
@@ -236,6 +290,9 @@ main() {
     click)  cmd_click "$@" ;;
     fill)   cmd_fill "$@" ;;
     eval)   cmd_eval "$@" ;;
+    wait)   cmd_wait "$@" ;;
+    wait-url) cmd_wait_url "$@" ;;
+    wait-stable) cmd_wait_stable "$@" ;;
     shot)   cmd_shot "$@" ;;
     setup)  cmd_setup ;;
     ""|help|-h|--help) usage ;;

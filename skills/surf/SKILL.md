@@ -57,6 +57,9 @@ surf select [wN.tN | reset]     # target a specific tab (operate background tabs
 surf open <url>                 # navigate target tab
 surf new [<url>]                # new tab (front window)
 surf reload | back | fwd        # target-tab controls
+surf wait  "<sel>" [--timeout N]   # poll until element exists (exit 1 on timeout)
+surf wait-url  "sub" [--timeout N] # poll until URL contains substring
+surf wait-stable [--timeout N]     # poll until DOM stops changing
 surf close                      # close target/active tab
 surf shot [<path>]              # screenshot the window → PNG
 ```
@@ -91,6 +94,7 @@ Selectors are **CSS** (`document.querySelector` / `querySelectorAll`). `eval` JS
 
 - **Targets the active tab of the front window by default.** Use `surf select w1.t3` to pin a tab (works on background tabs without stealing focus); `surf select reset` to clear.
 - **JS commands need the one-time toggle** (View → Developer → Allow JavaScript from Apple Events). Pure navigation (`tabs`, `here`, `open`, `new`, `reload`) works without it.
+- **Some tabs/windows block JS with a *misleading* "turned off" error.** `x.com`, Chrome **app/PWA windows**, and **incognito** windows make `execute javascript` fail with *"Executing JavaScript through AppleScript is turned off"* **even when the toggle is ON**. If reads/eval fail on one tab, `surf select` a normal-site tab and retry. (Robust detection is on the roadmap — see `surf-todo.md`.)
 - **`surf setup` can't reliably flip the Chromium menu** via GUI scripting — if it reports JS still off, click the menu item manually once.
 - **Accessibility** (System Settings → Privacy & Security → Accessibility) must be granted to your terminal for `surf setup`'s GUI attempt; the manual click needs no special permission.
 - **macOS-only.** AppleScript + Google Chrome. No Brave/Edge/Safari/Firefox, no Linux/Windows.

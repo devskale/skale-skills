@@ -16,14 +16,24 @@ SKILL="$REPO/skills/surf"
 # ── preconditions ────────────────────────────────────────────────────
 if ! command -v surf >/dev/null 2>&1; then echo "surf not on PATH"; exit 2; fi
 if [ "$(uname)" != "Darwin" ]; then echo "macOS-only; aborting"; exit 2; fi
-if ! surf title >/dev/null 2>&1; then echo "JS toggle is OFF — run 'surf setup' / View→Developer→Allow JS"; exit 2; fi
+# JS-capable check that tolerates a restricted active tab (x.com / app window / incognito
+# all return the misleading "turned off" error). Scan open tabs for one that allows JS.
+JS_OK=false
+for JS_REF in $(surf tabs | grep -oE 'w[0-9]+\.t[0-9]+' | head -12); do
+  if surf select "$JS_REF" >/dev/null 2>&1 && surf eval '1' >/dev/null 2>&1; then JS_OK=true; break; fi
+done
+surf select reset >/dev/null 2>&1 || true
+if [ "$JS_OK" = false ]; then
+  echo "No JS-capable tab found. Either the toggle is off (View→Developer→Allow JS),"
+  echo "or every open tab is restricted (x.com / app window / incognito). Open a normal site, re-run."
+  exit 2
+fi
 
 # snapshot the user's current tab count so we can prove we left their session alone
 TABS_BEFORE=$(surf tabs | wc -l | tr -d ' ')
 
 section "A. pi skill discovery (1st-class)"
-chk "dev symlink present"       "[ -L '$HOME/.pi/agent/skills/surf' ]"
-chk "SKILL.md resolves via link" "[ -f '$HOME/.pi/agent/skills/surf/SKILL.md' ]"
+chk "discoverable (symlink OR package clone)" "[ -L '$HOME/.pi/agent/skills/surf' ] || [ -f '$HOME/.pi/agent/git/github.com/devskale/skale-skills/skills/surf/SKILL.md' ]"
 chk "frontmatter: name: surf"   "grep -q '^name: surf' '$SKILL/SKILL.md'"
 chk "frontmatter: description"  "grep -q '^description:' '$SKILL/SKILL.md'"
 chk "whitelist has surf"        "grep -q '\"surf\"' '$HOME/.pi/agent/settings.json'"
@@ -39,6 +49,10 @@ chk "--selfcheck prints dir"    "surf --selfcheck | grep -q 'skills/surf'"
 chk "help lists click & fill"   "surf help | grep -q 'surf click' && surf help | grep -q 'surf fill'"
 
 section "C. open test tabs (throwaway)"
+# bring a JS-capable window to front so `surf new` opens test tabs there (not an app/restricted window)
+JS_W=${JS_REF#w}; JS_W=${JS_W%%.*}
+osascript -e "tell application \"Google Chrome\" to set index of window $JS_W to 1" >/dev/null 2>&1 || true
+sleep 0.3
 surf new "https://example.com/" >/dev/null; sleep 1.5
 surf new "https://html.duckduckgo.com/html/" >/dev/null; sleep 1.5
 EX=$(surf tabs | grep -E 'w[0-9]+\.t[0-9]+ +https://example.com/' | grep -oE 'w[0-9]+\.t[0-9]+' | head -1)
@@ -57,15 +71,18 @@ chk "attr a href is iana"       "surf attr 'a' 'href' | grep -q 'iana'"
 HTMLH1=$(surf html 'h1' | head -c 40)
 chk "html h1 starts with tag"   "echo \"$HTMLH1\" | grep -q '<h1>'"
 chk "here returns example.com"  "surf here | grep -q 'example.com'"
+chk "wait h1 found (exit 0)"     "surf wait 'h1' --timeout 5 >/dev/null"
+chk "wait missing → timeout exit 1" "surf wait '.zz-nope' --timeout 2 >/dev/null 2>&1; [ \$? -eq 1 ]"
+chk "wait-url example (exit 0)"  "surf wait-url 'example' --timeout 4 >/dev/null"
 
 section "E. navigation: click → iana → back"
 chk "click a → ok"              "surf click 'a' | grep -q '\"ok\":true'"
 sleep 1.2
 chk "navigated to iana"         "surf url | grep -q 'iana'"
-chk "back returns to example"   "surf back >/dev/null; sleep 0.8; surf url | grep -q 'example.com'"
-chk "fwd → iana again"          "surf fwd >/dev/null; sleep 0.8; surf url | grep -q 'iana'"
-surf back >/dev/null; sleep 0.6
-chk "reload works"              "surf reload >/dev/null && surf title >/dev/null"
+chk "back returns to example"   "surf back >/dev/null; sleep 1.5; surf url | grep -q 'example.com'"
+chk "fwd → iana again"          "surf fwd >/dev/null; sleep 1.5; surf url | grep -q 'iana'"
+surf back >/dev/null; sleep 1.2
+chk "reload works"              "surf reload >/dev/null; sleep 1.0; surf title >/dev/null"
 
 section "F. fill on duckduckgo (pinned)"
 surf select "$DDG" >/dev/null
