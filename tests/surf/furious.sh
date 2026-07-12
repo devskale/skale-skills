@@ -91,6 +91,9 @@ chk "tabs --json valid array"   "surf tabs --json | python3 -m json.tool >/dev/n
 chk "here --json url+title"     "surf here --json | grep -q 'url.:' && surf here --json | grep -q 'title.:'"
 chk "text --json found+text"    "surf text 'h1' --json | grep -q 'found.:true' && surf text 'h1' --json | grep -q 'text.:'"
 chk "count --json count key"    "surf count 'p' --json | grep -q 'count.:'"
+chk "list p valid array"     "surf list 'p' | python3 -m json.tool >/dev/null"
+chk "list a has Learn more"  "surf list 'a' | grep -q 'Learn more'"
+chk "list missing -> []"     "surf list '.zz-nope' | grep -qE '^\[\]$'"
 
 section "E. navigation: click → iana → back"
 chk "click a → ok"              "surf click 'a' | grep -q '\"ok\":true'"
