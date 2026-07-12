@@ -53,42 +53,65 @@ surf setup        # one-time: enable Chrome JS-from-AppleScript (or do it manual
 ```bash
 surf tabs                       # list windows → tabs (wN.tN refs)
 surf here                       # URL | title of target tab
-surf select [wN.tN | reset]     # target a specific tab (operate background tabs w/o focus)
+surf select [wN.tN | reset]     # pin a tab (operate background tabs w/o focus)
 surf open <url>                 # navigate target tab
 surf new [<url>]                # new tab (front window)
 surf reload | back | fwd        # target-tab controls
-surf wait  "<sel>" [--timeout N]   # poll until element exists (exit 1 on timeout)
-surf wait-url  "sub" [--timeout N] # poll until URL contains substring
-surf wait-stable [--timeout N]     # poll until DOM stops changing
 surf close                      # close target/active tab
-surf shot [<path>]              # screenshot the window → PNG
 ```
 
-### Read
+### Waiting
 ```bash
-surf title                      # document.title
-surf url                        # location.href
-surf text  "<selector>"         # textContent of first match
-surf html  "<selector>"         # outerHTML of first match
-surf attr  "<selector>" <name>  # attribute value
-surf count "<selector>"         # number of matches
+surf wait  "<sel>" [--timeout N]     # poll until element exists (exit 1 on timeout)
+surf wait-url  "<sub>" [--timeout N] # poll until URL contains substring
+surf wait-stable [--timeout N]       # poll until DOM stops changing
+```
+
+### Read  (`tabs`/`here`/`text`/`count` accept `--json`)
+```bash
+surf title | url                # document.title / location.href
+surf text  "<sel>"              # textContent of first match (NOT_FOUND if absent)
+surf html  "<sel>"              # outerHTML of first match
+surf attr  "<sel>" <name>       # attribute value
+surf count "<sel>"              # number of matches
+surf list  "<sel>"              # JSON array of all matches' text (scrape lists)
 surf eval  "<js>"               # run JS, print result
+```
+
+### Assertions (exit 1 on fail — CI-friendly)
+```bash
+surf exists  "<sel>"            # exit 0 if present
+surf visible "<sel>"            # exit 0 if present AND visible
+surf assert  "<js>" [expected]  # exit 0 if JS truthy, or == expected
 ```
 
 ### Interact
 ```bash
-surf click "<selector>"         # click first match (scrolls into view)
-surf fill  "<selector>" "<val>" # set value + fire input/change
+surf click "<sel>"              # click first match (scrolls into view)
+surf fill  "<sel>" "<val>"      # set value + fire input/change (React/Vue-safe)
+surf hover "<sel>"              # mouseover/mouseenter
+surf select-option "<sel>" "<v>" # set a <select> value + fire change
+surf submit "<sel>"             # submit the enclosing form (requestSubmit)
+surf scroll down|up|top|bottom [N] # scroll by N viewport-heights (default 1)
+surf scroll-to "<sel>"          # scroll element into view (center)
+surf press "<key>"              # real key/chord: enter, tab, escape, a, cmd+a
+```
+
+### Screenshots
+```bash
+surf shot [<path>]              # window screenshot → PNG
+surf shot-el "<sel>" [<path>]   # element screenshot (crop via sips)
 ```
 
 ### Meta
 ```bash
-surf setup                      # one-time Chrome JS toggle (GUI attempt + instructions)
+surf setup                      # one-time: enable Chrome JS-from-AppleScript
 surf --version | --selfcheck    # version / install info
 surf help                       # full usage
 ```
 
 Selectors are **CSS** (`document.querySelector` / `querySelectorAll`). `eval` JS runs in the page context and its return value is stringified.
+
 
 ## Gotchas
 

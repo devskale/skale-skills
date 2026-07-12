@@ -484,6 +484,10 @@ surf — drive your real Chrome (macOS, AppleScript). No daemon/port/extension/a
   surf html  "<sel>"              outerHTML of first match
   surf attr  "<sel>" <name>       attribute value of first match
   surf count "<sel>"              number of matches
+  surf list "<sel>"               JSON array of all matches' text (scrape lists)
+  surf exists "<sel>"             exit 0 if present (else 1)
+  surf visible "<sel>"            exit 0 if present & visible (else 1)
+  surf assert "<js>" [expected]   exit 0 if JS truthy / == expected (else 1)
   surf click "<sel>"              click first match (scrolls into view)
   surf fill  "<sel>" "<val>"      set value + fire input/change
   surf eval  "<js>"               run JS in target tab, print result
@@ -502,7 +506,7 @@ surf — drive your real Chrome (macOS, AppleScript). No daemon/port/extension/a
   surf --version | --selfcheck    version / install info
   surf help                       this message
 
-Selectors are CSS. One-time setup: `surf setup` (or View → Developer → Allow JavaScript from Apple Events).
+Selectors are CSS. tabs/here/text/count accept --json. One-time setup: `surf setup` (or View → Developer → Allow JavaScript from Apple Events).
 EOF
 }
 
