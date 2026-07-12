@@ -22,7 +22,7 @@ Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
 - [x] `assert '<js>' [expected]` (exit 1 on mismatch)
 - [x] `--json` output for `tabs`, `here`, `text`, `count`
 - [x] `list "<sel>"` — JSON array of all matches' text (scrape lists)
-- [ ] `shot "<sel>"` — element screenshot (scroll-into-view + getBoundingClientRect + `screencapture -R`)
+- [x] `shot-el "<sel>"` — element screenshot (scroll-into-view + getBoundingClientRect + sips crop)
 
 ## Tier 3 — nice to have
 

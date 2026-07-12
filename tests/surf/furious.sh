@@ -177,6 +177,12 @@ else
   chk "shot fails gracefully w/ guidance" "grep -qi 'Screen Recording' /tmp/surf-shot.log"
 fi
 
+
+section "L2. shot-el (element screenshot)"
+surf select "$EX" >/dev/null
+chk "shot-el h1 -> PNG"       "surf shot-el 'h1' /tmp/surf-el.png >/dev/null 2>&1 && sips -g pixelWidth /tmp/surf-el.png >/dev/null 2>&1"
+chk "shot-el missing -> fail" "surf shot-el '.zz-nope' /tmp/x.png >/dev/null 2>&1; [ \$? -ne 0 ]"
+
 section "M. session hygiene (your real tabs untouched)"
 TABS_AFTER=$(surf tabs | wc -l | tr -d ' ')
 # net change = +2 (our example + ddg tabs, minus any we closed). Should be +2 now.
