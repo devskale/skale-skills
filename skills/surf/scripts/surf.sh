@@ -207,6 +207,21 @@ cmd_wait_stable() {
   done
 }
 
+cmd_scroll() {
+  local dir="${1-}" n="${2-1}" sel js
+  [ -n "$dir" ] || die "scroll needs: down|up|top|bottom [N]  or  to \"<sel>\""
+  case "$dir" in
+    down)   [[ "$n" =~ ^[0-9]+$ ]] || n=1; js="window.scrollBy(0, window.innerHeight*$n); 'ok'" ;;
+    up)     [[ "$n" =~ ^[0-9]+$ ]] || n=1; js="window.scrollBy(0, -window.innerHeight*$n); 'ok'" ;;
+    top)    js="window.scrollTo(0, 0); 'ok'" ;;
+    bottom) js="window.scrollTo(0, document.documentElement.scrollHeight); 'ok'" ;;
+    to)     sel="${2-}"; [ -n "$sel" ] || die "scroll to needs a selector"
+            js="$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});e.scrollIntoView({block:"center",behavior:"instant"});return JSON.stringify({ok:true})})()' "$(js_str "$sel")")" ;;
+    *) die "scroll: unknown '$dir'. Use down|up|top|bottom [N] or to \"<sel>\"" ;;
+  esac
+  run_js "$js"
+}
+
 cmd_close() {
   local tgt W T; tgt="$(get_target)"
   if [ "$tgt" = "front" ]; then
@@ -311,6 +326,8 @@ surf — drive your real Chrome (macOS, AppleScript). No daemon/port/extension/a
   surf wait  "<sel>" [--timeout N] poll until element exists (exit 1 on timeout)
   surf wait-url "<sub>" [--timeout N]  poll until URL contains substring
   surf wait-stable [--timeout N]      poll until DOM stops changing
+  surf scroll down|up|top|bottom [N]  scroll by N viewport-heights (default 1)
+  surf scroll-to "<sel>"              scroll element into view (center)
   surf shot  [<path>]             screenshot the window (PNG)
   surf setup                      one-time: enable Chrome JS-from-AppleScript
   surf --version | --selfcheck    version / install info
@@ -347,7 +364,9 @@ main() {
     wait)   cmd_wait "$@" ;;
     wait-url) cmd_wait_url "$@" ;;
     wait-stable) cmd_wait_stable "$@" ;;
-    shot)   cmd_shot "$@" ;;
+    scroll)      cmd_scroll "$@" ;;
+    scroll-to)   cmd_scroll to "$@" ;;
+    shot)        cmd_shot "$@" ;;
     setup)  cmd_setup ;;
     ""|help|-h|--help) usage ;;
     *) die "unknown command: $sub (try: surf help)" ;;

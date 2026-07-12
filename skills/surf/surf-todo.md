@@ -9,7 +9,7 @@ Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
 - [x] `wait "<sel>" [--timeout N]` — poll until element exists (exit 1 on timeout)
 - [x] `wait-url "<substring>" [--timeout N]` — poll until `location.href` contains substring
 - [x] `wait-stable [--timeout N]` — poll until DOM stops changing
-- [ ] `scroll down|up|top|bottom [N]` + `scroll-to "<sel>"`
+- [x] `scroll down|up|top|bottom [N]` + `scroll-to "<sel>"`
 - [x] clear, classified JS-failure messages (toggle-off vs incognito vs restricted tab) instead of raw Chrome errors
 - [ ] `hover "<sel>"`
 - [ ] `select-option "<sel>" "<value>"` (dropdown)
