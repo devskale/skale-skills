@@ -207,6 +207,21 @@ cmd_wait_stable() {
   done
 }
 
+cmd_hover() {
+  [ "${1-}" ] || die "hover needs a selector"
+  run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});try{e.scrollIntoView({block:"center"})}catch(x){}e.dispatchEvent(new MouseEvent("mouseover",{bubbles:true}));e.dispatchEvent(new MouseEvent("mousemove",{bubbles:true}));e.dispatchEvent(new MouseEvent("mouseenter",{bubbles:true}));return JSON.stringify({ok:true,tag:e.tagName})})()' "$(js_str "$1")")"
+}
+
+cmd_select_option() {
+  [ "${1-}" ] && [ "${2-}" ] || die "select-option needs <selector> <value>"
+  run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});if(e.tagName!=="SELECT")return JSON.stringify({ok:false,err:"not_select",tag:e.tagName});e.value=%s;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));return JSON.stringify({ok:true,value:e.value})})()' "$(js_str "$1")" "$(js_str "$2")")"
+}
+
+cmd_submit() {
+  [ "${1-}" ] || die "submit needs a selector (a form, or an element inside a form)"
+  run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});var f=(e.tagName==="FORM")?e:(e.form||e.closest("form"));if(!f)return JSON.stringify({ok:false,err:"no_form"});if(typeof f.requestSubmit==="function"){f.requestSubmit()}else{f.submit()}return JSON.stringify({ok:true})})()' "$(js_str "$1")")"
+}
+
 cmd_scroll() {
   local dir="${1-}" n="${2-1}" sel js
   [ -n "$dir" ] || die "scroll needs: down|up|top|bottom [N]  or  to \"<sel>\""
@@ -328,6 +343,9 @@ surf — drive your real Chrome (macOS, AppleScript). No daemon/port/extension/a
   surf wait-stable [--timeout N]      poll until DOM stops changing
   surf scroll down|up|top|bottom [N]  scroll by N viewport-heights (default 1)
   surf scroll-to "<sel>"              scroll element into view (center)
+  surf hover "<sel>"                  fire mouseover/mouseenter on first match
+  surf select-option "<sel>" "<val>"  set a <select> value + fire change
+  surf submit "<sel>"                 submit the enclosing form (requestSubmit)
   surf shot  [<path>]             screenshot the window (PNG)
   surf setup                      one-time: enable Chrome JS-from-AppleScript
   surf --version | --selfcheck    version / install info
@@ -366,6 +384,9 @@ main() {
     wait-stable) cmd_wait_stable "$@" ;;
     scroll)      cmd_scroll "$@" ;;
     scroll-to)   cmd_scroll to "$@" ;;
+    hover)       cmd_hover "$@" ;;
+    select-option) cmd_select_option "$@" ;;
+    submit)      cmd_submit "$@" ;;
     shot)        cmd_shot "$@" ;;
     setup)  cmd_setup ;;
     ""|help|-h|--help) usage ;;

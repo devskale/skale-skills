@@ -11,10 +11,10 @@ Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
 - [x] `wait-stable [--timeout N]` — poll until DOM stops changing
 - [x] `scroll down|up|top|bottom [N]` + `scroll-to "<sel>"`
 - [x] clear, classified JS-failure messages (toggle-off vs incognito vs restricted tab) instead of raw Chrome errors
-- [ ] `hover "<sel>"`
-- [ ] `select-option "<sel>" "<value>"` (dropdown)
+- [x] `hover "<sel>"`
+- [x] `select-option "<sel>" "<value>"` (dropdown)
 - [ ] `press "<key>"` (key chords: `Enter`, `Tab`, `cmd+a`)
-- [ ] `submit "<sel>"`
+- [x] `submit "<sel>"`
 
 ## Tier 2 — pipeline/agent readiness
 
