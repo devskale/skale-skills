@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # surf — drive your REAL, logged-in Chrome from the CLI (macOS, AppleScript).
 # Logic script; invoked by the `surf` launcher after symlink resolution.
-VERSION="0.2.0"
+VERSION="1.0.0"
 set -euo pipefail
 
 APP="${SURF_APP:-Google Chrome}"
