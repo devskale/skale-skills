@@ -222,6 +222,59 @@ cmd_submit() {
   run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});var f=(e.tagName==="FORM")?e:(e.form||e.closest("form"));if(!f)return JSON.stringify({ok:false,err:"no_form"});if(typeof f.requestSubmit==="function"){f.requestSubmit()}else{f.submit()}return JSON.stringify({ok:true})})()' "$(js_str "$1")")"
 }
 
+cmd_press() {
+  [ "${1-}" ] || die "press needs a key/chord (e.g. enter, tab, escape, a, cmd+a, shift+arrowright)"
+  local input="$1" tgt W T key mods kl keycode="" ks="" modlist="" using="" m ma err
+  tgt="$(get_target)"; W=1
+  if [ "$tgt" != "front" ]; then W="$(echo "$tgt"|cut -d' ' -f1)"; T="$(echo "$tgt"|cut -d' ' -f2)"; fi
+  osascript >/dev/null 2>&1 <<APPLESCRIPT
+tell application "Google Chrome"
+  set index of window $W to 1
+$( [ -n "$T" ] && echo "  set active tab index of window $W to $T" )
+  activate
+end tell
+APPLESCRIPT
+  sleep 0.25
+  key="${input##*+}"
+  if [ "$key" = "$input" ]; then mods=""; else mods="${input%+*}"; fi
+  kl="$(printf '%s' "$key" | tr 'A-Z' 'a-z')"
+  case "$kl" in
+    enter|return) keycode=36 ;; tab) keycode=48 ;; esc|escape) keycode=53 ;;
+    space) ks=" " ;; delete|backspace) keycode=51 ;;
+    up) keycode=126 ;; down) keycode=125 ;; left) keycode=123 ;; right) keycode=124 ;;
+    *) ks="$key" ;;
+  esac
+  if [ -n "$mods" ]; then
+    IFS='+' read -ra ma <<< "$mods"
+    for m in "${ma[@]}"; do
+      case "$(printf '%s' "$m" | tr 'A-Z' 'a-z')" in
+        cmd|command|meta) modlist="${modlist:+$modlist, }command down" ;;
+        ctrl|control) modlist="${modlist:+$modlist, }control down" ;;
+        alt|option) modlist="${modlist:+$modlist, }option down" ;;
+        shift) modlist="${modlist:+$modlist, }shift down" ;;
+      esac
+    done
+  fi
+  [ -n "$modlist" ] && using=" using {$modlist}"
+  ks="${ks//\\/\\\\}"; ks="${ks//\"/\\\"}"
+  if [ -n "$keycode" ]; then
+    err=$(osascript -e "tell application \"System Events\" to key code $keycode$using" 2>&1 || true)
+  else
+    err=$(osascript -e "tell application \"System Events\" to keystroke \"$ks\"$using" 2>&1 || true)
+  fi
+  if [ -n "$err" ]; then
+    if echo "$err" | grep -qi "assistive access"; then
+      echo "surf: press needs Accessibility for your terminal (System Events keystroke)." >&2
+      open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" 2>/dev/null || true
+      echo "   → Enable Ghostty/terminal in Privacy & Security → Accessibility, then re-run." >&2
+    else
+      echo "surf: press failed: $err" >&2
+    fi
+    return 1
+  fi
+  echo "pressed: $input"
+}
+
 cmd_scroll() {
   local dir="${1-}" n="${2-1}" sel js
   [ -n "$dir" ] || die "scroll needs: down|up|top|bottom [N]  or  to \"<sel>\""
@@ -346,6 +399,7 @@ surf — drive your real Chrome (macOS, AppleScript). No daemon/port/extension/a
   surf hover "<sel>"                  fire mouseover/mouseenter on first match
   surf select-option "<sel>" "<val>"  set a <select> value + fire change
   surf submit "<sel>"                 submit the enclosing form (requestSubmit)
+  surf press "<key>"                 press a key/chord (enter, tab, escape, a, cmd+a) — real synthesis
   surf shot  [<path>]             screenshot the window (PNG)
   surf setup                      one-time: enable Chrome JS-from-AppleScript
   surf --version | --selfcheck    version / install info
@@ -387,6 +441,7 @@ main() {
     hover)       cmd_hover "$@" ;;
     select-option) cmd_select_option "$@" ;;
     submit)      cmd_submit "$@" ;;
+    press)       cmd_press "$@" ;;
     shot)        cmd_shot "$@" ;;
     setup)  cmd_setup ;;
     ""|help|-h|--help) usage ;;

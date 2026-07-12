@@ -13,7 +13,7 @@ Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
 - [x] clear, classified JS-failure messages (toggle-off vs incognito vs restricted tab) instead of raw Chrome errors
 - [x] `hover "<sel>"`
 - [x] `select-option "<sel>" "<value>"` (dropdown)
-- [ ] `press "<key>"` (key chords: `Enter`, `Tab`, `cmd+a`)
+- [x] `press "<key>"` (key chords: `Enter`, `Tab`, `cmd+a`)
 - [x] `submit "<sel>"`
 
 ## Tier 2 — pipeline/agent readiness
