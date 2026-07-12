@@ -424,6 +424,24 @@ cmd_shot() {
   echo "shot → $out (${w}x${h})"
 }
 
+cmd_shot_el() {
+  [ "${1-}" ] || die "shot-el needs a selector"
+  local sel="$1" out="${2:-./surf-shot.png}" r parsed tmp x y w h
+  r="$(run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});e.scrollIntoView({block:"center",behavior:"instant"});var r=e.getBoundingClientRect();var d=window.devicePixelRatio||1;return JSON.stringify({ok:true,x:Math.round(r.left*d),y:Math.round(r.top*d),w:Math.round(r.width*d),h:Math.round(r.height*d),chrome:Math.round((window.outerHeight-window.innerHeight)*d)})})()' "$(js_str "$sel")")")"
+  echo "$r" | grep -q '"ok":true' || { echo "$r" >&2; return 1; }
+  parsed="$(printf '%s' "$r" | python3 -c 'import sys,json;d=json.loads(sys.stdin.read());print(d["x"],d["y"]+d["chrome"],d["w"],d["h"])')"
+  set -- $parsed; x=$1; y=$2; w=$3; h=$4
+  [ "${w:-0}" -gt 0 ] 2>/dev/null && [ "${h:-0}" -gt 0 ] 2>/dev/null || { echo "surf: shot-el bad rect ($parsed)" >&2; return 1; }
+  tmp="$(mktemp -t surf).png"
+  cmd_shot "$tmp" >/dev/null 2>&1 || { echo "surf: window capture failed" >&2; rm -f "$tmp"; return 1; }
+  if sips -c "$h" "$w" --cropOffset "$y" "$x" "$tmp" --out "$out" >/dev/null 2>&1; then
+    echo "shot-el -> $out (~${w}x${h})"
+  else
+    echo "surf: sips crop failed" >&2; rm -f "$tmp"; return 1
+  fi
+  rm -f "$tmp"
+}
+
 cmd_setup() {
   local out
   out=$(osascript <<'APPLESCRIPT' 2>&1
@@ -479,6 +497,7 @@ surf — drive your real Chrome (macOS, AppleScript). No daemon/port/extension/a
   surf submit "<sel>"                 submit the enclosing form (requestSubmit)
   surf press "<key>"                 press a key/chord (enter, tab, escape, a, cmd+a) — real synthesis
   surf shot  [<path>]             screenshot the window (PNG)
+  surf shot-el "<sel>" [<path>]  screenshot one element (crop via sips)
   surf setup                      one-time: enable Chrome JS-from-AppleScript
   surf --version | --selfcheck    version / install info
   surf help                       this message
@@ -525,6 +544,7 @@ main() {
     submit)      cmd_submit "$@" ;;
     press)       cmd_press "$@" ;;
     shot)        cmd_shot "$@" ;;
+    shot-el)     cmd_shot_el "$@" ;;
     setup)  cmd_setup ;;
     ""|help|-h|--help) usage ;;
     *) die "unknown command: $sub (try: surf help)" ;;
