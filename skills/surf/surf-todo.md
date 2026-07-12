@@ -10,7 +10,7 @@ Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
 - [x] `wait-url "<substring>" [--timeout N]` — poll until `location.href` contains substring
 - [x] `wait-stable [--timeout N]` — poll until DOM stops changing
 - [ ] `scroll down|up|top|bottom [N]` + `scroll-to "<sel>"`
-- [ ] clear error on restricted pages (`chrome://`, New Tab Page, Web Store) instead of misleading "turned off"
+- [x] clear, classified JS-failure messages (toggle-off vs incognito vs restricted tab) instead of raw Chrome errors
 - [ ] `hover "<sel>"`
 - [ ] `select-option "<sel>" "<value>"` (dropdown)
 - [ ] `press "<key>"` (key chords: `Enter`, `Tab`, `cmd+a`)

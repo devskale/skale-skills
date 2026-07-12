@@ -23,8 +23,8 @@ js_str() {
   printf '"%s"' "$s"
 }
 
-# execute JS in the target tab; JS written to a temp file to avoid quoting hell
-run_js() {
+# execute JS in the target tab; JS written to a temp file to avoid quoting hell. Raw (no error classification).
+_run_js_raw() {
   local js="$1" tmp tgt W T
   tmp="$(mktemp -t surf).js"
   printf '%s' "$js" > "$tmp"
@@ -46,6 +46,43 @@ APPLESCRIPT
   local rc=$?
   rm -f "$tmp"
   return $rc
+}
+
+# Print an actionable reason for a "turned off"-style JS failure to stderr.
+# Distinguishes: global toggle off vs incognito window vs restricted tab (x.com / app-PWA).
+_explain_js_failure() {
+  local tgt W mode any wt
+  tgt="$(get_target)"
+  W=1; [ "$tgt" != "front" ] && W="$(echo "$tgt" | cut -d' ' -f1)"
+  mode="$(osascript -e "tell application \"$APP\" to get mode of window $W" 2>/dev/null || true)"
+  if [ "$mode" = "incognito" ]; then
+    echo "surf: window $W is incognito — JS-from-AppleScript is blocked there. Use a normal window." >&2
+    return 0
+  fi
+  # Probe other tabs: if ANY allows JS, the toggle is ON and this tab/site/window is the restriction.
+  any=false
+  while read -r ref; do
+    [ -z "$ref" ] && continue
+    wt="$(echo "$ref" | sed 's#w##; s#\.t# #')"   # "w2.t1" -> "2 1"
+    if osascript -e "tell application \"$APP\" to execute (tab $(echo "$wt" | cut -d' ' -f2) of window $(echo "$wt" | cut -d' ' -f1)) javascript \"1\"" >/dev/null 2>&1; then
+      any=true; break
+    fi
+  done < <(surf tabs 2>/dev/null | grep -oE 'w[0-9]+\.t[0-9]+' | head -10)
+  if $any; then
+    echo "surf: this tab/window blocks JS (common: x.com, a Chrome app/PWA window, or a restricted site) — though the global toggle is ON. 'surf select' a normal-site tab and retry." >&2
+  else
+    echo "surf: JavaScript-from-AppleScript is OFF. Fix: Chrome menu → View → Developer ▸ → Allow JavaScript from Apple Events (✓), then retry." >&2
+  fi
+}
+
+# Public JS runner: classifies "turned off" failures into an actionable message.
+run_js() {
+  local out
+  out="$(_run_js_raw "$1" 2>/dev/null || true)"
+  case "$out" in
+    *"Allow JavaScript from Apple Events"*|*"turned off"*) _explain_js_failure; return 1 ;;
+  esac
+  printf '%s\n' "$out"
 }
 
 # ── commands ────────────────────────────────────────────────────────
@@ -82,7 +119,24 @@ cmd_open()   { [ "${1-}" ] || die "open needs a url"; local tgt W T; tgt="$(get_
   if [ "$tgt" = "front" ]; then osascript -e "tell application \"$APP\" to set URL of active tab of front window to \"$1\"" >/dev/null && echo "ok: $1"
   else W=$(echo "$tgt"|cut -d' ' -f1); T=$(echo "$tgt"|cut -d' ' -f2); osascript -e "tell application \"$APP\" to set URL of tab $T of window $W to \"$1\"" >/dev/null && echo "ok (w$W.t$T): $1"; fi
 }
-cmd_new()    { local u="${1-about:blank}"; osascript -e "tell application \"$APP\" to tell front window to make new tab with properties {URL:\"$u\"}" >/dev/null && echo "new tab: $u"; }
+cmd_new()    {
+  local u="${1-about:blank}"
+  # bring a JS-capable window to front (skips incognito AND app/PWA windows that block JS)
+  osascript <<'OSA' >/dev/null 2>&1 || true
+tell application "Google Chrome"
+  repeat with i from 1 to count of windows
+    if (count of tabs of window i) is greater than 0 then
+      try
+        execute (tab 1 of window i) javascript "1"
+        set index of window i to 1
+        exit repeat
+      end try
+    end if
+  end repeat
+end tell
+OSA
+  osascript -e "tell application \"$APP\" to tell front window to make new tab with properties {URL:\"$u\"}" >/dev/null && echo "new tab: $u"
+}
 cmd_reload() { local tgt W T; tgt="$(get_target)"
   if [ "$tgt" = "front" ]; then osascript -e "tell application \"$APP\" to reload active tab of front window" >/dev/null && echo "reloaded"
   else W=$(echo "$tgt"|cut -d' ' -f1); T=$(echo "$tgt"|cut -d' ' -f2); osascript -e "tell application \"$APP\" to reload tab $T of window $W" >/dev/null && echo "reloaded (w$W.t$T)"; fi
@@ -115,7 +169,7 @@ cmd_wait() {
   js="$(printf '(function(){return document.querySelector(%s)?"FOUND":"pending"})()' "$(js_str "$sel")")"
   deadline=$(( $(date +%s) + to ))
   while :; do
-    res="$(run_js "$js" 2>/dev/null || true)"
+    res="$(_run_js_raw "$js" 2>/dev/null || true)"
     [ "$res" = "FOUND" ] && { echo "found: $sel"; return 0; }
     [ "$(date +%s)" -ge "$deadline" ] && { echo "surf: wait timeout (${to}s): $sel" >&2; return 1; }
     sleep "${SURF_WAIT_INTERVAL:-0.3}"
@@ -130,7 +184,7 @@ cmd_wait_url() {
   [ -n "$sub" ] || die "wait-url needs a substring"
   deadline=$(( $(date +%s) + to ))
   while :; do
-    href="$(run_js 'location.href' 2>/dev/null || true)"
+    href="$(_run_js_raw 'location.href' 2>/dev/null || true)"
     case "$href" in *"$sub"*) echo "ok: $href"; return 0 ;; esac
     [ "$(date +%s)" -ge "$deadline" ] && { echo "surf: wait-url timeout (${to}s): still $href" >&2; return 1; }
     sleep "${SURF_WAIT_INTERVAL:-0.3}"
@@ -143,10 +197,10 @@ cmd_wait_stable() {
     case "$1" in --timeout) to="$2"; shift 2 ;; --timeout=*) to="${1#*=}"; shift ;; *) shift ;; esac
   done
   deadline=$(( $(date +%s) + to ))
-  l1="$(run_js 'String(document.body && document.body.innerHTML.length||0)' 2>/dev/null || true)"
+  l1="$(_run_js_raw 'String(document.body && document.body.innerHTML.length||0)' 2>/dev/null || true)"
   while :; do
     sleep "$iv"
-    l2="$(run_js 'String(document.body && document.body.innerHTML.length||0)' 2>/dev/null || true)"
+    l2="$(_run_js_raw 'String(document.body && document.body.innerHTML.length||0)' 2>/dev/null || true)"
     [ "$l1" = "$l2" ] && { echo "stable: ${l2} bytes"; return 0; }
     l1="$l2"
     [ "$(date +%s)" -ge "$deadline" ] && { echo "surf: wait-stable timeout (${to}s): still changing" >&2; return 1; }
