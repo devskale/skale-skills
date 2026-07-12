@@ -18,8 +18,8 @@ Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
 
 ## Tier 2 — pipeline/agent readiness
 
-- [ ] `exists "<sel>"` / `visible "<sel>"` (exit 1 if not)
-- [ ] `assert '<js>' [expected]` (exit 1 on mismatch)
+- [x] `exists "<sel>"` / `visible "<sel>"` (exit 1 if not)
+- [x] `assert '<js>' [expected]` (exit 1 on mismatch)
 - [ ] `--json` output for `tabs`, `here`, `text`, `count`, `list`
 - [ ] `list "<sel>"` — JSON array of all matches' text (scrape lists)
 - [ ] `shot "<sel>"` — element screenshot (scroll-into-view + getBoundingClientRect + `screencapture -R`)

@@ -77,6 +77,12 @@ chk "wait-url example (exit 0)"  "surf wait-url 'example' --timeout 4 >/dev/null
 chk "scroll down returns ok"     "surf scroll down >/dev/null"
 chk "scroll-to h1 → ok"          "surf scroll-to 'h1' | grep -q '\"ok\":true'"
 chk "scroll-to missing → ok:false" "surf scroll-to '.zz-nope' | grep -q '\"ok\":false'"
+chk "exists h1 (exit 0)"       "surf exists 'h1' >/dev/null"
+chk "exists missing (exit 1)"  "surf exists '.zz-nope' >/dev/null 2>&1; [ \$? -eq 1 ]"
+chk "visible h1 (exit 0)"      "surf visible 'h1' >/dev/null"
+chk "assert eq ok"             "surf assert '1+1' '2' >/dev/null"
+chk "assert eq fail (exit 1)"  "surf assert '1+1' '3' >/dev/null 2>&1; [ \$? -eq 1 ]"
+chk "assert truthy"            "surf assert '1' >/dev/null"
 
 section "E. navigation: click → iana → back"
 chk "click a → ok"              "surf click 'a' | grep -q '\"ok\":true'"
