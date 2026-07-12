@@ -84,6 +84,14 @@ chk "assert eq ok"             "surf assert '1+1' '2' >/dev/null"
 chk "assert eq fail (exit 1)"  "surf assert '1+1' '3' >/dev/null 2>&1; [ \$? -eq 1 ]"
 chk "assert truthy"            "surf assert '1' >/dev/null"
 
+
+section "D2. --json output"
+surf select "$EX" >/dev/null
+chk "tabs --json valid array"   "surf tabs --json | python3 -m json.tool >/dev/null"
+chk "here --json url+title"     "surf here --json | grep -q 'url.:' && surf here --json | grep -q 'title.:'"
+chk "text --json found+text"    "surf text 'h1' --json | grep -q 'found.:true' && surf text 'h1' --json | grep -q 'text.:'"
+chk "count --json count key"    "surf count 'p' --json | grep -q 'count.:'"
+
 section "E. navigation: click → iana → back"
 chk "click a → ok"              "surf click 'a' | grep -q '\"ok\":true'"
 sleep 1.2
