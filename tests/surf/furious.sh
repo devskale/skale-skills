@@ -105,6 +105,8 @@ surf eval '(function(){var f=document.createElement("form");f.id="ff";f.addEvent
 chk "submit fires"              "surf submit '#ff' | grep -q 'ok.:true'"
 chk "submit event really fired" "surf eval 'String(window.__s===true)' | grep -q 'true'"
 chk "submit missing"            "surf submit '.zz-nope' | grep -q 'not_found'"
+chk "press enter (keycode)"   "surf press enter | grep -q 'pressed: enter'"
+chk "press escape (keycode)"  "surf press escape | grep -q 'pressed: escape'"
 
 section "G. eval shapes & escaping"
 chk "eval math"                 "[ \"\$(surf eval '1+1')\" = '2' ]"
