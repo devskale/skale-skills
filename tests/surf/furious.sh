@@ -9,7 +9,8 @@ mark() { if [ "$2" = "pass" ]; then PASS=$((PASS+1)); elif [ "$2" = "skip" ]; th
 chk() { if eval "$2"; then mark "$1" pass; else mark "$1" FAIL; fi; }
 section() { printf "\n── %s ──\n" "$1"; }
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null)"
+[ -z "$REPO" ] && REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SKILL="$REPO/skills/surf"
 
 # ── preconditions ────────────────────────────────────────────────────
