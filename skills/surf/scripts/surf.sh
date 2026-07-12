@@ -86,7 +86,24 @@ run_js() {
 }
 
 # ── commands ────────────────────────────────────────────────────────
+_want_json() { for a in "$@"; do [ "$a" = "--json" ] && return 0; done; return 1; }
+
 cmd_tabs() {
+  if _want_json "$@"; then
+    osascript <<'APPLESCRIPT' | python3 -c 'import sys,json;print(json.dumps([{"window":int(a),"tab":int(b),"url":c,"title":d} for a,b,c,d in (l.rstrip("\n").split("\t") for l in sys.stdin if l.strip())],ensure_ascii=False))'
+tell application "Google Chrome"
+  set out to ""
+  repeat with wi from 1 to count of windows
+    repeat with ti from 1 to count of tabs of window wi
+      set t to tab ti of window wi
+      set out to out & (wi as text) & (character id 9) & (ti as text) & (character id 9) & (URL of t) & (character id 9) & (title of t) & linefeed
+    end repeat
+  end repeat
+  return out
+end tell
+APPLESCRIPT
+    return
+  fi
   osascript <<APPLESCRIPT
 set out to ""
 tell application "$APP"
@@ -107,6 +124,15 @@ APPLESCRIPT
 cmd_here() {
   local tgt W T
   tgt="$(get_target)"
+  if _want_json "$@"; then
+    if [ "$tgt" = "front" ]; then
+      run_js 'JSON.stringify({url:location.href,title:document.title})'
+    else
+      W=$(echo "$tgt" | cut -d' ' -f1); T=$(echo "$tgt" | cut -d' ' -f2)
+      run_js "JSON.stringify({window:$W,tab:$T,url:location.href,title:document.title})"
+    fi
+    return
+  fi
   if [ "$tgt" = "front" ]; then
     osascript -e "tell application \"$APP\" to get (URL of active tab of front window) & \"  |  \" & (title of active tab of front window)"
   else
@@ -146,9 +172,27 @@ cmd_fwd()    { run_js 'history.forward(); "ok"'; }
 cmd_title()  { run_js 'document.title'; }
 cmd_url()    { run_js 'location.href'; }
 
-cmd_text()  { [ "${1-}" ] || die "text needs a selector"; run_js "$(printf '(function(){var e=document.querySelector(%s);return e?String(e.textContent).trim().slice(0,10000):"NOT_FOUND"})()' "$(js_str "$1")")"; }
+cmd_text() {
+  [ "${1-}" ] || die "text needs a selector"
+  local sel
+  for a in "$@"; do [ "$a" != "--json" ] && sel="$a"; done
+  if _want_json "$@"; then
+    run_js "$(printf '(function(){var s=%s;var e=document.querySelector(s);return JSON.stringify({selector:s,found:!!e,text:e?String(e.textContent).trim().slice(0,10000):null})})()' "$(js_str "$sel")")"
+    return
+  fi
+  run_js "$(printf '(function(){var e=document.querySelector(%s);return e?String(e.textContent).trim().slice(0,10000):"NOT_FOUND"})()' "$(js_str "$sel")")"
+}
 cmd_html()  { [ "${1-}" ] || die "html needs a selector"; run_js "$(printf '(function(){var e=document.querySelector(%s);return e?e.outerHTML:"NOT_FOUND"})()' "$(js_str "$1")")"; }
-cmd_count() { [ "${1-}" ] || die "count needs a selector"; run_js "$(printf '(function(){return String(document.querySelectorAll(%s).length)})()' "$(js_str "$1")")"; }
+cmd_count() {
+  [ "${1-}" ] || die "count needs a selector"
+  local sel
+  for a in "$@"; do [ "$a" != "--json" ] && sel="$a"; done
+  if _want_json "$@"; then
+    run_js "$(printf 'JSON.stringify({selector:%s,count:document.querySelectorAll(%s).length})' "$(js_str "$sel")" "$(js_str "$sel")")"
+    return
+  fi
+  run_js "$(printf '(function(){return String(document.querySelectorAll(%s).length)})()' "$(js_str "$sel")")"
+}
 cmd_attr()  { [ "${1-}" ] && [ "${2-}" ] || die "attr needs <selector> <name>"; run_js "$(printf '(function(){var e=document.querySelector(%s);return e?String(e.getAttribute(%s)):"NOT_FOUND"})()' "$(js_str "$1")" "$(js_str "$2")")"; }
 cmd_click() { [ "${1-}" ] || die "click needs a selector"
   run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});try{e.scrollIntoView({block:"center"})}catch(x){}e.click();return JSON.stringify({ok:true,tag:e.tagName})})()' "$(js_str "$1")")"; }
@@ -444,8 +488,8 @@ main() {
   esac
   local sub="${1-}"; [ "${1-}" ] && shift || true
   case "$sub" in
-    tabs)   cmd_tabs ;;
-    here)   cmd_here ;;
+    tabs)   cmd_tabs "$@" ;;
+    here)   cmd_here "$@" ;;
     select) cmd_select "$@" ;;
     open)   cmd_open "$@" ;;
     new)    cmd_new "$@" ;;
