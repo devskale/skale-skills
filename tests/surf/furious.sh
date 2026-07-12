@@ -94,6 +94,18 @@ VAL=$(surf eval '(function(){var e=document.querySelector("input[name=q]");retur
 chk "value actually persisted"  "[ \"\$VAL\" = 'skyvern browser agent' ]"
 chk "fill fires change (no crash)" "surf eval 'document.querySelector(\"input[name=q]\").value.length>0' | grep -q 'true'"
 
+section "F2. form verbs (hover/select-option/submit) on example.com"
+surf select "$EX" >/dev/null
+chk "hover h1 ok"               "surf hover 'h1' | grep -q 'ok.:true'"
+surf eval '(function(){var s=document.createElement("select");s.id="sf";s.innerHTML="<option value=a>a</option><option value=b>b</option>";document.body.appendChild(s);return 1})()' >/dev/null
+chk "select-option sets b"      "surf select-option '#sf' b | grep -q 'ok.:true'"
+chk "select-option value is b"  "surf select-option '#sf' b | grep -q 'value.:.b'"
+chk "select-option non-select"  "surf select-option 'h1' x | grep -q 'not_select'"
+surf eval '(function(){var f=document.createElement("form");f.id="ff";f.addEventListener("submit",function(e){e.preventDefault();window.__s=true});document.body.appendChild(f);return 1})()' >/dev/null
+chk "submit fires"              "surf submit '#ff' | grep -q 'ok.:true'"
+chk "submit event really fired" "surf eval 'String(window.__s===true)' | grep -q 'true'"
+chk "submit missing"            "surf submit '.zz-nope' | grep -q 'not_found'"
+
 section "G. eval shapes & escaping"
 chk "eval math"                 "[ \"\$(surf eval '1+1')\" = '2' ]"
 chk "eval JSON round-trip"      "surf eval 'JSON.stringify({a:1,b:[2,3]})' | grep -q '\"b\":\\[2,3\\]'"
