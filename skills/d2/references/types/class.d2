@@ -1,0 +1,10 @@
+Animal: { shape: class
+  + name: string
+  + speak(): void }
+Dog: { shape: class
+  + breed: string
+  + fetch(): void }
+Cat: { shape: class
+  + indoor: bool }
+Dog -> Animal: extends
+Cat -> Animal: extends

@@ -1,0 +1,12 @@
+flow: {
+  shape: sequence_diagram
+  client; auth; idp; api
+  client -> auth: POST /token
+  auth -> idp: verify identity
+  idp -> auth: ok
+  auth -> client: access_token
+  client -> api: GET /resource (Bearer)
+  api -> auth: introspect
+  auth -> api: valid
+  api -> client: 200 resource
+}

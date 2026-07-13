@@ -1,0 +1,14 @@
+vars: { d2-config: { layout-engine: elk } }
+orgs: { shape: sql_table
+  id: int { constraint: primary_key }
+  name: varchar }
+users: { shape: sql_table
+  id: int { constraint: primary_key }
+  email: varchar
+  org_id: int { constraint: foreign_key } }
+orders: { shape: sql_table
+  id: int { constraint: primary_key }
+  user_id: int { constraint: foreign_key }
+  total: decimal }
+users.org_id -> orgs.id
+orders.user_id -> users.id
