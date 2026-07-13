@@ -1,0 +1,21 @@
+vars: { d2-config: { layout-engine: elk } }
+
+user: { shape: person; label: Developer }
+pi: { label: "pi (AI coding agent)" }
+
+package: "skale-skills" {
+  skills: { label: "skills/ — 14: web, browser, authoring" }
+  extensions: { label: "extensions/ — heartbeat, statusline, xmodel, imagegen" }
+  prompts: { label: "prompts/" }
+  skiller: { label: "skiller/ CLI (install, discover)" }
+  support: { label: "docs/  tests/  api/" }
+}
+
+credgoo: { shape: stored_data; style.multiple: true; label: "credgoo (credentials)" }
+web: { shape: cloud; label: "Web: SearXNG, Invidious, Chrome, yt-dlp" }
+
+user -> pi: runs
+pi -> package: loads
+package.skiller -> package.skills: manages
+package.skills -> credgoo: keys
+package.skills -> web: "fetch, search, drive"
