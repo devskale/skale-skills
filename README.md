@@ -4,6 +4,10 @@
 
 One install gives your agent web fetch/search, YouTube, video/transcripts, diagramming, **headless *and* real-session browser control**, image generation, custom model providers, and a battery of workflow skills — all credential-safe via [credgoo](docs/credgoo.md).
 
+## Contents
+
+[Architecture](#architecture) · **[Flagship skills](#flagship-skills)** ([`surf`](#surf) · [`web-search`](#web-search) · [`fetch-url`](#fetch-url)) · [All skills](#skills) · [Install](#install) · [Quick start](#quick-start) · [Credentials](#credentials--credgoo) · [`skiller` CLI](#skiller-cli) · [Docs](#docs) · [Tests](#running-tests)
+
 ---
 
 ## Architecture
@@ -14,18 +18,45 @@ One install gives your agent web fetch/search, YouTube, video/transcripts, diagr
 
 ---
 
-## ⭐ Featured: `surf` — drive your *real* Chrome
+## Flagship skills
+
+Three skills are production-hardened — full docs, flow diagrams, and test suites. Each entry below indexes its own sub-site of documentation.
+
+### `surf`
+
+⭐ **Drive your *real*, logged-in Chrome** — no daemon, no debug port, no extension, no per-connection “Allow remote debugging?” dialog. 30+ commands, CI assertions, `--json`, zero deps.
+
+Docs: [guide + comparison](docs/browser-use/surf.md) · [command reference](skills/surf/references/commands.md) · [flow diagram](docs/diagrams/surf-flow.svg) · [source](skills/surf) · [tests](tests/surf/furious.sh)
 
 ```bash
-surf tabs                       # list every window/tab (w1.t3 refs)
-surf select w2.t5               # pin a tab — drive it in the background, no focus steal
-surf text "h1"                  # read text   ·   surf fill "input[name=q]" "skyvern"
-surf click "button#submit"      # click       ·   surf scroll down 3
-surf wait ".result" --timeout 20   # wait for async content
-surf shot-el "h1" shot.png      # element screenshot
+surf setup && surf tabs
+surf select w2.t5 && surf text "h1"            # read a background tab, no focus steal
+surf fill "input[name=q]" "x" && surf submit "form"
+surf wait ".result" && surf assert '...' '5'    # exit 1 on fail
 ```
 
-`surf` controls the browser you're **already logged into** (cookies/tabs intact) via macOS AppleScript — **no daemon, no debug port, no extension, no per-connection "Allow remote debugging?" dialog**. 30+ commands, CI-friendly assertions, `--json` output, zero deps. See [docs/browser-use/surf.md](docs/browser-use/surf.md) and the [surfw vs rodney vs chrome-devtools-mcp](docs/browser-use/surf.md#comparison-surf-vs-rodney-vs-chrome-devtools-mcp) matrix.
+### `web-search`
+
+**Web search with backend auto-select** — public SearXNG out-of-the-box (or private via `credgoo searx`), optional Duck API (`credgoo WEB_SEARCH_BEARER`) for advanced filters. Images, news, videos.
+
+Docs: [SKILL.md](skills/web-search/SKILL.md) · [references](skills/web-search/references) · [flow diagram](docs/diagrams/web-search.svg) · [source](skills/web-search)
+
+```bash
+web-search "agentic browser 2026" --max 10
+web-search "swift" --categories images
+web-search "openai" --time-range week
+```
+
+### `fetch-url`
+
+**Web content extraction** — readable text from any page; auto-selects the best tool with smart fallback (terminal browsers `w3m`/`lynx`/`chawan` + optional reader API). Works on Reddit, SO, GitHub, docs.
+
+Docs: [SKILL.md](skills/fetch-url/SKILL.md) · [references](skills/fetch-url/references) · [flow diagram](docs/diagrams/fetch-url.svg) · [source](skills/fetch-url)
+
+```bash
+fetch-url "https://news.ycombinator.com"
+fetch-url "https://github.com/devskale/skale-skills"
+```
 
 ## What's included
 
