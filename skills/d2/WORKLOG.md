@@ -8,7 +8,7 @@
 
 ## Status
 
-- **Version:** v1.0.0 (cleaned, tested, prod-ready — 2026-07-13)
+- **Version:** v1.1.0 (recipes + diagram-types + delivery-polish guides; 35-test suite)
 - **Hygiene pass (2026-07-13):** corrected the stale dagre/ASCII gotcha — the ASCII/text export ignores `--layout` *and* `vars.d2-config.layout-engine` (verified byte-identical), so ASCII works with any engine but doesn't reflect the delivered SVG's layout; dagre's real weakness is Sugiyama-DAG layout quality (cycles, fan-in, crossings). Added `tests/d2/test.sh` (23 checks). Trimmed SKILL.md to 88 lines.
 - **Location:** `skale-skills/skills/d2/`
 - **Activation:** 🟢 global — symlinked to `~/.pi/agent/skills/d2`
