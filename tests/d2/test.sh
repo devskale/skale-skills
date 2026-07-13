@@ -115,6 +115,14 @@ d2 fmt --check "$TMP/arch.d2" >/dev/null 2>&1 && assert "d2 fmt --check idempote
 rm -rf "$TMP"
 echo ""
 
+# ── 7. Recipes cookbook ─────────────────────────────────────────────
+echo "[7] Recipes cookbook..."
+assert "references/recipes.md"  "[ -f references/recipes.md ]"
+for r in layered request-flow microservices pubsub c4-container deployment; do
+    assert "recipe $r validates" "d2 validate references/recipes/$r.d2 >/dev/null 2>&1"
+done
+echo ""
+
 echo "==============================="
 echo "  PASS: $PASS   FAIL: $FAIL"
 echo "==============================="

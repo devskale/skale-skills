@@ -1,0 +1,6 @@
+vars: { d2-config: { layout-engine: elk } }
+producer: "Producer"
+topic: { shape: queue; label: "Topic" }
+a: "Subscriber A"; b: "Subscriber B"; c: "Subscriber C"
+producer -> topic: publish
+topic -> a; topic -> b; topic -> c
