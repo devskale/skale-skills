@@ -1,0 +1,10 @@
+vars: { d2-config: { layout-engine: elk } }
+api: "API Gateway"
+bus: { shape: queue; label: "Message Bus" }
+orders: "Orders"
+inventory: "Inventory"
+shipping: "Shipping"
+api -> bus: publish events
+bus -> orders
+bus -> inventory
+bus -> shipping

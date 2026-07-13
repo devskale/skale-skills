@@ -1,0 +1,10 @@
+vars: { d2-config: { layout-engine: elk } }
+presentation: "Presentation" { web; mobile }
+application: "Application" { auth; orders; billing }
+domain: "Domain" { models; rules }
+data: "Data" { db: { shape: cylinder }; cache: { shape: queue } }
+presentation.web -> application.orders
+presentation.mobile -> application.orders
+application.orders -> domain.rules
+domain.rules -> data.db
+domain.models -> data.cache

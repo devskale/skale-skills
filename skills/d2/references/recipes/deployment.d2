@@ -1,0 +1,12 @@
+vars: { d2-config: { layout-engine: elk } }
+dns: { shape: cloud; label: "DNS / CDN" }
+lb: "Load Balancer"
+region: "Region" {
+  web: "Web tier (xN)"
+  api: "API tier (xN)"
+}
+db: { shape: cylinder; style.multiple: true; label: "DB (primary + replica)" }
+dns -> lb
+lb -> region.web
+region.web -> region.api
+region.api -> db

@@ -1,0 +1,11 @@
+vars: { d2-config: { layout-engine: elk } }
+user: { shape: person }
+cdn: { shape: cloud; label: "CDN" }
+gateway: "API Gateway"
+auth: "Auth"
+svc: "Order Service"
+cache: { shape: queue; label: "Cache" }
+db: { shape: cylinder; label: "DB" }
+user -> cdn -> gateway -> auth -> svc
+svc -> cache
+svc -> db

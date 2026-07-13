@@ -85,4 +85,5 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 ## Reference
 
 - Full syntax catalog (shapes, styles, special objects, composition): [`references/syntax.md`](references/syntax.md)
+- Architecture-pattern cookbook (layered, request-flow, microservices, pub/sub, C4 container, deployment): [`references/recipes.md`](references/recipes.md)
 - CLI: `d2 --help`, `d2 layout`, `d2 themes`. Tour: https://d2lang.com/tour/intro/
