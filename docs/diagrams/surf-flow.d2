@@ -1,0 +1,10 @@
+vars: { d2-config: { layout-engine: elk } }
+agent: { shape: person; label: "agent / user" }
+surf: { label: "surf (bash CLI, zero deps)" }
+osa: { label: "osascript (AppleScript)" }
+chrome: { shape: cloud; label: "Google Chrome — real, logged-in session" }
+result: { label: "text / JSON / screenshot" }
+agent -> surf: "command (tabs, click, fill, …)"
+surf -> osa
+osa -> chrome: "execute JS · drive tabs (no port, no extension, no ack)"
+chrome -> result
