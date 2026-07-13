@@ -130,6 +130,12 @@ for t in sequence er.diagram class; do
 done
 echo ""
 
+# ── 9. Delivery polish examples ───────────────────────────────────
+echo "[9] Delivery polish..."
+assert "interactive.d2 validates" "d2 validate references/delivery/interactive.d2 >/dev/null 2>&1"
+assert "layers.d2 validates"     "d2 validate references/delivery/layers.d2 >/dev/null 2>&1"
+echo ""
+
 echo "==============================="
 echo "  PASS: $PASS   FAIL: $FAIL"
 echo "==============================="

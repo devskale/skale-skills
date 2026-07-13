@@ -1,0 +1,6 @@
+vars: { d2-config: { layout-engine: elk } }
+agent: { shape: person; tooltip: "end user" }
+api: { link: https://d2lang.com; tooltip: "REST API" }
+db: { shape: cylinder; link: https://www.postgresql.org; tooltip: "primary store" }
+agent -> api: call
+api -> db
