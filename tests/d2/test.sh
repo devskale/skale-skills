@@ -134,6 +134,8 @@ echo ""
 echo "[9] Delivery polish..."
 assert "interactive.d2 validates" "d2 validate references/delivery/interactive.d2 >/dev/null 2>&1"
 assert "layers.d2 validates"     "d2 validate references/delivery/layers.d2 >/dev/null 2>&1"
+assert "delivery.md covers licensing"   "grep -qi 'licensing\|publishable' references/delivery.md"
+assert "delivery.md covers consistency" "grep -qi 'consistency vocabulary' references/delivery.md"
 echo ""
 
 echo "==============================="

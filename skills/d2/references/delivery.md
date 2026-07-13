@@ -103,6 +103,35 @@ d2 --sketch diagram.d2 out.svg
 - Output is notably larger (sketch paths are complex); prefer normal rendering for dense/production diagrams, sketch for "draft" feel.
 - Rendered example: [`delivery/sketch.svg`](delivery/sketch.svg)
 
+## 6. Publishable assets (licensing)
+
+Anything in a diagram that ships publicly — a README, a docs site, a paper — should be usable **without attribution**. (Adapted from the rag-eval `figure/` skill's licensing policy.)
+
+- **Self-made diagrams (your own `.d2`) are always safe** — you own the output. This is the default; lean on it.
+- **Icons:** prefer **CC0 / public-domain** (e.g. [SVG Repo](https://www.svgrepo.com) filtered to CC0) or self-drawn. **OFL fonts** embed fine with no attribution.
+- **Avoid vendor / product logos** (AWS, OpenAI, Postgres, Redis, …) — they carry trademark + attribution baggage. Use **generic shapes** instead: a `cylinder`/`stored_data` for *any* datastore, `cloud` for *any* external service / LLM / API, `queue` for a bus/cache/topic. D2's shape vocabulary is generic by default — prefer it over branded icons.
+- **Avoid CC-BY / CC-BY-SA** (attribution required) and any "free for personal use" asset.
+- If you do reuse an external icon, **record its license + source** in a comment next to the node.
+
+## 7. Consistency vocabulary (house style across a project)
+
+For a set of diagrams in one repo or docs site, pin a shared look so they read as one system — same role = same shape + colour in every diagram.
+
+| Role | Shape | Suggested colour |
+|---|---|---|
+| user / actor | `person` | — |
+| your system / container | `rectangle` | theme accent |
+| datastore (any DB) | `cylinder` / `stored_data` | tan/grey |
+| bus / cache / topic | `queue` | — |
+| external service / LLM / API | `cloud` | blue |
+| document / artifact | `page` | — |
+| success / accept | `document` | green outline |
+| reject / failure | `document` | red outline |
+
+- **Pin it once:** put `vars: { d2-config: { layout-engine: elk; theme-id: <id> } }` plus your shape/colour conventions in a **shared header snippet** that every diagram starts from — a theme change there re-styles them all (D2 rebuilds each `.d2` → identical output).
+- **Parallel labels:** use the same wording everywhere ("API Gateway" in every diagram, not "Gateway"/"API"/"gw").
+- Reuse shapes/icons across diagrams; don't redraw the same role differently.
+
 ---
 
 ## Putting it together
