@@ -86,8 +86,13 @@ for you; restart pi to apply.
 ```
 
 > Project settings (`.pi/settings.json`) **merge** nested keys over global — never redeclare the
-> whole config. Same package identity in both scopes loads exactly once (no conflict). Identity =
-> git URL without ref / npm name / resolved local path.
+> whole config. Identity = git URL without ref / npm name / resolved local path.
+>
+> ⚠️ **A project `packages` entry clones the package at project scope** (`<project>/.pi/git/…`)
+> — a *separate clone* from the global one, **even for an `autoload:false` delta** (the delta
+> only changes how filters merge; it does not reuse the global clone). To activate a skill
+> per-project **without re-cloning**, symlink it from the global clone into the project:
+> `ln -s ~/.pi/agent/git/<owner>/<repo>/skills/<name> <project>/.pi/skills/<name>`.
 
 **Per-project install** (when the package itself should be project-scoped, not just its filters):
 
