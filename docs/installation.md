@@ -41,11 +41,14 @@ byte-identical — identity, not content, decides dedup.
 
 ## Precedence rule
 
-> **The git package is canonical.** Declare it once globally, and once per project that needs it.
-> Never add the same resources again under a different identity.
+> **The git package is canonical.** Declare it once globally. Per-project needs are best met by
+> **symlinking skills/extensions from the global clone** (see below), not by re-declaring the
+> package in the project. Never add the same resources again under a different identity.
 
-Same identity in both global and project scope is **fine** — the project entry wins and the
-package loads exactly once:
+A project `packages` entry with the same identity is allowed, but note: **it clones the package
+again at project scope** (`<project>/.pi/git/…`) — a separate copy from the global clone, **even
+for an `autoload:false` delta** (the delta only changes filter merge, not cloning). The two merge
+modes:
 
 ```jsonc
 // ~/.pi/agent/settings.json (global)
@@ -60,7 +63,7 @@ package loads exactly once:
 | Project entry | Behavior |
 |---|---|
 | plain `{ "source": "..." }` or string | **Replaces** the global entry for this project — re-list anything you want to keep. |
-| `{ "source": "...", "autoload": false }` | **Delta over global** — toggle only what changes; everything else is inherited. `pi config -l` writes this automatically. |
+| `{ "source": "...", "autoload": false }` | **Delta over global** — toggle only what changes; everything else is inherited. `pi config -l` writes this automatically. *(Still clones at project scope — see clone-free alternative below.)* |
 
 ```jsonc
 // .pi/settings.json — delta: add one skill for this project, inherit the rest from global
@@ -70,6 +73,19 @@ package loads exactly once:
   "skills": ["+skills/rodney"]
 }]}
 ```
+
+### Clone-free per-project skills (preferred over a project package entry)
+
+Because a project `packages` entry re-clones the whole package, the **lightweight way** to give
+one project a skill that lives in the global clone is a **symlink** — no second clone, no
+`packages` entry, edits stay live once you `pi update` the global clone:
+
+```bash
+# d2 in this project only, sourced from the one global (GitHub-pulled) clone:
+ln -s ~/.pi/agent/git/github.com/devskale/skale-skills/skills/d2 .pi/skills/d2
+```
+(pi discovers `.pi/skills/` and follows symlinks, so this loads as a project skill. Don't
+symlink a skill that's *also* in the global whitelist, or it loads twice.)
 
 ## Selective loading (filter package resources)
 
