@@ -123,6 +123,13 @@ for r in layered request-flow microservices pubsub c4-container deployment; do
 done
 echo ""
 
+# ── 8. Diagram types (sequence / ER / class) ──────────────────────
+echo "[8] Diagram types..."
+for t in sequence er.diagram class; do
+    assert "type $t validates" "d2 validate references/types/$t.d2 >/dev/null 2>&1"
+done
+echo ""
+
 echo "==============================="
 echo "  PASS: $PASS   FAIL: $FAIL"
 echo "==============================="
