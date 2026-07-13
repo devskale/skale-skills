@@ -4,7 +4,7 @@ description: "Draw diagrams as code from text using the D2 language (d2lang.com)
 license: MIT
 metadata:
   author: skale
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # D2 — Diagrams as Code
