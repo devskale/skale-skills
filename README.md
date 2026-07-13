@@ -6,6 +6,14 @@ One install gives your agent web fetch/search, YouTube, video/transcripts, diagr
 
 ---
 
+## Architecture
+
+![skale-skills architecture](docs/architecture.svg)
+
+**pi** loads this package (skills + extensions + prompts); the **skiller** CLI manages skills across agents; skills reach **credgoo** for credentials and the **Web** for fetch / search / browser control. Source: [`docs/architecture.d2`](docs/architecture.d2) — edit and re-render with `d2 docs/architecture.d2 docs/architecture.svg`.
+
+---
+
 ## ⭐ Featured: `surf` — drive your *real* Chrome
 
 ```bash
