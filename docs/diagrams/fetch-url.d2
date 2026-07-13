@@ -1,0 +1,16 @@
+vars: { d2-config: { layout-engine: elk } }
+agent: { shape: person; label: "agent / user" }
+fu: { label: "fetch-url (CLI)" }
+browsers: { label: "terminal browsers (w3m · lynx · chawan)" }
+reader: { label: "reader API (optional)" }
+page: { shape: cloud; label: "target web page (any URL)" }
+text: { label: "readable text" }
+credgoo: { shape: stored_data; style.multiple: true; label: "credgoo (FETCH_URL_BEARER)" }
+agent -> fu: URL
+fu -> browsers: "auto-select"
+fu -> reader: "fallback"
+browsers -> page
+reader -> page
+reader -> credgoo: bearer
+browsers -> text
+reader -> text

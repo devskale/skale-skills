@@ -1,0 +1,14 @@
+vars: { d2-config: { layout-engine: elk } }
+agent: { shape: person; label: "agent / user" }
+ws: { label: "web-search (CLI)" }
+searxng: { shape: cloud; label: "SearXNG (public default, or private)" }
+duck: { shape: cloud; label: "Duck API (advanced filters, --api)" }
+credgoo: { shape: stored_data; style.multiple: true; label: "credgoo (searx, WEB_SEARCH_BEARER)" }
+results: { label: "results: titles + URLs" }
+agent -> ws: "query + flags"
+ws -> searxng: "auto-select"
+ws -> duck: "optional"
+searxng -> credgoo: "private key"
+duck -> credgoo: "bearer"
+searxng -> results
+duck -> results

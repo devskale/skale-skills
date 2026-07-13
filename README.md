@@ -144,6 +144,7 @@ See [`CONVENTION.md`](CONVENTION.md) and [`RECOMMENDED-SKILLS.md`](RECOMMENDED-S
 | Topic | Doc |
 |---|---|
 | Browser automation (surf, rodney, chrome-devtools-mcp comparison) | [docs/browser-use/](docs/browser-use/) |
+| Skill flow diagrams (web-search, fetch-url, surf) | [docs/skill-diagrams.md](docs/skill-diagrams.md) |
 | Install & precedence | [docs/installation.md](docs/installation.md) · [runbook](docs/install-runbook.md) |
 | Dev loop (edit → ship → clean) | [docs/development.md](docs/development.md) |
 | Credentials (credgoo) | [docs/credgoo.md](docs/credgoo.md) |
