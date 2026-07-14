@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # surf — drive your REAL, logged-in Chrome from the CLI (macOS, AppleScript).
 # Logic script; invoked by the `surf` launcher after symlink resolution.
-VERSION="1.1.0"
+VERSION="1.1.1"
 set -euo pipefail
 
 # ── browser selection ─────────────────────────────────────────────
@@ -426,10 +426,20 @@ cmd_shot() {
   osascript -e "tell application \"$APP\" to set index of window $W to 1" >/dev/null 2>&1 || true  # bring window to front
   sleep 0.2
   bounds="$(osascript -e "tell application \"$APP\" to get bounds of window 1" 2>&1)"
-  if ! echo "$bounds" | grep -qE '^[0-9]+,[[:space:]]*[0-9]+'; then die "could not read window bounds: $bounds"; fi
+  # bounds may contain negative values when the window is partly off-screen.
+  if ! echo "$bounds" | grep -qE '^[ -]?[0-9]+,[[:space:]]*[ -]?[0-9]+'; then die "could not read window bounds: $bounds"; fi
   x1=$(echo "$bounds"|awk -F', ' '{print $1}'); y1=$(echo "$bounds"|awk -F', ' '{print $2}')
   x2=$(echo "$bounds"|awk -F', ' '{print $3}'); y2=$(echo "$bounds"|awk -F', ' '{print $4}')
+  # screencapture -R rejects a negative origin and ignores off-screen edges,
+  # so clamp the rect to the desktop bounds (Finder reports {0,0,W,H}).
+  db="$(osascript -e 'tell application "Finder" to get bounds of window of desktop' 2>/dev/null || true)"
+  dx2=$(echo "$db"|awk -F', ' '{print $3}'); dy2=$(echo "$db"|awk -F', ' '{print $4}')
+  if [ "${x1:-0}" -lt 0 ] 2>/dev/null; then x1=0; fi
+  if [ "${y1:-0}" -lt 0 ] 2>/dev/null; then y1=0; fi
+  if [ -n "${dx2:-}" ] && [ "${x2:-0}" -gt "${dx2:-0}" ] 2>/dev/null; then x2="$dx2"; fi
+  if [ -n "${dy2:-}" ] && [ "${y2:-0}" -gt "${dy2:-0}" ] 2>/dev/null; then y2="$dy2"; fi
   w=$((x2 - x1)); h=$((y2 - y1))
+  if [ "${w:-0}" -le 0 ] || [ "${h:-0}" -le 0 ]; then die "window has no on-screen area (bounds: $bounds)"; fi
   err=$(screencapture -R "$x1,$y1,$w,$h" -o -x "$out" 2>&1); rc=$?
   if [ $rc -ne 0 ]; then
     echo "surf: screencapture failed ($err)" >&2
