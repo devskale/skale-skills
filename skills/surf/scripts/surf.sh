@@ -1,10 +1,29 @@
 #!/usr/bin/env bash
 # surf — drive your REAL, logged-in Chrome from the CLI (macOS, AppleScript).
 # Logic script; invoked by the `surf` launcher after symlink resolution.
-VERSION="1.0.0"
+VERSION="1.1.0"
 set -euo pipefail
 
-APP="${SURF_APP:-Google Chrome}"
+# ── browser selection ─────────────────────────────────────────────
+# An explicit SURF_APP override always wins. Otherwise drive the browser
+# you're actually in: prefer a RUNNING Google Chrome; if only Google Chrome
+# Beta is running, use Beta; if neither is running, fall back to stable
+# Chrome (the first `tell application` launches it). Keeps surf from driving
+# a browser you didn't open, while still defaulting to Chrome.
+_surf_pick_app() {
+  [ -n "${SURF_APP:-}" ] && { printf '%s' "$SURF_APP"; return; }
+  local chrome beta
+  chrome=$(osascript -e 'application "Google Chrome" is running' 2>/dev/null || true)
+  beta=$(osascript -e 'application "Google Chrome Beta" is running' 2>/dev/null || true)
+  if [ "$chrome" = "true" ]; then
+    printf '%s' "Google Chrome"
+  elif [ "$beta" = "true" ]; then
+    printf '%s' "Google Chrome Beta"
+  else
+    printf '%s' "Google Chrome"
+  fi
+}
+APP="$(_surf_pick_app)"
 TARGET_FILE="${SURF_TARGET_FILE:-$HOME/.config/surf/target}"
 
 die() { echo "surf: $*" >&2; exit 1; }
@@ -90,8 +109,8 @@ _want_json() { for a in "$@"; do [ "$a" = "--json" ] && return 0; done; return 1
 
 cmd_tabs() {
   if _want_json "$@"; then
-    osascript <<'APPLESCRIPT' | python3 -c 'import sys,json;print(json.dumps([{"window":int(a),"tab":int(b),"url":c,"title":d} for a,b,c,d in (l.rstrip("\n").split("\t") for l in sys.stdin if l.strip())],ensure_ascii=False))'
-tell application "Google Chrome"
+    osascript <<APPLESCRIPT | python3 -c 'import sys,json;print(json.dumps([{"window":int(a),"tab":int(b),"url":c,"title":d} for a,b,c,d in (l.rstrip("\n").split("\t") for l in sys.stdin if l.strip())],ensure_ascii=False))'
+tell application "$APP"
   set out to ""
   repeat with wi from 1 to count of windows
     repeat with ti from 1 to count of tabs of window wi
@@ -148,8 +167,8 @@ cmd_open()   { [ "${1-}" ] || die "open needs a url"; local tgt W T; tgt="$(get_
 cmd_new()    {
   local u="${1-about:blank}"
   # bring a JS-capable window to front (skips incognito AND app/PWA windows that block JS)
-  osascript <<'OSA' >/dev/null 2>&1 || true
-tell application "Google Chrome"
+  osascript <<OSA >/dev/null 2>&1 || true
+tell application "$APP"
   repeat with i from 1 to count of windows
     if (count of tabs of window i) is greater than 0 then
       try
@@ -306,7 +325,7 @@ cmd_press() {
   tgt="$(get_target)"; W=1
   if [ "$tgt" != "front" ]; then W="$(echo "$tgt"|cut -d' ' -f1)"; T="$(echo "$tgt"|cut -d' ' -f2)"; fi
   osascript >/dev/null 2>&1 <<APPLESCRIPT
-tell application "Google Chrome"
+tell application "$APP"
   set index of window $W to 1
 $( [ -n "$T" ] && echo "  set active tab index of window $W to $T" )
   activate
@@ -444,11 +463,11 @@ cmd_shot_el() {
 
 cmd_setup() {
   local out
-  out=$(osascript <<'APPLESCRIPT' 2>&1
-tell application "Google Chrome" to activate
+  out=$(osascript <<APPLESCRIPT 2>&1
+tell application "$APP" to activate
 delay 0.3
 tell application "System Events"
-  tell process "Google Chrome"
+  tell process "$APP"
     set theItem to menu item "Allow JavaScript from Apple Events" of menu "Developer" of menu item "Developer" of menu "View" of menu bar item "View" of menu bar 1
     click theItem
     return "clicked"
