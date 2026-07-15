@@ -9,6 +9,24 @@ mark() { if [ "$2" = "pass" ]; then PASS=$((PASS+1)); elif [ "$2" = "skip" ]; th
 chk() { if eval "$2"; then mark "$1" pass; else mark "$1" FAIL; fi; }
 section() { printf "\n── %s ──\n" "$1"; }
 
+# ── tab helpers (surf tabs --json → no regex, no index drift) ─────────
+# first wN.tN ref whose URL contains $1
+surf_tab() {
+  surf tabs --json | python3 -c '
+import sys,json
+s=sys.argv[1]
+for t in json.load(sys.stdin):
+    if s in t["url"]:
+        print("w%d.t%d"%(t["window"],t["tab"])); break
+' "$1" 2>/dev/null
+}
+# close ALL tabs whose URL contains $1 (re-fetch after each close → index-safe)
+surf_close_url() {
+  local r
+  while :; do r=$(surf_tab "$1"); [ -z "$r" ] && break
+    surf select "$r" >/dev/null 2>&1; surf close >/dev/null 2>&1; done
+}
+
 REPO="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null)"
 [ -z "$REPO" ] && REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SKILL="$REPO/skills/surf"
@@ -55,8 +73,8 @@ osascript -e "tell application \"Google Chrome\" to set index of window $JS_W to
 sleep 0.3
 surf new "https://example.com/" >/dev/null; sleep 1.5
 surf new "https://html.duckduckgo.com/html/" >/dev/null; sleep 1.5
-EX=$(surf tabs | grep -E 'w[0-9]+\.t[0-9]+ +https://example.com/' | grep -oE 'w[0-9]+\.t[0-9]+' | head -1)
-DDG=$(surf tabs | grep -E 'w[0-9]+\.t[0-9]+ +https://html.duckduckgo' | grep -oE 'w[0-9]+\.t[0-9]+' | head -1)
+EX=$(surf_tab example.com)
+DDG=$(surf_tab duckduckgo)
 chk "example.com tab opened"    "[ -n '$EX' ]"
 chk "duckduckgo tab opened"     "[ -n '$DDG' ]"
 
@@ -183,19 +201,55 @@ surf select "$EX" >/dev/null
 chk "shot-el h1 -> PNG"       "surf shot-el 'h1' /tmp/surf-el.png >/dev/null 2>&1 && sips -g pixelWidth /tmp/surf-el.png >/dev/null 2>&1"
 chk "shot-el missing -> fail" "surf shot-el '.zz-nope' /tmp/x.png >/dev/null 2>&1; [ \$? -ne 0 ]"
 
+section "N. v1.2 — doctor / batch / wait-stable"
+
+# doctor: runs; the JS-toggle line is deterministic given the suite's JS_OK precondition.
+DOC=$(surf doctor 2>&1)
+chk "doctor prints header"         'echo "$DOC" | grep -q "surf doctor"'
+chk "doctor sees JS toggle ON"     'echo "$DOC" | grep -q "JavaScript-from-AppleScript toggle is ON"'
+
+# batch: one call, multiple ops, typed JSON (string/number/bool).
+surf select "$EX" >/dev/null
+BATCH=$(printf '%s' '[{"op":"title"},{"op":"count","sel":"a"},{"op":"text","sel":"h1"},{"op":"exists","sel":"h1"}]' | surf batch)
+chk "batch op:title present"       'echo "$BATCH" | grep -q "\"op\":\"title\""'
+chk "batch title = Example Domain"  'echo "$BATCH" | grep -q "Example Domain"'
+chk "batch count a is number 1"    'echo "$BATCH" | grep -q "\"op\":\"count\",\"v\":1"'
+chk "batch exists is bool true"    'echo "$BATCH" | grep -q "\"op\":\"exists\",\"v\":true"'
+chk "batch invalid op rejected"    "printf '%s' '[{\"op\":\"press\"}]' | surf batch >/dev/null 2>&1; [ \$? -eq 1 ]"
+
+# wait-stable: MutationObserver quiet-window + observer cleanup on success.
+chk "wait-stable static → exit 0"  "surf wait-stable --timeout 8 | grep -q '^stable:'"
+chk "wait-stable cleans observer" "[ \"\$(surf eval 'String(typeof window.__surfStableObs)')\" = 'undefined' ]"
+
+# wait-stable: timeout on a continuously-mutating page. $EX must be FOREGROUND or
+# Chrome throttles the setInterval to ~1/sec → false "stable". (Observer fires on
+# document.title — ground-truth delta stays ~32ms while mutating vs ~750ms idle.)
+EX_W=${EX#w}; EX_W=${EX_W%%.*}; EX_T=${EX#*.t}
+osascript -e "tell application \"Google Chrome\" to set active tab index of window $EX_W to $EX_T" >/dev/null 2>&1 || true
+surf eval 'window.__m=setInterval(function(){document.title=String(Math.random())},40);1' >/dev/null
+chk "wait-stable mutation → exit 1" "surf wait-stable --timeout 3 >/dev/null 2>&1; [ \$? -eq 1 ]"
+surf eval 'clearInterval(window.__m);document.title="Example Domain";1' >/dev/null   # reset title
+
+# focus: batch + wait-stable operate a pinned BACKGROUND tab without stealing focus.
+# make DDG the visible tab up front, then operate pinned $EX (a different tab) in background.
+DDG_W=${DDG#w}; DDG_W=${DDG_W%%.*}; DDG_T=${DDG#*.t}
+osascript -e "tell application \"Google Chrome\" to set active tab index of window $DDG_W to $DDG_T" >/dev/null 2>&1 || true
+surf select "$EX" >/dev/null
+FRONT_B=$(osascript -e 'tell application "Google Chrome" to get URL of active tab of front window')
+printf '%s' '[{"op":"title"},{"op":"count","sel":"a"}]' | surf batch >/dev/null
+surf wait-stable --timeout 5 >/dev/null 2>&1 || true
+FRONT_A=$(osascript -e 'tell application "Google Chrome" to get URL of active tab of front window')
+chk "batch+wait-stable keep focus (bg op)" "[ \"\$FRONT_B\" = \"\$FRONT_A\" ]"
+chk "bg batch reads right title"   "[ \"\$(surf title)\" = 'Example Domain' ]"
+
 section "M. session hygiene (your real tabs untouched)"
 TABS_AFTER=$(surf tabs | wc -l | tr -d ' ')
 # net change = +2 (our example + ddg tabs, minus any we closed). Should be +2 now.
 DIFF=$((TABS_AFTER - TABS_BEFORE))
 chk "only +2 tabs added (test tabs)" "[ $DIFF -eq 2 ]"
 
-# ── cleanup: close our throwaway tabs (URL-matched, re-read each pass) ──
-for round in 1 2 3 4; do
-  for pat in 'https://example.com/' 'https://html.duckduckgo'; do
-    REF=$(surf tabs | grep -E "w[0-9]+\.t[0-9]+ +${pat}" | grep -oE 'w[0-9]+\.t[0-9]+' | head -1)
-    [ -n "$REF" ] && { surf select "$REF" >/dev/null; surf close >/dev/null 2>&1; }
-  done
-done
+# ── cleanup: close our throwaway tabs (JSON URL-match, index-safe) ──
+for p in example.com duckduckgo; do surf_close_url "$p"; done
 TABS_FINAL=$(surf tabs | wc -l | tr -d ' ')
 chk "test tabs cleaned up"     "[ $TABS_FINAL -eq $TABS_BEFORE ]"
 

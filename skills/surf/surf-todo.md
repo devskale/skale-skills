@@ -2,7 +2,7 @@
 
 Checkable roadmap. Workflow per item: **implement → validate (`tests/surf/furious.sh`) → commit → check the box.**
 
-Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
+Status: `surf v1.1.1` — navigation/tabs, reads, assertions, interactions (click/fill/hover/select-option/submit/scroll/press), waits, screenshots, `--json`, classified JS-failure messages.
 
 ## Tier 1 — core gaps (real friction)
 
@@ -31,6 +31,22 @@ Status: `surf v0.1.0` — navigation, reads, click/fill, eval, select, shot.
 - [ ] `activate <wN.tN>` / `find-tab "<query>"` — focus a tab / search tabs
 - [ ] full-page screenshot (scroll + stitch)
 - [ ] `cookie "<name>"` / localStorage read
+
+## Tier 4 — reliability & robustness
+
+- [ ] robust JS-failure classification — replace the O(N) up-to-10-tab probe in `_explain_js_failure` with a cheaper deterministic signal (cache last-known global toggle; single sentinel probe on a known-good tab). Resolves the x.com/incognito/PWA ambiguity without a scan.
+- [ ] stale-target resilience — `select` stores raw window/tab indices that silently break on reorder/close; capture the tab URL at select-time and re-resolve (or warn) when it changed.
+- [ ] `wait-stable` via MutationObserver — current `body.innerHTML.length` diff loops forever on ads/spinners/clocks; switch to a no-mutation quiet window. *(highest leverage)*
+- [ ] transient-retry — one silent retry on `execute javascript` before classifying failure (cuts false negatives after focus changes).
+
+## Tier 5 — capability & reach
+
+- [ ] `doctor` — one-shot diagnostic (✓/✗ + fix links): JS-from-AppleScript toggle on? Screen Recording granted? Accessibility granted? Chrome running? Collapses the permission-discovery cliff. *(highest leverage)*
+- [ ] `batch` — one AppleScript, multiple JS steps, one JSON result; cuts per-command `osascript` launch overhead for agent loops while staying daemon-free. *(highest leverage)*
+- [ ] `table "<sel>"` — scrape an HTML `<table>` to JSON `{headers, rows}` (common task; pure JS).
+- [ ] rich-text `fill` — contenteditable fallback (`execCommand('insertText')` / dispatched `InputEvent`) for Notion/Gmail/Slack compose; plain `fill` only sets `.value`.
+- [ ] consistent `--json` across all read/assert commands (`title`/`url`/`exists`/`click`/`fill`/… currently emit mixed bare strings / ad-hoc JSON).
+- [ ] verify + document Brave/Edge/Arc — same Chromium AppleScript `execute … javascript` dictionary; `SURF_APP` plumbing + `_surf_pick_app` already exist, just untested. (Safari/Firefox genuinely excluded — different dictionaries.)
 
 ## Won't do (out of mechanism — by design)
 
