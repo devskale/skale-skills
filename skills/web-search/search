@@ -7,6 +7,17 @@ while [ -L "$SELF" ]; do
     [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
 done
 SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+# Fallback: when this launcher is a copy (not a real symlink) outside the
+# skill directory — e.g. on Windows git-bash where ln -s produces a copy
+# instead of a native symlink — resolve the skill location via the pi skill
+# registry using the launcher's own name as the skill name.
+if [ ! -f "$SKILL_DIR/scripts/search.py" ]; then
+    _name="$(basename "$0")"
+    _try="$HOME/.pi/agent/skills/$_name"
+    if [ -d "$_try" ]; then
+        SKILL_DIR="$(cd "$_try" && pwd -P)"
+    fi
+fi
 STAMP_FILE="$SKILL_DIR/.last-update"
 AUTO_UPDATE_DAYS=7
 

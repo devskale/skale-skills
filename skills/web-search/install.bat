@@ -40,6 +40,19 @@ if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
 )
 echo   Created launcher: %LAUNCHER% -^> %SKILL_DIR%\scripts\search.py
 
+:: ── 3b. Create bash launcher (for git-bash users) ──
+set "BASH_LAUNCHER=%BIN_DIR%\web-search"
+copy /y "%SKILL_DIR%\search" "%BASH_LAUNCHER%" >nul
+chmod +x "%BASH_LAUNCHER%" 2>nul
+if errorlevel 1 (
+    echo   ! Could not set execute bit. For bash: chmod +x "%BASH_LAUNCHER%"
+)
+if exist "%BASH_LAUNCHER%" (
+    echo   Created bash launcher: %BASH_LAUNCHER%
+) else (
+    echo   ! Could not create bash launcher; web-search will only be available in CMD.
+)
+
 :: ── 4. Verify installation ──
 echo   Verifying...
 "%LAUNCHER%" "test" -v >nul 2>&1
