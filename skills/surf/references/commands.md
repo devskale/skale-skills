@@ -1,6 +1,6 @@
 # Surf — Command Reference
 
-Complete reference for `surf`, the macOS AppleScript CLI for your real Google Chrome. v1.0.0.
+Complete reference for `surf`, the macOS AppleScript CLI for your real Google Chrome. v1.3.1.
 
 `surf` targets the **active tab of the front window** unless you `surf select` a tab. Selectors are CSS (`document.querySelector` / `querySelectorAll`). `--json` is supported on `tabs`, `here`, `text`, `count`.
 
@@ -20,7 +20,7 @@ Complete reference for `surf`, the macOS AppleScript CLI for your real Google Ch
 | `surf select [wN.tN\|reset]` | pin a tab to operate it (even in the background, without focus); blank shows the current target |
 | `surf select reset` | back to active tab of front window |
 
-The target is stored in `~/.config/surf/target` (override with `SURF_TARGET_FILE`). List refs with `surf tabs`.
+The target is stored in `~/.config/surf/target` as `W T URL` (override with `SURF_TARGET_FILE`). The stored URL makes `select` **drift-resilient**: if window/tab indices shift (reorder/close), the next op verifies the URL and re-pins to the tab's new index (note on stderr); if the pinned tab navigated in place it follows the new URL silently; if the tab is gone it falls back to the active tab. List refs with `surf tabs`.
 
 ## Navigation & tabs
 

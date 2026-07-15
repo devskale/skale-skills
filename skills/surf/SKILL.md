@@ -135,7 +135,7 @@ Selectors are **CSS** (`document.querySelector` / `querySelectorAll`). `eval` JS
 - **macOS-only.** AppleScript + Google Chrome. No Brave/Edge/Safari/Firefox, no Linux/Windows.
 - **`shot` captures the window rectangle** via `screencapture -R`. For a background-tab target it first activates that tab.
 - **`wait-stable` needs a mutating tab foreground.** Chrome throttles background-tab timers to ~1/sec, so a `setInterval`-driven mutation in a background tab can read as "quiet" (gaps > 700ms). Foreground it, or mutate via continuous DOM changes — the observer fires on `appendChild`/attributes/characterData too.
-- **Multi-window** tabs are listed as `wN.tN`; `select` pins window+tab indices, which shift if you reorder. Re-run `surf tabs` if a ref goes stale.
+- **Multi-window** tabs are listed as `wN.tN`. `select` is **drift-resilient** — it stores the tab's URL too, so if indices shift (reorder/close) the next op re-resolves by URL and re-pins automatically (stderr note); a tab that navigated in place is followed silently; a gone tab falls back to the active tab. Re-run `surf tabs` to list current refs.
 - **`eval` returns one stringified value.** For complex shapes return JSON: `surf eval 'JSON.stringify({...})'`.
 - **Exit codes:** 0 = success, 1 = error (bad args, missing toggle, element not found returns a JSON string, not an error).
 

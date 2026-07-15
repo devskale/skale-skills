@@ -242,6 +242,32 @@ FRONT_A=$(osascript -e 'tell application "Google Chrome" to get URL of active ta
 chk "batch+wait-stable keep focus (bg op)" "[ \"\$FRONT_B\" = \"\$FRONT_A\" ]"
 chk "bg batch reads right title"   "[ \"\$(surf title)\" = 'Example Domain' ]"
 
+section "O. stale-target resilience (re-pin on index drift)"
+# Store an INVALID index (99) with the tab's real URL; the next op must re-resolve by
+# URL and hit the right tab instead of falling to front. data: URL = unambiguous, offline.
+surf new "data:text/html,<title>driftmark</title><h1>x</h1>" >/dev/null; sleep 0.8
+DM=$(surf_tab 'data:text/html')
+chk "drift target tab opened"       "[ -n \"$DM\" ]"
+printf '1 99 data:text/html,<title>driftmark</title><h1>x</h1>\n' > "$HOME/.config/surf/target"
+osascript -e 'tell application "Google Chrome" to set active tab index of front window to 1' >/dev/null 2>&1 || true
+chk "drifted target re-pins by URL"  '[ "$(surf title)" = "driftmark" ]'
+surf select reset >/dev/null
+surf_close_url 'data:text/html'
+
+section "P. rich page — github org stats (devskale)"
+# A real heavy/lazy page (vs example.com): settle it, then scrape org stats from the
+# nav counters. Best-effort wait-stable (the page has live activity) — the nav stats
+# load early and are stable, so assert on those, not on settle success.
+surf new "https://github.com/devskale" >/dev/null; sleep 2.5
+GH=$(surf_tab github.com/devskale)
+chk "github org tab opened"      "[ -n \"$GH\" ]"
+surf select "$GH" >/dev/null
+surf wait-stable --timeout 12 >/dev/null 2>&1 || true
+STATS=$(surf eval '(function(){var s={};document.querySelectorAll("a[data-tab-item],a.UnderlineNav-item").forEach(function(a){var t=(a.textContent||"").replace(/\s+/g," ").trim();var m;if((m=t.match(/Repositories\s*([\d.]+k?)/)))s.repos=m[1];if((m=t.match(/Stars\s*([\d.]+k?)/)))s.stars=m[1];});return JSON.stringify(s)})()')
+chk "stats: repos extracted"     'echo "$STATS" | grep -qE "\"repos\":\"[0-9]"'
+chk "stats: stars extracted"     'echo "$STATS" | grep -qE "\"stars\":\"[0-9.k]+"'
+surf_close_url github.com/devskale
+
 section "M. session hygiene (your real tabs untouched)"
 TABS_AFTER=$(surf tabs | wc -l | tr -d ' ')
 # net change = +2 (our example + ddg tabs, minus any we closed). Should be +2 now.

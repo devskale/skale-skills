@@ -2,7 +2,7 @@
 
 Checkable roadmap. Workflow per item: **implement → validate (`tests/surf/furious.sh`) → commit → check the box.**
 
-Status: `surf v1.2.0` — navigation/tabs, reads, assertions, interactions (click/fill/hover/select-option/submit/scroll/press), waits (wait/wait-url/wait-stable via MutationObserver), screenshots, `--json`, `doctor`, `batch`, classified JS-failure messages.
+Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `select`, navigation/tabs, reads, assertions, interactions, waits (MutationObserver), screenshots, `--json`, `doctor`, `batch`, classified JS-failure messages.
 
 ## Tier 1 — core gaps (real friction)
 
@@ -31,11 +31,12 @@ Status: `surf v1.2.0` — navigation/tabs, reads, assertions, interactions (clic
 - [ ] `activate <wN.tN>` / `find-tab "<query>"` — focus a tab / search tabs
 - [ ] full-page screenshot (scroll + stitch)
 - [ ] `cookie "<name>"` / localStorage read
+- [ ] `bookmarks` — read/search Chrome bookmarks (`surf bookmarks "<query>"`, `surf bookmark <id>` open); parse the Bookmarks JSON file
 
 ## Tier 4 — reliability & robustness
 
 - [ ] robust JS-failure classification — replace the O(N) up-to-10-tab probe in `_explain_js_failure` with a cheaper deterministic signal (cache last-known global toggle; single sentinel probe on a known-good tab). Resolves the x.com/incognito/PWA ambiguity without a scan.
-- [ ] stale-target resilience — `select` stores raw window/tab indices that silently break on reorder/close; capture the tab URL at select-time and re-resolve (or warn) when it changed.
+- [x] stale-target resilience — `select` stores raw window/tab indices that silently break on reorder/close; capture the tab URL at select-time and re-resolve (or warn) when it changed. *(v1.3.1)*
 - [x] `wait-stable` via MutationObserver — current `body.innerHTML.length` diff loops forever on ads/spinners/clocks; switch to a no-mutation quiet window. *(v1.2.0)*
 - [ ] transient-retry — one silent retry on `execute javascript` before classifying failure (cuts false negatives after focus changes).
 
@@ -58,5 +59,6 @@ Status: `surf v1.2.0` — navigation/tabs, reads, assertions, interactions (clic
 
 ## Done
 
+- [x] v1.3.1 — modular `lib/` (engine/target/nav/read/wait/interact/assert/shot/meta/main); stale-target resilient `select` (URL-sticky, re-pins on drift); github-org stats + drift tests (98/98 furious)
 - [x] v1.2.0 — `doctor`, `batch`, `wait-stable` (MutationObserver); JSON tab helpers in tests (93/93 furious)
 - [x] v0.1.0 — tabs/here/open/new/reload/back/fwd/close, title/url/text/html/attr/count/eval, click/fill, select (bg tabs), shot, setup (52/52 furious)
