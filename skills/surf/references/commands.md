@@ -42,7 +42,7 @@ All accept `--timeout N` (seconds; default `SURF_WAIT_TIMEOUT=15`). Poll interva
 |---|---|
 | `surf wait "<sel>" [--timeout N]` | `found: <sel>` (exit 0) when element exists; `surf: wait timeout (Ns): <sel>` (exit 1) |
 | `surf wait-url "<sub>" [--timeout N]` | `ok: <url>` (exit 0) when `location.href` contains substring; timeout exit 1 |
-| `surf wait-stable [--timeout N]` | `stable: <bytes>` (exit 0) when `body.innerHTML.length` is unchanged across two samples; timeout exit 1 |
+| `surf wait-stable [--timeout N]` | `stable: <N>ms` (exit 0) when no DOM mutation for `SURF_STABLE_QUIET_MS` (default 700) — via a `MutationObserver` quiet-window; timeout exit 1 |
 
 ## Read
 
@@ -56,6 +56,20 @@ All accept `--timeout N` (seconds; default `SURF_WAIT_TIMEOUT=15`). Poll interva
 | `surf count "<sel>"` | `String(querySelectorAll(sel).length)`. `--json` → `{selector,count}` |
 | `surf list "<sel>"` | `JSON` array of all matches' text (cap 1000 items, 500 chars each); `[]` if none |
 | `surf eval "<js>"` | result of running `<js>` in the page (stringified) |
+
+## Batch — many ops, one browser call
+
+Run a JSON array of steps in **one** `execute javascript` call; get back a JSON array of `{"op":..,"v":..}`. Cuts per-command `osascript` launch overhead for agent loops. Steps run sequentially in the target tab; each is `try/catch`-wrapped so one bad selector returns `{err}` instead of aborting the batch. `v` is exactly what the standalone op would print.
+
+```bash
+surf batch <<'EOF'
+[{"op":"title"},{"op":"count","sel":"a"},{"op":"text","sel":"h1"},{"op":"attr","sel":"a","name":"href"},{"op":"list","sel":".item"}]
+EOF
+```
+
+Supported ops: `title`, `url`, `text`(sel), `html`(sel), `attr`(sel,name), `count`(sel), `list`(sel), `exists`(sel), `visible`(sel), `click`(sel), `fill`(sel,val), `hover`(sel), `eval`(js — must be an **expression**, not statements).
+
+**Not batchable** (different mechanism — use standalone): `press`, `shot`/`shot-el`, navigation (`open`/`new`/`reload`/`back`/`fwd`/`close`), `wait*`.
 
 ## Assertions (exit 1 on fail — CI-friendly)
 
@@ -96,6 +110,14 @@ Activates the target tab's window first (can't press keys on a background tab). 
 |---|---|
 | `surf shot [<path>]` | window screenshot → PNG (default `./surf-shot.png`). Brings the window to front, reads `bounds`, `screencapture -R`. Needs **Screen Recording** for the terminal. |
 | `surf shot-el "<sel>" [<path>]` | element screenshot: scrolls into view, reads `getBoundingClientRect` + `devicePixelRatio` + chrome height, captures the window, crops with built-in `sips`. Best-effort positioning. → `{"ok":...}` for missing selectors |
+
+## Diagnostics
+
+```bash
+surf doctor
+```
+
+One-shot environment + permission check. Prints ✓/✗ for: macOS, Chrome running, **JavaScript-from-AppleScript toggle** (probed on a throwaway `about:blank` tab — never restricted, unlike x.com/incognito/PWA), **Screen Recording** (`screencapture`), **Accessibility** (`UI elements enabled`). Exit 0 if all green, 1 otherwise. Each ✗ prints the fix path. Run this first when something won't work.
 
 ## Setup
 

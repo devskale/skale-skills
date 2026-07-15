@@ -19,6 +19,8 @@ surf text "h1"                  # read text
 surf click "a.signin"           # click
 surf fill "input[name=q]" "x"   # fill a field
 surf eval "<js>"                # run arbitrary JS
+surf batch                      # many reads/interactions in ONE call (JSON in, JSON out)
+surf doctor                     # one-shot permission & environment check
 ```
 
 ## Install
@@ -64,7 +66,7 @@ surf close                      # close target/active tab
 ```bash
 surf wait  "<sel>" [--timeout N]     # poll until element exists (exit 1 on timeout)
 surf wait-url  "<sub>" [--timeout N] # poll until URL contains substring
-surf wait-stable [--timeout N]       # poll until DOM stops changing
+surf wait-stable [--timeout N]       # poll until DOM is quiet (MutationObserver; SURF_STABLE_QUIET_MS)
 ```
 
 ### Read  (`tabs`/`here`/`text`/`count` accept `--json`)
@@ -77,6 +79,15 @@ surf count "<sel>"              # number of matches
 surf list  "<sel>"              # JSON array of all matches' text (scrape lists)
 surf eval  "<js>"               # run JS, print result
 ```
+
+### Batch — many ops, one browser call
+```bash
+# run a JSON steps array in ONE execute-javascript call → JSON array of {op,v}
+surf batch <<'EOF'
+[{"op":"title"},{"op":"count","sel":"a"},{"op":"text","sel":"h1"},{"op":"fill","sel":"#q","val":"x"}]
+EOF
+```
+Cuts per-command `osascript` overhead for agent loops. Ops: `title`/`url`/`text`/`html`/`attr`/`count`/`list`/`exists`/`visible`/`click`/`fill`/`hover`/`eval`. **Not** batchable (different mechanism): `press`, `shot`/`shot-el`, navigation (`open`/`new`/`reload`/`back`/`fwd`/`close`), `wait*`. Each step is try/catch-wrapped (one bad selector can't abort the batch); `v` is exactly what the standalone op would print.
 
 ### Assertions (exit 1 on fail — CI-friendly)
 ```bash
@@ -105,6 +116,7 @@ surf shot-el "<sel>" [<path>]   # element screenshot (crop via sips)
 
 ### Meta
 ```bash
+surf doctor                     # check macOS/Chrome/JS-toggle/Screen-Recording/Accessibility
 surf setup                      # one-time: enable Chrome JS-from-AppleScript
 surf --version | --selfcheck    # version / install info
 surf help                       # full usage
@@ -122,6 +134,7 @@ Selectors are **CSS** (`document.querySelector` / `querySelectorAll`). `eval` JS
 - **Accessibility** (System Settings → Privacy & Security → Accessibility) must be granted to your terminal for `surf setup`'s GUI attempt; the manual click needs no special permission.
 - **macOS-only.** AppleScript + Google Chrome. No Brave/Edge/Safari/Firefox, no Linux/Windows.
 - **`shot` captures the window rectangle** via `screencapture -R`. For a background-tab target it first activates that tab.
+- **`wait-stable` needs a mutating tab foreground.** Chrome throttles background-tab timers to ~1/sec, so a `setInterval`-driven mutation in a background tab can read as "quiet" (gaps > 700ms). Foreground it, or mutate via continuous DOM changes — the observer fires on `appendChild`/attributes/characterData too.
 - **Multi-window** tabs are listed as `wN.tN`; `select` pins window+tab indices, which shift if you reorder. Re-run `surf tabs` if a ref goes stale.
 - **`eval` returns one stringified value.** For complex shapes return JSON: `surf eval 'JSON.stringify({...})'`.
 - **Exit codes:** 0 = success, 1 = error (bad args, missing toggle, element not found returns a JSON string, not an error).
