@@ -25,6 +25,9 @@ rodney stop                               # 5. ALWAYS stop when done
 - Call each command as a separate bash invocation (e.g. `rodney start`, then `rodney open <url>`, etc.)
 - **Always `rodney stop`** when finished — otherwise Chrome runs forever
 - Combine start → open → waitstable → work → stop in every workflow
+- Other lifecycle commands: `rodney connect <host:port>` (attach to an already-running Chrome on a debug port), `rodney status` (browser info + active page)
+
+> **Command list is a curated snapshot — run `rodney --help` for the source of truth.** Rodney is an external dep that self-updates via `uv`, so the installed binary can be newer than these docs. If a command below seems missing, prints an error, or you suspect a newer flag exists, check `rodney --help` first.
 
 ## Install
 
@@ -174,7 +177,8 @@ Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.
 
 ## References
 
-- **[references/commands.md](references/commands.md)** — Full command reference with all flags and options. Read when you need details on a specific command.
+- **`rodney --help`** — canonical command/flag/env list (source of truth; may be newer than the docs below).
+- **[references/commands.md](references/commands.md)** — curated full command reference with all flags and options. Read when you need details on a specific command.
 - **[references/examples.md](references/examples.md)** — Ready-to-use workflow scripts for scraping, form filling, smoke tests, and accessibility audits.
 - **[references/debugging.md](references/debugging.md)** — Non-obvious debugging patterns: screenshot time-series, form validation checks, exit code chaining, and visible-mode debugging.
 - **[references/dev-workflow.md](references/dev-workflow.md)** — Dev loop: reload-assess-iterate, page inspection without screenshots, DOM structure, accessibility tree, layout queries.
