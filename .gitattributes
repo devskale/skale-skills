@@ -1,1 +1,14 @@
+# Shell scripts — must stay LF (CRLF breaks bash on Windows/Git Bash)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Extensionless executable shell scripts per skill
+skills/surf/surf text eol=lf
+skills/video-transcript-downloader/vtd text eol=lf
 skills/web-search/search text eol=lf
+skills/youtube/youtube text eol=lf
+
+# Node.js scripts
+extensions/xmodel-vision-test.mjs text eol=lf
+
+
