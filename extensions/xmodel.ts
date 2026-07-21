@@ -1,12 +1,13 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.1
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.2
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
  *   it is analysed by a VLM sub-model with a COMPRESSED context and the text
  *   analysis is fed back to the main model — the main model never switches and
  *   never blows its context window. (compressor → VLM → feedback. Set
- *   _vision.mode="switch" for the legacy main-model-flip behaviour, "off" to disable.)
+ *   _vision.mode="switch" for the legacy main-model-flip behaviour, "human" to
+ *   ask the user to describe the image, "off" to disable.)
  * Rate-limit fallback: on 429/503/529, auto-switches to a free variant
  * (explicit preset.fallback → `${name}-free` → any *free* preset).
  *
@@ -21,7 +22,7 @@
  *   /xm models [query]    browse provider/model from the live registry
  *   /xm off               clear, restore defaults
  *   /xm settings          vision hub — pi-style settings list (global + project tiers)
- *   /xm vision [m] [g|p]  show / set vision mode (delegate|switch|off)
+ *   /xm vision [m] [g|p]  show / set vision mode (delegate|switch|human|off)
  *   Ctrl+Shift+F          cycle presets
  *   switch_model tool     agent (LLM) switches itself
  *   /xm version           show version
@@ -55,12 +56,16 @@ import {
 	SelectList,
 	Spacer,
 	Text,
+	Image,
+	Key,
+	matchesKey,
+	decodeKittyPrintable,
 	type Component,
 	type SettingItem,
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
-const VERSION = "0.3.1";
+const VERSION = "0.3.2";
 
 type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -78,10 +83,11 @@ interface PresetsConfig {
 	[name: string]: Preset;
 }
 
-type VisionMode = "delegate" | "switch" | "off";
+type VisionMode = "delegate" | "switch" | "human" | "off";
 interface VisionConfig {
 	/** delegate = build a brief from recent msgs → single VLM sub-call → feed analysis back (default).
 	 *  switch  = old behaviour: flip the main model to vision for the turn.
+	 *  human   = ask the user to describe the image (interactive TUI overlay).
 	 *  off     = do nothing. */
 	mode: VisionMode;
 	/** "provider/id" of the vision model for the sub-call. Auto-picked if unset. */
@@ -207,7 +213,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	let autoVisionActive = false;
 	let preAutoVisionModel: Model<Api> | undefined;
 
-	// --- vision config (delegate / switch / off) ---
+	// --- vision config (delegate / switch / human / off) ---
 	let visionCfg: VisionConfig = defaultVision();
 
 	// tool_callId → start ms (to time screenshot/ MCP calls)
@@ -516,7 +522,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				? ctx.ui.theme.fg("muted", "👁off")
 				: m === "switch"
 					? ctx.ui.theme.fg("warning", "👁switch")
-					: undefined, // delegate = default → no badge (less noise)
+					: m === "human"
+						? ctx.ui.theme.fg("accent", "👁human")
+						: undefined, // delegate = default → no badge (less noise)
 		);
 	}
 
@@ -615,7 +623,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 		await ctx.ui.custom((tui: any, theme: any, _kb: any, done: (r: undefined) => void) => {
 			const scopeValues = trusted ? ["global", "project"] : ["global"];
-			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). switch: flip main model to vision for the turn. off: do nothing.";
+			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). switch: flip main model to vision for the turn. human: ask YOU to describe the image in a TUI overlay. off: do nothing.";
 			const BRIEF_HELP = "Char budget for the task brief sent to the VLM.";
 			const KEEP_HELP = "Keep the original image inline in the result (delegate mode only), alongside the VLM text analysis. The non-vision main model still only receives the analysis — pi-ai strips image parts it can't process.";
 			// NOTE: for `values`-cycle rows, currentValue MUST be a bare entry of `values`
@@ -635,7 +643,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					label: "Vision mode",
 					description: `${MODE_HELP}\nEffective from: ${visionFieldSource(cwd, trusted, "mode")}`,
 					currentValue: visionCfg.mode,
-					values: ["delegate", "switch", "off"],
+					values: ["delegate", "switch", "human", "off"],
 				},
 				{
 					id: "vlm",
@@ -717,7 +725,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.3.1 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
+		description: "xmodel v0.3.2 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -746,8 +754,8 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				const cwd = ctx.cwd;
 				const [modeTok, scopeTok] = restStr.split(/\s+/);
 				if (!modeTok) return showVisionSummary(ctx);
-				if (!["delegate", "switch", "off"].includes(modeTok)) {
-					ctx.ui.notify("xmodel: vision mode must be delegate | switch | off", "error");
+				if (!["delegate", "switch", "off", "human"].includes(modeTok)) {
+					ctx.ui.notify("xmodel: vision mode must be delegate | switch | human | off", "error");
 					return;
 				}
 				let scope: "global" | "project" = "global";
@@ -899,6 +907,16 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		if (mode === "switch") {
 			await ensureVision(ctx, "tool_result");
 			return;
+		}
+		if (mode === "human") {
+			// human: show the image to the user, ask them to describe it (interactive TUI)
+			try {
+				return await humanVision(ctx, event, images);
+			} catch (e) {
+				debug("humanVision threw", { err: String(e) });
+				ctx.ui.notify(`xmodel: human vision failed (${String(e)}) — leaving image as-is`, "warning");
+				return undefined;
+			}
 		}
 		// delegate: compress → VLM (own context) → replace image with text analysis
 		try {
@@ -1332,6 +1350,181 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 		ctx.ui.setStatus("xmodel-vision", undefined);
 		ctx.ui.notify(`xmodel: vision delegate done (${images.length} img → ${vlm})`, "info");
+		return { content: newContent };
+	}
+
+	// =========================================================================
+	// Human vision: show the image to the user, ask them to type a description.
+	// 3s grace period on open → 30s countdown that resets on any keypress.
+	// Enter = submit · Shift+Enter = newline · Esc = cancel · Backspace = delete.
+	// Returns replacement tool_result content (always keeps the image inline).
+	// =========================================================================
+	async function humanVision(ctx: ExtensionContext, event: any, images: any[]): Promise<{ content: any[] } | undefined> {
+		if (ctx.mode !== "tui") {
+			ctx.ui.notify("xmodel: human vision mode requires interactive TUI — falling back to delegate", "warning");
+			return delegateVision(ctx, event, images);
+		}
+		const img = images[0];
+		const promptText = (textOf(event.content).slice(0, 200) || "Describe this image").replace(/\n/g, " ");
+		const multiNote = images.length > 1 ? ` (${images.length} images — describe the first shown)` : "";
+
+		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", "👁 vision: waiting for human…"));
+
+		let analysis: string | undefined;
+		try {
+			analysis = await ctx.ui.custom<string | undefined>((tui: any, theme: any, _kb: any, done) => {
+				// --- shared mutable state ---
+				let text = "";
+				let inGrace = true;
+				let secondsLeft = 30;
+				let graceTimer: ReturnType<typeof setTimeout> | undefined;
+				let countdown: ReturnType<typeof setInterval> | undefined;
+				let finished = false;
+
+				const cleanup = () => {
+					if (graceTimer) { clearTimeout(graceTimer); graceTimer = undefined; }
+					if (countdown) { clearInterval(countdown); countdown = undefined; }
+				};
+				const finish = (val: string | undefined) => {
+					if (finished) return;
+					finished = true;
+					cleanup();
+					done(val);
+				};
+				const beginCountdown = () => {
+					inGrace = false;
+					secondsLeft = 30;
+					countdown = setInterval(() => {
+						secondsLeft--;
+						tui.requestRender();
+						if (secondsLeft <= 0) finish(undefined);
+					}, 1000);
+				};
+				const resetGrace = () => {
+					if (graceTimer) clearTimeout(graceTimer);
+					inGrace = true;
+					graceTimer = setTimeout(beginCountdown, 3000);
+				};
+
+				// start the initial 3s grace
+				resetGrace();
+
+				// --- image preview (Kitty/iTerm2 with text fallback) ---
+				let imageComponent: Image | undefined;
+				if (img?.data) {
+					const rawData: string = typeof img.data === "string" ? img.data : "";
+					const base64 = rawData.startsWith("data:") ? rawData.split(",")[1] ?? "" : rawData;
+					if (base64) {
+						try {
+							const buf = Buffer.from(base64, "base64");
+							if (isValidImage(buf)) {
+								imageComponent = new Image(
+									base64,
+									img.mimeType || "image/png",
+									{ fallbackColor: (s: string) => theme.fg("muted", s) },
+									{ maxWidthCells: 80, maxHeightCells: 25 },
+								);
+							}
+						} catch {}
+					}
+				}
+
+				return {
+					render(w: number) {
+						const c = new Container();
+						c.addChild(new DynamicBorder((s: string) => theme.fg("borderMuted", s)));
+						c.addChild(new Text(theme.fg("accent", theme.bold("👁  Human Vision")), 0, 0));
+						c.addChild(new Text(theme.fg("dim", "Type your description · Enter submit · Shift+Enter newline · Esc cancel"), 0, 0));
+						c.addChild(new Spacer(1));
+						if (imageComponent) {
+							c.addChild(imageComponent);
+							c.addChild(new Spacer(1));
+						} else {
+							c.addChild(new Text(theme.fg("muted", "(no image preview available — describe what you can see)"), 0, 0));
+							c.addChild(new Spacer(1));
+						}
+						c.addChild(new Text(theme.fg("dim", `Task context:${multiNote} ${promptText}`), 0, 0));
+						c.addChild(new Spacer(1));
+						c.addChild(new Text(theme.fg("accent", "Your description:"), 0, 0));
+						if (text) {
+							for (const ln of text.split("\n").slice(-10)) c.addChild(new Text(`  ${ln}`, 0, 0));
+						} else {
+							c.addChild(new Text(theme.fg("muted", "  (start typing…)"), 0, 0));
+						}
+						c.addChild(new Spacer(1));
+						let status: string;
+						if (inGrace) {
+							status = theme.fg("dim", "  grace period… (30s countdown starts if you stop typing for 3s)");
+						} else if (secondsLeft > 10) {
+							status = theme.fg("accent", `  ⏱ ${secondsLeft}s — keep typing or press Enter to submit`);
+						} else {
+							status = theme.fg("warning", `  ⏱ ${secondsLeft}s — submit soon!`);
+						}
+						c.addChild(new Text(status, 0, 0));
+						c.addChild(new DynamicBorder((s: string) => theme.fg("borderMuted", s)));
+						return c.render(w);
+					},
+					invalidate() { /* stateless render */ },
+					handleInput(data: string) {
+						// Esc / cancel
+						if (matchesKey(data, Key.escape) || matchesKey(data, Key.esc)) { finish(undefined); return; }
+						// Shift+Enter = newline (must check BEFORE Enter — Kitty maps shift+enter to \n)
+						if (matchesKey(data, Key.shift("enter"))) {
+							text += "\n";
+							resetGrace();
+							tui.requestRender();
+							return;
+						}
+						// Enter = submit
+						if (matchesKey(data, Key.enter) || matchesKey(data, Key.return)) {
+							finish(text);
+							return;
+						}
+						// Backspace
+						if (matchesKey(data, Key.backspace)) {
+							if (text.length) text = text.slice(0, -1);
+							resetGrace();
+							tui.requestRender();
+							return;
+						}
+						// Printable chars: Kitty CSI-u decode first, then regular UTF-8
+						const kitty = decodeKittyPrintable(data);
+						if (kitty !== undefined) { text += kitty; resetGrace(); tui.requestRender(); return; }
+						const hasCtrl = [...data].some((ch) => {
+							const code = ch.charCodeAt(0);
+							return code < 32 || code === 0x7f || (code >= 0x80 && code <= 0x9f);
+						});
+						if (!hasCtrl) { text += data; resetGrace(); tui.requestRender(); }
+					},
+					dispose() { cleanup(); },
+				};
+			});
+		} finally {
+			ctx.ui.setStatus("xmodel-vision", undefined);
+		}
+
+		const analysisText = analysis || "(no human description provided)";
+		// Rebuild the tool result: ALWAYS keep the original image inline in human mode
+		// (the user should be able to see what they described in the chat history),
+		// plus the human's text analysis for the non-vision main model.
+		const newContent: any[] = [];
+		let imgIdx = 0;
+		for (const block of event.content as any[]) {
+			if (block && block.type === "image") {
+				newContent.push(block);
+				newContent.push({ type: "text", text: `[xmodel vision · human]: ${analysisText}` });
+				imgIdx++;
+			} else {
+				newContent.push(block);
+			}
+		}
+		// leftover analyses (synthesised screenshots not in event.content)
+		while (imgIdx < images.length) {
+			if (images[imgIdx]) newContent.push(images[imgIdx]);
+			newContent.push({ type: "text", text: `[xmodel vision · human]: ${analysisText}` });
+			imgIdx++;
+		}
+		ctx.ui.notify(`xmodel: human vision done — ${analysis ? "recorded your description" : "no response (timeout)"}`, analysis ? "info" : "warning");
 		return { content: newContent };
 	}
 
