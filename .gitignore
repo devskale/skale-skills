@@ -53,7 +53,8 @@ bench_results/
 
 # Upstream skills (not maintained here)
 skills/browser-use/
-pi
+pi/
+pis/
 
 # Local clone of external pi-package (install via npm: pi-mcp-adapter)
 pi-mcp-adapter/

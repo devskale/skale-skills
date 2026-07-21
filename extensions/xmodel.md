@@ -12,7 +12,7 @@ Lives at `~/.pi/agent/extensions/xmodel.ts` (symlinked into the skale-skills rep
 | `/xm <name>` | Switch to preset `<name>` (sets model + thinking level) |
 | `/xm` | Picker — switch preset (or `(off)`) |
 | `/xm settings` | **Vision hub** — pi-style settings list for the vision pipeline (mode, vlm, compressor, brief) with global/project scope |
-| `/xm vision [mode] [global\|project]` | Show, or set, the vision mode (`delegate` \| `switch` \| `off`) |
+| `/xm vision [mode] [global\|project]` | Show, or set, the vision mode (`delegate` \| `switch` \| `human` \| `off`) |
 | `/xm edit [name]` | Add/edit a preset (provider, model, thinking, instructions) |
 | `/xm rm [name]` | Remove a preset |
 | `/xm models [query]` | Browse provider/model from the live registry |
@@ -59,6 +59,7 @@ main model can't see images, xmodel routes it through a vision pipeline. The mod
 |---|---|
 | `delegate` *(default)* | Compress recent context → one VLM sub-call → feed the text analysis back. The main model never switches and never blows its context window. |
 | `switch` | Legacy: flip the main model to a vision-capable model for the turn, then restore it at turn end. |
+| `human` | Ask **you** to describe the image. Shows the image in a TUI overlay with a 30s countdown (resets on keypress) and feeds your description back as the analysis. Always keeps the image inline. |
 | `off` | Do nothing — the image is left untouched (inline rendering if the terminal supports it). |
 
 ### Seeing the image while delegating (`keepImage`)
@@ -82,7 +83,7 @@ analysis. So it costs you nothing on the model side; you just also get to look a
 ```jsonc
 {
   "_vision": {
-    "mode": "delegate",          // delegate | switch | off
+    "mode": "delegate",          // delegate | switch | human | off
     "vlm": "opencode/claude-sonnet-4-6",   // optional; auto-picks if unset
     "compressor": "zai/glm-5.2",           // optional; uses active model if unset
     "maxBriefChars": 1500,
