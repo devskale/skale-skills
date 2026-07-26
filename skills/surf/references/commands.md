@@ -174,6 +174,20 @@ surf select reset
 surf tabs --json | jq '.[] | select(.url|test("github"))'
 ```
 
+## Tier 3 commands (v1.4.2)
+
+Added in v1.4.2. Each has full per-command help: `surf help <command>`.
+
+| Command | What |
+|---|---|
+| `surf find-tab "<q>" [--activate]` | search open tabs by URL/title substring; `--activate` focuses the first match |
+| `surf bookmarks [query] [--profile NAME] [--json]` | read/search Chrome bookmarks from the profile file (no browser needed) |
+| `surf cookie [name] [--json]` | read JS-visible (non-HttpOnly) cookies — HttpOnly cookies are hidden by design |
+| `surf localstorage [key]` | read window.localStorage; one key's value, or a JSON dump of all (each value capped at 2000 chars) |
+| `surf form 'sel=val' 'sel=val' ...` | fill many fields in ONE browser call; splits on the last `=` (attribute-selector safe) |
+| `surf download "<sel>" [--timeout N] [--dir DIR]` | click a download trigger, watch DIR for the completed file; times out if Chrome's "Ask where to save" blocks |
+| `surf shot-full [<path>]` | full-page screenshot: scrolls slice-by-slice, stitches with Pillow (needs Screen Recording) |
+
 ## How it works
 
 Pure bash + `osascript`. JS is written to a temp file and read by AppleScript (`read POSIX file … as «class utf8»`) to avoid quoting hell, then `execute … javascript` runs it in the target tab. `--json` for `tabs` is built via AppleScript tab-delimited output → `python3 -c json.dumps`; `here`/`text`/`count` use the browser's `JSON.stringify`. No background process ever runs.

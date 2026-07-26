@@ -21,6 +21,8 @@ main() {
     tabs)   cmd_tabs "$@" ;;
     here)   cmd_here "$@" ;;
     select) cmd_select "$@" ;;
+    find-tab) cmd_find_tab "$@" ;;
+    bookmarks) cmd_bookmarks "$@" ;;
     open)   cmd_open "$@" ;;
     new)    cmd_new "$@" ;;
     reload|refresh) cmd_reload ;;
@@ -34,11 +36,14 @@ main() {
     attr)   cmd_attr "$@" ;;
     count)  cmd_count "$@" ;;
     list)   cmd_list "$@" ;;
+    cookie)  cmd_cookie "$@" ;;
+    localstorage) cmd_localstorage "$@" ;;
     exists)  cmd_exists "$@" ;;
     visible) cmd_visible "$@" ;;
     assert)  cmd_assert "$@" ;;
     click)  cmd_click "$@" ;;
     fill)   cmd_fill "$@" ;;
+    form)    cmd_form "$@" ;;
     eval)   cmd_eval "$@" ;;
     wait)   cmd_wait "$@" ;;
     wait-url) cmd_wait_url "$@" ;;
@@ -48,9 +53,11 @@ main() {
     hover)       cmd_hover "$@" ;;
     select-option) cmd_select_option "$@" ;;
     submit)      cmd_submit "$@" ;;
+    download)    cmd_download "$@" ;;
     press)       cmd_press "$@" ;;
     shot)        cmd_shot "$@" ;;
     shot-el)     cmd_shot_el "$@" ;;
+    shot-full)   cmd_shot_full "$@" ;;
     setup)  cmd_setup ;;
     doctor) cmd_doctor ;;
     batch)  cmd_batch "$@" ;;

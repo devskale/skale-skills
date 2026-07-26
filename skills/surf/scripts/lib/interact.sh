@@ -87,3 +87,64 @@ APPLESCRIPT
   fi
   echo "pressed: $input"
 }
+
+# ── form: fill many fields in ONE browser call ────────────────────
+# Each arg is "<selector>=<value>". Split on the LAST '=' so attribute selectors
+# like input[type=text]=x parse correctly (selector before, value after).
+cmd_form() {
+  [ $# -ge 1 ] || die "form needs one or more '<selector>=<value>' pairs"
+  local a sel val pairs="" n=0
+  for a in "$@"; do
+    case "$a" in
+      *=*) ;;
+      *) echo "surf: form: '$a' is not <selector>=<value> (skipping)" >&2; continue ;;
+    esac
+    sel="${a%=*}"; val="${a##*=}"
+    pairs="${pairs}{\"sel\":$(js_str "$sel"),\"val\":$(js_str "$val")},"
+    n=$((n+1))
+  done
+  [ $n -ge 1 ] || die "form: no valid pairs"
+  pairs="${pairs%,}"
+  run_js "(function(){var pairs=[$pairs];var res=[];pairs.forEach(function(p){var e=document.querySelector(p.sel);if(!e){res.push({sel:p.sel,ok:false,err:'not_found'});return}e.focus();e.value=p.val;e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));res.push({sel:p.sel,ok:true,tag:e.tagName})});return JSON.stringify({ok:res.filter(function(r){return r.ok}).length,fail:res.filter(function(r){return !r.ok}).length,results:res})})()"
+}
+
+# ── download: click a trigger, then watch the download dir for the new file ───
+# Best-effort: assumes Chrome saves straight to --dir (no 'Ask where to save').
+# Chrome writes <name>.crdownload while in flight, renames to <name> on finish,
+# so 'done' = no *.crdownload left AND a new non-partial file is present.
+cmd_download() {
+  local sel="" timeout="${SURF_DOWNLOAD_TIMEOUT:-30}" dir="${SURF_DOWNLOAD_DIR:-$HOME/Downloads}"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --timeout) timeout="${2-}"; shift 2 ;;
+      --dir) dir="${2-}"; shift 2 ;;
+      --*) die "download: unknown flag $1" ;;
+      *) sel="$1"; shift ;;
+    esac
+  done
+  [ -n "$sel" ] || die "download needs a selector (a link/button that starts a download)"
+  [ -d "$dir" ] || die "download: dir not found: $dir"
+  [[ "$timeout" =~ ^[0-9]+$ ]] || die "download: --timeout needs a number"
+  local before clickres start now newf newest
+  before="$(ls -A "$dir" 2>/dev/null | sort)"
+  clickres="$(cmd_click "$sel")"
+  echo "$clickres" | grep -q '"ok":true' || { echo "$clickres" >&2; return 1; }
+  start=$(date +%s)
+  while :; do
+    now=$(date +%s); [ $((now - start)) -ge "$timeout" ] && break
+    sleep 0.5
+    # still downloading? Chrome v136+ writes hidden .com.google.Chrome.* temp dirs;
+    # older builds use *.crdownload partials. Wait while either is present.
+    ls -A "$dir" 2>/dev/null | grep -qE '(^\.com\.google\.Chrome\.|\.crdownload$)' && continue
+    now="$(ls -A "$dir" 2>/dev/null | sort)"
+    # a completed download = a NEW, NON-hidden file (all temp artifacts are hidden)
+    newf="$(comm -13 <(printf '%s\n' "$before") <(printf '%s\n' "$now") | grep -vE '^\.|\.crdownload$')"
+    [ -z "$newf" ] && continue
+    newest="$(printf '%s\n' "$newf" | while IFS= read -r f; do [ -f "$dir/$f" ] && stat -f '%m %N' "$dir/$f"; done | sort -rn | head -1 | sed 's/^[0-9]* //')"
+    [ -n "$newest" ] && { echo "downloaded: $newest"; return 0; }
+  done
+  echo "surf: download timed out (${timeout}s) — none completed in $dir." >&2
+  ls -d "$dir"/*.crdownload >/dev/null 2>&1 && echo "partial: $(ls -d "$dir"/*.crdownload)" >&2
+  echo "   (if Chrome is set to 'Ask where to save', the save dialog blocks — disable it, or interact manually)" >&2
+  return 1
+}

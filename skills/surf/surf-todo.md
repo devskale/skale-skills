@@ -26,12 +26,12 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 ## Tier 3 — nice to have
 
-- [ ] `form 'sel1=val1' 'sel2=val2'` — batch fill
-- [ ] `download "<sel>"` — trigger + monitor a download
-- [ ] `activate <wN.tN>` / `find-tab "<query>"` — focus a tab / search tabs
-- [ ] full-page screenshot (scroll + stitch)
-- [ ] `cookie "<name>"` / localStorage read
-- [ ] `bookmarks` — read/search Chrome bookmarks (`surf bookmarks "<query>"`, `surf bookmark <id>` open); parse the Bookmarks JSON file
+- [x] `form 'sel1=val1' 'sel2=val2'` — batch fill *(v1.4.2)*
+- [x] `download "<sel>"` — trigger + monitor a download *(v1.4.2; best-effort — Chrome v136+ temp-dir aware; "Ask where to save" blocks)*
+- [x] `activate <wN.tN>` / `find-tab "<query>"` — focus a tab / search tabs *(v1.4.2: `find-tab "<q>" [--activate]`)*
+- [x] full-page screenshot (scroll + stitch) *(v1.4.2: `shot-full`, Pillow stitch)*
+- [x] `cookie "<name>"` / localStorage read *(v1.4.2: `cookie` [name], `localstorage` [key])*
+- [x] `bookmarks` — read/search Chrome bookmarks *(v1.4.2: `bookmarks [query] [--profile] [--json]`)*
 
 ## Tier 4 — reliability & robustness
 
@@ -59,6 +59,7 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 ## Done
 
+- [x] v1.4.2 — Tier 3 commands: `form` (batch fill), `find-tab` (--activate), `bookmarks` (--profile/--json), `cookie`, `localstorage`, `download` (Chrome v136+ temp-dir aware), `shot-full` (scroll + Pillow stitch). furious 111/111.
 - [x] v1.4.1 — robust JS-failure classification: O(1) `about:blank` sentinel probe (mirrors `doctor`'s validated toggle test) + incognito short-circuit; drops the O(N) 10-tab scan and `surf tabs` subprocess re-entry. furious 101/101.
 - [x] v1.4.0 — self-discoverable help: `surf help` categorized overview + `surf help <command>` / `surf <command> --help` per-command detail (usage, return, example, see-also); new `lib/help.sh`. Bash-3.2-safe (no associative arrays).
 - [x] v1.3.1 — modular `lib/` (engine/target/nav/read/wait/interact/assert/shot/meta/main); stale-target resilient `select` (URL-sticky, re-pins on drift); github-org stats + drift tests (98/98 furious)

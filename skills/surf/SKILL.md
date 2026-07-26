@@ -1,6 +1,6 @@
 ---
 name: surf
-version: "1.4.1"
+version: "1.4.2"
 description: "Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screenshots, and tab-aware automation — no daemon, no debug port, no extension, no per-connection dialog. Sessions stay intact (cookies, logins, tabs). Uses macOS AppleScript + Chrome's 'Allow JavaScript from Apple Events'. Use when the user wants to automate, scrape, click, fill, read, or screenshot the browser they are already logged into. Triggers on: control my Chrome, drive my browser, automate my logged-in browser, scrape this page, fill this form, click this, read the page, take a browser screenshot, surf."
 ---
 
@@ -35,6 +35,7 @@ Navigation & tabs
   surf tabs                       list windows → tabs (refs like w1.t3); --json
   surf here                       active/target tab: URL | title; --json
   surf select [wN.tN | reset]     pin a tab (operate background tabs w/o focus); reset to clear
+  surf find-tab "<q>" [--activate]  search tabs by URL/title; --activate focuses first match
   surf open <url> · new [<url>] · reload · back · fwd · close
 
 Read
@@ -42,10 +43,11 @@ Read
   surf text "<sel>" · html "<sel>" · attr "<sel>" <name>
   surf count "<sel>" · list "<sel>"        (list = JSON array of all matches' text)
   surf eval "<js>"                          run JS in the page, print stringified result
+  surf cookie [name] · localstorage [key]    (cookie = JS-visible/non-HttpOnly only)
 
 Interact
-  surf click "<sel>" · fill "<sel>" "<val>" · hover "<sel>"
-  surf select-option "<sel>" "<val>" · submit "<sel>"
+  surf click "<sel>" · fill "<sel>" "<val>" · form 'sel=val' ... · hover "<sel>"
+  surf select-option "<sel>" "<val>" · submit "<sel>" · download "<sel>"
   surf scroll down|up|top|bottom [N] · scroll-to "<sel>"
   surf press "<key>"                        real key/chord (enter, tab, escape, cmd+a)
 
@@ -56,7 +58,10 @@ Assert      (exit 1 on fail — CI-friendly)
   surf exists "<sel>" · visible "<sel>" · assert "<js>" [expected]
 
 Screenshots
-  surf shot [<path>] · shot-el "<sel>" [<path>]
+  surf shot [<path>] · shot-el "<sel>" [<path>] · shot-full [<path>]
+
+Bookmarks   (file-based — no browser or JS toggle needed)
+  surf bookmarks [query] [--profile NAME] [--json]
 
 Meta
   surf batch · surf doctor · surf setup · surf --version | --selfcheck | help
