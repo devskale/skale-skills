@@ -65,6 +65,9 @@ section "B. launcher flags"
 chk "--version prints"          "surf --version | grep -q 'surf'"
 chk "--selfcheck prints dir"    "surf --selfcheck | grep -q 'skills/surf'"
 chk "help lists click & fill"   "surf help | grep -q 'surf click' && surf help | grep -q 'surf fill'"
+chk "help <cmd> drills to detail" "surf help text | grep -q 'USAGE'"
+chk "<cmd> --help drills to detail" "surf click --help | grep -qi 'click'"
+chk "help unknown cmd exits 1"   "surf help bogus-xyz >/dev/null 2>&1; [ \$? -ne 0 ]"
 
 section "C. open test tabs (throwaway)"
 # bring a JS-capable window to front so `surf new` opens test tabs there (not an app/restricted window)

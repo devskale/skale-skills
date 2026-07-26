@@ -37,7 +37,7 @@ echo "[2] SKILL.md frontmatter..."
 assert "name: surf"        "grep -q '^name: surf' SKILL.md"
 assert "description"       "grep -q '^description:' SKILL.md"
 assert "mentions AppleScript" "grep -qi 'applescript' SKILL.md"
-assert "CLI only warning"  "grep -q 'CLI Only' SKILL.md"
+assert "CLI-only note"   "grep -q 'not an MCP tool' SKILL.md"
 assert "macOS-only noted"  "grep -qi 'macOS-only' SKILL.md"
 echo ""
 
@@ -60,8 +60,8 @@ echo ""
 
 # ── 6. SKILL.md content quality ───────────────────────────────────────
 echo "[6] SKILL.md content..."
-assert "has Install section"  "grep -q '## Install' SKILL.md"
-assert "has Commands section" "grep -q '## Commands' SKILL.md"
+assert "has Quick Start section"  "grep -q '## Quick Start' SKILL.md"
+assert "has Command map section" "grep -q '## Command map' SKILL.md"
 assert "has Gotchas section"  "grep -q '## Gotchas' SKILL.md"
 assert "mentions setup"       "grep -q 'surf setup' SKILL.md"
 assert "lists click/fill/text" "grep -q 'surf click' SKILL.md"
@@ -77,6 +77,8 @@ echo ""
 echo "[8] Launcher flags..."
 assert "--selfcheck works" "surf --selfcheck >/dev/null 2>&1"
 assert "help works"        "surf help >/dev/null 2>&1"
+assert "help <cmd> works"  "surf help text >/dev/null 2>&1"
+assert "<cmd> --help works" "surf click --help >/dev/null 2>&1"
 echo ""
 
 # ── 9. Live test (macOS + Chrome + JS toggle) ─────────────────────────
