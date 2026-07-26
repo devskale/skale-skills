@@ -1,10 +1,8 @@
 ---
 name: d2
-description: "Draw diagrams as code from text using the D2 language (d2lang.com). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
+version: "1.1.0"
+description: "Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the `d2` CLI directly (no bundled scripts). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
 license: MIT
-metadata:
-  author: skale
-  version: "1.1.0"
 ---
 
 # D2 — Diagrams as Code
@@ -18,7 +16,7 @@ openskills install devskale/skale-skills/skills/d2   # → pi, claude, opencode,
 ```
 Or clone + add to pi config (`~/.pi/agent/settings.json`): `"skills": ["~/code/skale-skills/skills/d2"]`.
 
-## The Render Loop
+## Quick Start — the render loop
 
 ```bash
 d2 validate diagram.d2        # syntax check FIRST
@@ -87,10 +85,10 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 4. `d2 validate`, render to `.txt`, **read the ASCII** to confirm structure, then deliver SVG.
 5. Deliver the `.d2` source (editable, version-controllable) + `.svg` (viewable).
 
-## Reference
+## References
 
-- Full syntax catalog (shapes, styles, special objects, composition): [`references/syntax.md`](references/syntax.md)
-- Architecture-pattern cookbook (layered, request-flow, microservices, pub/sub, C4 container, deployment): [`references/recipes.md`](references/recipes.md)
-- Software diagram types (sequence, ER/sql_table, class): [`references/diagram-types.md`](references/diagram-types.md)
-- Delivery polish (interactive links/tooltips, icons, layers/multi-board, themes, sketch): [`references/delivery.md`](references/delivery.md)
+- [references/syntax.md](references/syntax.md) — shapes, styles, special objects, composition. **Read when** you need a specific shape/style keyword or container/nesting syntax.
+- [references/recipes.md](references/recipes.md) — architecture-pattern cookbook (layered, request-flow, microservices, pub/sub, C4 container, deployment). **Read when** starting a new architecture diagram.
+- [references/diagram-types.md](references/diagram-types.md) — sequence, ER/sql_table, class diagrams. **Read when** drawing one of those types.
+- [references/delivery.md](references/delivery.md) — delivery polish (interactive links/tooltips, icons, layers/multi-board, themes, sketch). **Read when** finalizing a diagram for delivery.
 - CLI: `d2 --help`, `d2 layout`, `d2 themes`. Tour: https://d2lang.com/tour/intro/
