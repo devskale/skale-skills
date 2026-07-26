@@ -35,7 +35,7 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 ## Tier 4 — reliability & robustness
 
-- [ ] robust JS-failure classification — replace the O(N) up-to-10-tab probe in `_explain_js_failure` with a cheaper deterministic signal (cache last-known global toggle; single sentinel probe on a known-good tab). Resolves the x.com/incognito/PWA ambiguity without a scan.
+- [x] robust JS-failure classification — replace the O(N) up-to-10-tab probe in `_explain_js_failure` with a cheaper deterministic signal (single `about:blank` sentinel probe on the target window + incognito short-circuit). Resolves the x.com/incognito/PWA ambiguity without a scan. *(v1.4.1)*
 - [x] stale-target resilience — `select` stores raw window/tab indices that silently break on reorder/close; capture the tab URL at select-time and re-resolve (or warn) when it changed. *(v1.3.1)*
 - [x] `wait-stable` via MutationObserver — current `body.innerHTML.length` diff loops forever on ads/spinners/clocks; switch to a no-mutation quiet window. *(v1.2.0)*
 - [ ] transient-retry — one silent retry on `execute javascript` before classifying failure (cuts false negatives after focus changes).
@@ -59,6 +59,7 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 ## Done
 
+- [x] v1.4.1 — robust JS-failure classification: O(1) `about:blank` sentinel probe (mirrors `doctor`'s validated toggle test) + incognito short-circuit; drops the O(N) 10-tab scan and `surf tabs` subprocess re-entry. furious 101/101.
 - [x] v1.4.0 — self-discoverable help: `surf help` categorized overview + `surf help <command>` / `surf <command> --help` per-command detail (usage, return, example, see-also); new `lib/help.sh`. Bash-3.2-safe (no associative arrays).
 - [x] v1.3.1 — modular `lib/` (engine/target/nav/read/wait/interact/assert/shot/meta/main); stale-target resilient `select` (URL-sticky, re-pins on drift); github-org stats + drift tests (98/98 furious)
 - [x] v1.2.0 — `doctor`, `batch`, `wait-stable` (MutationObserver); JSON tab helpers in tests (93/93 furious)

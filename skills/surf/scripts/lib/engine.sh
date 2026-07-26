@@ -58,29 +58,43 @@ APPLESCRIPT
 
 # Print an actionable reason for a "turned off"-style JS failure to stderr.
 # Distinguishes: global toggle off vs incognito window vs restricted tab (x.com / app-PWA).
+# O(1): incognito check + a single throwaway about:blank sentinel (never site-restricted),
+#       so its result IS the global toggle state. Replaces the old O(N) up-to-10-tab scan.
 _explain_js_failure() {
-  local tgt W mode any wt
+  local tgt W mode probe
   tgt="$(get_target)"
   W=1; [ "$tgt" != "front" ] && W="$(echo "$tgt" | cut -d' ' -f1)"
+  # 1. Incognito window? (blocks JS regardless of the global toggle)
   mode="$(osascript -e "tell application \"$APP\" to get mode of window $W" 2>/dev/null || true)"
   if [ "$mode" = "incognito" ]; then
     echo "surf: window $W is incognito — JS-from-AppleScript is blocked there. Use a normal window." >&2
     return 0
   fi
-  # Probe other tabs: if ANY allows JS, the toggle is ON and this tab/site/window is the restriction.
-  any=false
-  while read -r ref; do
-    [ -z "$ref" ] && continue
-    wt="$(echo "$ref" | sed 's#w##; s#\.t# #')"   # "w2.t1" -> "2 1"
-    if osascript -e "tell application \"$APP\" to execute (tab $(echo "$wt" | cut -d' ' -f2) of window $(echo "$wt" | cut -d' ' -f1)) javascript \"1\"" >/dev/null 2>&1; then
-      any=true; break
-    fi
-  done < <(surf tabs 2>/dev/null | grep -oE 'w[0-9]+\.t[0-9]+' | head -10)
-  if $any; then
-    echo "surf: this tab/window blocks JS (common: x.com, a Chrome app/PWA window, or a restricted site) — though the global toggle is ON. 'surf select' a normal-site tab and retry." >&2
-  else
-    echo "surf: JavaScript-from-AppleScript is OFF. Fix: Chrome menu → View → Developer ▸ → Allow JavaScript from Apple Events (✓), then retry." >&2
-  fi
+  # 2. ONE deterministic global-toggle probe: a throwaway about:blank tab is never
+  #    site-restricted, so its result IS the global toggle state. Window $W is already
+  #    known non-incognito, so about:blank there is a valid toggle test. (O(1).)
+  probe="$(osascript <<OSA 2>&1
+tell application "$APP"
+  set res to "ERR:unknown"
+  try
+    set t to make new tab at end of tabs of window $W with properties {URL:"about:blank"}
+    delay 0.25
+    set res to execute t javascript "1"
+  on error e
+    set res to "ERR:" & e
+  end try
+  try
+    close t
+  end try
+  return res
+end tell
+OSA
+)"
+  case "$probe" in
+    1) echo "surf: this tab/window blocks JS (common: x.com, a Chrome app/PWA window, or a restricted site) — the global toggle is ON. 'surf select' a normal-site tab and retry." >&2 ;;
+    *"Allow JavaScript"*|*"turned off"*) echo "surf: JavaScript-from-AppleScript is OFF. Fix: Chrome menu → View → Developer ▸ → Allow JavaScript from Apple Events (✓), then retry." >&2 ;;
+    *) echo "surf: JS-from-AppleScript check inconclusive ($probe). Run 'surf doctor' for a full diagnostic." >&2 ;;
+  esac
 }
 
 # Public JS runner: classifies "turned off" failures into an actionable message.
