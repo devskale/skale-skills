@@ -27,12 +27,13 @@ GETTING STARTED
   surf here                  active tab: URL | title
 
 COMMANDS
-  Navigation & tabs   tabs  here  select  open  new  reload  back  fwd  close
-  Read                title  url  text  html  attr  count  list  eval
-  Interact            click  fill  hover  select-option  submit  scroll  scroll-to  press
+  Navigation & tabs   tabs  here  select  find-tab  open  new  reload  back  fwd  close
+  Read                title  url  text  html  attr  count  list  eval  cookie  localstorage
+  Interact            click  fill  form  hover  select-option  submit  scroll  scroll-to  press  download
   Wait                wait  wait-url  wait-stable       (all take --timeout N)
   Assert              exists  visible  assert           (exit 1 on fail)
-  Screenshots         shot  shot-el
+  Screenshots         shot  shot-el  shot-full
+  Bookmarks           bookmarks               read/search Chrome bookmarks (file, no browser)
   Pipeline            batch                   many ops, one browser call (stdin JSON)
   Diagnostics         doctor  setup  help  --version  --selfcheck  --update
 
@@ -605,6 +606,131 @@ SEE ALSO
   shot
 EOF
 ;;
+    find-tab) cat <<'EOF'
+surf find-tab — search open tabs by URL or title
+
+USAGE
+  surf find-tab "<query>" [--activate]
+
+RETURNS
+  Every match as:  wN.tN  URL  |  title   (exit 0). No match -> stderr + exit 1.
+  --activate brings the first match's window to front and makes it the active tab.
+
+EXAMPLE
+  surf find-tab "github"
+  surf find-tab "inbox" --activate
+
+SEE ALSO
+  tabs · select
+EOF
+;;
+    bookmarks) cat <<'EOF'
+surf bookmarks — read/search Chrome bookmarks (from the profile file)
+
+USAGE
+  surf bookmarks [query] [--profile NAME] [--json]
+
+RETURNS
+  One line per bookmark:  name  |  url   (all, or those matching query).
+  --json -> [{"name","url"}, ...]. Defaults to "Default" profile.
+
+NOTES
+  Reads the Bookmarks file directly — no browser or JS toggle needed.
+
+EXAMPLE
+  surf bookmarks "ryanair"
+  surf bookmarks --profile "Profile 1" --json
+EOF
+;;
+    cookie) cat <<'EOF'
+surf cookie — read cookies visible to JS (non-HttpOnly)
+
+USAGE
+  surf cookie [name] [--json]
+
+RETURNS
+  no name:   all readable cookies as "k=v; k2=v2"
+  name:      that cookie's value, or NOT_FOUND
+  --json:    {"k":"v", ...}
+
+NOTES
+  HttpOnly cookies (sessions, auth) are hidden from JS by design — use a CDP
+  tool for those.
+
+EXAMPLE
+  surf cookie
+  surf cookie session_id
+EOF
+;;
+    localstorage) cat <<'EOF'
+surf localstorage — read window.localStorage
+
+USAGE
+  surf localstorage [key]
+
+RETURNS
+  key:    that key's value, or NOT_FOUND
+  no key: JSON object of all keys (each value capped at 2000 chars)
+
+EXAMPLE
+  surf localstorage theme
+  surf localstorage
+EOF
+;;
+    form) cat <<'EOF'
+surf form — fill many fields in ONE browser call
+
+USAGE
+  surf form '<sel>=<val>' '<sel>=<val>' ...
+
+RETURNS
+  {"ok":N,"fail":N,"results":[{"sel","ok","tag"|"err"}, ...]}
+  Each arg splits on the LAST '=' (so input[type=text]=x works).
+
+EXAMPLE
+  surf form '#user=alice' '#pass=secret' 'input[name=remember]=1'
+
+SEE ALSO
+  fill · select-option · submit
+EOF
+;;
+    download) cat <<'EOF'
+surf download — click a trigger and capture the downloaded file
+
+USAGE
+  surf download "<selector>" [--timeout N] [--dir DIR]
+
+RETURNS
+  "downloaded: /path/to/file" on success; exit 1 on timeout.
+
+NOTES
+  Watches DIR (default ~/Downloads) for a new file; Chrome writes <name>.crdownload
+  mid-download and renames on finish. Times out if Chrome is set to "Ask where to
+  save" (the dialog blocks). Env: SURF_DOWNLOAD_DIR, SURF_DOWNLOAD_TIMEOUT.
+
+EXAMPLE
+  surf download "a[href$='.pdf']"
+  surf download "#export-btn" --timeout 60
+EOF
+;;
+    shot-full) cat <<'EOF'
+surf shot-full — full-page screenshot (scroll + stitch)
+
+USAGE
+  surf shot-full [<path>]      default ./surf-shot-full.png
+
+NOTES
+  Scrolls the page slice by slice, captures each viewport, stitches with Pillow.
+  Needs Screen Recording. Caveats: lazy images may need longer to render;
+  position:fixed/sticky elements repeat in each slice.
+
+EXAMPLE
+  surf shot-full ~/report.png
+
+SEE ALSO
+  shot · shot-el
+EOF
+;;
     batch) cat <<'EOF'
 surf batch — run many ops in ONE browser call (reads + interactions)
 
@@ -725,13 +851,13 @@ cmd_help() {
   local cmd="${1-}"
   if [ -z "$cmd" ]; then _surf_help_overview; return 0; fi
   case "$cmd" in
-    tabs|here|select|open|new|reload|back|fwd|close|\
-    title|url|text|html|attr|count|list|eval|\
-    click|fill|hover|select-option|submit|scroll|scroll-to|press|\
+    tabs|here|select|find-tab|open|new|reload|back|fwd|close|\
+    title|url|text|html|attr|count|list|eval|cookie|localstorage|\
+    click|fill|form|hover|select-option|submit|scroll|scroll-to|press|download|\
     wait|wait-url|wait-stable|\
     exists|visible|assert|\
-    shot|shot-el|\
-    batch|doctor|setup|help|\
+    shot|shot-el|shot-full|\
+    batch|bookmarks|doctor|setup|help|\
     --version|--selfcheck|--update)
       _surf_help_command "$cmd"; return 0 ;;
     *)

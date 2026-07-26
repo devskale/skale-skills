@@ -270,6 +270,25 @@ chk "stats: repos extracted"     'echo "$STATS" | grep -qE "\"repos\":\"[0-9]"'
 chk "stats: stars extracted"     'echo "$STATS" | grep -qE "\"stars\":\"[0-9.k]+"'
 surf_close_url github.com/devskale
 
+section "Q. Tier 3 — form / cookie / localstorage / find-tab / bookmarks / shot-full"
+surf select "$EX" >/dev/null
+surf open "https://example.com/" >/dev/null; sleep 1.0
+surf eval 'localStorage.setItem("sf_ls","v1");document.cookie="sf_ck=c2;max-age=60";var a=document.createElement("input");a.id="sfa";var b=document.createElement("input");b.id="sfb";document.body.appendChild(a);document.body.appendChild(b);1' >/dev/null
+chk "localstorage key"          "[ \"\$(surf localstorage sf_ls)\" = 'v1' ]"
+chk "localstorage missing"        "[ \"\$(surf localstorage zzz)\" = 'NOT_FOUND' ]"
+chk "localstorage dump is JSON"   "surf localstorage | python3 -m json.tool >/dev/null"
+chk "cookie read"                 "[ \"\$(surf cookie sf_ck)\" = 'c2' ]"
+chk "form fills 2 in one call"    "surf form '#sfa=alice' '#sfb=bob' | grep -q '\"ok\":2'"
+chk "find-tab finds example"       "surf find-tab example | grep -q 'example.com'"
+chk "find-tab miss exits 1"        "surf find-tab zzznope-xyz >/dev/null 2>&1; [ \$? -ne 0 ]"
+chk "bookmarks lists lines"        "surf bookmarks | grep -qF '  |  '"
+chk "bookmarks --json is array"    "surf bookmarks --json | python3 -c 'import sys,json;exit(0 if isinstance(json.load(sys.stdin),list) else 1)'"
+# shot-full: best-effort (needs Screen Recording). example.com is short -> 1 slice.
+surf shot-full /tmp/surf-full.png >/tmp/surf-full.log 2>&1; RC=$?
+if [ $RC -eq 0 ] && [ -f /tmp/surf-full.png ]; then mark "shot-full produced a PNG" pass
+else chk "shot-full fails gracefully" "grep -qiE 'Screen Recording|Pillow|geometry|bounds' /tmp/surf-full.log"; fi
+rm -f /tmp/surf-full.png
+
 section "M. session hygiene (your real tabs untouched)"
 TABS_AFTER=$(surf tabs | wc -l | tr -d ' ')
 # net change = +2 (our example + ddg tabs, minus any we closed). Should be +2 now.

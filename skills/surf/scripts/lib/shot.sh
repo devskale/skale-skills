@@ -53,3 +53,86 @@ cmd_shot_el() {
   fi
   rm -f "$tmp"
 }
+
+# ── shot-full: full-page screenshot (scroll + capture each viewport + stitch) ───
+# Captures the whole scrollable page: scrolls slice by slice, grabs the content
+# viewport via screencapture, then stitches vertically with Pillow.
+# Caveats: lazy images may need longer per-slice render; position:fixed/sticky
+# elements repeat in each slice (a Chrome-agnostic limitation). Needs Screen Recording.
+cmd_shot_full() {
+  local out="${1:-./surf-shot-full.png}" tgt W T
+  tgt="$(get_target)"
+  if [ "$tgt" != "front" ]; then W=$(echo "$tgt"|cut -d' ' -f1); T=$(echo "$tgt"|cut -d' ' -f2)
+    osascript -e "tell application \"$APP\" to set active tab index of window $W to $T" >/dev/null 2>&1 || true
+    osascript -e "tell application \"$APP\" to set index of window $W to 1" >/dev/null 2>&1 || true
+  else
+    osascript -e "tell application \"$APP\" to set index of window 1 to 1" >/dev/null 2>&1 || true
+  fi
+  osascript -e "tell application \"$APP\" to activate" >/dev/null 2>&1 || true
+  sleep 0.3
+  local dim iw ih sh dpr oh st0
+  dim="$(run_js '(function(){return JSON.stringify({iw:window.innerWidth,ih:window.innerHeight,sh:document.documentElement.scrollHeight,dpr:window.devicePixelRatio||1,oh:window.outerHeight,st:window.scrollY})})()')"
+  read -r iw ih sh dpr oh st0 <<<"$(printf '%s' "$dim" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(int(d["iw"]),int(d["ih"]),int(d["sh"]),int(d["dpr"]),int(d["oh"]),int(d["st"]))')"
+  [ "${ih:-0}" -gt 0 ] 2>/dev/null || die "shot-full: could not read page geometry ($dim)"
+  dpr="${dpr:-1}"; [ "$dpr" -lt 1 ] 2>/dev/null && dpr=1
+  local bounds x1 y1 chromeH
+  bounds="$(osascript -e "tell application \"$APP\" to get bounds of window 1" 2>&1)"
+  echo "$bounds" | grep -qE '^[ -]?[0-9]+,[[:space:]]*[ -]?[0-9]+' || die "shot-full: window bounds unreadable ($bounds)"
+  x1="$(echo "$bounds"|awk -F', ' '{print $1}')"; y1="$(echo "$bounds"|awk -F', ' '{print $2}')"
+  chromeH=$((oh - ih)); [ "$chromeH" -lt 0 ] && chromeH=0
+  [ "$x1" -lt 0 ] 2>/dev/null && x1=0; [ "$y1" -lt 0 ] 2>/dev/null && y1=0
+  local slices=$(( (sh + ih - 1) / ih ))
+  [ "$slices" -lt 1 ] && slices=1
+  if [ "$slices" -gt 60 ]; then echo "surf: shot-full: very tall page ($slices slices) — capping at 60" >&2; slices=60; fi
+  local tmpdir; tmpdir="$(mktemp -d -t surf-full)"
+  local cy=$((y1 + chromeH)) i=0 scroll realH cropTop slicePng rc=0
+  while [ $i -lt $slices ]; do
+    if [ "$slices" -eq 1 ]; then scroll=0; realH=$sh; cropTop=0
+    elif [ $i -lt $((slices-1)) ]; then scroll=$((i*ih)); realH=$ih; cropTop=0
+    else scroll=$((sh - ih)); realH=$((sh - (slices-1)*ih)); cropTop=$((ih - realH)); fi
+    [ "$scroll" -lt 0 ] && scroll=0
+    run_js "window.scrollTo(0,$scroll)" >/dev/null 2>&1 || true
+    sleep 0.4
+    slicePng="$tmpdir/slice-$(printf '%03d' "$i").png"
+    if ! screencapture -R "$x1,$cy,$iw,$ih" -o -x "$slicePng" >/dev/null 2>&1; then
+      echo "surf: shot-full: screencapture failed (Screen Recording for your terminal?)" >&2
+      open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture" 2>/dev/null || true
+      rc=1; break
+    fi
+    printf 'slice-%03d.png %d %d\n' "$i" "$((cropTop*dpr))" "$((realH*dpr))" >> "$tmpdir/manifest.txt"
+    i=$((i+1))
+  done
+  if [ $rc -eq 0 ]; then
+    SURF_OUT="$out" python3 - "$tmpdir/manifest.txt" <<'PY'
+import sys, os
+try:
+    from PIL import Image
+except ImportError:
+    sys.stderr.write("shot-full: Pillow not installed (pip install Pillow)\n"); sys.exit(1)
+mdir = os.path.dirname(sys.argv[1])
+parts = []
+with open(sys.argv[1]) as f:
+    for line in f:
+        name, top, keep = line.split()
+        parts.append((os.path.join(mdir, name), int(top), int(keep)))
+if not parts:
+    sys.stderr.write("shot-full: no slices captured\n"); sys.exit(1)
+imgs = []
+for name, top, keep in parts:
+    im = Image.open(name).convert("RGB")
+    if top or keep != im.height:
+        im = im.crop((0, top, im.width, top + keep))
+    imgs.append(im)
+w = max(i.width for i in imgs); h = sum(i.height for i in imgs)
+canvas = Image.new("RGB", (w, h)); y = 0
+for im in imgs:
+    canvas.paste(im, (0, y)); y += im.height
+canvas.save(os.environ["SURF_OUT"])
+PY
+    rc=$?
+  fi
+  run_js "window.scrollTo(0, ${st0:-0})" >/dev/null 2>&1 || true
+  rm -rf "$tmpdir"
+  [ $rc -eq 0 ] || return 1
+  echo "shot-full -> $out (${iw}x${sh} pts, ${slices} slice(s))"
+}

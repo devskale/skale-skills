@@ -30,3 +30,30 @@ cmd_list() {
   run_js "$(printf 'JSON.stringify(Array.prototype.slice.call(document.querySelectorAll(%s),0,1000).map(function(e){return String(e.textContent).trim().slice(0,500)}))' "$(js_str "$1")")"
 }
 cmd_eval()  { [ "${1-}" ] || die "eval needs js"; run_js "$1"; }
+
+# ── cookie: read document.cookie (JS-readable = non-HttpOnly only) ──────────────
+# HttpOnly cookies (sessions, auth) are NOT visible to JS by design — that's the
+# browser protecting them, not a surf bug. For those you need a CDP tool.
+cmd_cookie() {
+  local name="" json=false
+  for a in "$@"; do case "$a" in --json) json=true ;; *) name="$a" ;; esac; done
+  if [ -n "$name" ]; then
+    run_js "$(printf '(function(){var m=document.cookie.split(/;\\s*/);for(var i=0;i<m.length;i++){var p=m[i];var idx=p.indexOf("=");var k=decodeURIComponent(idx<0?p:p.slice(0,idx));if(k===%s)return decodeURIComponent(idx<0?"":p.slice(idx+1))}return "NOT_FOUND"})()' "$(js_str "$name")")"
+  elif $json; then
+    run_js '(function(){var o={};document.cookie.split(/;\s*/).forEach(function(p){if(!p)return;var idx=p.indexOf("=");var k=decodeURIComponent(idx<0?p:p.slice(0,idx));o[k]=idx<0?"":decodeURIComponent(p.slice(idx+1))});return JSON.stringify(o)})()'
+  else
+    run_js 'document.cookie || "(no readable cookies — HttpOnly cookies are hidden from JS)"'
+  fi
+}
+
+# ── localstorage: read window.localStorage (fully JS-accessible) ───────────────
+cmd_localstorage() {
+  local key="" json=false
+  for a in "$@"; do case "$a" in --json) json=true ;; *) key="$a" ;; esac; done
+  if [ -n "$key" ]; then
+    run_js "$(printf '(function(){var v=localStorage.getItem(%s);return v===null?"NOT_FOUND":v})()' "$(js_str "$key")")"
+  else
+    # dump all keys; cap each value at 2000 chars to stay agent-friendly
+    run_js '(function(){var o={};for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);var v=localStorage.getItem(k)||"";o[k]=v.length>2000?v.slice(0,2000)+"…[truncated]":v}return JSON.stringify(o)})()'
+  fi
+}
