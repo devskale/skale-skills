@@ -29,13 +29,14 @@ main() {
     back)   cmd_back ;;
     fwd|forward)    cmd_fwd ;;
     close)  cmd_close ;;
-    title)  cmd_title ;;
-    url)    cmd_url ;;
+    title)  cmd_title "$@" ;;
+    url)    cmd_url "$@" ;;
     text)   cmd_text "$@" ;;
     html)   cmd_html "$@" ;;
     attr)   cmd_attr "$@" ;;
     count)  cmd_count "$@" ;;
     list)   cmd_list "$@" ;;
+    table)  cmd_table "$@" ;;
     cookie)  cmd_cookie "$@" ;;
     localstorage) cmd_localstorage "$@" ;;
     exists)  cmd_exists "$@" ;;

@@ -3,7 +3,9 @@
 cmd_click() { [ "${1-}" ] || die "click needs a selector"
   run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});try{e.scrollIntoView({block:"center"})}catch(x){}e.click();return JSON.stringify({ok:true,tag:e.tagName})})()' "$(js_str "$1")")"; }
 cmd_fill()  { [ "${1-}" ] && [ "${2-}" ] || die "fill needs <selector> <value>"
-  run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});e.focus();e.value=%s;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));return JSON.stringify({ok:true,tag:e.tagName})})()' "$(js_str "$1")" "$(js_str "$2")")"; }
+  # Auto-detect contenteditable (Notion/Gmail/Slack compose) vs plain <input>/<textarea>.
+  # Rich text: caret-to-end + execCommand('insertText') (Chrome), InputEvent fallback.
+  run_js "$(printf '(function(){var e=document.querySelector(%s);if(!e)return JSON.stringify({ok:false,err:"not_found"});e.focus();if(e.isContentEditable){var sel=window.getSelection(),range=document.createRange();range.selectNodeContents(e);range.collapse(false);sel.removeAllRanges();sel.addRange(range);var ok=false;try{ok=document.execCommand&&document.execCommand("insertText",false,%s)}catch(x){ok=false}if(!ok){e.textContent=%s;e.dispatchEvent(new InputEvent("input",{bubbles:true,inputType:"insertText",data:%s}))}return JSON.stringify({ok:true,mode:"richtext",tag:e.tagName})}e.value=%s;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}));return JSON.stringify({ok:true,mode:"value",tag:e.tagName})})()' "$(js_str "$1")" "$(js_str "$2")" "$(js_str "$2")" "$(js_str "$2")" "$(js_str "$2")")"; }
 
 cmd_hover() {
   [ "${1-}" ] || die "hover needs a selector"

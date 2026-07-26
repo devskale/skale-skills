@@ -44,9 +44,9 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 - [x] `doctor` — one-shot diagnostic (✓/✗ + fix links): JS-from-AppleScript toggle on? Screen Recording granted? Accessibility granted? Chrome running? Collapses the permission-discovery cliff. *(v1.2.0)*
 - [x] `batch` — one AppleScript, multiple JS steps, one JSON result; cuts per-command `osascript` launch overhead for agent loops while staying daemon-free. *(v1.2.0)*
-- [ ] `table "<sel>"` — scrape an HTML `<table>` to JSON `{headers, rows}` (common task; pure JS).
-- [ ] rich-text `fill` — contenteditable fallback (`execCommand('insertText')` / dispatched `InputEvent`) for Notion/Gmail/Slack compose; plain `fill` only sets `.value`.
-- [ ] consistent `--json` across all read/assert commands (`title`/`url`/`exists`/`click`/`fill`/… currently emit mixed bare strings / ad-hoc JSON).
+- [x] `table "<sel>"` — scrape an HTML `<table>` to JSON `{headers, rows}` (common task; pure JS). *(v1.4.3)*
+- [x] rich-text `fill` — contenteditable fallback (`execCommand('insertText')` / dispatched `InputEvent`) for Notion/Gmail/Slack compose; plain `fill` only sets `.value`. *(v1.4.3: auto-detected; returns `mode`)*
+- [x] consistent `--json` across all read/assert commands (`title`/`url`/`exists`/`click`/`fill`/… currently emit mixed bare strings / ad-hoc JSON). *(v1.4.3: title/url/html/attr/exists/visible/assert; click/fill already JSON)*
 - [ ] verify + document Brave/Edge/Arc — same Chromium AppleScript `execute … javascript` dictionary; `SURF_APP` plumbing + `_surf_pick_app` already exist, just untested. (Safari/Firefox genuinely excluded — different dictionaries.)
 
 ## Won't do (out of mechanism — by design)
@@ -59,6 +59,7 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 ## Done
 
+- [x] v1.4.3 — Tier 5: `table` scraper; rich-text `fill` (contenteditable auto-detect, `mode` field); consistent `--json` on title/url/html/attr/exists/visible/assert. Fix: title/url dispatch now passes `"$@"` (--json was silently dropped). furious 124/124.
 - [x] v1.4.2 — Tier 3 commands: `form` (batch fill), `find-tab` (--activate), `bookmarks` (--profile/--json), `cookie`, `localstorage`, `download` (Chrome v136+ temp-dir aware), `shot-full` (scroll + Pillow stitch). furious 111/111.
 - [x] v1.4.1 — robust JS-failure classification: O(1) `about:blank` sentinel probe (mirrors `doctor`'s validated toggle test) + incognito short-circuit; drops the O(N) 10-tab scan and `surf tabs` subprocess re-entry. furious 101/101.
 - [x] v1.4.0 — self-discoverable help: `surf help` categorized overview + `surf help <command>` / `surf <command> --help` per-command detail (usage, return, example, see-also); new `lib/help.sh`. Bash-3.2-safe (no associative arrays).

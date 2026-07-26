@@ -2,7 +2,7 @@
 
 Complete reference for `surf`, the macOS AppleScript CLI for your real Google Chrome. v1.3.1.
 
-`surf` targets the **active tab of the front window** unless you `surf select` a tab. Selectors are CSS (`document.querySelector` / `querySelectorAll`). `--json` is supported on `tabs`, `here`, `text`, `count`.
+`surf` targets the **active tab of the front window** unless you `surf select` a tab. Selectors are CSS (`document.querySelector` / `querySelectorAll`). `--json` is supported on `tabs`, `here`, `title`, `url`, `text`, `html`, `attr`, `count`, `exists`, `visible`, `assert` (v1.4.3); `list`, `table`, `cookie --json`, `localstorage` are JSON natively.
 
 ## Global
 
@@ -55,6 +55,7 @@ All accept `--timeout N` (seconds; default `SURF_WAIT_TIMEOUT=15`). Poll interva
 | `surf attr "<sel>" <name>` | `getAttribute(name)`; `NOT_FOUND` if no element |
 | `surf count "<sel>"` | `String(querySelectorAll(sel).length)`. `--json` → `{selector,count}` |
 | `surf list "<sel>"` | `JSON` array of all matches' text (cap 1000 items, 500 chars each); `[]` if none |
+| `surf table [sel]` | scrape a `<table>` to `{"headers":[..]|null,"rows":[[..],..],"truncated":bool}`; default sel `table`; `{ok:false,err}` if none (v1.4.3) |
 | `surf eval "<js>"` | result of running `<js>` in the page (stringified) |
 
 ## Batch — many ops, one browser call
@@ -86,7 +87,7 @@ All print a stderr message and return rc 1 on failure.
 | Command | Returns |
 |---|---|
 | `surf click "<sel>"` | scrolls into view, clicks first match → `{"ok":true,"tag":"..."}` or `{"ok":false,"err":"not_found"}` |
-| `surf fill "<sel>" "<val>"` | focuses, sets `.value`, fires `input` + `change` → `{"ok":true,...}` / `{"ok":false,"err":"not_found"}` (React/Vue-safe) |
+| `surf fill "<sel>" "<val>"` | auto-detects: plain fields get `.value`+`input`/`change` (React/Vue-safe); contenteditable (Notion/Gmail/Slack) gets caret-to-end + `execCommand('insertText')`. → `{"ok":true,"mode":"value\|richtext","tag":..}` / `{"ok":false,"err":"not_found"}` (v1.4.3) |
 | `surf hover "<sel>"` | dispatches `mouseover`/`mousemove`/`mouseenter` (scrolls into view) → `{"ok":true,"tag":...}` |
 | `surf select-option "<sel>" "<val>"` | sets a `<select>` value + fires `input`/`change` → `{"ok":true,"value":...}` / `{"ok":false,"err":"not_select"}` / `not_found` |
 | `surf submit "<sel>"` | resolves the form (from a form element, `.form`, or `closest('form')`) and calls `requestSubmit()` → `{"ok":true}` / `{"ok":false,"err":"no_form"}` / `not_found` |
