@@ -1,6 +1,7 @@
 ---
 name: rodney
-description: "Drive headless Chrome from the CLI for web scraping, screenshots, form filling, PDF export, accessibility audits, and browser smoke tests. Use when the user wants to automate browser interactions, scrape dynamic pages (JS-rendered content), take page screenshots or element screenshots, fill and submit web forms, export pages as PDF, run accessibility checks, or assert page state in CI/CD pipelines. Triggers on mentions of: browser automation, headless Chrome, web scraping, page screenshots, form automation, accessibility testing, browser testing, rodney."
+version: "1.0.0"
+description: "Drive a persistent headless Chrome from the CLI for web scraping, screenshots, form filling, PDF export, and accessibility audits — one long-running Chrome process keeps cookies, localStorage, and navigation state across calls. Use when the user wants to automate browser interactions, scrape JS-rendered pages, take screenshots, fill forms, export PDFs, or run browser smoke tests in CI. Triggers on: headless Chrome, browser automation, web scraping, page screenshot, form automation, accessibility audit, browser smoke test, rodney."
 ---
 
 # Rodney — Chrome Automation

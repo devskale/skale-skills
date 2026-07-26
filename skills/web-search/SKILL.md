@@ -1,9 +1,7 @@
 ---
 name: web-search
-description: Search the web with automatic backend selection. Works out-of-the-box with public SearXNG. Optional Duck API for advanced filters. Supports images, news, videos.
-metadata:
-  author: skale
-  version: "2.1.0"
+version: "2.1.0"
+description: "Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credentials); an optional Duck API adds advanced filters (site, filetype, inurl, exact). Returns text, image, news, or video results. Use when the user wants to search the web, look something up, or find images/news/videos. Triggers on: web search, search for, google, look up, find online, image/news/video search."
 ---
 
 # Web Search
@@ -114,6 +112,6 @@ web-search "query" --json                  # raw JSON to stdout
 | Dependency errors | `web-search --update` |
 | All SearXNG instances fail | Configure a private instance via `credgoo searx` |
 
-## Reference
+## References
 
-See [references/INDEX.md](references/INDEX.md) for detailed examples, region codes, backend comparison, and authentication options.
+- [references/INDEX.md](references/INDEX.md) — worked examples, region/language codes, backend comparison, and authentication options. **Read when** you need region tuning, backend details, or advanced Duck-API filters (`--site`/`--filetype`/`--inurl`).

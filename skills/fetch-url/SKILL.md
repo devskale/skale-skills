@@ -1,9 +1,7 @@
 ---
 name: fetch-url
-description: Fetch and extract readable text content from web pages. Auto-selects best tool with smart fallback. Use when the user wants to read articles, documentation, or scrape text content from web pages. Works on Reddit, StackOverflow, GitHub, docs sites, and more.
-metadata:
-  author: skale
-  version: "2.6"
+version: "2.6"
+description: "Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jina, markdown, chrome) with smart fallback. Use when the user wants to read an article, docs, or scrape text from a page. Triggers on: fetch this URL, read this page, extract the text, scrape this site, get the article content. Works on Reddit, StackOverflow, GitHub, docs sites, and more."
 ---
 
 # Fetch URL
@@ -100,8 +98,8 @@ brew install w3m lynx chawan
 | Empty result | Try `--tool jina` or `--tool chrome` |
 | Dependency error | `fetch-url --update` |
 
-## Reference
+## References
 
-See [references/sites.md](references/sites.md) for tool rankings per site.
-See [references/github.md](references/github.md) for GitHub raw URL patterns.
-See [references/troubleshooting.md](references/troubleshooting.md) for detailed fixes.
+- [references/sites.md](references/sites.md) — per-site tool rankings. **Read when** a site returns poor output and you need to pick a better `--tool`.
+- [references/github.md](references/github.md) — GitHub raw-URL patterns. **Read when** fetching GitHub file/README/directory content.
+- [references/troubleshooting.md](references/troubleshooting.md) — detailed fixes. **Read when** a fetch fails or returns empty/garbled output.

@@ -1,9 +1,7 @@
 ---
 name: youtube
-description: "Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives. Use when the user wants to find videos, look up a topic, get video recommendations, or asks about YouTube content. Defaults to longform (20min+), recent (18mo), high-relevance results with a combined recency+views+duration+relevance score."
-metadata:
-  author: skale
-  version: "1.1.0"
+version: "1.1.0"
+description: "Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives — ranked by a combined recency+views+duration+relevance score (defaults to longform 20min+, last 18 months, 1K+ views). Use when the user wants to find videos, get recommendations, or look up a topic on YouTube. Triggers on: YouTube search, find a video, video recommendations, find a podcast or lecture, deep dive on."
 ---
 
 # YouTube Search
