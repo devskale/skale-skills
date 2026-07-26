@@ -59,6 +59,7 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 ## Done
 
+- [x] v1.4.0 — self-discoverable help: `surf help` categorized overview + `surf help <command>` / `surf <command> --help` per-command detail (usage, return, example, see-also); new `lib/help.sh`. Bash-3.2-safe (no associative arrays).
 - [x] v1.3.1 — modular `lib/` (engine/target/nav/read/wait/interact/assert/shot/meta/main); stale-target resilient `select` (URL-sticky, re-pins on drift); github-org stats + drift tests (98/98 furious)
 - [x] v1.2.0 — `doctor`, `batch`, `wait-stable` (MutationObserver); JSON tab helpers in tests (93/93 furious)
 - [x] v0.1.0 — tabs/here/open/new/reload/back/fwd/close, title/url/text/html/attr/count/eval, click/fill, select (bg tabs), shot, setup (52/52 furious)

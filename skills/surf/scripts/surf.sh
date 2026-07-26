@@ -4,8 +4,9 @@
 # Sources lib/*.sh (engine, target, nav, read, wait, interact, assert, shot,
 # meta, main), sets globals, and dispatches.
 set -euo pipefail
-VERSION="1.3.1"
+VERSION="1.4.0"
 SURF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_ROOT="$(cd "$SURF_DIR/.." && pwd)"
 
 # Source all modules. Order-independent: files define functions only; no
 # top-level execution. (main.sh defines main(); it must NOT call it.)

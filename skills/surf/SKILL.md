@@ -1,144 +1,100 @@
 ---
 name: surf
-description: "Drive the user's REAL, logged-in Google Chrome from the CLI on macOS for web scraping, form filling, screenshots, and tab-aware automation — with no daemon, no debug port, no extension, and no per-connection permission dialog. Uses macOS AppleScript + Chrome's 'Allow JavaScript from Apple Events'. Use when the user wants to automate, scrape, click, fill, read, or screenshot in the browser they are already logged into (cookies/logins/tabs intact). Triggers on: control my Chrome, drive my browser, automate my logged-in browser, scrape this page, fill this form, click this, read the page, take a browser screenshot, surf."
+version: "1.4.0"
+description: "Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screenshots, and tab-aware automation — no daemon, no debug port, no extension, no per-connection dialog. Sessions stay intact (cookies, logins, tabs). Uses macOS AppleScript + Chrome's 'Allow JavaScript from Apple Events'. Use when the user wants to automate, scrape, click, fill, read, or screenshot the browser they are already logged into. Triggers on: control my Chrome, drive my browser, automate my logged-in browser, scrape this page, fill this form, click this, read the page, take a browser screenshot, surf."
 ---
 
-# Surf — Drive Your Real Chrome (macOS, AppleScript)
+# Surf — Drive Your Real Chrome (macOS AppleScript)
 
-`surf` controls the browser you're already logged into — cookies, tabs, and sessions stay intact. It uses macOS AppleScript + Chrome's "Allow JavaScript from Apple Events". **No daemon, no port 9222, no extension, no CDP, no "Allow remote debugging?" dialog.** Rodney-style fire-and-forget CLI.
+`surf` drives the browser you're already logged into — your **session** (cookies, logins, tabs) stays intact. It speaks macOS AppleScript + Chrome's "Allow JavaScript from Apple Events": no daemon, no port 9222, no extension, no CDP, no "Allow remote debugging?" dialog. Rodney-style fire-and-forget CLI.
 
-## ⚠️ Usage: CLI Only — NOT an MCP Tool
-
-Surf is a **CLI tool**. Call each command as a **separate bash invocation**. It targets the **active tab of the front window** unless you `surf select` a tab.
+## Quick Start
 
 ```bash
-surf tabs                       # list windows → tabs (refs like w1.t3)
-surf here                       # what's on the active/target tab
-surf open <url>                 # navigate
-surf text "h1"                  # read text
-surf click "a.signin"           # click
-surf fill "input[name=q]" "x"   # fill a field
-surf eval "<js>"                # run arbitrary JS
-surf batch                      # many reads/interactions in ONE call (JSON in, JSON out)
-surf doctor                     # one-shot permission & environment check
+cd skills/surf && ./install.sh   # macOS + Google Chrome required
+surf setup                       # one-time: enable Chrome JS-from-AppleScript
+surf doctor                      # ✓/✗ check: macOS · Chrome · JS toggle · Screen Recording · Accessibility
+surf tabs && surf here           # smoke test — list tabs, show the active one
+surf help                      # categorized overview; `surf help <cmd>` drills in
 ```
 
-## Install
+**Manual toggle** (only if `surf setup` can't click it — Chromium menus ignore scripted clicks): Chrome menu → **View → Developer ▸ → Allow JavaScript from Apple Events** (a ✓ appears). Needed for `text`/`click`/`fill`/`eval`/`title`; pure navigation (`open`/`tabs`/`here`) works without it.
 
-```bash
-cd skills/surf && ./install.sh
-surf setup        # one-time: enable Chrome JS-from-AppleScript (or do it manually)
+**Verify before assuming failure:** when a command misbehaves, run `surf doctor` first — it pinpoints the missing permission or toggle rather than guessing.
+
+## Usage — run each command as a separate bash call
+
+`surf` is a CLI, not an MCP tool — invoke each subcommand via **bash**, one per call. It targets the **active tab of the front window** unless you `surf select` a tab. Selectors are CSS. The map below is the vocabulary; for every flag, exact return shape, and worked recipe see `references/commands.md`.
+
+**Self-discovery:** `surf help` prints the categorized overview below with examples; `surf help <command>` (or `surf <command> --help`) shows usage, return value, and an example for any single command — no need to leave the terminal.
+
+## Command map
+
+```
+Navigation & tabs
+  surf tabs                       list windows → tabs (refs like w1.t3); --json
+  surf here                       active/target tab: URL | title; --json
+  surf select [wN.tN | reset]     pin a tab (operate background tabs w/o focus); reset to clear
+  surf open <url> · new [<url>] · reload · back · fwd · close
+
+Read
+  surf title | url
+  surf text "<sel>" · html "<sel>" · attr "<sel>" <name>
+  surf count "<sel>" · list "<sel>"        (list = JSON array of all matches' text)
+  surf eval "<js>"                          run JS in the page, print stringified result
+
+Interact
+  surf click "<sel>" · fill "<sel>" "<val>" · hover "<sel>"
+  surf select-option "<sel>" "<val>" · submit "<sel>"
+  surf scroll down|up|top|bottom [N] · scroll-to "<sel>"
+  surf press "<key>"                        real key/chord (enter, tab, escape, cmd+a)
+
+Wait        (all take --timeout N; exit 1 on timeout)
+  surf wait "<sel>" · wait-url "<sub>" · wait-stable
+
+Assert      (exit 1 on fail — CI-friendly)
+  surf exists "<sel>" · visible "<sel>" · assert "<js>" [expected]
+
+Screenshots
+  surf shot [<path>] · shot-el "<sel>" [<path>]
+
+Meta
+  surf batch · surf doctor · surf setup · surf --version | --selfcheck | help
 ```
 
-**Requirements:** macOS + Google Chrome. (There is no Linux/Windows support — it's AppleScript-based.)
+## Batch — many ops, one browser call
 
-**One-time Chrome toggle** (only needed for `text`/`click`/`fill`/`eval`/`title` — navigation works without it):
-> Chrome menu bar → **View → Developer ▸ → Allow JavaScript from Apple Events** (a ✓ appears).
+Feed a JSON steps array on stdin; get a JSON array of `{op,v}` back. One `execute javascript` round-trip cuts `osascript` launch overhead in agent loops. Each step is try/catch-wrapped, so one bad selector returns `{err}` instead of aborting the run; `v` is exactly what the standalone op prints.
 
-`surf setup` will try to flip this for you via GUI scripting, but **Chromium menus don't respond to scripted clicks** — if it can't, click it manually once. After that it's permanent.
-
-## Why surf (not rodney / chrome-devtools-mcp / mcp-chrome)?
-
-| | surf | rodney | chrome-devtools-mcp | mcp-chrome |
-|---|---|---|---|---|
-| Your real, logged-in Chrome | ✅ | ❌ own browser | ✅ | ✅ |
-| No per-connection dialog | ✅ | ✅ | ❌ ack every connect | ✅ |
-| macOS-only | ✅ | cross-platform | cross-platform | cross-platform |
-| Install weight | ~5 KB, zero deps | Go binary | npx | extension+bridge |
-| Maintained | (yours) | ✅ | ✅ official | ❌ stale |
-
-**Pick surf** when you want to drive the browser you're already in, on macOS, with zero setup weight and no ack. **Pick rodney** for CI / headless / cross-platform. **Pick chrome-devtools-mcp** for perf traces / Lighthouse / console debugging.
-
-## Commands
-
-### Navigation & tabs
 ```bash
-surf tabs                       # list windows → tabs (wN.tN refs)
-surf here                       # URL | title of target tab
-surf select [wN.tN | reset]     # pin a tab (operate background tabs w/o focus)
-surf open <url>                 # navigate target tab
-surf new [<url>]                # new tab (front window)
-surf reload | back | fwd        # target-tab controls
-surf close                      # close target/active tab
-```
-
-### Waiting
-```bash
-surf wait  "<sel>" [--timeout N]     # poll until element exists (exit 1 on timeout)
-surf wait-url  "<sub>" [--timeout N] # poll until URL contains substring
-surf wait-stable [--timeout N]       # poll until DOM is quiet (MutationObserver; SURF_STABLE_QUIET_MS)
-```
-
-### Read  (`tabs`/`here`/`text`/`count` accept `--json`)
-```bash
-surf title | url                # document.title / location.href
-surf text  "<sel>"              # textContent of first match (NOT_FOUND if absent)
-surf html  "<sel>"              # outerHTML of first match
-surf attr  "<sel>" <name>       # attribute value
-surf count "<sel>"              # number of matches
-surf list  "<sel>"              # JSON array of all matches' text (scrape lists)
-surf eval  "<js>"               # run JS, print result
-```
-
-### Batch — many ops, one browser call
-```bash
-# run a JSON steps array in ONE execute-javascript call → JSON array of {op,v}
 surf batch <<'EOF'
 [{"op":"title"},{"op":"count","sel":"a"},{"op":"text","sel":"h1"},{"op":"fill","sel":"#q","val":"x"}]
 EOF
 ```
-Cuts per-command `osascript` overhead for agent loops. Ops: `title`/`url`/`text`/`html`/`attr`/`count`/`list`/`exists`/`visible`/`click`/`fill`/`hover`/`eval`. **Not** batchable (different mechanism): `press`, `shot`/`shot-el`, navigation (`open`/`new`/`reload`/`back`/`fwd`/`close`), `wait*`. Each step is try/catch-wrapped (one bad selector can't abort the batch); `v` is exactly what the standalone op would print.
 
-### Assertions (exit 1 on fail — CI-friendly)
-```bash
-surf exists  "<sel>"            # exit 0 if present
-surf visible "<sel>"            # exit 0 if present AND visible
-surf assert  "<js>" [expected]  # exit 0 if JS truthy, or == expected
-```
+Ops: `title`/`url`/`text`/`html`/`attr`/`count`/`list`/`exists`/`visible`/`click`/`fill`/`hover`/`eval`. **Not batchable** (different mechanism — use the standalone command): `press`, `shot`/`shot-el`, navigation (`open`/`new`/`reload`/`back`/`fwd`/`close`), `wait*`.
 
-### Interact
-```bash
-surf click "<sel>"              # click first match (scrolls into view)
-surf fill  "<sel>" "<val>"      # set value + fire input/change (React/Vue-safe)
-surf hover "<sel>"              # mouseover/mouseenter
-surf select-option "<sel>" "<v>" # set a <select> value + fire change
-surf submit "<sel>"             # submit the enclosing form (requestSubmit)
-surf scroll down|up|top|bottom [N] # scroll by N viewport-heights (default 1)
-surf scroll-to "<sel>"          # scroll element into view (center)
-surf press "<key>"              # real key/chord: enter, tab, escape, a, cmd+a
-```
+## When to pick something else
 
-### Screenshots
-```bash
-surf shot [<path>]              # window screenshot → PNG
-surf shot-el "<sel>" [<path>]   # element screenshot (crop via sips)
-```
+| Need | Use |
+|---|---|
+| Your real **session** on macOS, zero ceremony | **surf** |
+| CI / headless / cross-platform, or a fresh isolated browser | **rodney** |
+| Perf traces / Lighthouse / console / network — needs CDP | **chrome-devtools-mcp** |
 
-### Meta
-```bash
-surf doctor                     # check macOS/Chrome/JS-toggle/Screen-Recording/Accessibility
-surf setup                      # one-time: enable Chrome JS-from-AppleScript
-surf --version | --selfcheck    # version / install info
-surf help                       # full usage
-```
-
-Selectors are **CSS** (`document.querySelector` / `querySelectorAll`). `eval` JS runs in the page context and its return value is stringified.
-
+`surf` drives your **visible** Chrome on **macOS-only**. It has no headless mode, no CDP-level introspection, and no Linux/Windows path — reach for the tool above instead.
 
 ## Gotchas
 
-- **Targets the active tab of the front window by default.** Use `surf select w1.t3` to pin a tab (works on background tabs without stealing focus); `surf select reset` to clear.
-- **JS commands need the one-time toggle** (View → Developer → Allow JavaScript from Apple Events). Pure navigation (`tabs`, `here`, `open`, `new`, `reload`) works without it.
-- **Some tabs/windows block JS with a *misleading* "turned off" error.** `x.com`, Chrome **app/PWA windows**, and **incognito** windows make `execute javascript` fail with *"Executing JavaScript through AppleScript is turned off"* **even when the toggle is ON**. If reads/eval fail on one tab, `surf select` a normal-site tab and retry. (Robust detection is on the roadmap — see `surf-todo.md`.)
-- **`surf setup` can't reliably flip the Chromium menu** via GUI scripting — if it reports JS still off, click the menu item manually once.
-- **Accessibility** (System Settings → Privacy & Security → Accessibility) must be granted to your terminal for `surf setup`'s GUI attempt; the manual click needs no special permission.
-- **macOS-only.** AppleScript + Google Chrome. No Brave/Edge/Safari/Firefox, no Linux/Windows.
-- **`shot` captures the window rectangle** via `screencapture -R`. For a background-tab target it first activates that tab.
-- **`wait-stable` needs a mutating tab foreground.** Chrome throttles background-tab timers to ~1/sec, so a `setInterval`-driven mutation in a background tab can read as "quiet" (gaps > 700ms). Foreground it, or mutate via continuous DOM changes — the observer fires on `appendChild`/attributes/characterData too.
-- **Multi-window** tabs are listed as `wN.tN`. `select` is **drift-resilient** — it stores the tab's URL too, so if indices shift (reorder/close) the next op re-resolves by URL and re-pins automatically (stderr note); a tab that navigated in place is followed silently; a gone tab falls back to the active tab. Re-run `surf tabs` to list current refs.
-- **`eval` returns one stringified value.** For complex shapes return JSON: `surf eval 'JSON.stringify({...})'`.
-- **Exit codes:** 0 = success, 1 = error (bad args, missing toggle, element not found returns a JSON string, not an error).
+- **Tabs that lie about JS.** `x.com`, Chrome **app/PWA windows**, and **incognito** windows make `execute javascript` fail with *"Executing JavaScript through AppleScript is turned off"* **even when the global toggle is ON**. If reads/`eval` fail on one tab, `surf select` a normal-site tab and retry. `surf doctor` probes JS on a throwaway `about:blank` tab, so it is immune to this and reliably reports the true global state.
+- **`wait-stable` foregrounds the tab.** Chrome throttles background-tab timers to ~1/sec, so a `setInterval`-driven mutation in a background tab can read as "quiet" and exit early. Keep the mutating tab foreground, or mutate via continuous DOM changes — the observer also fires on `appendChild`/attributes/`characterData`.
+- **`select` is drift-resilient and never silent.** It stores `W T URL`; if indices shift (reorder/close) the next op re-resolves by URL and re-pins (note on stderr); a tab that navigated in place is followed silently; a gone tab falls back to the active tab. It never deletes the target on uncertainty. Re-list current refs with `surf tabs`.
+- **`shot` captures the window rectangle** (`screencapture -R`), so a background-tab target is activated first. Needs **Screen Recording** for your terminal.
+- **`press` uses real key synthesis** — so Enter submits and `cmd+a` selects all (unlike JS-dispatched events) — and activates the target window first; it cannot press keys on a background tab. Needs **Accessibility** for your terminal.
+- **`eval` returns one stringified value.** For complex shapes, return JSON: `surf eval 'JSON.stringify({...})'`.
+- **Exit codes:** `0` = success · `1` = error / assertion failed / timeout. Not-found is *not* an error for read/interact commands (they return JSON `{ok:false}` with rc 0); assertions and `wait*` return rc 1 on failure.
 
 ## References
 
-- **[references/commands.md](references/commands.md)** — Full command reference with flags, selectors, and examples.
+- **[references/commands.md](references/commands.md)** — full command reference: every flag, exact return shapes, `press` key/chord syntax, environment variables (`SURF_APP`, `SURF_TARGET_FILE`, `SURF_WAIT_*`), how-it-works internals, and recipes. **Read when** you need a flag, an exact return value, env tuning, or a worked example beyond the map above.
+- **[surf-todo.md](surf-todo.md)** — roadmap and known limitations. **Read when** a behavior surprises you (e.g. JS-failure detection on x.com/incognito is heuristic; `--json` is not yet uniform across all commands).
