@@ -118,11 +118,10 @@ chk "list missing -> []"     "surf list '.zz-nope' | grep -qE '^\[\]$'"
 
 section "E. navigation: click → iana → back"
 chk "click a → ok"              "surf click 'a' | grep -q '\"ok\":true'"
-sleep 1.2
-chk "navigated to iana"         "surf url | grep -q 'iana'"
-chk "back returns to example"   "surf back >/dev/null; sleep 1.5; surf url | grep -q 'example.com'"
-chk "fwd → iana again"          "surf fwd >/dev/null; sleep 1.5; surf url | grep -q 'iana'"
-surf back >/dev/null; sleep 1.2
+chk "navigated to iana"         "surf wait-url 'iana' --timeout 15 >/dev/null"
+chk "back returns to example"   "surf back >/dev/null; surf wait-url 'example.com' --timeout 15 >/dev/null"
+chk "fwd → iana again"          "surf fwd >/dev/null; surf wait-url 'iana' --timeout 15 >/dev/null"
+surf back >/dev/null; surf wait-url 'example.com' --timeout 15 >/dev/null || true
 chk "reload works"              "surf reload >/dev/null; sleep 1.0; surf title >/dev/null"
 
 section "F. fill on duckduckgo (pinned)"

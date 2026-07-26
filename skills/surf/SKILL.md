@@ -1,6 +1,6 @@
 ---
 name: surf
-version: "1.4.0"
+version: "1.4.1"
 description: "Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screenshots, and tab-aware automation — no daemon, no debug port, no extension, no per-connection dialog. Sessions stay intact (cookies, logins, tabs). Uses macOS AppleScript + Chrome's 'Allow JavaScript from Apple Events'. Use when the user wants to automate, scrape, click, fill, read, or screenshot the browser they are already logged into. Triggers on: control my Chrome, drive my browser, automate my logged-in browser, scrape this page, fill this form, click this, read the page, take a browser screenshot, surf."
 ---
 
