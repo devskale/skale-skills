@@ -289,6 +289,24 @@ if [ $RC -eq 0 ] && [ -f /tmp/surf-full.png ]; then mark "shot-full produced a P
 else chk "shot-full fails gracefully" "grep -qiE 'Screen Recording|Pillow|geometry|bounds' /tmp/surf-full.log"; fi
 rm -f /tmp/surf-full.png
 
+section "R. Tier 5 — table / richtext fill / consistent --json"
+surf select "$EX" >/dev/null
+surf open "https://example.com/" >/dev/null; sleep 1.0
+surf eval 'var t=document.createElement("table");t.id="dt";t.innerHTML="<thead><tr><th>Name</th><th>Age</th></tr></thead><tbody><tr><td>Ada</td><td>36</td></tr></tbody>";document.body.appendChild(t);var ce=document.createElement("div");ce.id="note";ce.contentEditable="true";document.body.appendChild(ce);1' >/dev/null
+chk "table -> {headers,rows}"   "surf table '#dt' | grep -qF '\"headers\":[\"Name\",\"Age\"]'"
+chk "table default selector"      "surf table | grep -q '\"rows\"'"
+chk "table missing -> ok:false"   "surf table '.nope' | grep -q '\"ok\":false'"
+chk "fill richtext (contentedit)" "surf fill '#note' 'hello rt' | grep -q '\"mode\":\"richtext\"'"
+chk "title --json"               "surf title --json | grep -q '\"title\"'"
+chk "url --json"                 "surf url --json | grep -q '\"url\"'"
+chk "html --json"                "surf html '#dt' --json | grep -q '\"found\":true'"
+chk "attr --json"                "surf attr '#dt' id --json | grep -qF '\"value\":\"dt\"'"
+chk "exists --json true"         "surf exists '#dt' --json | grep -q '\"exists\":true'"
+chk "exists --json false rc1"    "surf exists '.nope' --json | grep -q '\"exists\":false'"
+chk "visible --json"             "surf visible '#dt' --json | grep -q '\"visible\":true'"
+chk "assert --json pass"         "surf assert '1+1' 2 --json | grep -q '\"pass\":true'"
+chk "assert --json fail rc1"     "surf assert '1+1' 3 --json >/dev/null 2>&1; [ \$? -eq 1 ]"
+
 section "M. session hygiene (your real tabs untouched)"
 TABS_AFTER=$(surf tabs | wc -l | tr -d ' ')
 # net change = +2 (our example + ddg tabs, minus any we closed). Should be +2 now.

@@ -28,7 +28,7 @@ GETTING STARTED
 
 COMMANDS
   Navigation & tabs   tabs  here  select  find-tab  open  new  reload  back  fwd  close
-  Read                title  url  text  html  attr  count  list  eval  cookie  localstorage
+  Read                title  url  text  html  attr  count  list  table  eval  cookie  localstorage
   Interact            click  fill  form  hover  select-option  submit  scroll  scroll-to  press  download
   Wait                wait  wait-url  wait-stable       (all take --timeout N)
   Assert              exists  visible  assert           (exit 1 on fail)
@@ -194,7 +194,10 @@ EOF
 surf title — print document.title of the target tab
 
 USAGE
-  surf title
+  surf title [--json]
+
+RETURNS
+  document.title; with --json: {"title":".."}
 
 SEE ALSO
   url · here · text
@@ -204,7 +207,10 @@ EOF
 surf url — print location.href of the target tab
 
 USAGE
-  surf url
+  surf url [--json]
+
+RETURNS
+  location.href; with --json: {"url":".."}
 
 SEE ALSO
   title · here
@@ -232,10 +238,11 @@ EOF
 surf html — read an element's outerHTML
 
 USAGE
-  surf html "<css-selector>"
+  surf html "<css-selector>" [--json]
 
 RETURNS
   outerHTML of the first match; "NOT_FOUND" if none.
+  With --json: {"selector":..,"found":bool,"html":..}
 
 EXAMPLE
   surf html "h1"
@@ -248,10 +255,11 @@ EOF
 surf attr — read an element attribute
 
 USAGE
-  surf attr "<css-selector>" <attribute-name>
+  surf attr "<css-selector>" <attribute-name> [--json]
 
 RETURNS
   getAttribute(name) of the first match; "NOT_FOUND" if no element.
+  With --json: {"selector":..,"name":..,"found":bool,"value":..}
 
 EXAMPLE
   surf attr "a" "href"
@@ -339,11 +347,13 @@ USAGE
   surf fill "<css-selector>" "<value>"
 
 RETURNS
-  {"ok":true,"tag":".."}  or  {"ok":false,"err":"not_found"}
+  {"ok":true,"mode":"value"|"richtext","tag":".."}  or  {"ok":false,"err":"not_found"}
 
 NOTES
-  Sets .value then dispatches input + change events. For contenteditable rich
-  text (Notion/Gmail/Slack) use `surf press` keystrokes instead.
+  Auto-detects the target: plain <input>/<textarea> get .value + input/change
+  (React/Vue-safe); contenteditable elements (Notion/Gmail/Slack compose) get
+  caret-to-end + execCommand('insertText') with an InputEvent fallback. The
+  returned "mode" tells you which path ran.
 
 EXAMPLE
   surf fill "input[name=q]" "skyvern"
@@ -525,10 +535,11 @@ EOF
 surf exists — exit 0 if an element is present
 
 USAGE
-  surf exists "<css-selector>"
+  surf exists "<css-selector>" [--json]
 
 RETURNS
-  exit 0 if querySelector(sel) is non-null, else exit 1 (with a stderr message).
+  exit 0 if querySelector(sel) is non-null, else exit 1.
+  With --json: {"selector":..,"exists":bool} (still exits 0/1).
 
 EXAMPLE
   surf exists "#cookie-banner" && echo "present"
@@ -541,11 +552,12 @@ EOF
 surf visible — exit 0 if an element is present AND visible
 
 USAGE
-  surf visible "<css-selector>"
+  surf visible "<css-selector>" [--json]
 
 RETURNS
   exit 0 if the element exists and is visible (display/visibility/opacity +
   offsetParent checks, fixed-position aware), else exit 1.
+  With --json: {"selector":..,"visible":bool,"reason":"visible|hidden|absent"}.
 
 EXAMPLE
   surf visible ".modal"
@@ -558,11 +570,12 @@ EOF
 surf assert — assert a JS expression is truthy or equals an expected value
 
 USAGE
-  surf assert "<js>" [expected]
+  surf assert "<js>" [expected] [--json]
 
 RETURNS
   With [expected]: exit 0 if String(<js>) == expected, else exit 1.
   Without:        exit 0 if <js> is truthy, else exit 1.
+  With --json: {"js":..,"expected":..,"got":..,"pass":bool} (still exits 0/1).
 
 EXAMPLE
   surf assert 'document.querySelectorAll(".result").length' '5'
@@ -640,6 +653,26 @@ NOTES
 EXAMPLE
   surf bookmarks "ryanair"
   surf bookmarks --profile "Profile 1" --json
+EOF
+;;
+    table) cat <<'EOF'
+surf table — scrape an HTML <table> to JSON
+
+USAGE
+  surf table ["<css-selector>"]      default "table" (the first table)
+
+RETURNS
+  {"headers":[...] | null, "rows":[[...], ...], "truncated":bool}
+  First row containing <th> is treated as headers; else headers is null.
+  Cells are text trimmed; colspan/rowspan are NOT unfolded (v1). Rows capped at 1000.
+  Missing table -> {"ok":false,"err":"not_found"}.
+
+EXAMPLE
+  surf table
+  surf table "table.results" | jq '.rows'
+
+SEE ALSO
+  list · text · count
 EOF
 ;;
     cookie) cat <<'EOF'
@@ -852,7 +885,7 @@ cmd_help() {
   if [ -z "$cmd" ]; then _surf_help_overview; return 0; fi
   case "$cmd" in
     tabs|here|select|find-tab|open|new|reload|back|fwd|close|\
-    title|url|text|html|attr|count|list|eval|cookie|localstorage|\
+    title|url|text|html|attr|count|list|table|eval|cookie|localstorage|\
     click|fill|form|hover|select-option|submit|scroll|scroll-to|press|download|\
     wait|wait-url|wait-stable|\
     exists|visible|assert|\
