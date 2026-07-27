@@ -103,11 +103,10 @@ async function resolveKey(provider: string): Promise<string | null> {
 /**
  * Whether to render inline pixel images (Kitty/iTerm2) in the TUI.
  *
- * tmux/screen strip Kitty/iTerm graphics escapes (the outer TERM_PROGRAM
- * ghostty/kitty leaks through, but the mux mangles them) — so under those we
- * fall back to ASCII. herdr, by contrast, passes Kitty graphics through
- * (verified end-to-end: images render under ghostty→herdr→pi), so it is NOT
- * treated as a multiplexer here.
+ * tmux/screen: pi itself returns images:null here, so ASCII is the only visual.
+ * herdr is NOT special-cased — it renders Kitty when the user enables
+ * experimental.kitty_graphics (off by default); when off, the model-signal
+ * branch in execute() still adds ASCII for non-vision models.
  */
 function canRenderInline(): boolean {
 	if (process.env.TMUX || process.env.SCREEN) return false;
