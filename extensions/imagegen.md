@@ -1,9 +1,20 @@
 # Image Generation Extension
 
-Pi extension that registers a `generate_image` tool the LLM can call. The
-generated image is returned as an **image content block** (not just a path),
-so the model sees its own output and can **iterate** on it — regenerate with
-a refined prompt, adjust style, try variants.
+Pi extension with two entry points, both backed by one shared core (`generateAndSave`):
+
+- **`generate_image` tool** — the LLM calls it autonomously when you ask for an
+  image. Returns an **image content block** (not just a path), so the model sees
+  its own output and can **iterate** on it — regenerate with a refined prompt,
+  adjust style, try variants.
+- **`/imagegen` command** (alias `/img`) — direct, no-LLM generation:
+  ```
+  /imagegen a red cube on white --model tu@z-image-turbo --size 1024x1024
+  /img a fox logo, flat vector            # alias; default model pollinations@flux
+  ```
+  Flags: `--model`/`-m`, `--size`/`-s`, `--n`/`-n`, `--seed`. Generates
+  immediately, saves to `./generated/`, and renders the image **inline** in the
+  chat via a registered message renderer (`pi.registerMessageRenderer`). Zero
+  model tokens — the agent loop is bypassed.
 
 ---
 
@@ -307,7 +318,9 @@ curl -s -X POST https://amd1.mooo.com:8123/v1/images/generations \
 2. **Preview format** — default to 256-color half-blocks (nicer) or pure ASCII
    (max compatibility, also safe as a model signal)? Proposal: half-blocks for
    display, ASCII for the model-signal text block.
-3. **`/img` command** — interactive prompt → generate, as a shortcut? Optional.
+3. **`/imagegen` command** — **done.** `/imagegen` (alias `/img`) is implemented
+   as a direct, no-LLM command: parses flags, calls the shared `generateAndSave`
+   core, and renders the result inline via `pi.registerMessageRenderer`.
 4. **pi upstream** — pi's `detectCapabilities()` has no herdr awareness:
    under `ghostty→herdr` it returns `images: "kitty"` whether or not herdr's
    `experimental.kitty_graphics` is on. With the flag off that's a false
