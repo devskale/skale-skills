@@ -7,7 +7,7 @@
 #   3. Proxy reachable + pollinations model list
 #   4. Credentials resolvable
 #   5. Both backends generate images (live, resilient)
-#   6. chafa ASCII fallback works (the herdr/multiplexer display fix)
+#   6. chafa ASCII fallback works (the multiplexer display fix, tmux/screen)
 #
 # Live network tests are RESILIENT -- they warn, not fail, on flakiness
 # (matching the repo convention from fetch-url / web-search tests).
@@ -55,7 +55,8 @@ assert "imagegen.md doc exists"   "[ -f imagegen.md ]"
 assert "registers generate_image" "grep -q 'name: \"generate_image\"' imagegen.ts"
 assert "uses provider@modelid"    "grep -q 'splitProviderModel' imagegen.ts"
 assert "has ASCII fallback"       "grep -q 'canRenderInline' imagegen.ts"
-assert "detects herdr mux"        "grep -q 'HERDR_PANE_ID' imagegen.ts"
+assert "detects tmux/screen mux"  "grep -q 'process.env.TMUX || process.env.SCREEN' imagegen.ts"
+assert "herdr NOT treated as mux" "! grep -q 'HERDR_PANE_ID' imagegen.ts"
 assert "chafa --format symbols"   "grep -q -- '--format symbols' imagegen.ts"
 echo ""
 

@@ -5,9 +5,6 @@ generated image is returned as an **image content block** (not just a path),
 so the model sees its own output and can **iterate** on it — regenerate with
 a refined prompt, adjust style, try variants.
 
-> Status: design doc. The extension itself (`extensions/imagegen.ts`) is not
-> implemented yet.
-
 ---
 
 ## Why an extension (not a skill)
@@ -178,24 +175,19 @@ The extension degrades gracefully through each.
 | **Terminal display** | the *user* can see the image inline | terminal image protocol (Kitty/iTerm2) surviving the multiplexer |
 | **Model vision** | the *LLM* can see the image to iterate | the provider accepting image input blocks |
 
-### Why inline display is broken under herdr
+### Inline display works under herdr
 
-The dev stack is `ghostty → herdr → pi`. herdr is a terminal
-multiplexer (like tmux). pi's `detectCapabilities()`
-(`packages/tui/src/terminal-image.ts`) decides image support like this:
+The dev stack is `ghostty → herdr → pi`. **Images render inline under herdr**
+(end-to-end verified) — herdr passes Kitty graphics escapes through, unlike
+tmux/screen. So herdr is NOT treated as a multiplexer.
 
-- tmux / screen → `images: null` (explicitly disabled — protocols unreliable)
-- `TERM_PROGRAM=ghostty` → `images: "kitty"`
-
-The problem: **`TERM_PROGRAM=ghostty` leaks through herdr** into pi's env, so
-pi returns a **false positive** (`images: "kitty"`). pi then emits Kitty
-graphics escape sequences, but herdr strips/mangles them the same way tmux
-does — so **nothing renders**. pi has no herdr detection (only tmux/screen).
-
-When `images: null`, pi falls back to a bare text placeholder
+The only terminals that need a fallback are **tmux/screen**: the outer
+`TERM_PROGRAM` (ghostty/kitty) leaks through, pi returns `images: "kitty"`,
+but the mux strips/mangles the graphics escapes — nothing renders. Under those,
+pi falls back to a bare text placeholder
 `[Image: foo.png [image/png] 1024x1024]` — no visual at all.
 
-### The fix: ASCII/ANSI via chafa
+### The fallback: ASCII/ANSI via chafa (tmux/screen only)
 
 [`chafa`](https://hpjansson.org/chafa/) is installed (`/opt/homebrew/bin/chafa`)
 and renders an image to **plain text** — survives any multiplexer because it's
@@ -209,17 +201,15 @@ yg@@@l              1@@@@@@@@@@@@
    ...
 ```
 
-The extension must **not** trust pi's `getCapabilities()` (false positive
-under herdr). It does its own detection:
+The extension detects the mux itself (it must not trust pi's
+`getCapabilities()`, which has no mux detection):
 
 ```ts
 function canRenderInline(): boolean {
-  // Multiplexers strip Kitty/iTerm graphics protocols, even when
-  // TERM_PROGRAM (ghostty/kitty) leaks through from the outer terminal.
-  const mux = process.env.TMUX || process.env.SCREEN
-    || process.env.HERDR_PANE_ID;          // herdr is a multiplexer too
-  if (mux) return false;
-  return true; // let pi's own detection (getCapabilities) decide the rest
+  // tmux/screen strip Kitty/iTerm graphics escapes even when TERM_PROGRAM
+  // (ghostty/kitty) leaks through. herdr does NOT — it passes them through.
+  if (process.env.TMUX || process.env.SCREEN) return false;
+  return true;
 }
 ```
 
@@ -233,15 +223,17 @@ Render strategy in `renderResult`:
 `chafa` flags:
 - `--format symbols` is **mandatory** — without it chafa auto-detects the
   Kitty protocol (because `TERM_PROGRAM=ghostty` is set) and emits graphics
-  escapes, which herdr then strips. Forcing `symbols` keeps output as text.
+  escapes, which the mux then strips. Forcing `symbols` keeps output as text.
 - `--symbols block-half` + `--colors 256` → compact ANSI color preview.
 - `--symbols ascii -c none` → pure monochrome ASCII (max compatibility).
 
 ### ASCII as a model signal (double duty)
 
-The same ASCII rendering fixes the **second** problem: when the active LLM
-lacks vision (e.g. the `read` tool reported "Current model does not support
-images"), returning only an image block gives the model nothing to iterate on.
+When the fallback *does* fire (tmux/screen), the same ASCII rendering also
+fixes a **second** problem: a text-only LLM (the `read` tool will have
+reported "Current model does not support images") gets a coarse visual signal
+instead of nothing — returning only an image block would give it nothing to
+iterate on. (Under herdr this fallback no longer fires, since pixels render.)
 
 So the tool result adapts to what the model can consume:
 
@@ -297,7 +289,6 @@ curl -s -X POST https://amd1.mooo.com:8123/v1/images/generations \
    (max compatibility, also safe as a model signal)? Proposal: half-blocks for
    display, ASCII for the model-signal text block.
 3. **`/img` command** — interactive prompt → generate, as a shortcut? Optional.
-4. **pi upstream** — herdr should arguably be added to pi's
-   `detectCapabilities()` disable-list (like tmux/screen), so *all* image
-   rendering across pi degrades correctly under herdr. Worth a PR separately
-   from this extension.
+4. **pi upstream** — herdr passes Kitty graphics through (verified), so pi does
+   NOT need herdr on its `detectCapabilities()` disable-list. The disable-list
+   should stay limited to tmux/screen, where the protocol is genuinely unreliable.
