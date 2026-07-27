@@ -175,17 +175,27 @@ The extension degrades gracefully through each.
 | **Terminal display** | the *user* can see the image inline | terminal image protocol (Kitty/iTerm2) surviving the multiplexer |
 | **Model vision** | the *LLM* can see the image to iterate | the provider accepting image input blocks |
 
-### Inline display works under herdr
+### herdr: enable `experimental.kitty_graphics`
 
-The dev stack is `ghostty → herdr → pi`. **Images render inline under herdr**
-(end-to-end verified) — herdr passes Kitty graphics escapes through, unlike
-tmux/screen. So herdr is NOT treated as a multiplexer.
+The dev stack is `ghostty → herdr → pi`. herdr has a full Kitty-graphics
+**relay** (it re-encodes pane image placements for the outer terminal), but
+it's gated behind an experimental flag that is **off by default**:
 
-The only terminals that need a fallback are **tmux/screen**: the outer
-`TERM_PROGRAM` (ghostty/kitty) leaks through, pi returns `images: "kitty"`,
-but the mux strips/mangles the graphics escapes — nothing renders. Under those,
-pi falls back to a bare text placeholder
-`[Image: foo.png [image/png] 1024x1024]` — no visual at all.
+```toml
+# ~/.config/herdr/config.toml
+[experimental]
+kitty_graphics = true
+```
+
+- **Flag on** → herdr relays the Kitty sequences pi emits → **images render
+  inline**. (`TERM_PROGRAM=ghostty` leaks through herdr, so pi's
+  `detectCapabilities()` already returns `images: "kitty"` and emits Kitty;
+  herdr just has to forward it.)
+- **Flag off (default)** → herdr drops those sequences → nothing renders, and
+  you see only the chafa fallback below.
+
+**tmux/screen** are different: there pi itself returns `images: null` (it
+disables Kitty under tmux), so the chafa fallback always applies there.
 
 ### The fallback: ASCII/ANSI via chafa (tmux/screen only)
 
@@ -206,19 +216,27 @@ The extension detects the mux itself (it must not trust pi's
 
 ```ts
 function canRenderInline(): boolean {
-  // tmux/screen strip Kitty/iTerm graphics escapes even when TERM_PROGRAM
-  // (ghostty/kitty) leaks through. herdr does NOT — it passes them through.
+  // tmux/screen: pi disables Kitty here (images: null). herdr is NOT special-cased —
+  // it renders Kitty when the user enables experimental.kitty_graphics (off by
+  // default); when off, the model-signal branch in execute() still adds ASCII.
   if (process.env.TMUX || process.env.SCREEN) return false;
   return true;
 }
 ```
 
-Render strategy in `renderResult`:
+ASCII is added to the tool-result **content** (in `execute()`) when **either**
+of two independent conditions holds — pi renders image blocks separately from
+this text, so the two don't collide:
 
-- `canRenderInline()` true → emit Kitty/iTerm sequence (pi renders the pixel image)
-- false → `execFileSync("chafa", ["--format","symbols","--symbols","block-half",
-  "--color-space","rgb","--colors","256","--size",`${w}x${h}`, imgPath])` →
-  emit the returned ANSI/ASCII as visible text
+- **display fallback** — `!canRenderInline()` (tmux/screen): the terminal can't
+  show pixels, so the user gets ANSI art instead.
+- **model signal** — the active model can't see images (`!isVisionCapable`):
+  pi-ai strips the image block for a non-vision model, so ASCII is the only
+  visual it gets to iterate on. This fires even when pixels *do* render
+  (e.g. herdr with the flag on) — redundant for the user, essential for the model.
+
+chafa is invoked **async** via `execFile` (no shell; args as an array), so a
+slow render never blocks the event loop.
 
 `chafa` flags:
 - `--format symbols` is **mandatory** — without it chafa auto-detects the
@@ -229,11 +247,12 @@ Render strategy in `renderResult`:
 
 ### ASCII as a model signal (double duty)
 
-When the fallback *does* fire (tmux/screen), the same ASCII rendering also
-fixes a **second** problem: a text-only LLM (the `read` tool will have
-reported "Current model does not support images") gets a coarse visual signal
-instead of nothing — returning only an image block would give it nothing to
-iterate on. (Under herdr this fallback no longer fires, since pixels render.)
+The **model signal** is the more important of the two reasons: a text-only
+LLM (the `read` tool will have reported "Current model does not support
+images") gets a coarse visual signal instead of nothing — returning only an
+image block would give it nothing to iterate on, since pi-ai strips image
+parts for non-vision models. This fires regardless of the terminal, including
+under herdr with the flag on (where the user *also* sees the real pixels).
 
 So the tool result adapts to what the model can consume:
 
@@ -289,6 +308,8 @@ curl -s -X POST https://amd1.mooo.com:8123/v1/images/generations \
    (max compatibility, also safe as a model signal)? Proposal: half-blocks for
    display, ASCII for the model-signal text block.
 3. **`/img` command** — interactive prompt → generate, as a shortcut? Optional.
-4. **pi upstream** — herdr passes Kitty graphics through (verified), so pi does
-   NOT need herdr on its `detectCapabilities()` disable-list. The disable-list
-   should stay limited to tmux/screen, where the protocol is genuinely unreliable.
+4. **pi upstream** — pi's `detectCapabilities()` has no herdr awareness:
+   under `ghostty→herdr` it returns `images: "kitty"` whether or not herdr's
+   `experimental.kitty_graphics` is on. With the flag off that's a false
+   positive (pi emits Kitty sequences herdr drops). Not actionable for this
+   extension — the flag is the user's lever.
