@@ -96,14 +96,14 @@ function resolveKey(provider: string): string | null {
 /**
  * Whether to render inline pixel images (Kitty/iTerm2) in the TUI.
  *
- * We do NOT trust pi's getCapabilities() here: under terminal multiplexers
- * (herdr, tmux, screen) the outer TERM_PROGRAM (ghostty/kitty) leaks through,
- * so pi returns a false-positive `images: "kitty"` and emits graphics escapes
- * that the multiplexer strips — nothing renders. Detect the mux ourselves.
+ * tmux/screen strip Kitty/iTerm graphics escapes (the outer TERM_PROGRAM
+ * ghostty/kitty leaks through, but the mux mangles them) — so under those we
+ * fall back to ASCII. herdr, by contrast, passes Kitty graphics through
+ * (verified end-to-end: images render under ghostty→herdr→pi), so it is NOT
+ * treated as a multiplexer here.
  */
 function canRenderInline(): boolean {
 	if (process.env.TMUX || process.env.SCREEN) return false;
-	if (process.env.HERDR_PANE_ID) return false; // herdr is a multiplexer too
 	return true;
 }
 

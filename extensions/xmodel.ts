@@ -1,5 +1,5 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.2
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.3
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
@@ -65,7 +65,7 @@ import {
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
-const VERSION = "0.3.2";
+const VERSION = "0.3.3";
 
 type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -83,9 +83,11 @@ interface PresetsConfig {
 	[name: string]: Preset;
 }
 
-type VisionMode = "delegate" | "switch" | "human" | "off";
+type VisionMode = "delegate" | "view" | "switch" | "human" | "off";
 interface VisionConfig {
 	/** delegate = build a brief from recent msgs → single VLM sub-call → feed analysis back (default).
+	 *  view    = show the image to the user only — NO analysis, no VLM call, zero tokens
+	 *            (non-vision models; pi-ai still strips the image at send time).
 	 *  switch  = old behaviour: flip the main model to vision for the turn.
 	 *  human   = ask the user to describe the image (interactive TUI overlay).
 	 *  off     = do nothing. */
@@ -520,11 +522,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			"xmodel-vision-mode",
 			m === "off"
 				? ctx.ui.theme.fg("muted", "👁off")
-				: m === "switch"
-					? ctx.ui.theme.fg("warning", "👁switch")
-					: m === "human"
-						? ctx.ui.theme.fg("accent", "👁human")
-						: undefined, // delegate = default → no badge (less noise)
+				: m === "view"
+					? ctx.ui.theme.fg("accent", "👁view")
+					: m === "switch"
+						? ctx.ui.theme.fg("warning", "👁switch")
+						: m === "human"
+							? ctx.ui.theme.fg("accent", "👁human")
+							: undefined, // delegate = default → no badge (less noise)
 		);
 	}
 
@@ -623,7 +627,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 		await ctx.ui.custom((tui: any, theme: any, _kb: any, done: (r: undefined) => void) => {
 			const scopeValues = trusted ? ["global", "project"] : ["global"];
-			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). switch: flip main model to vision for the turn. human: ask YOU to describe the image in a TUI overlay. off: do nothing.";
+			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). view: show the image to the user only — no analysis, no tokens. switch: flip main model to vision for the turn. human: ask YOU to describe the image in a TUI overlay. off: do nothing.";
 			const BRIEF_HELP = "Char budget for the task brief sent to the VLM.";
 			const KEEP_HELP = "Keep the original image inline in the result (delegate mode only), alongside the VLM text analysis. The non-vision main model still only receives the analysis — pi-ai strips image parts it can't process.";
 			// NOTE: for `values`-cycle rows, currentValue MUST be a bare entry of `values`
@@ -643,7 +647,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					label: "Vision mode",
 					description: `${MODE_HELP}\nEffective from: ${visionFieldSource(cwd, trusted, "mode")}`,
 					currentValue: visionCfg.mode,
-					values: ["delegate", "switch", "human", "off"],
+					values: ["delegate", "view", "switch", "human", "off"],
 				},
 				{
 					id: "vlm",
@@ -725,7 +729,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.3.2 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
+		description: "xmodel v0.3.3 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -754,8 +758,8 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				const cwd = ctx.cwd;
 				const [modeTok, scopeTok] = restStr.split(/\s+/);
 				if (!modeTok) return showVisionSummary(ctx);
-				if (!["delegate", "switch", "off", "human"].includes(modeTok)) {
-					ctx.ui.notify("xmodel: vision mode must be delegate | switch | human | off", "error");
+				if (!["delegate", "view", "switch", "off", "human"].includes(modeTok)) {
+					ctx.ui.notify("xmodel: vision mode must be delegate | view | switch | human | off", "error");
 					return;
 				}
 				let scope: "global" | "project" = "global";
@@ -904,6 +908,11 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		if (isVisionCapable(ctx.model)) return; // main model sees images natively — nothing to do
 		const mode = visionCfg.mode;
 		if (mode === "off") return;
+		if (mode === "view") {
+			// view-only: keep the image inline for the user (pi renders it; pi-ai strips it
+			// for this non-vision model at send time). No VLM call, no tokens — just a clean note.
+			return viewOnly(event, images);
+		}
 		if (mode === "switch") {
 			await ensureVision(ctx, "tool_result");
 			return;
@@ -1271,6 +1280,45 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		if (visionCfg.vlm) return visionCfg.vlm;
 		const m = pickVisionModel(ctx);
 		return m ? `${(m as any).provider}/${(m as any).id}` : undefined;
+	}
+
+	/**
+	 * View-only mode: show the image to the user, do NOT analyse it.
+	 *
+	 * The image block stays inline (pi renders it for the user). This only runs
+	 * for non-vision main models (the tool_result handler returns early otherwise),
+	 * so pi-ai's `downgradeUnsupportedImages` strips the image at send time — the
+	 * model never receives pixels and spends zero tokens on it.
+	 *
+	 * We strip the noisy `[Current model does not support images…]` note that `read`
+	 * appends (it reads as a failure) and replace it with a clean, intentional note,
+	 * so the model knows the image was shown on purpose and can offer to analyse it.
+	 * Synthesised images (saved-to-disk screenshots not in event.content) are appended
+	 * so the user sees them too.
+	 */
+	async function viewOnly(event: any, images: any[]): Promise<{ content: any[] }> {
+		const NO_VISION_NOTE = "[Current model does not support images. The image will be omitted from this request.]";
+		const newContent: any[] = (event.content as any[])
+			.map((b: any) => {
+				if (b && b.type === "text" && typeof b.text === "string" && b.text.includes(NO_VISION_NOTE)) {
+					const text = b.text.replace(NO_VISION_NOTE, "").replace(/\n{2,}/g, "\n").trim();
+					return text ? { ...b, text } : null;
+				}
+				return b;
+			})
+			.filter((b: any) => b !== null);
+		// synthesised images (e.g. saved-to-disk screenshots) aren't in event.content —
+		// append them so the user sees them as well.
+		const inlineCount = (event.content as any[]).filter((b: any) => b && b.type === "image").length;
+		for (let i = inlineCount; i < images.length; i++) {
+			if (images[i]) newContent.push(images[i]);
+		}
+		const n = images.length;
+		newContent.push({
+			type: "text",
+			text: `[xmodel view · ${n} image${n > 1 ? "s" : ""} shown to you — view-only, not analysed. Ask me to analyse it if needed (/xm vision delegate).]`,
+		});
+		return { content: newContent };
 	}
 
 	/**
