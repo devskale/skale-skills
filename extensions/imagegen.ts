@@ -17,7 +17,8 @@
  * See extensions/imagegen.md for the full design doc.
  */
 
-import { execSync } from "node:child_process";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -26,6 +27,11 @@ import process from "node:process";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+
+// execFile (no shell) promisified — used for credgoo + chafa so the event loop
+// never blocks on a slow child process. Args are passed as arrays (no shell
+// interpolation), which also removes any filename-injection surface.
+const execFileAsync = promisify(execFile);
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -55,8 +61,9 @@ function splitProviderModel(model: string): { provider: string; modelId: string 
 	return { provider: model.slice(0, idx), modelId: model.slice(idx + 1) };
 }
 
-/** Resolve the API key for a provider: env → credgoo → ~/.pi/agent/auth.json. */
-function resolveKey(provider: string): string | null {
+/** Resolve the API key for a provider: env → credgoo → ~/.pi/agent/auth.json.
+ *  Async because credgoo can take seconds — never block the event loop on it. */
+async function resolveKey(provider: string): Promise<string | null> {
 	const cfg = PROVIDER_KEYS[provider];
 	if (!cfg) return null;
 
@@ -64,14 +71,14 @@ function resolveKey(provider: string): string | null {
 	const fromEnv = process.env[cfg.env];
 	if (fromEnv && fromEnv.trim()) return fromEnv.trim();
 
-	// 2. credgoo (suppress its stdout chatter)
+	// 2. credgoo (suppress its stdout chatter). Try the PATH binary, then ~/.local/bin.
 	for (const cmd of ["credgoo", path.join(os.homedir(), ".local", "bin", "credgoo")]) {
 		try {
-			const out = execSync(`${cmd} ${cfg.credgoo}`, {
+			const { stdout } = await execFileAsync(cmd, [cfg.credgoo], {
 				encoding: "utf8",
 				timeout: 8000,
-				stdio: ["ignore", "pipe", "ignore"],
-			}).trim();
+			});
+			const out = stdout.trim();
 			if (out && !/^error/i.test(out)) return out;
 		} catch {
 			/* try next */
@@ -107,14 +114,21 @@ function canRenderInline(): boolean {
 	return true;
 }
 
-/** True if chafa is on PATH (used for ASCII fallback / model signal). */
-function hasChafa(): boolean {
-	try {
-		execSync("command -v chafa", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-		return true;
-	} catch {
-		return false;
+/** Whether chafa can run (cached). Probed by invoking it directly — no shell,
+ *  no `command -v` — so it works even without a login shell on PATH. */
+let _chafaAvailable: Promise<boolean> | undefined;
+function chafaAvailable(): Promise<boolean> {
+	if (!_chafaAvailable) {
+		_chafaAvailable = execFileAsync("chafa", ["--version"], { encoding: "utf8", timeout: 3000 })
+			.then(() => true)
+			.catch(() => false);
 	}
+	return _chafaAvailable;
+}
+
+/** True if the active model accepts image input (so it can iterate on the result). */
+function isVisionCapable(model: unknown): boolean {
+	return !!model && Array.isArray((model as any).input) && (model as any).input.includes("image");
 }
 
 function guessMime(b64: string): string {
@@ -125,25 +139,29 @@ function guessMime(b64: string): string {
 	return "image/png";
 }
 
-/** Render an image file to ANSI/ASCII text via chafa. `--format symbols` is mandatory. */
-function chafaPreview(imgPath: string, mime: string, cols = ASCII_COLS, rows = ASCII_ROWS): string {
+/** Render an image file to ANSI/ASCII text via chafa (async, no shell).
+ *  `--format symbols` is mandatory — without it chafa auto-detects the Kitty
+ *  protocol (TERM_PROGRAM=ghostty leaks through) and emits graphics escapes
+ *  that a multiplexer strips. */
+async function chafaPreview(imgPath: string, cols = ASCII_COLS, rows = ASCII_ROWS): Promise<string> {
+	const size = ["--size", `${cols}x${rows}`];
+	// color half-blocks first; fall back to plain ASCII on any failure
 	try {
-		// --format symbols forces text output. Without it, chafa auto-detects
-		// the Kitty protocol (TERM_PROGRAM=ghostty leaks through herdr) and
-		// emits graphics escapes that the multiplexer strips.
-		const out = execSync(
-			`chafa --format symbols --symbols block-half --color-space rgb --colors 240 ` +
-				`--work 5 --size ${cols}x${rows} ${JSON.stringify(imgPath)}`,
-			{ encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 15000 },
-		).trim();
+		const { stdout } = await execFileAsync(
+			"chafa",
+			["--format", "symbols", "--symbols", "block-half", "--color-space", "rgb", "--colors", "240", "--work", "5", ...size, imgPath],
+			{ encoding: "utf8", timeout: 15000 },
+		);
+		const out = stdout.trim();
 		return out || "(chafa produced no output)";
 	} catch {
-		// Fall back to plain ASCII if color symbols fail.
 		try {
-			return execSync(
-				`chafa --format symbols --symbols ascii -c none --work 5 --size ${cols}x${rows} ${JSON.stringify(imgPath)}`,
-				{ encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 15000 },
-			).trim();
+			const { stdout } = await execFileAsync(
+				"chafa",
+				["--format", "symbols", "--symbols", "ascii", "-c", "none", "--work", "5", ...size, imgPath],
+				{ encoding: "utf8", timeout: 15000 },
+			);
+			return stdout.trim();
 		} catch {
 			return `(unable to render preview; see ${imgPath})`;
 		}
@@ -175,8 +193,6 @@ interface ImageItem {
 // ── Extension ────────────────────────────────────────────────────────────────
 
 export default function imagegenExtension(pi: ExtensionAPI) {
-	const chafaAvailable = hasChafa();
-
 	pi.registerTool({
 		name: "generate_image",
 		label: "Generate Image",
@@ -227,8 +243,8 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			const size = (params.size || DEFAULT_SIZE).trim();
 			const n = Math.max(1, Math.min(4, Math.floor(params.n ?? 1)));
 
-			// Resolve credentials
-			const key = resolveKey(provider);
+			// Resolve credentials (async — credgoo can take seconds)
+			const key = await resolveKey(provider);
 			if (!key) {
 				const cfg = PROVIDER_KEYS[provider];
 				return {
@@ -334,14 +350,25 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 				});
 			}
 
-			// ASCII preview: only under multiplexers (inline pixels won't render)
-			// OR always (as a model signal). We include it whenever chafa is
-			// available — it's compact and gives text-only models a visual cue.
-			if (chafaAvailable && !canRenderInline()) {
-				const previews = saved.map((s) => chafaPreview(s.path, s.mime)).join("\n\n");
+			// ASCII preview — two INDEPENDENT reasons, evaluated separately:
+			//   • display fallback: the terminal can't render inline pixels (tmux/screen)
+			//   • model signal:    the active model can't see images, so ASCII gives it a
+			//     coarse visual cue to iterate on (the image block alone would be stripped
+			//     by pi-ai for a non-vision model, leaving it blind to its own output)
+			const terminalCantRender = !canRenderInline();
+			const modelCantSee = !isVisionCapable(ctx.model);
+			const includePreview = (await chafaAvailable()) && (terminalCantRender || modelCantSee);
+			if (includePreview) {
+				const previews = (await Promise.all(saved.map((s) => chafaPreview(s.path)))).join("\n\n");
+				const why =
+					terminalCantRender && modelCantSee
+						? "terminal can't render inline images + current model can't see images"
+						: terminalCantRender
+							? "terminal can't render inline images here"
+							: "current model can't see images — ASCII gives it a visual signal to iterate";
 				content.push({
 					type: "text",
-					text: `\nASCII preview (terminal can't render inline images here):\n\`\`\`\n${previews}\n\`\`\``,
+					text: "\nASCII preview (" + why + "):\n```\n" + previews + "\n```",
 				});
 			}
 
@@ -352,7 +379,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 					model: modelId,
 					size,
 					paths: saved.map((s) => s.path),
-					asciiPreview: chafaAvailable && !canRenderInline(),
+					asciiPreview: includePreview,
 				},
 			};
 		},
