@@ -1,11 +1,15 @@
 /**
  * Image Generation Extension
  *
- * Registers a `generate_image` tool the LLM can call. The generated image is
- * returned as an **image content block** (so vision-capable models can iterate
- * on it) PLUS a compact ASCII preview (so text-only models still get a visual
- * signal, and the user sees something under terminal multiplexers that strip
- * graphics protocols).
+ * Two entry points, both backed by one shared core (generateAndSave):
+ *   • a `generate_image` TOOL the LLM calls autonomously, and
+ *   • a `/imagegen` (alias `/img`) COMMAND for direct, no-LLM generation:
+ *       /imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S]
+ *
+ * The generated image is returned as an **image content block** (so vision-capable
+ * models can iterate on it) PLUS a compact ASCII preview (so text-only models
+ * still get a visual signal, and the user sees something under terminal
+ * multiplexers that strip graphics protocols).
  *
  * Backends are reached through the uniinfer proxy using the `provider@modelid`
  * convention — the extension has no backend branching:
@@ -24,8 +28,8 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { Container, Image, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
 // execFile (no shell) promisified — used for credgoo + chafa so the event loop
@@ -42,6 +46,9 @@ const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "pollinations@flux";
 const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "1024x1024";
 const ASCII_COLS = 64;
 const ASCII_ROWS = 22;
+
+/** customType for the direct-command result message (rendered inline). */
+const IMAGEGEN_MSG = "imagegen-result";
 
 // Known image providers — first segment of the `provider@modelid` string.
 const PROVIDER_KEYS: Record<string, { env: string; credgoo: string; authFile?: string }> = {
@@ -106,7 +113,7 @@ async function resolveKey(provider: string): Promise<string | null> {
  * tmux/screen: pi itself returns images:null here, so ASCII is the only visual.
  * herdr is NOT special-cased — it renders Kitty when the user enables
  * experimental.kitty_graphics (off by default); when off, the model-signal
- * branch in execute() still adds ASCII for non-vision models.
+ * branch below still adds ASCII for non-vision models.
  */
 function canRenderInline(): boolean {
 	if (process.env.TMUX || process.env.SCREEN) return false;
@@ -189,9 +196,134 @@ interface ImageItem {
 	webUrl?: string;
 }
 
+type TextBlock = { type: "text"; text: string };
+type ImageBlock = { type: "image"; source: { type: "base64"; mediaType: string; data: string } };
+type ContentBlock = TextBlock | ImageBlock;
+
+// ── Shared core: validate → resolve key → call proxy → persist to disk ───────
+
+interface GenOpts {
+	prompt: string;
+	model?: string;
+	size?: string;
+	n?: number;
+	seed?: number;
+	cwd: string;
+	signal?: AbortSignal;
+}
+
+type GenResult =
+	| { ok: true; saved: ImageItem[]; provider: string; modelId: string; size: string }
+	| { ok: false; error: string };
+
+async function generateAndSave(opts: GenOpts): Promise<GenResult> {
+	const model = (opts.model || DEFAULT_MODEL).trim();
+	const { provider, modelId } = splitProviderModel(model);
+	if (!PROVIDER_KEYS[provider]) {
+		return { ok: false, error: `unknown provider "${provider}". Known: ${Object.keys(PROVIDER_KEYS).join(", ")}` };
+	}
+	const size = (opts.size || DEFAULT_SIZE).trim();
+	const n = Math.max(1, Math.min(4, Math.floor(opts.n ?? 1)));
+
+	const key = await resolveKey(provider);
+	if (!key) {
+		const cfg = PROVIDER_KEYS[provider];
+		return {
+			ok: false,
+			error: `no API key for provider "${provider}". Set ${cfg.env} or run \`credgoo ${cfg.credgoo}\`.`,
+		};
+	}
+
+	let data: { data?: Array<{ b64_json?: string; url?: string }> };
+	try {
+		const resp = await fetch(`${PROXY_BASE}/images/generations`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+			body: JSON.stringify({
+				model: `${provider}@${modelId}`,
+				prompt: opts.prompt,
+				size,
+				n,
+				...(opts.seed != null ? { seed: opts.seed } : {}),
+			}),
+			signal: opts.signal,
+		});
+		if (!resp.ok) {
+			const detail = await resp.text().catch(() => "");
+			return { ok: false, error: `proxy returned ${resp.status} ${resp.statusText}${detail ? ` — ${detail}` : ""}` };
+		}
+		data = (await resp.json()) as typeof data;
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		return { ok: false, error: `request failed — ${msg.split("Authorization")[0]}` };
+	}
+
+	const items = data.data ?? [];
+	if (!items.length) return { ok: false, error: "no images returned" };
+
+	const { dir, webUrl } = outputDir(opts.cwd);
+	fs.mkdirSync(dir, { recursive: true });
+	const ts = Date.now();
+	const saved: ImageItem[] = [];
+	for (let i = 0; i < items.length; i++) {
+		const it = items[i];
+		let b64 = it.b64_json;
+		if (!b64 && it.url) {
+			try {
+				const r = await fetch(it.url, { signal: opts.signal });
+				if (r.ok) b64 = Buffer.from(await r.arrayBuffer()).toString("base64");
+			} catch {
+				/* leave undefined */
+			}
+		}
+		if (!b64) continue;
+		const mime = guessMime(b64);
+		const ext = mime === "image/jpeg" ? "jpg" : mime.split("/")[1] || "png";
+		const file = items.length === 1 ? `generated-${ts}.${ext}` : `generated-${ts}-${i}.${ext}`;
+		const abs = path.resolve(dir, file);
+		fs.writeFileSync(abs, Buffer.from(b64, "base64"));
+		saved.push({ b64, url: it.url, mime, path: abs, webUrl: webUrl ? `/uploads/${file}` : undefined });
+	}
+	if (!saved.length) return { ok: false, error: "generated images had no usable data" };
+	return { ok: true, saved, provider, modelId, size };
+}
+
+/** Build the ASCII preview if needed (display fallback OR model signal). */
+async function maybeAscii(saved: ImageItem[], model: unknown): Promise<string | undefined> {
+	const terminalCantRender = !canRenderInline();
+	const modelCantSee = !isVisionCapable(model);
+	if (!((await chafaAvailable()) && (terminalCantRender || modelCantSee))) return undefined;
+	return (await Promise.all(saved.map((s) => chafaPreview(s.path)))).join("\n\n");
+}
+
+/** Parse `/imagegen` arg string: flags + free-form prompt. */
+function parseImagegenArgs(raw: string): { prompt: string; model?: string; size?: string; n?: number; seed?: number } {
+	const tokens = raw.split(/\s+/);
+	const promptParts: string[] = [];
+	let model: string | undefined;
+	let size: string | undefined;
+	let n: number | undefined;
+	let seed: number | undefined;
+	for (let i = 0; i < tokens.length; i++) {
+		const t = tokens[i];
+		const next = (): string | undefined => tokens[++i];
+		if (t === "--model" || t === "-m") model = next();
+		else if (t === "--size" || t === "-s") size = next();
+		else if (t === "--n" || t === "-n") n = next() ? Number(tokens[i]) : undefined;
+		else if (t === "--seed") seed = next() ? Number(tokens[i]) : undefined;
+		else if (t.startsWith("--model=")) model = t.slice(8);
+		else if (t.startsWith("--size=")) size = t.slice(7);
+		else if (t.startsWith("--n=")) n = Number(t.slice(4));
+		else if (t.startsWith("--seed=")) seed = Number(t.slice(7));
+		else promptParts.push(t);
+	}
+	return { prompt: promptParts.join(" ").trim(), model, size, n, seed };
+}
+
 // ── Extension ────────────────────────────────────────────────────────────────
 
 export default function imagegenExtension(pi: ExtensionAPI) {
+	// --- 1. The TOOL (LLM-driven) ---
 	pi.registerTool({
 		name: "generate_image",
 		label: "Generate Image",
@@ -219,167 +351,41 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		async execute(_toolCallId, params, _signal, onUpdate, ctx) {
 			const prompt = (params.prompt || "").trim();
 			if (!prompt) {
-				return {
-					content: [{ type: "text" as const, text: "Error: prompt is required." }],
-					isError: true,
-				};
+				return { content: [{ type: "text" as const, text: "Error: prompt is required." }], isError: true };
 			}
 
-			const model = (params.model || DEFAULT_MODEL).trim();
-			const { provider, modelId } = splitProviderModel(model);
-			if (!PROVIDER_KEYS[provider]) {
-				return {
-					content: [
-						{
-							type: "text" as const,
-							text: `Error: unknown provider "${provider}". Known: ${Object.keys(PROVIDER_KEYS).join(", ")}.`,
-						},
-					],
-					isError: true,
-				};
+			onUpdate?.({ content: [{ type: "text", text: "Generating…" }] });
+			const res = await generateAndSave({
+				prompt,
+				model: params.model,
+				size: params.size,
+				n: params.n,
+				seed: params.seed,
+				cwd: ctx.cwd,
+				signal: ctx.signal,
+			});
+			if (!res.ok) {
+				return { content: [{ type: "text" as const, text: `Error: ${res.error}` }], isError: true };
 			}
 
-			const size = (params.size || DEFAULT_SIZE).trim();
-			const n = Math.max(1, Math.min(4, Math.floor(params.n ?? 1)));
-
-			// Resolve credentials (async — credgoo can take seconds)
-			const key = await resolveKey(provider);
-			if (!key) {
-				const cfg = PROVIDER_KEYS[provider];
-				return {
-					content: [
-						{
-							type: "text" as const,
-							text:
-								`Error: no API key for provider "${provider}". Set ${cfg.env} env var, ` +
-								`run \`credgoo ${cfg.credgoo}\`${cfg.authFile ? `, or log in via pi (${cfg.authFile})` : ""}.`,
-						},
-					],
-					isError: true,
-				};
-			}
-
-			onUpdate?.({ content: [{ type: "text", text: `Generating with ${provider}@${modelId} (${size})…` }] });
-
-			// Call the proxy
-			let data: { data?: Array<{ b64_json?: string; url?: string }> };
-			try {
-				const resp = await fetch(`${PROXY_BASE}/images/generations`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${key}`,
-					},
-					body: JSON.stringify({ model: `${provider}@${modelId}`, prompt, size, n, ...(params.seed != null ? { seed: params.seed } : {}) }),
-					signal: ctx.signal,
-				});
-				if (!resp.ok) {
-					const detail = await resp.text().catch(() => "");
-					return {
-						content: [{ type: "text" as const, text: `Error: proxy returned ${resp.status} ${resp.statusText}${detail ? ` — ${detail}` : ""}` }],
-						isError: true,
-					};
-				}
-				data = (await resp.json()) as typeof data;
-			} catch (e) {
-				const msg = e instanceof Error ? e.message : String(e);
-				return {
-					content: [{ type: "text" as const, text: `Error: request failed — ${msg.split("Authorization")[0]}` }],
-					isError: true,
-				};
-			}
-
-			const items = data.data ?? [];
-			if (!items.length) {
-				return {
-					content: [{ type: "text" as const, text: "Error: no images returned." }],
-					isError: true,
-				};
-			}
-
-			// Persist to disk
-			const { dir, webUrl } = outputDir(ctx.cwd);
-			fs.mkdirSync(dir, { recursive: true });
-			const ts = Date.now();
-			const saved: ImageItem[] = [];
-
-			for (let i = 0; i < items.length; i++) {
-				const it = items[i];
-				let b64 = it.b64_json;
-				if (!b64 && it.url) {
-					try {
-						const r = await fetch(it.url, { signal: ctx.signal });
-						if (r.ok) b64 = Buffer.from(await r.arrayBuffer()).toString("base64");
-					} catch {
-						/* leave undefined */
-					}
-				}
-				if (!b64) continue;
-				const mime = guessMime(b64);
-				const ext = mime === "image/jpeg" ? "jpg" : mime.split("/")[1] || "png";
-				const file = items.length === 1 ? `generated-${ts}.${ext}` : `generated-${ts}-${i}.${ext}`;
-				const abs = path.resolve(dir, file);
-				fs.writeFileSync(abs, Buffer.from(b64, "base64"));
-				saved.push({ b64, url: it.url, mime, path: abs, webUrl: webUrl ? `/uploads/${file}` : undefined });
-			}
-
-			if (!saved.length) {
-				return {
-					content: [{ type: "text" as const, text: "Error: generated images had no usable data." }],
-					isError: true,
-				};
-			}
-
-			// Build the result content blocks.
-			// - A text summary (paths) — always
-			// - An image block per image — lets vision models iterate
-			// - An ASCII preview — helps text-only models AND users under multiplexers
-			const content: Array<{ type: "text"; text: string } | { type: "image"; source: { type: "base64"; mediaType: string; data: string } }> = [];
-
+			const { saved, provider, modelId, size } = res;
+			const content: ContentBlock[] = [];
 			const locationLines = saved.map((s) => `  • ${s.webUrl ?? s.path}`).join("\n");
 			content.push({
 				type: "text",
 				text: `Generated ${saved.length} image${saved.length > 1 ? "s" : ""} via ${provider}@${modelId} (${size}):\n${locationLines}`,
 			});
-
 			for (const s of saved) {
-				content.push({
-					type: "image",
-					source: { type: "base64", mediaType: s.mime, data: s.b64 },
-				});
+				content.push({ type: "image", source: { type: "base64", mediaType: s.mime, data: s.b64 } });
 			}
-
-			// ASCII preview — two INDEPENDENT reasons, evaluated separately:
-			//   • display fallback: the terminal can't render inline pixels (tmux/screen)
-			//   • model signal:    the active model can't see images, so ASCII gives it a
-			//     coarse visual cue to iterate on (the image block alone would be stripped
-			//     by pi-ai for a non-vision model, leaving it blind to its own output)
-			const terminalCantRender = !canRenderInline();
-			const modelCantSee = !isVisionCapable(ctx.model);
-			const includePreview = (await chafaAvailable()) && (terminalCantRender || modelCantSee);
-			if (includePreview) {
-				const previews = (await Promise.all(saved.map((s) => chafaPreview(s.path)))).join("\n\n");
-				const why =
-					terminalCantRender && modelCantSee
-						? "terminal can't render inline images + current model can't see images"
-						: terminalCantRender
-							? "terminal can't render inline images here"
-							: "current model can't see images — ASCII gives it a visual signal to iterate";
-				content.push({
-					type: "text",
-					text: "\nASCII preview (" + why + "):\n```\n" + previews + "\n```",
-				});
+			const asciiArt = await maybeAscii(saved, ctx.model);
+			if (asciiArt) {
+				content.push({ type: "text", text: "\nASCII preview (model signal / display fallback):\n```\n" + asciiArt + "\n```" });
 			}
 
 			return {
 				content,
-				details: {
-					provider,
-					model: modelId,
-					size,
-					paths: saved.map((s) => s.path),
-					asciiPreview: includePreview,
-				},
+				details: { provider, model: modelId, size, paths: saved.map((s) => s.path), asciiPreview: !!asciiArt },
 			};
 		},
 
@@ -398,6 +404,95 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			const where = details.paths?.[0] ?? "";
 			const label = `🖼 ${details.provider}@${details.model} • ${count} image${count > 1 ? "s" : ""} → ${where}`;
 			return new Text(theme.fg("success", label), 0, 0);
-			},
+		},
 	});
+
+	// --- 2. The COMMAND (direct, no LLM) — shared core + inline-rendered result ---
+	async function runImagegenCommand(args: string, ctx: ExtensionContext): Promise<void> {
+		const raw = (args ?? "").trim();
+		if (!raw) {
+			ctx.ui.notify("imagegen: usage — /imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S]  (alias /img)", "warning");
+			return;
+		}
+		const { prompt, model, size, n, seed } = parseImagegenArgs(raw);
+		if (!prompt) {
+			ctx.ui.notify("imagegen: no prompt given", "warning");
+			return;
+		}
+
+		ctx.ui.setStatus("imagegen", ctx.ui.theme.fg("accent", "🖼 generating…"));
+		const res = await generateAndSave({ prompt, model, size, n, seed, cwd: ctx.cwd, signal: ctx.signal });
+		ctx.ui.setStatus("imagegen", undefined);
+		if (!res.ok) {
+			ctx.ui.notify(`imagegen: ${res.error}`, "error");
+			return;
+		}
+
+		const { saved, provider, modelId, size: sz } = res;
+		const asciiArt = await maybeAscii(saved, ctx.model);
+		const locationLines = saved.map((s) => `  • ${s.webUrl ?? s.path}`).join("\n");
+		const summary = `Generated ${saved.length} image${saved.length > 1 ? "s" : ""} via ${provider}@${modelId} (${sz}):\n${locationLines}`;
+
+		// content (goes into LLM context for later turns) + details (for our renderer)
+		const content: ContentBlock[] = [
+			{ type: "text", text: summary },
+			...saved.map((s): ImageBlock => ({ type: "image", source: { type: "base64", mediaType: s.mime, data: s.b64 } })),
+		];
+		ctx.sessionManager.appendCustomMessageEntry(IMAGEGEN_MSG, content as any, true, {
+			provider,
+			model: modelId,
+			size: sz,
+			paths: saved.map((s) => s.path),
+			images: saved.map((s) => ({ b64: s.b64, mime: s.mime })),
+			asciiArt,
+		});
+		ctx.ui.notify(`imagegen: ${saved.length} image${saved.length > 1 ? "s" : ""} → ${saved[0].path}`, "info");
+	}
+
+	pi.registerCommand("imagegen", {
+		description: "/imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S] — generate an image directly (no LLM round-trip). Alias: /img",
+		handler: async (args, ctx) => {
+			await runImagegenCommand(args ?? "", ctx);
+		},
+	});
+	pi.registerCommand("img", {
+		description: "Alias for /imagegen",
+		handler: async (args, ctx) => {
+			await runImagegenCommand(args ?? "", ctx);
+		},
+	});
+
+	// --- 3. Inline renderer for the command's result message (draws the Image) ---
+	pi.registerMessageRenderer(
+		IMAGEGEN_MSG,
+		(message, _opts, theme): Component | undefined => {
+			const d = (message as { details?: {
+				provider?: string;
+				model?: string;
+				paths?: string[];
+				images?: Array<{ b64: string; mime: string }>;
+				asciiArt?: string;
+			} }).details;
+			const c = new Container();
+			const count = d?.images?.length ?? d?.paths?.length ?? 0;
+			c.addChild(new Text(theme.fg("success", `🖼 ${d?.provider ?? "?"}@${d?.model ?? "?"} • ${count} image${count > 1 ? "s" : ""}`), 0, 0));
+			if (d?.images) {
+				for (const im of d.images) {
+					c.addChild(new Spacer(1));
+					c.addChild(
+						new Image(im.b64, im.mime, { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }),
+					);
+				}
+			}
+			if (d?.paths?.length) {
+				c.addChild(new Spacer(1));
+				c.addChild(new Text(theme.fg("dim", d.paths.map((p) => `  • ${p}`).join("\n")), 0, 0));
+			}
+			if (d?.asciiArt) {
+				c.addChild(new Spacer(1));
+				c.addChild(new Text(d.asciiArt, 0, 0));
+			}
+			return c;
+		},
+	);
 }
