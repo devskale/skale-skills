@@ -360,6 +360,17 @@ def scan_notable_packages(notable_dir: str) -> list[NotablePackage]:
 # Settings
 # ---------------------------------------------------------------------------
 
+def pkg_name(p) -> str:
+    """Normalize a package entry to a comparable string name.
+
+    Entries may be a string (``"npm:foo"``) or an object (``{"source": "git:..."}``).
+    """
+    if isinstance(p, str):
+        return p.replace("npm:", "")
+    src = p.get("source", "") if isinstance(p, dict) else ""
+    return src.replace("npm:", "")
+
+
 def load_packages(
     project_dir: str, global_settings: str,
 ) -> tuple[list[str], list[str]]:
@@ -385,12 +396,15 @@ def load_packages(
         except (json.JSONDecodeError, OSError):
             pass
 
-    def dedup(items: list[str]) -> list[str]:
+    def dedup(items: list) -> list:
+        # A package entry may be a string ("npm:foo") or an object ({"source": ...}).
+        # Dedup on a stable string key so unhashable dicts don't crash us.
         seen: set[str] = set()
-        out: list[str] = []
+        out: list = []
         for p in items:
-            if p not in seen:
-                seen.add(p)
+            key = p if isinstance(p, str) else json.dumps(p, sort_keys=True)
+            if key not in seen:
+                seen.add(key)
                 out.append(p)
         return out
 
@@ -471,7 +485,7 @@ def build_index(project_dir: str, global_dir: str, global_settings: str):
     global_packages, project_packages = load_packages(project_dir, global_settings)
 
     # Mark skills from project packages as notable (not active)
-    project_pkg_names = set(p.replace("npm:", "") for p in project_packages)
+    project_pkg_names = set(pkg_name(p) for p in project_packages)
     for s in local_skills:
         if s.status == "package" and s.package in project_pkg_names:
             s.status = "notable"
@@ -486,11 +500,11 @@ def build_index(project_dir: str, global_dir: str, global_settings: str):
     notables = scan_notable_packages(base / "notable")
 
     # Match notable cards to project packages
-    project_pkg_names = set(p.replace("npm:", "") for p in project_packages)
+    project_pkg_names = set(pkg_name(p) for p in project_packages)
     for n in notables:
         if n.name in project_pkg_names:
             n.scope = "project"
-        elif any(n.name in gp.replace("npm:", "") for gp in global_packages):
+        elif any(n.name in pkg_name(gp) for gp in global_packages):
             n.scope = "global"
 
     return local_skills, local_extensions, local_prompts, global_packages, project_packages, notables
@@ -573,8 +587,8 @@ def render_index(
     if global_packages:
         for pkg in global_packages:
             # Enrich with notable card if available
-            pkg_name = pkg.replace("npm:", "")
-            notable = next((n for n in notables if n.name == pkg_name), None)
+            pkg_name_str = pkg_name(pkg)
+            notable = next((n for n in notables if n.name == pkg_name_str), None)
             if notable:
                 lines.append(f"- `{pkg}` — {notable.description}")
             else:

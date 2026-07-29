@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Internet — globe">
+  <!-- Self-made, CC0. Role: Internet / web search. Colour: blue #6E9BD1 -->
+  <circle cx="60" cy="60" r="40" fill="#E3EDF7" stroke="#6E9BD1" stroke-width="3.4"/>
+  <g fill="none" stroke="#6E9BD1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- equator + tropic lines -->
+    <path d="M20 60 h80"/>
+    <path d="M25 44 h70"/>
+    <path d="M25 76 h70"/>
+    <!-- meridians -->
+    <path d="M60 20 v80"/>
+    <path d="M60 20 C36 36 36 84 60 100"/>
+    <path d="M60 20 C84 36 84 84 60 100"/>
+  </g>
+</svg>

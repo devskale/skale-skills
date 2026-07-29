@@ -22,6 +22,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 - `npm:pi-mcp-adapter`
 - `npm:@ogulcancelik/pi-herdr`
 - `npm:@ff-labs/pi-fff`
+- `{'source': 'git:github.com/devskale/skale-skills', 'skills': ['fetch-url', 'web-search', 'surf', '+skills/rodney/SKILL.md'], 'extensions': ['extensions/heartbeat.ts', 'extensions/xmodel.ts', 'extensions/statusline.ts'], 'prompts': ['-prompts/learn.md']}`
 
 ## Skills
 
@@ -29,12 +30,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
-| 🟢 global | **d2** | Draw diagrams as code from text using the D2 language (d2lang.com). Use when the user wants to cr... | `~/.pi/agent/skills/d2` |
-| 🟢 global | **fetch-url** | Fetch and extract readable text content from web pages. Auto-selects best tool with smart fallbac... | `~/.pi/agent/skills/fetch-url` |
-| 🟢 global | **rodney** | Drive headless Chrome from the CLI for web scraping, screenshots, form filling, PDF export, acces... | `~/.pi/agent/skills/rodney` |
-| 🟢 global | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts from YouTube and any oth... | `~/.pi/agent/skills/video-transcript-downloader` |
-| 🟢 global | **web-search** | Search the web with automatic backend selection. Works out-of-the-box with public SearXNG. Option... | `~/.pi/agent/skills/web-search` |
-| 🟢 global | **youtube** | Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives. Use when the u... | `~/.pi/agent/skills/youtube` |
+| 🟢 global | **figure** | Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec ... | `~/.pi/agent/skills/figure` |
 
 ### Available (not installed)
 
@@ -42,11 +38,17 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 |--------|------|-------------|
 | ⚪ available | **agent-skill-creator** | Guide for creating effective skills for any AI agent (Claude, Trae, Gemini, OpenCode, Qwen, etc.)... |
 | ⚪ available | **agents-md-init** | Create and update concise AGENTS.md files using proven best practices. Use when starting a new AG... |
-| ⚪ available | **browser-use** | Fast, persistent browser automation with session continuity across sequential agent commands. Sup... |
 | ⚪ available | **command-creator** | Create custom commands for Pi (prompt templates) or OpenCode. Define command prompts, arguments, ... |
+| ⚪ available | **d2** | Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the ... |
+| ⚪ available | **fetch-url** | Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jin... |
 | ⚪ available | **improve-skill** | Analyze coding agent session transcripts to improve existing skills or create new ones. Use when ... |
 | ⚪ available | **readme-write** | Create and update README.md files with proper structure, badges, and sections. |
+| ⚪ available | **rodney** | Drive a persistent headless Chrome from the CLI for web scraping, screenshots, form filling, PDF ... |
+| ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
 | ⚪ available | **todo** | Create and manage TODO.md task tracking files for complex multi-step work. Use when starting a la... |
+| ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) ... |
+| ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
+| ⚪ available | **youtube** | Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives — ranked by a c... |
 
 ## Extensions
 
@@ -54,14 +56,15 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
+| 🟢 global | **imagegen** | /** | `~/.pi/agent/extensions/imagegen` |
 | 🟢 global | **statusline** | /** | `~/.pi/agent/extensions/statusline` |
-| 🟢 global | **imagegen** | Generate images from text (Pollinations/TU via uniinfer proxy); returns image + ASCII preview for iteration | `~/.pi/agent/extensions/imagegen` |
 
 ### Available (not installed)
 
 | Status | Name | Description |
 |--------|------|-------------|
 | ⚪ available | **heartbeat** | /** |
+| ⚪ available | **xmodel** | /** |
 
 ## Prompts
 

@@ -1,0 +1,15 @@
+CC0 1.0 Universal — Public Domain Dedication
+
+The icons and images in this `assets/` directory that are marked "self-made" in
+`README.md` are original works created for this project and are released into the
+public domain under the Creative Commons CC0 1.0 Universal dedication.
+
+To the extent possible under law, the authors have waived all copyright and related or
+neighboring rights to these works. You can copy, modify, distribute, and use them,
+including for commercial purposes, all without asking permission and without attribution.
+
+Full legal text: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+NOTE: This dedication applies ONLY to the self-made assets in this directory. It does
+NOT apply to the third-party reference images in `../styleguide/reference/`, which remain
+under their original copyright and must not be published (see `../LICENSING.md`).

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Vector database — cylinder">
+  <!-- Self-made, CC0. Generic (NOT a vendor logo). Role: Vector database. Colour: tan #C79A54 + red accent #E8443A -->
+  <g fill="none" stroke="#C79A54" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- body -->
+    <path d="M28 32 v56 c0 7 14 12 32 12 s32 -5 32 -12 v-56"/>
+    <!-- top ellipse -->
+    <ellipse cx="60" cy="32" rx="32" ry="12" fill="#F3E2C7"/>
+    <!-- disc lines -->
+    <path d="M28 52 c0 7 14 12 32 12 s32 -5 32 -12"/>
+    <path d="M28 70 c0 7 14 12 32 12 s32 -5 32 -12"/>
+  </g>
+  <!-- vector accent: three dots on the top disc -->
+  <g fill="#E8443A">
+    <circle cx="50" cy="30" r="3"/>
+    <circle cx="62" cy="34" r="3"/>
+    <circle cx="72" cy="29" r="3"/>
+  </g>
+</svg>

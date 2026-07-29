@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60" role="img" aria-label="Numbered step badge">
+  <!-- Self-made, CC0. Signature step badge: cream fill, dashed orange border. -->
+  <!-- Replace the "N" with the step number in the house font when placing. -->
+  <circle cx="30" cy="30" r="24" fill="#FDF0D0" stroke="#F5A623" stroke-width="2.6" stroke-dasharray="5 4" stroke-linecap="round"/>
+  <text x="30" y="30" text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="26" fill="#3A3A3A">N</text>
+</svg>
