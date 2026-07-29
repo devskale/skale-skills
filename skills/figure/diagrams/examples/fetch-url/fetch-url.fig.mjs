@@ -14,7 +14,7 @@
 // tool→fetch edges are MUTUALLY EXCLUSIVE alternatives, not sequential steps, so they are
 // NOT numbered — "ok" / "NO" carry the conditional.
 //
-// Collision-avoidance verified with build/detect_label_collisions.mjs.
+// Collision-avoidance verified with build/review_figure.mjs (model-based: bounds + collisions).
 // Build:  cd skills/figure && node build/build_figures.mjs diagrams/examples/fetch-url/fetch-url.fig.mjs
 
 export default {
@@ -51,7 +51,7 @@ export default {
 
   edges: [
     // ── spine (numbered): request → try → return ──
-    { from: 'call',   to: 'select', badge: 1 },
+    { from: 'call',   to: 'select', badge: 1, badgeT: 0.3 },    // nudged toward `call` — clears the select node label (model review)
 
     // select → w3m: the ONLY edge in the left channel. "try" + badge 2 live here alone.
     { from: 'select', to: 'w3m',    badge: 2, label: 'try', labelT: 0.2,
