@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 540" width="1280" height="540" role="img" aria-label="Traditional RAG">
+<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#3A3A3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+<rect x="6" y="6" width="1268" height="528" rx="26" fill="#FCFDFF" stroke="#3A3A3A" stroke-width="2.4"/>
+<text x="46" y="62" font-family="'Patrick Hand', cursive" font-size="40" font-weight="700" fill="#3A3A3A">Traditional RAG</text>
+<path d="M210.0 225.0 L310.0 225.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M460.0 225.0 L560.0 225.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M710.0 225.0 L810.0 225.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M960.0 225.0 L1060.0 225.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M135.0 300.0 L135.0 400.0 L885.0 400.0 L885.0 300.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<rect x="60" y="150" width="150" height="150" rx="16" fill="#F3E2C7" stroke="#C79A54" stroke-width="2.6"/>
+<svg x="97.5" y="166.5" width="75" height="75" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Query / prompt. Colour: tan outline #C79A54, lilac doc #B9A7D6 -->
+  <!-- document peeking out the top -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M42 18 h28 l12 12 v26 h-40 z" fill="#EBE3F3" stroke="#B9A7D6" stroke-width="3"/>
+    <path d="M70 18 v12 h12" fill="none" stroke="#B9A7D6" stroke-width="3"/>
+    <path d="M48 34 h24 M48 42 h24 M48 50 h16" fill="none" stroke="#B9A7D6" stroke-width="2.6"/>
+    <!-- envelope body -->
+    <path d="M26 50 h68 v40 a4 4 0 0 1 -4 4 h-60 a4 4 0 0 1 -4 -4 z" fill="#F3E2C7" stroke="#C79A54" stroke-width="3.2"/>
+    <!-- envelope flap -->
+    <path d="M26 52 l34 24 l34 -24" fill="none" stroke="#C79A54" stroke-width="3.2"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="20" font-weight="400" fill="#3A3A3A"><tspan x="135" y="256.5">Query</tspan><tspan x="135" y="277.5">(criterion)</tspan></text>
+<rect x="310" y="150" width="150" height="150" rx="16" fill="#F3E2C7" stroke="#C79A54" stroke-width="2.6"/>
+<svg x="347.5" y="166.5" width="75" height="75" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Generic (NOT a vendor logo). Role: Vector database. Colour: tan #C79A54 + red accent #E8443A -->
+  <g fill="none" stroke="#C79A54" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- body -->
+    <path d="M28 32 v56 c0 7 14 12 32 12 s32 -5 32 -12 v-56"/>
+    <!-- top ellipse -->
+    <ellipse cx="60" cy="32" rx="32" ry="12" fill="#F3E2C7"/>
+    <!-- disc lines -->
+    <path d="M28 52 c0 7 14 12 32 12 s32 -5 32 -12"/>
+    <path d="M28 70 c0 7 14 12 32 12 s32 -5 32 -12"/>
+  </g>
+  <!-- vector accent: three dots on the top disc -->
+  <g fill="#E8443A">
+    <circle cx="50" cy="30" r="3"/>
+    <circle cx="62" cy="34" r="3"/>
+    <circle cx="72" cy="29" r="3"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="20" font-weight="400" fill="#3A3A3A"><tspan x="385" y="256.5">Vector DB</tspan><tspan x="385" y="277.5">(tender index)</tspan></text>
+<rect x="560" y="150" width="150" height="150" rx="16" fill="#EBE3F3" stroke="#B9A7D6" stroke-width="2.6"/>
+<svg x="597.5" y="166.5" width="75" height="75" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Retrieved context / generic document. Colour: lilac #B9A7D6 -->
+  <!-- Recolour stroke/fill for variants: green #7FB77E (relevant/final), maroon #B4685F (irrelevant). -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#EBE3F3" stroke="#B9A7D6" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#B9A7D6" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h32 M44 76 h32 M44 88 h20" fill="none" stroke="#B9A7D6" stroke-width="2.8"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="20" font-weight="400" fill="#3A3A3A"><tspan x="635" y="256.5">Top-k</tspan><tspan x="635" y="277.5">passages</tspan></text>
+<rect x="810" y="150" width="150" height="150" rx="16" fill="#FDEFD6" stroke="#F5A623" stroke-width="2.6"/>
+<svg x="847.5" y="166.5" width="75" height="75" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. House-style circuit-brain. Role: LLM (generates). Colour: amber #F5A623 -->
+  <g fill="none" stroke="#F5A623" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 20
+             C46 16 32 22 30 34
+             C20 36 16 48 24 56
+             C16 64 22 78 34 78
+             C36 90 50 96 60 90
+             C70 96 84 90 86 78
+             C98 78 104 64 96 56
+             C104 48 100 36 90 34
+             C88 22 74 16 60 20 Z"/>
+    <path d="M60 22 L60 92"/>
+    <path d="M60 40 H44 M44 40 V54 M44 54 H34"/>
+    <path d="M60 58 H48 M48 58 V72"/>
+    <path d="M60 46 H74 M74 46 V60 M74 60 H86"/>
+    <path d="M60 70 H72 M72 70 V80"/>
+  </g>
+  <g fill="#F5A623">
+    <circle cx="34" cy="54" r="3.6"/>
+    <circle cx="48" cy="72" r="3.6"/>
+    <circle cx="44" cy="40" r="3.6"/>
+    <circle cx="86" cy="60" r="3.6"/>
+    <circle cx="74" cy="46" r="3.6"/>
+    <circle cx="72" cy="80" r="3.6"/>
+    <circle cx="60" cy="32" r="3.6"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="20" font-weight="400" fill="#3A3A3A"><tspan x="885" y="256.5">LLM reader</tspan><tspan x="885" y="277.5">(frozen)</tspan></text>
+<rect x="1060" y="150" width="150" height="150" rx="16" fill="#E7F2E4" stroke="#7FB77E" stroke-width="2.6"/>
+<svg x="1097.5" y="166.5" width="75" height="75" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Final response / relevant context. Colour: green #7FB77E on #CDEAC0 -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#CDEAC0" stroke="#7FB77E" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#7FB77E" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h32 M44 76 h32 M44 88 h20" fill="none" stroke="#7FB77E" stroke-width="2.8"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="20" font-weight="400" fill="#3A3A3A"><tspan x="1135" y="256.5">Judgement</tspan><tspan x="1135" y="277.5">+ citations</tspan></text>
+<g>
+    <rect x="213.0" y="172.1" width="94.1" height="45.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="260" y="185.0">embed +</tspan><tspan x="260" y="205.0">retrieve</tspan></text>
+  </g>
+<g>
+    <circle cx="260" cy="225" r="15" fill="#FDF0D0" stroke="#F5A623" stroke-width="2.4" stroke-dasharray="5 4" stroke-linecap="round"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="18" font-weight="400" fill="#3A3A3A"><tspan x="260" y="225.0">1</tspan></text>
+  </g>
+<g>
+    <rect x="478.4" y="182.0" width="63.3" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="510" y="195.0">top-k</tspan></text>
+  </g>
+<g>
+    <circle cx="510" cy="225" r="15" fill="#FDF0D0" stroke="#F5A623" stroke-width="2.4" stroke-dasharray="5 4" stroke-linecap="round"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="18" font-weight="400" fill="#3A3A3A"><tspan x="510" y="225.0">2</tspan></text>
+  </g>
+<g>
+    <rect x="718.1" y="182.0" width="83.8" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="760" y="195.0">prepend</tspan></text>
+  </g>
+<g>
+    <circle cx="760" cy="225" r="15" fill="#FDF0D0" stroke="#F5A623" stroke-width="2.4" stroke-dasharray="5 4" stroke-linecap="round"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="18" font-weight="400" fill="#3A3A3A"><tspan x="760" y="225.0">3</tspan></text>
+  </g>
+<g>
+    <rect x="957.8" y="182.0" width="104.3" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="1010" y="195.0">read once</tspan></text>
+  </g>
+<g>
+    <circle cx="1010" cy="225" r="15" fill="#FDF0D0" stroke="#F5A623" stroke-width="2.4" stroke-dasharray="5 4" stroke-linecap="round"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="18" font-weight="400" fill="#3A3A3A"><tspan x="1010" y="225.0">4</tspan></text>
+  </g>
+<g>
+    <rect x="468.1" y="365.0" width="83.8" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="510" y="378.0">+ query</tspan></text>
+  </g>
+</svg>

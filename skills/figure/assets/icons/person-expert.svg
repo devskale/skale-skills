@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Human in the loop">
+  <!-- Self-made, CC0. Role: human in the loop (domain expert / thesis author). Colour: ink #3A3A3A stroke, cream #F3E2C7 fill -->
+  <!-- Node box colour carries the specific role: blue = contracting-authority expert, tan = thesis author. -->
+  <g stroke-linecap="round" stroke-linejoin="round" stroke="#3A3A3A" stroke-width="3.2">
+    <path d="M60 24 a18 18 0 1 0 0.4 0 z" fill="#F3E2C7"/>
+    <path d="M27 98 q3 -31 33 -31 q30 0 33 31 z" fill="#F3E2C7"/>
+    <path d="M52 70 l8 9 l8 -9" fill="none" stroke-width="2.6"/>
+  </g>
+</svg>

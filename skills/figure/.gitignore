@@ -1,0 +1,9 @@
+# Node deps — regenerate with `npm install`
+node_modules/
+
+# Build artifacts are committed (specs + .svg + .png sit together), but
+# scratch/one-off figures are local only:
+_scratch/
+
+# npm
+npm-debug.log*

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Tools and APIs — code brackets">
+  <!-- Self-made, CC0. Role: Tools & APIs. Colour: green #7FB77E -->
+  <circle cx="60" cy="60" r="40" fill="#E7F2E4" stroke="#7FB77E" stroke-width="3.4"/>
+  <g fill="none" stroke="#7FB77E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- < -->
+    <path d="M48 46 L34 60 L48 74"/>
+    <!-- > -->
+    <path d="M72 46 L86 60 L72 74"/>
+    <!-- / -->
+    <path d="M66 44 L54 76"/>
+  </g>
+</svg>

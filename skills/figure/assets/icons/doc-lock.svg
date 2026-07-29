@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Private document with padlock">
+  <!-- Self-made, CC0. Role: private / kept-out-of-repo artifact (e.g. pseudonymisation mapping). Colour: maroon #B4685F + ink lock -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#F3E0DC" stroke="#B4685F" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#B4685F" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h14 M44 76 h12 M44 90 h10" fill="none" stroke="#B4685F" stroke-width="2.8"/>
+    <path d="M72 70 v-9 a10 10 0 0 1 20 0 v9" fill="none" stroke="#3A3A3A" stroke-width="3.4"/>
+    <rect x="64" y="70" width="36" height="30" rx="7" fill="#F3E2C7" stroke="#3A3A3A" stroke-width="3.4"/>
+    <circle cx="82" cy="82" r="3.6" fill="#3A3A3A"/>
+    <path d="M82 85 v8" fill="none" stroke="#3A3A3A" stroke-width="3.4"/>
+  </g>
+</svg>

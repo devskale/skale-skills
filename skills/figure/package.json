@@ -1,0 +1,18 @@
+{
+  "name": "rag-eval-figures",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "House-style figure toolchain for the thesis: CC0 icon set + compositor that assembles specs into consistent SVG + PNG diagrams.",
+  "scripts": {
+    "icons": "node assets/render_pngs.mjs assets",
+    "figures": "node build/build_figures.mjs",
+    "build": "npm run icons && npm run figures"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Query — document in envelope">
+  <!-- Self-made, CC0. Role: Query / prompt. Colour: tan outline #C79A54, lilac doc #B9A7D6 -->
+  <!-- document peeking out the top -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M42 18 h28 l12 12 v26 h-40 z" fill="#EBE3F3" stroke="#B9A7D6" stroke-width="3"/>
+    <path d="M70 18 v12 h12" fill="none" stroke="#B9A7D6" stroke-width="3"/>
+    <path d="M48 34 h24 M48 42 h24 M48 50 h16" fill="none" stroke="#B9A7D6" stroke-width="2.6"/>
+    <!-- envelope body -->
+    <path d="M26 50 h68 v40 a4 4 0 0 1 -4 4 h-60 a4 4 0 0 1 -4 -4 z" fill="#F3E2C7" stroke="#C79A54" stroke-width="3.2"/>
+    <!-- envelope flap -->
+    <path d="M26 52 l34 24 l34 -24" fill="none" stroke="#C79A54" stroke-width="3.2"/>
+  </g>
+</svg>

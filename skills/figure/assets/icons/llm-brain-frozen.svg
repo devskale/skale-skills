@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Frozen model — circuit brain">
+  <!-- Self-made, CC0. House-style circuit-brain, blue variant. Role: frozen model (deterministic encoder / NLI / token classifier — weights fixed, no sampling). Colour: blue #6E9BD1 -->
+  <g fill="none" stroke="#6E9BD1" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 20
+             C46 16 32 22 30 34
+             C20 36 16 48 24 56
+             C16 64 22 78 34 78
+             C36 90 50 96 60 90
+             C70 96 84 90 86 78
+             C98 78 104 64 96 56
+             C104 48 100 36 90 34
+             C88 22 74 16 60 20 Z"/>
+    <path d="M60 22 L60 92"/>
+    <path d="M60 40 H44 M44 40 V54 M44 54 H34"/>
+    <path d="M60 58 H48 M48 58 V72"/>
+    <path d="M60 46 H74 M74 46 V60 M74 60 H86"/>
+    <path d="M60 70 H72 M72 70 V80"/>
+  </g>
+  <g fill="#6E9BD1">
+    <circle cx="34" cy="54" r="3.6"/>
+    <circle cx="48" cy="72" r="3.6"/>
+    <circle cx="44" cy="40" r="3.6"/>
+    <circle cx="86" cy="60" r="3.6"/>
+    <circle cx="74" cy="46" r="3.6"/>
+    <circle cx="72" cy="80" r="3.6"/>
+    <circle cx="60" cy="32" r="3.6"/>
+  </g>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Irrelevant context — document (reject)">
+  <!-- Self-made, CC0. Role: Irrelevant / rejected context. Colour: maroon #B4685F -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#F3E0DC" stroke="#B4685F" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#B4685F" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h32 M44 76 h32 M44 88 h20" fill="none" stroke="#B4685F" stroke-width="2.8"/>
+  </g>
+</svg>
