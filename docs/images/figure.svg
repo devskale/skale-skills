@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 560" width="1280" height="560" role="img" aria-label="figure skill — itself">
+<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#3A3A3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+<rect x="6" y="6" width="1268" height="548" rx="26" fill="#FCFDFF" stroke="#3A3A3A" stroke-width="2.4"/>
+<text x="46" y="62" font-family="'Patrick Hand', cursive" font-size="40" font-weight="700" fill="#3A3A3A">figure skill — itself</text>
+<path d="M210.0 315.0 L270.0 315.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M460.0 315.0 L540.0 315.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M740.0 300.0 L790.0 300.0 L790.0 170.0 L840.0 170.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M740.0 330.0 L790.0 330.0 L790.0 410.0 L840.0 410.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M1030.0 170.0 L1100.0 165.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<path d="M1030.0 410.0 L1100.0 405.0" fill="none" stroke="#3A3A3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<rect x="40" y="250" width="170" height="130" rx="16" fill="#F3E2C7" stroke="#C79A54" stroke-width="2.6"/>
+<svg x="92.5" y="264.3" width="65" height="65" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Retrieved context / generic document. Colour: lilac #B9A7D6 -->
+  <!-- Recolour stroke/fill for variants: green #7FB77E (relevant/final), maroon #B4685F (irrelevant). -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#EBE3F3" stroke="#B9A7D6" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#B9A7D6" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h32 M44 76 h32 M44 88 h20" fill="none" stroke="#B9A7D6" stroke-width="2.8"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="16" font-weight="400" fill="#3A3A3A"><tspan x="125" y="343.0">spec</tspan><tspan x="125" y="359.8">.fig.mjs</tspan></text>
+<rect x="270" y="250" width="190" height="130" rx="16" fill="#FFFFFF" stroke="#3A3A3A" stroke-width="2.6"/>
+<svg x="332.5" y="264.3" width="65" height="65" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. House-style circuit-brain. Role: LLM Agent (decides). Colour: red #E8443A -->
+  <g fill="none" stroke="#E8443A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- brain silhouette -->
+    <path d="M60 20
+             C46 16 32 22 30 34
+             C20 36 16 48 24 56
+             C16 64 22 78 34 78
+             C36 90 50 96 60 90
+             C70 96 84 90 86 78
+             C98 78 104 64 96 56
+             C104 48 100 36 90 34
+             C88 22 74 16 60 20 Z"/>
+    <!-- central divide -->
+    <path d="M60 22 L60 92"/>
+    <!-- circuit traces -->
+    <path d="M60 40 H44 M44 40 V54 M44 54 H34"/>
+    <path d="M60 58 H48 M48 58 V72"/>
+    <path d="M60 46 H74 M74 46 V60 M74 60 H86"/>
+    <path d="M60 70 H72 M72 70 V80"/>
+  </g>
+  <!-- nodes -->
+  <g fill="#E8443A">
+    <circle cx="34" cy="54" r="3.6"/>
+    <circle cx="48" cy="72" r="3.6"/>
+    <circle cx="44" cy="40" r="3.6"/>
+    <circle cx="86" cy="60" r="3.6"/>
+    <circle cx="74" cy="46" r="3.6"/>
+    <circle cx="72" cy="80" r="3.6"/>
+    <circle cx="60" cy="32" r="3.6"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="17" font-weight="400" fill="#3A3A3A"><tspan x="365" y="351.4">layout(spec)</tspan></text>
+<rect x="540" y="250" width="200" height="130" rx="16" fill="#EBE3F3" stroke="#B9A7D6" stroke-width="2.6"/>
+<svg x="607.5" y="264.3" width="65" height="65" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Retrieved context / generic document. Colour: lilac #B9A7D6 -->
+  <!-- Recolour stroke/fill for variants: green #7FB77E (relevant/final), maroon #B4685F (irrelevant). -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#EBE3F3" stroke="#B9A7D6" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#B9A7D6" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h32 M44 76 h32 M44 88 h20" fill="none" stroke="#B9A7D6" stroke-width="2.8"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="16" font-weight="400" fill="#3A3A3A"><tspan x="640" y="343.0">resolved</tspan><tspan x="640" y="359.8">model</tspan></text>
+<rect x="840" y="110" width="190" height="120" rx="16" fill="#E7F2E4" stroke="#7FB77E" stroke-width="2.6"/>
+<svg x="905" y="123.19999999999999" width="60" height="60" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Tools & APIs. Colour: green #7FB77E -->
+  <circle cx="60" cy="60" r="40" fill="#E7F2E4" stroke="#7FB77E" stroke-width="3.4"/>
+  <g fill="none" stroke="#7FB77E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- < -->
+    <path d="M48 46 L34 60 L48 74"/>
+    <!-- > -->
+    <path d="M72 46 L86 60 L72 74"/>
+    <!-- / -->
+    <path d="M66 44 L54 76"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="15" font-weight="400" fill="#3A3A3A"><tspan x="935" y="195.7">composeSVG</tspan><tspan x="935" y="211.5">model -&gt; SVG</tspan></text>
+<rect x="840" y="350" width="190" height="120" rx="16" fill="#E3EDF7" stroke="#6E9BD1" stroke-width="2.6"/>
+<svg x="905" y="363.2" width="60" height="60" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Tools & APIs. Colour: green #7FB77E -->
+  <circle cx="60" cy="60" r="40" fill="#E7F2E4" stroke="#7FB77E" stroke-width="3.4"/>
+  <g fill="none" stroke="#7FB77E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- < -->
+    <path d="M48 46 L34 60 L48 74"/>
+    <!-- > -->
+    <path d="M72 46 L86 60 L72 74"/>
+    <!-- / -->
+    <path d="M66 44 L54 76"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="15" font-weight="400" fill="#3A3A3A"><tspan x="935" y="435.7">review_figure</tspan><tspan x="935" y="451.5">bounds + collisions</tspan></text>
+<rect x="1100" y="110" width="150" height="110" rx="16" fill="#E7F2E4" stroke="#7FB77E" stroke-width="2.6"/>
+<svg x="1147.5" y="122.1" width="55" height="55" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Final response / relevant context. Colour: green #7FB77E on #CDEAC0 -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#CDEAC0" stroke="#7FB77E" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#7FB77E" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h32 M44 76 h32 M44 88 h20" fill="none" stroke="#7FB77E" stroke-width="2.8"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="16" font-weight="400" fill="#3A3A3A"><tspan x="1175" y="195.8">SVG</tspan></text>
+<rect x="1100" y="350" width="160" height="110" rx="16" fill="#E7F2E4" stroke="#7FB77E" stroke-width="2.6"/>
+<svg x="1152.5" y="362.1" width="55" height="55" viewBox="0 0 120 120" overflow="visible">
+  <!-- Self-made, CC0. Role: Final response / relevant context. Colour: green #7FB77E on #CDEAC0 -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 18 h34 l18 18 v66 a2 2 0 0 1 -2 2 h-50 a2 2 0 0 1 -2 -2 z" fill="#CDEAC0" stroke="#7FB77E" stroke-width="3.2"/>
+    <path d="M70 18 v18 h18" fill="none" stroke="#7FB77E" stroke-width="3.2"/>
+    <path d="M44 52 h32 M44 64 h32 M44 76 h32 M44 88 h20" fill="none" stroke="#7FB77E" stroke-width="2.8"/>
+  </g>
+</svg>
+<text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="16" font-weight="400" fill="#3A3A3A"><tspan x="1180" y="435.8">clean / fix</tspan></text>
+<g>
+    <circle cx="240" cy="315" r="15" fill="#FDF0D0" stroke="#F5A623" stroke-width="2.4" stroke-dasharray="5 4" stroke-linecap="round"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="18" font-weight="400" fill="#3A3A3A"><tspan x="240" y="315.0">1</tspan></text>
+  </g>
+<g>
+    <rect x="458.1" y="272.0" width="83.8" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="500" y="285.0">resolve</tspan></text>
+  </g>
+<g>
+    <circle cx="500" cy="315" r="15" fill="#FDF0D0" stroke="#F5A623" stroke-width="2.4" stroke-dasharray="5 4" stroke-linecap="round"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="18" font-weight="400" fill="#3A3A3A"><tspan x="500" y="315.0">2</tspan></text>
+  </g>
+<g>
+    <rect x="780.4" y="222.0" width="63.3" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="812" y="235.0">model</tspan></text>
+  </g>
+<g>
+    <rect x="736.4" y="357.0" width="63.3" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="768" y="370.0">model</tspan></text>
+  </g>
+<g>
+    <rect x="1036.9" y="132.6" width="53.0" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="1063.432564900266" y="145.6">emit</tspan></text>
+  </g>
+<g>
+    <rect x="1031.8" y="372.6" width="63.3" height="25.9" rx="7" fill="#FCFDFF" opacity="0.9"/>
+    <text text-anchor="middle" dominant-baseline="central" font-family="'Patrick Hand', cursive" font-size="19" font-weight="400" fill="#3A3A3A"><tspan x="1063.432564900266" y="385.6">check</tspan></text>
+  </g>
+</svg>
