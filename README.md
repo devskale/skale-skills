@@ -39,7 +39,7 @@ surf wait ".result" && surf assert '...' '5'    # exit 1 on fail
 
 **Web search with backend auto-select** — public SearXNG out-of-the-box (or private via `credgoo searx`), optional Duck API (`credgoo WEB_SEARCH_BEARER`) for advanced filters. Images, news, videos.
 
-Docs: [SKILL.md](skills/web-search/SKILL.md) · [references](skills/web-search/references) · [flow diagram](docs/diagrams/web-search.svg) · [source](skills/web-search)
+Docs: [SKILL.md](skills/web-search/SKILL.md) · [references](skills/web-search/references) · [flow diagram](docs/images/web-search.png) · [source](skills/web-search)
 
 ```bash
 web-search "agentic browser 2026" --max 10
@@ -51,7 +51,7 @@ web-search "openai" --time-range week
 
 **Web content extraction** — readable text from any page; auto-selects the best tool with smart fallback (terminal browsers `w3m`/`lynx`/`chawan` + optional reader API). Works on Reddit, SO, GitHub, docs.
 
-Docs: [SKILL.md](skills/fetch-url/SKILL.md) · [references](skills/fetch-url/references) · [flow diagram](docs/diagrams/fetch-url.svg) · [source](skills/fetch-url)
+Docs: [SKILL.md](skills/fetch-url/SKILL.md) · [references](skills/fetch-url/references) · [flow diagram](docs/images/fetch-url.png) · [source](skills/fetch-url)
 
 ```bash
 fetch-url "https://news.ycombinator.com"

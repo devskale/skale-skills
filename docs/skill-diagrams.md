@@ -14,25 +14,50 @@ d2 docs/diagrams/surf-flow.d2  docs/diagrams/surf-flow.svg
 
 ## web-search
 
-![web-search flow](diagrams/web-search.svg)
+![web-search flow](images/web-search.png)
 
-`web-search` **auto-selects a backend**: **SearXNG** by default (a public instance out-of-the-box, or a private one via `credgoo searx`), with the **Duck API** as an optional path for advanced filters (`credgoo WEB_SEARCH_BEARER`). Returns titles + URLs.
+`web-search` **routes to one of two backends**: **SearXNG** by default (public, zero-config,
+or private via `credgoo searx`) — the happy path for text, images, news, and videos; or the
+**Duck API** upgrade when a token is present (carries the advanced filters:
+`--site`/`--filetype`/`--inurl`/`--exclude`/`--exact`). Media queries always route to
+SearXNG even with a token; `--api`/`--searxng` force a backend.
 
-**Flow:** agent → `web-search` → {SearXNG (auto-select), Duck API (optional)} → results.
+**Flow:** `call` → `select backend` (by flags · token · type) → {SearXNG (default), Duck
+API (if token)} → results.
 
-Source: [`diagrams/web-search.d2`](diagrams/web-search.d2) · Skill: [`skills/web-search`](../skills/web-search)
+> Hand-drawn figure built with the [`figure`](../skills/figure) skill compositor — source
+> [`skills/figure/diagrams/examples/web-search/web-search.fig.mjs`](../skills/figure/diagrams/examples/web-search/web-search.fig.mjs),
+> rendered PNG + SVG in [`images/`](images/). Rebuild:
+> `cd skills/figure && node build/build_figures.mjs diagrams/examples/web-search/web-search.fig.mjs`
+>
+> Legacy D2 view: [`diagrams/web-search.svg`](diagrams/web-search.svg) (source
+> [`diagrams/web-search.d2`](diagrams/web-search.d2)).
+
+Skill: [`skills/web-search`](../skills/web-search)
 
 ---
 
 ## fetch-url
 
-![fetch-url flow](diagrams/fetch-url.svg)
+![fetch-url flow](images/fetch-url.png)
 
-`fetch-url` **auto-selects the best tool** and falls back gracefully: local **terminal browsers** (`w3m` / `lynx` / `chawan`) for the common case, an optional **reader API** (`credgoo FETCH_URL_BEARER`) for hard pages. Returns readable text.
+`fetch-url` **auto-selects the best tool** and falls back gracefully through a **priority
+chain**: free local **terminal browsers** (`w3m` / `lynx`) → free **reader APIs** (`jina` /
+`markdown`) → **chrome** (headless, for JS-protected sites). On failure it drops to the next
+tool (`NO`); on success (`ok`) it extracts and returns clean text.
 
-**Flow:** agent → `fetch-url` → {terminal browsers (auto-select), reader API (fallback)} → page → readable text.
+**Flow:** `call` → auto-select → try tool (1 priority order) → {`ok` → fetch, `NO` → next
+tool} → return text.
 
-Source: [`diagrams/fetch-url.d2`](diagrams/fetch-url.d2) · Skill: [`skills/fetch-url`](../skills/fetch-url)
+> Hand-drawn figure built with the [`figure`](../skills/figure) skill compositor — source
+> [`skills/figure/diagrams/examples/fetch-url/fetch-url.fig.mjs`](../skills/figure/diagrams/examples/fetch-url/fetch-url.fig.mjs),
+> rendered PNG + SVG in [`images/`](images/). Rebuild:
+> `cd skills/figure && node build/build_figures.mjs diagrams/examples/fetch-url/fetch-url.fig.mjs`
+>
+> Legacy D2 view: [`diagrams/fetch-url.svg`](diagrams/fetch-url.svg) (source
+> [`diagrams/fetch-url.d2`](diagrams/fetch-url.d2)).
+
+Skill: [`skills/fetch-url`](../skills/fetch-url)
 
 ---
 
