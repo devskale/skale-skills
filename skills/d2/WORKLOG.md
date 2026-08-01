@@ -14,6 +14,12 @@
   Still **no global install/launcher**; the agent invokes `scripts/d2v` by path (the SKILL.md
   render loop leads with it). Added a compact Render-flags note (--target/--scale/--pad/
   --center/--watch). 40-test suite.
+- **v1.3.0 (2026-08-01):** dogfooded on python-openutils (architecture + sequence). `d2v`
+  gains a `--` passthrough — forward flags to the SVG render (`d2v x.d2 -- --sketch --theme 4`);
+  sketch is CLI-only, `vars` ignore it. Findings folded in: `shape: component` is invalid (→
+  default rectangle) in the cheatsheet; sequence `loop {}` works but `alt/else` fails
+  (diagram-types.md); a new "Which diagram?" guide in recipes.md (question+scope → mode,
+  plus the overview short-label rule). 41-test suite.
 - **Hygiene pass (2026-07-13):** corrected the stale dagre/ASCII gotcha — the ASCII/text export ignores `--layout` *and* `vars.d2-config.layout-engine` (verified byte-identical), so ASCII works with any engine but doesn't reflect the delivered SVG's layout; dagre's real weakness is Sugiyama-DAG layout quality (cycles, fan-in, crossings). Added `tests/d2/test.sh` (23 checks). Trimmed SKILL.md to 88 lines.
 - **Location:** `skale-skills/skills/d2/`
 - **Activation:** 🟢 global — symlinked to `~/.pi/agent/skills/d2`

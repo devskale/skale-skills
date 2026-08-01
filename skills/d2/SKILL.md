@@ -1,6 +1,6 @@
 ---
 name: d2
-version: "1.2.0"
+version: "1.3.0"
 description: "Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the `d2` CLI directly (no bundled scripts). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
 license: MIT
 ---
@@ -24,6 +24,7 @@ Or clone + add to pi config (`~/.pi/agent/settings.json`): `"skills": ["~/code/s
 
 ```bash
 bash scripts/d2v diagram.d2          # ONE command: validate → ASCII to stderr → svg → width-bloat check
+bash scripts/d2v diagram.d2 -- --sketch --theme 4   # forward flags to d2 (sketch/themes — sketch is CLI-only, vars ignore it)
 # (the raw loop it runs, if you need the pieces:)
 d2 validate diagram.d2               # grammar check
 d2 diagram.d2 diagram.txt            # ASCII preview — verify structure (the agent's self-check)
@@ -61,7 +62,7 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 - **SVG is the sane default — zero dependencies, self-contained** (`--bundle=true` by default). **PNG/PDF trigger a ~141 MiB Playwright + FFMPEG download** on first run. Deliver SVG unless the user needs raster.
 - **No native HTML export.** Formats: svg, png, pdf, pptx, gif, txt. For an HTML deliverable, embed the SVG with `--no-xml-tag` (drops `<?xml?>` so it embeds) and `--salt <name>` (unique IDs when embedding multiple SVGs).
 - **`d2 validate` is permissive — it does NOT catch unknown shapes or invalid style keywords.** Verified: `shape: note`, `style.dashed`, and `style.stroke-dasharray` all pass `d2 validate` but fail at `d2` (render/compile) with `unknown shape "note"` / `invalid style keyword: "dashed"`. So the validate-then-render loop must actually **render** to catch these — `validate` only checks grammar. To self-verify shape/style correctness without opening an SVG, render to `.txt` (ASCII) — a failed compile errors out identically there.
-- **Shape/style keyword cheatsheet (verified on d2 0.7.1):** `shape: note` → FAIL (use `shape: document`); `style.dashed` → FAIL on nodes AND edges; `style.stroke-dasharray: 4 4` → FAIL. To dash a border/edge use `style.stroke-dash: 4` (works on both). `d2 fmt x.d2 --check` lints without writing; `d2 fmt x.d2` formats in place; `fmt --check` is idempotent after `fmt`.
+- **Shape/style keyword cheatsheet (verified on d2 0.7.1):** `shape: note` → FAIL (use `shape: document`); `shape: component` → FAIL (no such shape — use the default rectangle / `shape: square`; a C4 "component" is just a box); `style.dashed` → FAIL on nodes AND edges; `style.stroke-dasharray: 4 4` → FAIL. To dash a border/edge use `style.stroke-dash: 4` (works on both). `d2 fmt x.d2 --check` lints without writing; `d2 fmt x.d2` formats in place; `fmt --check` is idempotent after `fmt`.
 - **`|` (pipe) inside `|md ... |` block strings PREMATURELY TERMINATES the block**, even inside backtick code spans. Verified: `label: |md ... `ja|nein|teilweise` ... |` compiled to "unexpected text after md block string" at the first interior `|`. The `|` is the block delimiter; d2 does not see it as content. **Avoid `|` in `|md` content** — use `/`, `,`, or `or` for alternations/sets.
 - **`layers`, `scenarios`, `steps` are reserved BOARD keywords** (multi-board diagrams) — do NOT use them as node IDs. Verified: a node `layers: { ... }` makes every edge touching it fail with `edge with board keyword alone doesn't make sense`, and the board-keyword context cascades into misleading errors like `fill must be style.fill` inside the block. Rename (e.g. `design`, `phases`).
 - **Chain edge labels apply to EVERY edge, not the last.** Verified: `a -> b -> c: label` labels both `a→b` and `b→c`. Use separate statements (`a -> b` then `b -> c: label`) for per-edge labels.

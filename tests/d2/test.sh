@@ -150,6 +150,8 @@ if [ -x scripts/d2v ] && command -v d2 >/dev/null 2>&1; then
     assert "d2v rejects compile error (exit !=0)" "[ $rb -ne 0 ]"
     out=$(bash scripts/d2v "$V/clean.d2" "$V/clean.svg" 2>/dev/null)
     assert "d2v stdout is the svg path" "[ \"$out\" = \"$V/clean.svg\" ]"
+    bash scripts/d2v "$V/clean.d2" "$V/sk.svg" -- --sketch >/dev/null 2>&1 && rk=0 || rk=$?
+    assert "d2v forwards -- to d2 (sketch applied)" "[ $rk -eq 0 ] && grep -q 'sketch' \"$V/sk.svg\""
     rm -rf "$V"
 else
     assert "d2v present" "[ -x scripts/d2v ]"
