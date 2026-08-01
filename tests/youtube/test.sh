@@ -34,7 +34,7 @@ echo ""
 echo "[2] SKILL.md frontmatter..."
 assert "name: youtube"      "grep -q '^name: youtube' SKILL.md"
 assert "description"         "grep -q '^description:' SKILL.md"
-assert "version 1.x"        "grep -q 'version.*\"1\\.' SKILL.md"
+assert "version 2.x"        "grep -q 'version.*\"2\\.' SKILL.md"
 echo ""
 
 # ── 3. Launcher ───────────────────────────────────────────────────────
@@ -78,6 +78,8 @@ youtube --help > /tmp/yt_help.txt 2>&1
 assert "mentions --num"   "grep -q '\-\-num' /tmp/yt_help.txt"
 assert "mentions --rank"  "grep -q '\-\-rank' /tmp/yt_help.txt"
 assert "mentions --fresh" "grep -q '\-\-fresh' /tmp/yt_help.txt"
+assert "mentions --captions (v2)" "grep -q '\-\-captions' /tmp/yt_help.txt"
+assert "mentions --preset (v2)"   "grep -q '\-\-preset' /tmp/yt_help.txt"
 rm -f /tmp/yt_help.txt
 echo ""
 
@@ -89,7 +91,7 @@ echo ""
 
 # ── 10. Live search (resilient) ──────────────────────────────────────
 echo "[10] Live search..."
-RESULT=$(timeout 15 youtube "rick astley" --num 1 --any-length -v 2>&1) || true
+RESULT=$(timeout 15 youtube "rick astley" --num 1 --any-length --stdout -v 2>&1) || true
 if echo "$RESULT" | grep -q "Never Gonna Give You Up"; then
     PASS=$((PASS + 1))
 else
@@ -114,6 +116,17 @@ else
     echo "  WARN: discovery slow/down"
     PASS=$((PASS + 1))
 fi
+echo ""
+
+# ── 10b. v2: list save + subcommands ─────────────────────────────────
+echo "[10b] v2 list save + subcommands..."
+TMP=$(mktemp -d)
+(cd "$TMP" && timeout 25 youtube "linux kernel" --num 2 --pool 8 2>/dev/null) >/dev/null
+assert "saves ./lists/<slug>.md" "ls '$TMP'/lists/*.md >/dev/null 2>&1"
+assert "entry has youtube.com URL" "grep -q 'youtube.com/watch' '$TMP'/lists/*.md 2>/dev/null"
+assert "channel --list runs" "youtube channel --list >/dev/null 2>&1"
+assert "dedup errors without a list" "youtube dedup 2>&1 | grep -qi 'no target'"
+rm -rf "$TMP"
 echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────

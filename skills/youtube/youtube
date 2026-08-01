@@ -19,7 +19,7 @@ case "${1:-}" in
         exit 0
         ;;
     --selfcheck)
-        version=$(grep 'version' pyproject.toml 2>/dev/null | head -1 | grep -o '[0-9][0-9.]*' || echo "?")
+        version=$(grep 'version' "$SKILL_DIR/pyproject.toml" 2>/dev/null | head -1 | grep -o '[0-9][0-9.]*' || echo "?")
         last=""
         [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || stat -f "%Sm" "$STAMP_FILE" 2>/dev/null || echo "never")
         echo "youtube v${version}"
@@ -49,4 +49,4 @@ if [ -f "$STAMP_FILE" ]; then
     fi
 fi
 
-cd "$SKILL_DIR" && exec python3 scripts/search.py "$@"
+exec python3 "$SKILL_DIR/scripts/search.py" "$@"
