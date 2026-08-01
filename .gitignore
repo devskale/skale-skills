@@ -33,6 +33,11 @@ transcripts/
 .trae
 .gogcli
 skill/
+.agents/
+skills-lock.json
+
+# Generated image/run output (imagegen test, figure renders)
+generated/
 
 # Skiller build artifacts
 skiller/python3.14/
