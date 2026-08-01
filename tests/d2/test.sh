@@ -152,6 +152,9 @@ if [ -x scripts/d2v ] && command -v d2 >/dev/null 2>&1; then
     assert "d2v stdout is the svg path" "[ \"$out\" = \"$V/clean.svg\" ]"
     bash scripts/d2v "$V/clean.d2" "$V/sk.svg" -- --sketch >/dev/null 2>&1 && rk=0 || rk=$?
     assert "d2v forwards -- to d2 (sketch applied)" "[ $rk -eq 0 ] && grep -q 'sketch' \"$V/sk.svg\""
+    printf 'direction: right\na -> b -> c -> d -> e -> f -> g\n' > "$V/wide.d2"
+    bash scripts/d2v "$V/wide.d2" "$V/wide.svg" 2>"$V/wide.err" >/dev/null && rw=0 || rw=$?
+    assert "d2v warns on width-bloat" "[ $rw -eq 0 ] && grep -q '⚠' \"$V/wide.err\""
     rm -rf "$V"
 else
     assert "d2v present" "[ -x scripts/d2v ]"
