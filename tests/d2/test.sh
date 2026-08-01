@@ -138,6 +138,24 @@ assert "delivery.md covers licensing"   "grep -qi 'licensing\|publishable' refer
 assert "delivery.md covers consistency" "grep -qi 'consistency vocabulary' references/delivery.md"
 echo ""
 
+# ── 10. d2v render+verify helper ───────────────────────────────
+echo "[10] d2v render+verify helper..."
+if [ -x scripts/d2v ] && command -v d2 >/dev/null 2>&1; then
+    V="$(mktemp -d)"
+    printf 'a -> b\n' > "$V/clean.d2"
+    printf 'x: { shape: note }\n' > "$V/bad.d2"
+    bash scripts/d2v "$V/clean.d2" "$V/clean.svg" >/dev/null 2>&1 && rc=0 || rc=$?
+    assert "d2v renders clean (exit 0 + svg)" "[ $rc -eq 0 ] && [ -s \"$V/clean.svg\" ]"
+    bash scripts/d2v "$V/bad.d2"  "$V/bad.svg"  >/dev/null 2>&1 && rb=0 || rb=$?
+    assert "d2v rejects compile error (exit !=0)" "[ $rb -ne 0 ]"
+    out=$(bash scripts/d2v "$V/clean.d2" "$V/clean.svg" 2>/dev/null)
+    assert "d2v stdout is the svg path" "[ \"$out\" = \"$V/clean.svg\" ]"
+    rm -rf "$V"
+else
+    assert "d2v present" "[ -x scripts/d2v ]"
+fi
+echo ""
+
 echo "==============================="
 echo "  PASS: $PASS   FAIL: $FAIL"
 echo "==============================="
