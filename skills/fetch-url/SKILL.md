@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-version: "2.6"
+version: "2.7"
 description: "Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jina, markdown, chrome) with smart fallback. Use when the user wants to read an article, docs, or scrape text from a page. Triggers on: fetch this URL, read this page, extract the text, scrape this site, get the article content. Works on Reddit, StackOverflow, GitHub, docs sites, and more."
 ---
 
@@ -10,21 +10,22 @@ description: "Fetch and extract readable text from any web page — auto-selects
 fetch-url "https://example.com"          # That's it.
 ```
 
-Extracts text from any webpage. Works globally after install.
+Extracts text from any webpage. Works globally after install. **No credentials needed** — the free tools (w3m, lynx, jina, markdown) cover most sites.
 
 ## Install
 
-**Linux / macOS (bash):**
+This skill ships in the **skale-skills** pi package — install the repo once:
+
 ```bash
-cd ~/.pi/agent/skills/fetch-url && ./install.sh
+pi install git:github.com/devskale/skale-skills
 ```
 
-**Windows (cmd):**
-```cmd
-cd %USERPROFILE%\.pi\agent\skills\fetch-url && install.bat
-```
+That loads the skill into pi. To also get a global `fetch-url` shell command, run the installer from **this skill's own directory** (next to `SKILL.md`):
 
-Creates `fetch-url` in `~/.local/bin/` (`%USERPROFILE%\.local\bin\` on Windows). Requires `uv` (auto-installed).
+```bash
+./install.sh        # → creates ~/.local/bin/fetch-url (uv auto-installed)
+install.bat         # Windows, same directory
+```
 
 ## Update
 
@@ -49,7 +50,7 @@ fetch-url "URL" -v                        # Verbose (shows tool + redirects)
 
 | Option | Description |
 |--------|-------------|
-| `--tool NAME` | w3m, lynx, jina, markdown, chrome, chawan |
+| `--tool NAME` | w3m, lynx, jina, markdown, chrome, chawan, api |
 | `-v, --verbose` | Show tool selection and redirects |
 | `--no-clean` | Keep empty lines |
 | `--update` | Update the skill now |
@@ -65,6 +66,7 @@ Priority: free local tools first (w3m, lynx), then free APIs (jina, markdown), t
 | lynx | Wikipedia, text-heavy sites | Free, local |
 | jina | Docs, blogs, GitHub, Medium | Free API |
 | markdown | StackOverflow, fallback | Free API (50/day) |
+| api | Skale fetch endpoint (`amd.skale.dev`) | Free, needs credgoo key |
 | chrome | Cloudflare/JS-protected sites | Free, needs Chrome |
 
 ## Site-Specific Behavior
@@ -82,8 +84,11 @@ Priority: free local tools first (w3m, lynx), then free APIs (jina, markdown), t
 ## Configure (optional)
 
 ```bash
-# Credgoo for API tool
-credgoo add FETCH_URL_BEARER
+# Credgoo for the 'api' tool (retrieve shared team token)
+credgoo FETCH_URL_BEARER
+
+# No 'credgoo' command? Install it once:
+uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
 
 # Optional browsers for better fallback
 brew install w3m lynx chawan

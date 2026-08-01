@@ -70,7 +70,7 @@ SKILL_DIR = SCRIPT_DIR.parent  # Config files are in skill root, not scripts/
 W3M_CONFIG = SKILL_DIR / "w3m_config"
 LYNX_CONFIG = SKILL_DIR / "lynx_config"
 SETTINGS_FILE = SKILL_DIR / "settings.json"
-DEFAULT_API_URL = "https://amd1.mooo.com/api/fetch_url"
+DEFAULT_API_URL = "https://amd.skale.dev/api/fetch_url"
 MARKDOWN_NEW_URL = "https://markdown.new"
 JINA_READER_URL = "https://r.jina.ai"
 

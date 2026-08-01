@@ -40,7 +40,7 @@ const execFileAsync = promisify(execFile);
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const PROXY_BASE =
-	process.env.UNIINFER_PROXY_URL?.replace(/\/+$/, "") || "https://amd1.mooo.com:8123/v1";
+	process.env.UNIINFER_PROXY_URL?.replace(/\/+$/, "") || "https://uniinfer.skale.dev/v1";
 
 const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "pollinations@flux";
 const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "1024x1024";
