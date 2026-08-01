@@ -89,18 +89,13 @@ npx @anthropic-ai/skills add <name>
 
 Only **custom skills** we actively develop:
 
-- **fetch-url** — web content extraction with smart fallback
+- **surf** — drive your real, logged-in Chrome via AppleScript (no daemon, no debug port)
 - **web-search** — web search via SearXNG + Duck API
+- **fetch-url** — web content extraction with smart fallback
+- **figure** — hand-drawn architecture/pipeline figures from a small spec
 - **video-transcript-downloader** — yt-dlp wrapper, downloads + transcripts
 - **youtube** — Invidious API video search with auto-fallback
 - **rodney** — headless Chrome automation
-- **browser-use** — persistent browser automation with session continuity
-- **todo** — TODO.md task tracking
-- **improve-skill** — skill improvement from session transcripts
-- **agent-skill-creator** — guide for creating skills for any AI agent
-- **agents-md-init** — create and update AGENTS.md files
-- **command-creator** — create custom commands for Pi and OpenCode
-- **readme-write** — generate and update README.md files
 - **d2** — diagrams as code (D2 language). `openskills install devskale/skale-skills/skills/d2`
 
 ## API Docs
