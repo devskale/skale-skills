@@ -1,10 +1,10 @@
 ---
 name: figure
-version: "1.0.0"
+version: "1.1.0"
 description: "Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec — sketchy Excalidraw-style nodes, pastel fills, dashed arrows, numbered step badges, semantic colour coding. Bundles a Node compositor that assembles CC0 icons + the Patrick Hand font into matching SVG + PNG. Same spec → identical figure every time. Use when the user wants to draw, create, or render an architecture diagram, pipeline figure, workflow diagram, or any .fig.mjs. Triggers: draw a diagram, architecture figure, pipeline figure, render a figure, .fig.mjs, make a diagram."
 metadata:
   author: skale-dev
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # figure — hand-drawn architecture figures from a spec
@@ -13,6 +13,10 @@ A figure toolchain: write a small spec (nodes + edges + badges), get a consisten
 hand-drawn SVG **and** PNG assembled from a CC0 icon set + the Patrick Hand font. Same
 spec → identical figure every time; a palette change in the library re-styles every figure
 on rebuild.
+
+> For auto-laid-out technical diagrams (sequence, ER, class, many types) use the **`d2`**
+> skill; `figure` is for hand-drawn, presentation-quality explainer figures where you place
+> every node yourself.
 
 > **Provenance:** this skill is adapted from the `figure/` toolchain in
 > [skale-dev/rag-eval](https://github.com/skale-dev/rag-eval/tree/main/figure) (commit
@@ -33,6 +37,12 @@ npm install && npx playwright install chromium    # one-time; needs Playwright
 node build/build_figures.mjs diagrams/my-fig.fig.mjs
 node build/build_figures.mjs                       # build every *.fig.mjs under diagrams/
 ```
+
+**Self-verification (always-on lint).** Every build prints a geometry lint to **stderr**:
+out-of-bounds nodes/labels, text collisions, node-box overlaps, and aspect-ratio bloat
+(warnings — non-blocking; the figure still renders), plus a hard error (exit 1) when an
+edge's `from`/`to` isn't a declared node. Read it to catch placement mistakes without
+opening the image. Lint a spec standalone: `node build/review_figure.mjs diagrams/x.fig.mjs`.
 
 **In a managed sandbox** where Playwright is already global, skip the install and point
 Node at the global modules:
