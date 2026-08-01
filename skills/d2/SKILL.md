@@ -1,6 +1,6 @@
 ---
 name: d2
-version: "1.1.0"
+version: "1.2.0"
 description: "Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the `d2` CLI directly (no bundled scripts). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
 license: MIT
 ---
@@ -23,9 +23,11 @@ Or clone + add to pi config (`~/.pi/agent/settings.json`): `"skills": ["~/code/s
 ## Quick Start — the render loop
 
 ```bash
-d2 validate diagram.d2        # syntax check FIRST
-d2 diagram.d2                 # → diagram.svg (self-contained default)
-d2 diagram.d2 diagram.txt     # ASCII preview — the agent's only way to self-verify
+bash scripts/d2v diagram.d2          # ONE command: validate → ASCII to stderr → svg → width-bloat check
+# (the raw loop it runs, if you need the pieces:)
+d2 validate diagram.d2               # grammar check
+d2 diagram.d2 diagram.txt            # ASCII preview — verify structure (the agent's self-check)
+d2 diagram.d2                        # → diagram.svg (self-contained default)
 ```
 
 ## Core Syntax
@@ -80,6 +82,16 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 | PDF | `d2 x.d2 x.pdf` | Needs Playwright. Clickable links. |
 | ASCII | `d2 x.d2 x.txt` | Any engine (exporter ignores `--layout`). **Use to self-verify structure.** |
 | PPTX/GIF | `d2 x.d2 x.pptx` | For multi-board compositions. |
+
+## Render flags
+
+| Flag | Use |
+|---|---|
+| `--target 'layers.x.*'` | render one board / multi-board (`layers`/`scenarios`/`steps`); `--target=''` = root only |
+| `--scale 0.5` | halve / double the output size |
+| `--pad 40` | padding (px) around the diagram |
+| `--center` | center the SVG in the viewport |
+| `--watch` | live-reload on edit (human authoring; `--browser 0` skips opening a browser) |
 
 ## Workflow: Code → Architecture Diagram
 

@@ -9,6 +9,11 @@
 ## Status
 
 - **Version:** v1.1.0 (recipes + diagram-types + delivery-polish guides; 35-test suite)
+- **v1.2.0 (2026-08-01):** loosened the pure-docs rule — added `scripts/d2v`, a by-path
+  bash render+verify wrapper (`validate → ASCII to stderr → svg → width-bloat check`).
+  Still **no global install/launcher**; the agent invokes `scripts/d2v` by path (the SKILL.md
+  render loop leads with it). Added a compact Render-flags note (--target/--scale/--pad/
+  --center/--watch). 40-test suite.
 - **Hygiene pass (2026-07-13):** corrected the stale dagre/ASCII gotcha — the ASCII/text export ignores `--layout` *and* `vars.d2-config.layout-engine` (verified byte-identical), so ASCII works with any engine but doesn't reflect the delivered SVG's layout; dagre's real weakness is Sugiyama-DAG layout quality (cycles, fan-in, crossings). Added `tests/d2/test.sh` (23 checks). Trimmed SKILL.md to 88 lines.
 - **Location:** `skale-skills/skills/d2/`
 - **Activation:** 🟢 global — symlinked to `~/.pi/agent/skills/d2`
