@@ -389,6 +389,12 @@ Backends:
 
     args = parser.parse_args()
 
+    # Reject empty/whitespace queries up front — avoids a pointless 404 round-trip
+    # to the Duck API (and empty SearXNG requests) with a clear local error.
+    if not args.query or not args.query.strip():
+        print("Error: query must not be empty", file=sys.stderr)
+        sys.exit(1)
+
     # Select backend
     backend = select_backend(args)
 
