@@ -497,6 +497,56 @@ Non-deterministic composition
 Recommendation: keep active skill count low. Use role-based bundles
 when you need more. More skills is not always more capability.
 
+Case study: artifact-mediated composition (youtube → vtd)
+  The patterns above concern skills firing concurrently for one task.
+  A lower-risk pattern is artifact-mediated: skill A writes a file in a
+  shared format, skill B reads it. The `youtube` and
+  `video-transcript-downloader` (vtd) skills in this repo are a worked
+  example — they compose into a find → curate → transcribe pipeline.
+
+    youtube (discovery, stdlib-only)  →  ./lists/<topic>.md
+      Searches Invidious, ranks results, writes a curated list:
+      a `## Picks` section of `youtube.com/watch?v=` links (the winners)
+      plus `## Candidates`. Zero dependencies.
+
+    vtd (retrieval, yt-dlp + node + ffmpeg)  →  vtd transcript --list <name>
+      Reads that list's `## Picks`, transcribes each video to
+      ./transcripts/<list>/<id>__<title>.md, with resume + an INDEX.md
+      manifest. Heavy dependencies.
+
+  Why this composes well — the lessons:
+
+    Zero code coupling
+      The two skills share no module, no import, no protocol. Their only
+      contract is the list file format: markdown, `## Picks`, and real
+      youtube.com URLs. Each side parses it defensively (grep the URLs,
+      read the section), so the convention can evolve without a
+      coordinated release.
+
+    Respect the dependency asymmetry
+      Search is high-frequency / zero-dep; transcription is
+      low-frequency / heavy-dep. Keeping them separate means a user who
+      only wants to find videos never installs yt-dlp + node + ffmpeg.
+      (This asymmetry is exactly why a merge was rejected — see the
+      decision noted in each skill's docs.)
+
+    Deterministic handoff, not routing
+      Unlike concurrent composition (where the model picks which skills
+      fire), this is an explicit pipeline: run youtube, curate the list,
+      then run `vtd --list`. The seam is the file, so there is no routing
+      competition and no ordering ambiguity — the very failure modes
+      flagged above.
+
+    The contract is documented in both places
+      youtube's curation guide (references/curation.md) and vtd's SKILL.md
+      both describe the list format, so the contract stays findable as
+      either side changes.
+
+  Prefer this split when two capabilities have different dependencies or
+  call frequencies: produce a clean, documented file format, and let each
+  side own its own stack. Don't merge, and don't rely on concurrent
+  routing to wire them together.
+
 
 14. Skill Creation Process
 -------------------------
