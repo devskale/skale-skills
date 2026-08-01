@@ -4,9 +4,19 @@
 
 One install gives your agent web fetch/search, YouTube, video/transcripts, diagramming, **headless *and* real-session browser control**, image generation, custom model providers, and a battery of workflow skills — all credential-safe via [credgoo](docs/credgoo.md).
 
+## Install
+
+```bash
+pi install git:github.com/devskale/skale-skills
+```
+
+**One command loads every skill, extension, and prompt into [pi](https://pi.dev).** Public backends work with zero credentials — install and go. To get a skill's global shell command, run its installer from the skill dir (e.g. `./skills/web-search/install.sh`).
+
+Want to try without installing? `pi -e git:github.com/devskale/skale-skills`. For Claude Code / Codex / OpenCode or a selective subset, see [Selective & other agents](#selective--other-agents).
+
 ## Contents
 
-[Architecture](#architecture) · **[Flagship skills](#flagship-skills)** ([`surf`](#surf) · [`web-search`](#web-search) · [`fetch-url`](#fetch-url)) · [All skills](#skills) · [Install](#install) · [Quick start](#quick-start) · [Credentials](#credentials--credgoo) · [`skiller` CLI](#skiller-cli) · [Docs](#docs) · [Tests](#running-tests)
+**[Install](#install)** · [Architecture](#architecture) · **[Flagship skills](#flagship-skills)** ([`surf`](#surf) · [`web-search`](#web-search) · [`fetch-url`](#fetch-url)) · [All skills](#skills) · [Quick start](#quick-start) · [Credentials](#credentials--credgoo) · [`skiller` CLI](#skiller-cli) · [Selective & other agents](#selective--other-agents) · [Docs](#docs) · [Tests](#running-tests)
 
 ---
 
@@ -94,19 +104,11 @@ fetch-url "https://github.com/devskale/skale-skills"
 |---|---|
 | **learn** | Learning and study workflow |
 
-## Install
+## Selective & other agents
 
-### pi (native)
+### pi (native) — selective install
 
-```bash
-# Install everything
-pi install git:github.com/devskale/skale-skills
-
-# …or try without installing
-pi -e git:github.com/devskale/skale-skills
-```
-
-Selective install — edit `~/.pi/agent/settings.json`:
+Load just what you need by editing `~/.pi/agent/settings.json`:
 
 ```jsonc
 {
