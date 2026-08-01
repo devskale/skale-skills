@@ -45,7 +45,7 @@ echo "=== Testing imagegen extension ==="
 echo ""
 
 # Resolve proxy URL the same way the extension does
-PROXY_BASE="${UNIINFER_PROXY_URL:-https://amd1.mooo.com:8123/v1}"
+PROXY_BASE="${UNIINFER_PROXY_URL:-https://uniinfer.skale.dev/v1}"
 PROXY_BASE="${PROXY_BASE%/}"
 
 # === 1. File structure ===============================================

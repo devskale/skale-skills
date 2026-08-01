@@ -72,7 +72,7 @@ This is the entire routing contract — defined in the proxy's
 Both backends look identical at the edges:
 
 ```http
-POST https://amd1.mooo.com:8123/v1/images/generations
+POST https://uniinfer.skale.dev/v1/images/generations
 Authorization: Bearer <credgoo key for the provider>
 Content-Type: application/json
 
@@ -95,8 +95,8 @@ Content-Type: application/json
 ### Model discovery
 
 ```
-GET https://amd1.mooo.com:8123/v1/image/models/pollinations   (no auth)
-GET https://amd1.mooo.com:8123/v1/image/models/tu              (needs bearer)
+GET https://uniinfer.skale.dev/v1/image/models/pollinations   (no auth)
+GET https://uniinfer.skale.dev/v1/image/models/tu              (needs bearer)
 ```
 
 Returns `{ object: "list", data: [{ id, object: "model", owned_by: "skaledev" }] }`.
@@ -154,13 +154,24 @@ return {
 The image block lets the model **see** the result and iterate. The saved
 path lets the user (and πui, via `uploads/`) reuse the file.
 
+The generation **prompt is embedded into the file metadata** so it travels
+with the image (no external DB): PNG `tEXt` chunks (`prompt` + `parameters`),
+JPEG `COM` comment, or a sidecar `<file>.txt` for formats we can't edit
+in-place (WebP/GIF/BMP). Read it back with:
+
+```bash
+exiftool -parameters <png>      # PNG tEXt
+exiftool -Comment <jpg>         # JPEG COM
+cat <file>.txt                 # sidecar (WebP/GIF/BMP)
+```
+
 ### Defaults
 
 | Param | Default | Reason |
 |---|---|---|
 | `model` | `pollinations@flux` | ~1.8 s latency → cheap iteration |
 | `size` | `1024x1024` | square, broadly supported |
-| output dir | `./generated/` (or `./uploads/` if present, for πui web URLs) | matches the `generate-image` skill convention |
+| output dir | `~/Pictures/generated/` on macOS (or `./uploads/` if present in cwd for πui web URLs; `./generated/` elsewhere) | a stable home dir for generated images; override with `IMAGEGEN_OUTPUT_DIR` |
 
 ### Iteration model (v1)
 
@@ -296,13 +307,13 @@ Both verified working against the proxy:
 
 ```bash
 # Pollinations — fast
-curl -s -X POST https://amd1.mooo.com:8123/v1/images/generations \
+curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $(credgoo pollinations)" \
   -d '{"model":"pollinations@flux","prompt":"a tiny red cube on white, centered","size":"512x512"}'
 
 # TU — high quality
-curl -s -X POST https://amd1.mooo.com:8123/v1/images/generations \
+curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $(credgoo tu)" \
   -d '{"model":"tu@z-image-turbo","prompt":"a tiny red cube on white, centered","size":"1024x1024"}'
@@ -312,9 +323,8 @@ curl -s -X POST https://amd1.mooo.com:8123/v1/images/generations \
 
 ## Open questions
 
-1. **Proxy URL** — `https://amd1.mooo.com:8123/v1` is hardcoded above. Should
-   it be configurable (env / settings) so non-skale users can point at their
-   own uniinfer instance?
+1. **Proxy URL** — default is `https://uniinfer.skale.dev/v1`; override with the
+   `UNIINFER_PROXY_URL` env var to point at your own uniinfer instance.
 2. **Preview format** — default to 256-color half-blocks (nicer) or pure ASCII
    (max compatibility, also safe as a model signal)? Proposal: half-blocks for
    display, ASCII for the model-signal text block.

@@ -80,7 +80,7 @@ def credgoo_get(service: str) -> Optional[str]:
 # Configuration
 # =============================================================================
 
-DUCK_API_URL = os.environ.get("DUCK_API_URL", "https://amd1.mooo.com/api/duck/search")
+DUCK_API_URL = os.environ.get("DUCK_API_URL", "https://amd.skale.dev/api/duck/search")
 
 # Public SearXNG instances (no auth required)
 PUBLIC_SEARXNG_INSTANCES = [

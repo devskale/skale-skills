@@ -1,6 +1,6 @@
 ---
 name: web-search
-version: "2.1.0"
+version: "2.2.0"
 description: "Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credentials); an optional Duck API adds advanced filters (site, filetype, inurl, exact). Returns text, image, news, or video results. Use when the user wants to search the web, look something up, or find images/news/videos. Triggers on: web search, search for, google, look up, find online, image/news/video search."
 ---
 
@@ -14,17 +14,18 @@ Works globally after install. No credentials needed (public SearXNG).
 
 ## Install
 
-**Linux / macOS (bash):**
+This skill ships in the **skale-skills** pi package — install the repo once:
+
 ```bash
-cd ~/.pi/agent/skills/web-search && ./install.sh
+pi install git:github.com/devskale/skale-skills
 ```
 
-**Windows (cmd):**
-```cmd
-cd %USERPROFILE%\.pi\agent\skills\web-search && install.bat
-```
+That loads the skill into pi. To also get a global `web-search` shell command, run the installer from **this skill's own directory** (next to `SKILL.md`):
 
-Creates a `web-search` command in `~/.local/bin/` (`%USERPROFILE%\.local\bin\` on Windows). Requires `uv` (auto-installed).
+```bash
+./install.sh        # → creates ~/.local/bin/web-search (uv auto-installed)
+install.bat         # Windows, same directory
+```
 
 ## Update
 
@@ -42,16 +43,21 @@ Public SearXNG works out of the box. For better reliability:
 **Private SearXNG** (recommended):
 
 ```bash
-credgoo searx
-# Returns: URL@username@password
+credgoo searx        # Returns: URL@username@password
 ```
 
-Or set `SEARXNG_URL` env var, or create `~/.config/api_keys/searx.json`.
+Or set the `SEARXNG_URL` env var (bare URL, or `URL@user@pass`).
 
 **Duck API** (advanced filters):
 
 ```bash
 credgoo WEB_SEARCH_BEARER
+```
+
+**No `credgoo` command?** Install it once (the skill prefers a global install):
+
+```bash
+uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
 ```
 
 ## Usage

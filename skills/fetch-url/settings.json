@@ -48,7 +48,7 @@
       "platforms": ["Darwin", "Linux", "Windows"],
       "requires_install": false,
       "requires_auth": true,
-      "api_url": "https://amd1.mooo.com/api/fetch_url",
+      "api_url": "https://amd.skale.dev/api/fetch_url",
       "notes": "Custom API endpoint, requires bearer token"
     }
   },

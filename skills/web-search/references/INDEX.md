@@ -118,9 +118,9 @@ Set `WEB_SEARCH_BEARER` token via (in priority order):
    export WEB_SEARCH_BEARER="your_token"
    ```
 
-2. **Credgoo:**
+2. **Credgoo** (retrieve the shared team token):
    ```bash
-   credgoo add WEB_SEARCH_BEARER
+   credgoo WEB_SEARCH_BEARER
    ```
 
 3. **.env file** in skill root directory (same level as `SKILL.md`):
@@ -128,10 +128,9 @@ Set `WEB_SEARCH_BEARER` token via (in priority order):
    WEB_SEARCH_BEARER=your_token
    ```
 
-For private SearXNG:
+For private SearXNG (retrieve the shared team instance from credgoo):
 ```bash
-credgoo add searx
-# Format: URL@username@password
+credgoo searx   # Returns: URL@username@password
 ```
 
 ## Tips & Tricks
@@ -162,7 +161,7 @@ web-search "test" --searxng --engines google,bing
 | Error | Solution |
 |-------|----------|
 | "Bearer token is required" | Set `WEB_SEARCH_BEARER` env var or use `--searxng` for public search |
-| "All SearXNG instances failed" | Check network; configure a private SearXNG instance via `credgoo add searx` |
+| "All SearXNG instances failed" | Check network; use the shared private SearXNG via `credgoo searx` |
 | "No results found" | Simplify query, try different backend |
 | Filters ignored | Duck API filters (`--site`, `--filetype`, etc.) only work with Duck backend |
 | 404 on empty query | Provide a non-empty search query |
