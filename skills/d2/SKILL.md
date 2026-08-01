@@ -9,6 +9,10 @@ license: MIT
 
 D2 turns text into diagrams. **Knowledge skill** — no scripts; the agent drives the `d2` CLI directly. Requires the `d2` binary: `brew install d2`.
 
+> For hand-drawn, presentation-quality figures (sketchy Excalidraw look, manual layout)
+> use the **`figure`** skill; `d2` is for auto-laid-out technical diagrams (sequence, ER,
+> class, many types) with ASCII self-verification.
+
 ## Install
 
 ```bash
