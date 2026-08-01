@@ -153,7 +153,7 @@ vtd transcript --url 'https://youtube.com/watch?v=…'
 | **[video-transcript-downloader](skills/video-transcript-downloader)** | Download video/audio/subtitles/transcripts (yt-dlp) |
 | **[d2](skills/d2)** | Diagrams-as-code with the D2 language |
 
-_Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, improve-skill, readme-write) moved to [`deprecated/`](deprecated/)._
+_Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, improve-skill, readme-write) moved to [`skills/deprecated/`](skills/deprecated/)._
 
 ### Extensions (pi)
 
@@ -261,7 +261,7 @@ See [`CONVENTION.md`](CONVENTION.md) and [`RECOMMENDED-SKILLS.md`](RECOMMENDED-S
 
 ```
 skills/      → 8 active skills (surf, rodney, fetch-url, web-search, figure, …)
-deprecated/  → 6 retired skills (no longer auto-loaded)
+skills/deprecated/  → 6 retired skills (depth-2; not auto-loaded)
 extensions/  → pi extensions (heartbeat, statusline, xmodel, imagegen)
 prompts/     → prompt templates (learn)
 docs/        → guides + best-practices (browser-use, install, credgoo, …)

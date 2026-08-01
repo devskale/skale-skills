@@ -1,6 +1,6 @@
 # Deprecated skills
 
-These skills have been retired from the active package and are **no longer auto-loaded** by `pi install` — the package manifest points at `../skills`, not here. Kept for reference and archaeology.
+These skills have been retired from the active package and are **no longer auto-loaded** by `pi install`. They live here at `skills/deprecated/<name>/SKILL.md` — one level deeper than pi scans (it discovers only `skills/<name>/SKILL.md`), so the loader skips them. Kept for reference and archaeology.
 
 | Skill | Was |
 |---|---|
@@ -11,8 +11,8 @@ These skills have been retired from the active package and are **no longer auto-
 | `improve-skill` | Improve skills from session transcripts |
 | `readme-write` | Generate and update README.md files |
 
-To use one anyway, symlink it back into a skills dir:
+To use one anyway, symlink it to a depth pi scans:
 
 ```bash
-ln -s "$PWD/deprecated/<name>" ~/.pi/agent/skills/<name>
+ln -s "$PWD/skills/deprecated/<name>" ~/.pi/agent/skills/<name>
 ```

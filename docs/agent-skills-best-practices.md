@@ -940,19 +940,19 @@ Sanity checks after cleanup
   and the community. Cross-agent compatible.
 
 [REF-16]  Pi agent -- agent-skill-creator skill (deprecated)
-  /Users/johannwaldherr/code/agents/skills/skale-skills/deprecated/agent-skill-creator/SKILL.md
+  /Users/johannwaldherr/code/agents/skills/skale-skills/skills/deprecated/agent-skill-creator/SKILL.md
   Real-world example: universal skill creator for pi agent. Covers
   creation process, progressive disclosure patterns, credential
   management, packaging, validation.
 
 [REF-17]  Pi agent -- improve-skill skill (deprecated)
-  /Users/johannwaldherr/code/agents/skills/skale-skills/deprecated/improve-skill/SKILL.md
+  /Users/johannwaldherr/code/agents/skills/skale-skills/skills/deprecated/improve-skill/SKILL.md
   Real-world example: session transcript analysis for skill improvement.
   Extract-improve workflow. Multi-agent support (Claude Code, pi,
   Codex, OpenCode).
 
 [REF-18]  Pi agent -- agents-md-init skill (deprecated)
-  /Users/johannwaldherr/code/agents/skills/skale-skills/deprecated/agents-md-init/SKILL.md
+  /Users/johannwaldherr/code/agents/skills/skale-skills/skills/deprecated/agents-md-init/SKILL.md
   Real-world example: AGENTS.md creation skill with investigation
   workflow, extraction patterns, gotchas, validation checklist.
 
