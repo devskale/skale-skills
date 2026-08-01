@@ -174,16 +174,129 @@ async function chafaPreview(imgPath: string, cols = ASCII_COLS, rows = ASCII_ROW
 	}
 }
 
-/** Choose output dir: uploads/ if it exists (web-served in πui), else generated/. */
+// ── Image metadata (dependency-free prompt embedding) ────────────────────────
+// The generation prompt is baked into the saved file so it survives copies and
+// stays findable later. PNG → tEXt chunks (keywords `prompt` + `parameters`);
+// JPEG → a COM comment; other formats → a sidecar `<file>.txt` (in-image
+// metadata needs format-specific encoders we don't ship). Read it back with:
+//   exiftool -parameters <png>   ·   exiftool -Comment <jpg>   ·   cat <file>.txt
+
+/** CRC32 table for PNG chunks (IEEE 802.3 polynomial, init/final 0xFFFFFFFF). */
+const PNG_CRC_TABLE: Uint32Array = (() => {
+	const t = new Uint32Array(256);
+	for (let n = 0; n < 256; n++) {
+		let c = n;
+		for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+		t[n] = c >>> 0;
+	}
+	return t;
+})();
+
+function pngCrc32(buf: Buffer): number {
+	let c = 0xffffffff;
+	for (let i = 0; i < buf.length; i++) c = PNG_CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+	return (c ^ 0xffffffff) >>> 0;
+}
+
+/** Build a PNG `tEXt` chunk: length + "tEXt" + keyword + 0x00 + text + crc. */
+function pngTextChunk(keyword: string, text: string): Buffer {
+	const kw = Buffer.from(keyword, "latin1");
+	const sep = Buffer.from([0]);
+	const tx = Buffer.from(text, "utf8");
+	const data = Buffer.concat([kw, sep, tx]);
+	const type = Buffer.from("tEXt", "latin1");
+	const len = Buffer.alloc(4);
+	len.writeUInt32BE(data.length, 0);
+	const crc = Buffer.alloc(4);
+	crc.writeUInt32BE(pngCrc32(Buffer.concat([type, data])), 0);
+	return Buffer.concat([len, type, data, crc]);
+}
+
+/** Insert tEXt chunks right after IHDR (offset 8 sig + 25 IHDR = 33). */
+function embedPngText(buf: Buffer, chunks: { keyword: string; text: string }[]): Buffer {
+	if (buf.length < 33) return buf;
+	if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) return buf;
+	const ihdrEnd = 8 + 25;
+	const insert = Buffer.concat(chunks.map((c) => pngTextChunk(c.keyword, c.text)));
+	return Buffer.concat([buf.subarray(0, ihdrEnd), insert, buf.subarray(ihdrEnd)]);
+}
+
+/** Build one or more JPEG COM (0xFFFE) segments — splits at 65533 data bytes. */
+function jpegComSegments(text: string): Buffer {
+	const data = Buffer.from(text, "utf8");
+	const maxData = 65533; // 65535 segment length − 2 length bytes
+	const segs: Buffer[] = [];
+	for (let i = 0; i < data.length; i += maxData) {
+		const part = data.subarray(i, i + maxData);
+		const lenBuf = Buffer.alloc(2);
+		lenBuf.writeUInt16BE(part.length + 2, 0);
+		segs.push(Buffer.from([0xff, 0xfe]), lenBuf, part);
+	}
+	return Buffer.concat(segs);
+}
+
+/** Insert a COM comment immediately after SOI (FF D8). */
+function embedJpegCom(buf: Buffer, text: string): Buffer {
+	if (buf.length < 2 || buf[0] !== 0xff || buf[1] !== 0xd8) return buf;
+	return Buffer.concat([buf.subarray(0, 2), jpegComSegments(text), buf.subarray(2)]);
+}
+
+interface ImageMeta {
+	prompt: string;
+	model: string;
+	size: string;
+	seed?: number;
+	n: number;
+}
+
+/** Embed the generation prompt into the image, dependency-free.
+ *  Returns the (possibly rewritten) buffer and, for formats we can't edit
+ *  in-place, a `sidecar` string to write as `<file>.txt` so the prompt is never lost. */
+function embedMetadata(buf: Buffer, mime: string, meta: ImageMeta): { buf: Buffer; sidecar?: string } {
+	const paramLine = [
+		`prompt: ${meta.prompt}`,
+		`model: ${meta.model}`,
+		`size: ${meta.size}`,
+		`n: ${meta.n}`,
+		...(meta.seed != null ? [`seed: ${meta.seed}`] : []),
+	].join("\n");
+	if (mime === "image/png") {
+		return {
+			buf: embedPngText(buf, [
+				{ keyword: "prompt", text: meta.prompt },
+				{ keyword: "parameters", text: paramLine },
+			]),
+		};
+	}
+	if (mime === "image/jpeg") {
+		return { buf: embedJpegCom(buf, paramLine) };
+	}
+	// WebP/GIF/BMP: in-image metadata needs format-specific encoders; record a
+	// sidecar .txt so the prompt is preserved alongside the image.
+	return { buf, sidecar: paramLine };
+}
+
+/** Choose output dir.
+ *  1. IMAGEGEN_OUTPUT_DIR env (absolute, or relative to cwd) — explicit override.
+ *  2. uploads/ if it exists in cwd — web-served in πui (opt-in: create uploads/).
+ *  3. ~/Pictures/generated/ on macOS — a stable home dir for generated images.
+ *  4. ./generated/ — last-resort project-local default (non-mac). */
 function outputDir(cwd: string): { dir: string; webUrl: boolean } {
+	const override = process.env.IMAGEGEN_OUTPUT_DIR?.trim();
+	if (override) {
+		return { dir: path.isAbsolute(override) ? override : path.resolve(cwd, override), webUrl: false };
+	}
 	const uploads = path.join(cwd, "uploads");
 	try {
 		if (fs.statSync(uploads).isDirectory()) return { dir: uploads, webUrl: true };
 	} catch {
 		/* not present */
 	}
-	const generated = path.join(cwd, "generated");
-	return { dir: generated, webUrl: false };
+	if (process.platform === "darwin") {
+		const home = os.homedir();
+		if (home) return { dir: path.join(home, "Pictures", "generated"), webUrl: false };
+	}
+	return { dir: path.join(cwd, "generated"), webUrl: false };
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -281,7 +394,21 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 		const ext = mime === "image/jpeg" ? "jpg" : mime.split("/")[1] || "png";
 		const file = items.length === 1 ? `generated-${ts}.${ext}` : `generated-${ts}-${i}.${ext}`;
 		const abs = path.resolve(dir, file);
-		fs.writeFileSync(abs, Buffer.from(b64, "base64"));
+		// Bake the generation prompt into the image metadata before writing, so it
+		// travels with the file (PNG tEXt / JPEG COM / sidecar .txt for others).
+		const rawBuf = Buffer.from(b64, "base64");
+		const { buf: writtenBuf, sidecar } = embedMetadata(rawBuf, mime, {
+			prompt: opts.prompt,
+			model: `${provider}@${modelId}`,
+			size,
+			seed: opts.seed,
+			n,
+		});
+		fs.writeFileSync(abs, writtenBuf);
+		if (sidecar) fs.writeFileSync(`${abs}.txt`, sidecar);
+		// b64 stays the ORIGINAL bytes (what the model sees / iterates on) — the
+		// metadata only lands on disk, keeping the inline block byte-identical to
+		// what the provider returned.
 		saved.push({ b64, url: it.url, mime, path: abs, webUrl: webUrl ? `/uploads/${file}` : undefined });
 	}
 	if (!saved.length) return { ok: false, error: "generated images had no usable data" };
@@ -330,7 +457,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		description:
 			"Generate an image from a text prompt. Returns the image inline (the model can see it and iterate) plus an ASCII preview. " +
 			'Model is "provider@modelid", e.g. "pollinations@flux" (fast, default) or "tu@z-image-turbo" (high quality). ' +
-			"Images are saved to ./generated/ (or ./uploads/ if present).",
+			"Images are saved to ~/Pictures/generated/ on macOS (./uploads/ if present, or ./generated/ otherwise); the prompt is embedded in the file metadata.",
 		promptSnippet: "Generate an image from a text prompt; model sees the result and can iterate",
 		promptGuidelines: [
 			"Use generate_image when the user asks to create, draw, or generate an image/picture/illustration/logo. " +
