@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # d2v — render + self-verify a .d2 diagram in one command.
 #
-#   bash scripts/d2v diagram.d2 [out.svg]
+#   bash scripts/d2v diagram.d2 [out.svg] [-- <d2 flags>]
 #
 # Pipeline:
 #   1. d2 validate          grammar gate (fail → exit 1)
 #   2. d2 … .txt            ASCII structure to STDERR (always-on) — also the real compile
 #                           check (unknown shapes / bad styles error here) → exit 1 on failure
-#   3. d2 … .svg            render the deliverable; STDOUT = the .svg path (pipeable)
+#   3. d2 … .svg [flags]    render the deliverable; STDOUT = the .svg path (pipeable)
 #   4. width-bloat check    width:height > 2.2 → warning to stderr (non-blocking)
+#
+# Anything after `--` is forwarded to the SVG render only (e.g. `-- --sketch --theme 4`),
+# so you can apply visual freshness (sketch/themes) without losing the structure checks.
+# (Sketch is CLI-only — `vars: d2-config: sketch` is ignored — hence the passthrough.)
 #
 # Exit 0 clean; 1 on validate/compile/render failure; 2 on bad usage.
 # STDERR carries the ASCII preview + warnings/errors; STDOUT carries only the svg path.
@@ -16,20 +20,27 @@ set -uo pipefail
 
 BLOAT_RATIO=2.2
 
-[ $# -ge 1 ] || { echo "usage: d2v <diagram.d2> [out.svg]" >&2; exit 2; }
-src="$1"
+# ── parse args: src [out] -- <extras forwarded to d2 svg render> ──
+src=""; out=""; extras=(); seen=0
+for a in "$@"; do
+  if [ "$a" = "--" ]; then seen=1; continue; fi
+  if [ $seen -eq 1 ]; then extras+=("$a"); continue; fi
+  if [ -z "$src" ]; then src="$a"; elif [ -z "$out" ]; then out="$a"; fi
+done
+
+[ -n "$src" ] || { echo "usage: d2v <diagram.d2> [out.svg] [-- <d2 flags>]" >&2; exit 2; }
 [ -f "$src" ] || { echo "d2v: not a file: $src" >&2; exit 2; }
-out="${2:-${src%.d2}.svg}"
+out="${out:-${src%.d2}.svg}"
 
 # 1. Grammar gate (permissive — doesn't catch unknown shapes/styles, but cheap).
 if ! d2 validate "$src" >/dev/null 2>&1; then
   echo "✗ d2 validate failed:" >&2
-  d2 validate "$src" >&2 2>&1 || d2 validate "$src" >&2
+  d2 validate "$src" >&2
   exit 1
 fi
 
-# 2. ASCII structure → stderr. This is also the real compile check: a render to .txt fails
-#    identically to .svg on unknown shapes / invalid styles, so we catch those here.
+# 2. ASCII structure → stderr. Also the real compile check: render-to-txt fails identically
+#    to .svg on unknown shapes / invalid styles, so we catch those here.
 tmp="$(mktemp -t d2v.XXXXXX).txt"
 if ! d2 "$src" "$tmp" >/dev/null 2>&1; then
   echo "✗ compile failed (render to .txt):" >&2
@@ -42,10 +53,10 @@ cat "$tmp" >&2
 echo "──────────────────────────────────────────" >&2
 rm -f "$tmp"
 
-# 3. Render the deliverable SVG.
-if ! d2 "$src" "$out" >/dev/null 2>&1; then
+# 3. Render the deliverable SVG (extras forwarded here only — they're visual: sketch/theme/…).
+if ! d2 "$src" "$out" ${extras[@]+"${extras[@]}"} >/dev/null 2>&1; then
   echo "✗ SVG render failed:" >&2
-  d2 "$src" "$out" >&2
+  d2 "$src" "$out" ${extras[@]+"${extras[@]}"} >&2
   exit 1
 fi
 
@@ -61,5 +72,4 @@ if [ -n "$w" ] && [ -n "$h" ] && [ "$h" -gt 0 ] 2>/dev/null; then
   fi
 fi
 
-# stdout: the rendered svg path.
 echo "$out"

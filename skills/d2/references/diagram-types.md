@@ -29,6 +29,7 @@ flow: {
 - Wrap the conversation in a container with `shape: sequence_diagram`.
 - Declare actors (`client; auth; …`), then each edge is a message in order.
 - Arrows render as `▶` on the actors' lifelines; labels go on the arrows.
+- **Frames:** `loop { … }` works. `alt { … } else { … }` FAILS (`unexpected text after map`) — model branches as separate `loop`s / messages, or annotate the label (e.g. `response OR error`) rather than `alt/else`.
 
 Source: [`types/sequence.d2`](types/sequence.d2)
 

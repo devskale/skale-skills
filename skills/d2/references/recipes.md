@@ -6,6 +6,29 @@ Copy-pasteable starting points for common software-architecture diagrams. All us
 
 ---
 
+## 0. Which diagram? (pick the mode before drawing)
+
+Match the **question** to the diagram type, then confirm **scope** with the user:
+
+| The question is… | Use | Recipe |
+|---|---|---|
+| "How do the parts relate?" (architecture) | **Layered / C4-container** | §1 layered, §5 c4-container |
+| "What happens on a request / over time?" | **Sequence** (`shape: sequence_diagram`) | types/sequence |
+| "How does a branching/decision process work?" | **Flowchart** (edges with a label) | §2 request-flow |
+| "What's the data model?" | **ER / `sql_table`** | types/er |
+| "What are the types/classes?" | **Class diagram** | types/class |
+
+**Clarify before drawing** (it picks both the diagram and the mode):
+- **Scope:** top-level (whole system, broad) vs detail (one component, deep)?
+- **Audience:** overview (explainer) vs developer (every edge)?
+
+**Overview rule (keeps ASCII self-verification usable):** for top-level/overview diagrams use
+**short single-line labels + the minimum edges that tell the story**. Dense graphs — containers
+with many cross-edges, long multi-line `\n` labels — garble the `.txt` preview so you can't
+self-verify them; split into two diagrams or trim first.
+
+---
+
 ## 1. Layered architecture
 
 When: classic n-tier — presentation → application → domain → data.
