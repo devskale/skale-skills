@@ -36,16 +36,10 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 | Status | Name | Description |
 |--------|------|-------------|
-| ⚪ available | **agent-skill-creator** | Guide for creating effective skills for any AI agent (Claude, Trae, Gemini, OpenCode, Qwen, etc.)... |
-| ⚪ available | **agents-md-init** | Create and update concise AGENTS.md files using proven best practices. Use when starting a new AG... |
-| ⚪ available | **command-creator** | Create custom commands for Pi (prompt templates) or OpenCode. Define command prompts, arguments, ... |
 | ⚪ available | **d2** | Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the ... |
 | ⚪ available | **fetch-url** | Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jin... |
-| ⚪ available | **improve-skill** | Analyze coding agent session transcripts to improve existing skills or create new ones. Use when ... |
-| ⚪ available | **readme-write** | Create and update README.md files with proper structure, badges, and sections. |
 | ⚪ available | **rodney** | Drive a persistent headless Chrome from the CLI for web scraping, screenshots, form filling, PDF ... |
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
-| ⚪ available | **todo** | Create and manage TODO.md task tracking files for complex multi-step work. Use when starting a la... |
 | ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) ... |
 | ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
 | ⚪ available | **youtube** | Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives — ranked by a c... |
