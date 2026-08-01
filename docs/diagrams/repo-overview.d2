@@ -1,0 +1,56 @@
+vars: { d2-config: { layout-engine: elk } }
+
+# How the skale-skills repo fits together.
+# Render:  d2 docs/diagrams/repo-overview.d2 docs/diagrams/repo-overview.svg
+
+user: { shape: person; label: "Developer" }
+pi: { label: "pi (AI coding agent)" }
+
+package: "skale-skills (pi package)" {
+  skiller: { label: "skiller/ CLI\ninstall · discover" }
+
+  extensions: "extensions/ — 4" {
+    heartbeat: { label: "heartbeat\nrecurring timer" }
+    statusline: { label: "statusline\nUI status" }
+    xmodel: { label: "xmodel\nmodel switch + vision" }
+    imagegen: { label: "imagegen\ntool: generate_image" }
+  }
+
+  skills: "skills/ — 13" {
+    web: "Web" {
+      web_search: { label: "web-search\nSearXNG + Duck API" }
+      fetch_url: { label: "fetch-url\nw3m/lynx/jina fallback" }
+      youtube: { label: "youtube\nInvidious search" }
+    }
+    browser: "Browser" {
+      rodney: { label: "rodney\nheadless Chrome" }
+      surf: { label: "surf\nreal Chrome (AppleScript)" }
+    }
+    video: { label: "video-transcript-downloader\nyt-dlp video/audio/transcript" }
+    authoring: "Authoring" {
+      skill_creator: { label: "agent-skill-creator" }
+      agents_md: { label: "agents-md-init" }
+      cmd_creator: { label: "command-creator" }
+      improve_skill: { label: "improve-skill" }
+      readme: { label: "readme-write" }
+      todo: { label: "todo" }
+    }
+    d2: { label: "d2\ndiagrams as code" }
+  }
+
+  prompts: { label: "prompts/" }
+  docs: { label: "docs/ · tests/ · guides/" }
+}
+
+credgoo: { shape: stored_data; style.multiple: true; label: "credgoo\n(searx · WEB_SEARCH_BEARER ·\nFETCH_URL_BEARER)" }
+web: { shape: cloud; label: "Web\nSearXNG · Invidious ·\nChrome · yt-dlp · jina" }
+
+user -> pi: runs
+pi -> package: "pi install (loads)" { style.animated: true }
+package.skiller -> package.skills: manages
+package.skills.web -> credgoo: keys
+package.skills.web -> web: "search · fetch"
+package.skills.browser -> web: "drive"
+package.skills.video -> web: "download"
+package.extensions.imagegen -> web: "render"
+package.skills -> package.docs: "documented + tested"
