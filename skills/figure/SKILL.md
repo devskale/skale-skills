@@ -29,7 +29,7 @@ on rebuild.
 cd skills/figure
 npm install && npx playwright install chromium    # one-time; needs Playwright
 
-# write a spec, then build it -> spec.svg + spec.png land next to the spec
+# write a spec, then build it -> .svg + .png land in ~/generated/images/<name>/
 node build/build_figures.mjs diagrams/my-fig.fig.mjs
 node build/build_figures.mjs                       # build every *.fig.mjs under diagrams/
 ```

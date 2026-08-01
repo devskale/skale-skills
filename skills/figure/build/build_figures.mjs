@@ -5,12 +5,13 @@
 //
 // With no args it builds every *.fig.mjs under figure/diagrams/, RECURSIVELY — specs are
 // organised in per-topic subfolders (e.g. diagrams/architectures/). Each spec module
-// default-exports a spec object (see compose.mjs). Outputs land NEXT TO their spec
-// (<dir>/<name>.svg and <name>.png), so a diagram's spec and renders always sit together
-// in the same folder.
+// default-exports a spec object (see compose.mjs). Rendered images (.svg + .png) are
+// written to a dedicated OUTPUT dir, NOT next to the spec, so the skill's diagrams/
+// stays clean. Default ~/generated/images/<name>/; override with FIGURE_OUT_DIR.
 
 import { readdirSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { composeSVG } from './compose.mjs';
 import { withPage, renderSVG } from './raster.mjs';
@@ -18,6 +19,9 @@ import { withPage, renderSVG } from './raster.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));            // figure/build
 const DIAGRAMS = join(HERE, '..', 'diagrams');
 const SCALE = 2;                                                // figures are already large
+// Rendered images go to a dedicated output dir (not next to the spec), keeping the
+// skill's diagrams/ clean. Override with FIGURE_OUT_DIR; default ~/generated/images/<name>/.
+const OUT_DIR = process.env.FIGURE_OUT_DIR ? resolve(process.env.FIGURE_OUT_DIR) : join(homedir(), 'generated', 'images');
 
 // Walk a directory tree and collect every *.fig.mjs spec (any depth).
 function findSpecs(dir) {
@@ -40,12 +44,12 @@ await withPage(async (page) => {
     const mod = await import(pathToFileURL(specPath).href);
     const spec = mod.default;
     const name = spec.name || basename(specPath).replace(/\.fig\.mjs$/, '');
-    const outDir = dirname(specPath);                          // outputs sit beside the spec
+    const outDir = join(OUT_DIR, name);                        // -> ~/generated/images/<name>/
     mkdirSync(outDir, { recursive: true });
     const svg = composeSVG(spec);
     writeFileSync(join(outDir, `${name}.svg`), svg + '\n');
     const png = await renderSVG(page, svg, SCALE);
     writeFileSync(join(outDir, `${name}.png`), png);
-    console.log('built', name, '->', `${name}.svg`, '+', `${name}.png`);
+    console.log('built', name, '->', join(outDir, `${name}.svg`), '+', join(outDir, `${name}.png`));
   }
 });
