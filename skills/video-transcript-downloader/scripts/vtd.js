@@ -332,7 +332,7 @@ async function getVideoMeta(url) {
   };
 }
 
-async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
+async function saveTranscriptToFile({ text, url, transcriptDir, meta, filename }) {
   if (!meta) {
     try {
       meta = await getVideoMeta(url);
@@ -341,11 +341,11 @@ async function saveTranscriptToFile({ text, url, transcriptDir, meta }) {
       meta = { id: extractYouTubeId(url), title: null };
     }
   }
-  const filename = buildTranscriptFilename(meta);
+  const fname = filename || buildTranscriptFilename(meta);
   const dir = path.resolve(transcriptDir);
   debug(`Creating directory: ${dir}`);
   fs.mkdirSync(dir, { recursive: true });
-  const fullPath = path.join(dir, filename);
+  const fullPath = path.join(dir, fname);
 
   const frontmatter = [
     "---",
@@ -496,6 +496,8 @@ async function downloadTranscript({
   toFile,
   transcriptDir,
   meta,
+  filename,
+  silent,
 }) {
   if (!url) throw new Error("missing url");
 
@@ -542,12 +544,16 @@ async function downloadTranscript({
       url,
       transcriptDir,
       meta,
+      filename,
     });
-    process.stdout.write(
-      `The transcript is extensive. It's saved to: ${filePath}\n`,
-    );
+    if (!silent)
+      process.stdout.write(
+        `The transcript is extensive. It's saved to: ${filePath}\n`,
+      );
+    return filePath;
   } else {
     process.stdout.write(body + "\n");
+    return null;
   }
 }
 
@@ -557,6 +563,134 @@ async function cmdTranscript(opts) {
   } catch (e) {
     die(e.message);
   }
+}
+
+// ── List (batch) support: transcribe a youtube-curated ./lists/<name>.md ─────
+
+function listSlugFrom(nameOrPath) {
+  return (
+    (path.basename(nameOrPath, ".md") || "list")
+      .replace(/[^a-z0-9-]+/gi, "-")
+      .toLowerCase()
+      .slice(0, 60) || "list"
+  );
+}
+
+function resolveListPath(name, invokedPwd) {
+  if (!name) return null;
+  if (path.isAbsolute(name) || name.includes(path.sep) || name.includes("/")) {
+    return fs.existsSync(name) ? name : fs.existsSync(name + ".md") ? name + ".md" : null;
+  }
+  const base = path.join(invokedPwd, "lists", name);
+  if (fs.existsSync(base)) return base;
+  if (fs.existsSync(base + ".md")) return base + ".md";
+  return null;
+}
+
+function parseListSection(text, section) {
+  const want = section.toLowerCase();
+  let inSection = false;
+  const entries = [];
+  for (const line of text.split("\n")) {
+    const h = line.match(/^##\s+(.+?)\s*$/);
+    if (h) {
+      inSection = h[1].toLowerCase().includes(want);
+      continue;
+    }
+    if (!inSection) continue;
+    const m = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+    if (!m) continue;
+    entries.push({
+      title: m[1].replace(/^\*\*|\*\*$/g, "").trim(),
+      url: m[2],
+      id: extractYouTubeId(m[2]) || "",
+    });
+  }
+  return entries;
+}
+
+function findExistingTranscript(dir, videoId) {
+  if (!videoId || !fs.existsSync(dir)) return null;
+  const esc = videoId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`^${esc}__.*\\.md$`);
+  const hit = fs.readdirSync(dir).filter((f) => re.test(f));
+  return hit.length ? path.join(dir, hit[0]) : null;
+}
+
+async function cmdTranscriptList({ list, lang, timestamps, keepBrackets, extra, force, limit, invokedPwd }) {
+  const listPath = resolveListPath(list, invokedPwd);
+  if (!listPath) die(`list not found: ${list} (looked in ./lists/${list}.md)`);
+  const picks = parseListSection(fs.readFileSync(listPath, "utf8"), "Picks");
+  if (!picks.length) die(`no '## Picks' entries found in ${listPath}`);
+
+  const slug = listSlugFrom(listPath);
+  const dir = path.join(invokedPwd, "transcripts", slug);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const targets = limit ? picks.slice(0, Number(limit)) : picks;
+  const total = targets.length;
+  let done = 0,
+    skipped = 0;
+  const failed = [];
+  const rows = [];
+
+  for (let i = 0; i < total; i++) {
+    const p = targets[i];
+    const label = `[${i + 1}/${total}] ${p.title || p.url}`;
+    const existing = force ? null : findExistingTranscript(dir, p.id);
+    if (existing) {
+      skipped++;
+      process.stderr.write(`${label} — skipped (exists)\n`);
+      rows.push({ ...p, status: "skipped", file: path.basename(existing) });
+      continue;
+    }
+    process.stderr.write(`${label} …\n`);
+    try {
+      const titleSlug = slugifyForFile(p.title || "video").slice(0, 60);
+      const fname = `${p.id || "noid"}__${titleSlug}.md`;
+      const saved = await downloadTranscript({
+        url: p.url,
+        lang,
+        timestamps,
+        keepBrackets,
+        extra,
+        toFile: true,
+        transcriptDir: dir,
+        filename: fname,
+        silent: true,
+      });
+      done++;
+      process.stderr.write(`  ✓ ${path.basename(saved)}\n`);
+      rows.push({ ...p, status: "done", file: path.basename(saved) });
+    } catch (e) {
+      const shortErr = (e.message || "")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .pop() || "failed";
+      failed.push({ ...p, error: shortErr });
+      process.stderr.write(`  ✗ ${shortErr}\n`);
+      rows.push({ ...p, status: `failed: ${shortErr}`, file: "" });
+    }
+  }
+
+  const idx = [
+    `# ${slug} — transcripts`,
+    `_Generated ${new Date().toISOString().split("T")[0]} · ${done} done · ${skipped} skipped · ${failed.length} failed_`,
+    "",
+    "| # | Title | Status | File |",
+    "|---|---|---|---|",
+    ...rows.map((r, i) => `| ${i + 1} | ${r.title} | ${r.status} | ${r.file || "-"} |`),
+  ];
+  fs.writeFileSync(path.join(dir, "INDEX.md"), idx.join("\n") + "\n", "utf8");
+
+  process.stderr.write(`\nDone: ${done} transcribed · ${skipped} skipped · ${failed.length} failed.\n`);
+  if (failed.length) {
+    process.stderr.write("Failures:\n");
+    failed.forEach((f) => process.stderr.write(`  - ${f.title || f.url}: ${f.error}\n`));
+  }
+  process.stderr.write(`Index: ${path.join(dir, "INDEX.md")}\n`);
+  if (failed.length) process.exit(1);
 }
 
 async function cmdSearch({
@@ -761,6 +895,7 @@ function usage() {
   return [
     "usage:",
     `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-file] [--transcript-dir .] [-- <yt-dlp extra…>]`,
+    `  ${rel} transcript --list <name|file> [--lang en] [--limit N] [--force]   # transcribe a youtube list's ## Picks`,
     `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir .]`,
     `  ${rel} download   --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
     `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
@@ -819,6 +954,21 @@ async function main() {
   const limit = opts.limit;
 
   if (cmd === "transcript") {
+    if (opts.list) {
+      if (opts.list === true)
+        die("transcript --list needs a name or path (e.g. --list rust-async)");
+      await cmdTranscriptList({
+        list: opts.list,
+        lang,
+        timestamps,
+        keepBrackets,
+        extra,
+        force: Boolean(opts.force),
+        limit: opts.limit,
+        invokedPwd,
+      });
+      return;
+    }
     await cmdTranscript({
       url,
       lang,

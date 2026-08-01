@@ -1,13 +1,14 @@
 ---
 name: video-transcript-downloader
-version: "1.1.0"
-description: "Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) from YouTube and any yt-dlp-supported site. Transcripts save to a file by default. Use when asked to download a video, rip audio, get subtitles, or fetch a transcript. Triggers on: download this video, get the transcript, rip audio, extract subtitles, save this clip, yt-dlp."
+version: "1.2.0"
+description: "Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) from YouTube and any yt-dlp-supported site. Transcripts save to a file by default. Also transcribes a whole youtube-skill list's Picks in one go (--list), with resume + a manifest. Use when asked to download a video, rip audio, get subtitles, fetch a transcript, or transcribe a list of videos. Triggers on: download this video, get the transcript, rip audio, extract subtitles, save this clip, transcribe these, yt-dlp."
 ---
 
 # Video Transcript Downloader
 
 ```bash
 vtd transcript --url 'https://www.youtube.com/watch?v=...'
+vtd transcript --list rust-async                # transcribe a youtube list's Picks
 vtd search "top 3 AI videos"
 vtd download --url 'https://...'
 vtd audio --url 'https://...'
@@ -41,6 +42,23 @@ vtd transcript --url 'https://...' --transcript-dir ./t/  # output directory
 ```
 
 **Agent:** The script outputs the saved file path. Your task is done — just report the path.
+
+## Transcribe a youtube list
+
+Transcribe every video in a [`youtube`](../youtube) skill list's `## Picks` (the curated winners) — closes the *youtube curates → vtd transcribes* loop.
+
+```bash
+vtd transcript --list rust-async                # bare name → ./lists/rust-async.md
+vtd transcript --list ./lists/rl-lectures.md    # or a path
+vtd transcript --list rust-async --limit 5      # cap a big list
+vtd transcript --list rust-async --force        # re-fetch even if already done
+```
+
+- **Selection:** `## Picks` only; `## Excluded` never; `## Candidates` / `## Maybe` ignored.
+- **Output:** `./transcripts/<list-name>/<videoID>__<title>.md` (one per video).
+- **Resume:** re-running skips videos whose transcript already exists — only missing ones are fetched. Re-run after a failure to self-heal.
+- **Robust:** a video that fails (no captions, unavailable) doesn't abort the batch; exit code is non-zero if anything failed.
+- **Manifest:** writes `./transcripts/<list-name>/INDEX.md` — a table of each Pick, its status, and transcript file.
 
 ## Search
 
