@@ -9,6 +9,14 @@
 ## Status
 
 - **Version:** v1.1.0 (recipes + diagram-types + delivery-polish guides; 35-test suite)
+- **v1.3.1 (2026-08-02):** second dogfood pass on python-openutils (uniinfer architecture
+  diagram). New gotchas folded into SKILL.md: (1) `\n` works in NODE labels but FAILS in
+  connection/edge labels ("unexpected text after unquoted string") — keep edge labels
+  single-line; (2) literal `{`/`}` in a label parse as a MAP ("unexpected text after map") —
+  reword `{alias}` → `:alias`; (3) `shape: stored-data` is invalid → use `shape: cylinder`
+  (+ `callout` for legends); (4) a container's `{ … }` holds child shapes, not prose; (5)
+  `direction: right` + wall-of-text nodes → a 7140px-wide unreadable strip (verified) —
+  `direction: down` + ≤2-line node labels dropped it to a readable 1559×1830.
 - **v1.2.0 (2026-08-01):** loosened the pure-docs rule — added `scripts/d2v`, a by-path
   bash render+verify wrapper (`validate → ASCII to stderr → svg → width-bloat check`).
   Still **no global install/launcher**; the agent invokes `scripts/d2v` by path (the SKILL.md
