@@ -69,7 +69,7 @@ gh api repos/owner/repo/contents/docs --jq '.[].name'
 | Problem | Fix |
 |---------|-----|
 | HTML soup from blob URL | Use raw URL or `--tool jina` |
-| w3m gunzip error | Use `--tool jina` or raw URL |
+| w3m gunzip error | Rare — the skill's `w3m_config` sets `accept_encoding identity` to prevent it. If it still occurs, use `--tool jina` or a raw URL |
 | Wrong branch | Try `main` vs `master` |
 | File too large | Use `curl ... \| head -200` |
 

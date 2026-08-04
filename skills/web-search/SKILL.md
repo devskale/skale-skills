@@ -1,16 +1,31 @@
 ---
 name: web-search
-version: "2.2.1"
+version: "2.2.2"
 description: "Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credentials); an optional Duck API adds advanced filters (site, filetype, inurl, exact). Returns text, image, news, or video results. Use when the user wants to search the web, look something up, or find images/news/videos. Triggers on: web search, search for, google, look up, find online, image/news/video search."
 ---
 
 # Web Search
 
 ```bash
-web-search "your query"              # That's it.
+web-search "your query"
 ```
 
-Works globally after install. No credentials needed (public SearXNG).
+That's the whole command. No flags, no pipes, no `export PATH=`. Works out of the box — public SearXNG, no credentials.
+
+## Keep it simple
+
+The default is the right call ~90% of the time. Don't add flags you don't need.
+
+| ✗ Don't | ✓ Do |
+|---------|------|
+| `export PATH="$HOME/.local/bin:$PATH"; web-search "q" --max 6 2>&1 \| head -60` | `web-search "q"` |
+| `web-search "q" --max 10 --page 1 --region wt-wt` | `web-search "q"` |
+| `web-search "q" --json \| head` | `web-search "q"` |
+
+- **Output is already concise** (10 results, markdown). No `head`, no `2>&1`.
+- **`web-search: command not found`?** Install once (below) or use the full path `~/.local/bin/web-search "q"`. Don't prefix every call with `export PATH=`.
+- **Want fewer/more results?** `--max 5` / `--max 20` — but the default 10 is usually right.
+- **Want images/news/video?** `--categories images` / `--categories news`.
 
 ## Install
 
@@ -36,7 +51,46 @@ web-search --selfcheck               # Show version + last update date
 
 Auto-updates in the background every 7 days. No search is blocked — the update runs in a detached process.
 
-## Configure Backends (optional)
+## Usage
+
+```bash
+web-search "react hooks tutorial"             # default: 10 text results
+web-search "cats" --categories images         # images
+web-search "AI news" --categories news        # news
+web-search "query" --max 20                   # more results
+web-search "query" --time-range day           # last 24h
+```
+
+## Options (only if you need them)
+
+| Option | Description |
+|--------|-------------|
+| `--max N` | Max results (default: 10) |
+| `--categories CAT` | images, news, videos |
+| `--time-range RANGE` | day, week, month, year (both backends) |
+| `--json` | Raw JSON to stdout |
+| `-v, --verbose` | Show backend on stderr |
+| `--page N` | Results page (default: 1) |
+| `--language LANG` | Search language (default: en). SearXNG only. |
+| `--region CODE` | Region (us-en, de-de). Default: wt-wt. |
+| `--engines LIST` | Comma-separated engines (SearXNG only) |
+| `--api` / `--searxng` | Force a backend |
+| `--update` | Update the skill now |
+| `--selfcheck` | Show version and last update |
+
+### Advanced filters (require Duck API token via `credgoo WEB_SEARCH_BEARER`)
+
+| Option | Description |
+|--------|-------------|
+| `--site DOMAIN` | Filter by domain |
+| `--filetype EXT` | Filter by file type (pdf, txt, etc.) |
+| `--inurl TEXT` | URL must contain text |
+| `--exclude TERMS` | Comma-separated terms to exclude |
+| `--exact` | Exact phrase match |
+
+> Duck-only filters (`--site`, `--filetype`, `--inurl`, `--exclude`, `--exact`) are silently ignored on SearXNG with a warning. Use `--api` to force the Duck backend.
+
+## Configure backends (optional)
 
 Public SearXNG works out of the box. For better reliability:
 
@@ -48,7 +102,7 @@ credgoo searx        # Returns: URL@username@password
 
 Or set the `SEARXNG_URL` env var (bare URL, or `URL@user@pass`).
 
-**Duck API** (advanced filters):
+**Duck API** (enables `--site`, `--filetype`, `--inurl`, `--exclude`, `--exact`):
 
 ```bash
 credgoo WEB_SEARCH_BEARER
@@ -60,60 +114,18 @@ credgoo WEB_SEARCH_BEARER
 uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
 ```
 
-## Usage
+## Gotchas
 
-```bash
-web-search "react hooks tutorial"
-web-search "cats" --categories images
-web-search "AI news" --categories news
-web-search "query" --max 20
-web-search "query" --time-range day
-web-search "query" -v                      # verbose (shows backend on stderr)
-web-search "query" --json                  # raw JSON to stdout
-```
-
-## Options
-
-| Option | Description |
-|--------|-------------|
-| `--max N` | Max results (default: 10) |
-| `--page N` | Results page (default: 1) |
-| `--categories CAT` | images, news, videos |
-| `--time-range RANGE` | day, week, month, year — works on both backends |
-| `--language LANG` | Search language (default: en). SearXNG only. |
-| `--region CODE` | Region (e.g., us-en, de-de). Default: wt-wt. |
-| `--json` | Output raw JSON |
-| `-v, --verbose` | Show backend (printed to stderr) |
-| `--api` | Force Duck API backend |
-| `--searxng` | Force SearXNG backend |
-| `--engines LIST` | Comma-separated engines (SearXNG only) |
-| `--update` | Update the skill now |
-| `--selfcheck` | Show version and last update |
-
-### Advanced (requires Duck API token)
-
-| Option | Description |
-|--------|-------------|
-| `--site DOMAIN` | Filter by domain |
-| `--filetype EXT` | Filter by file type (pdf, txt, etc.) |
-| `--inurl TEXT` | URL must contain text |
-| `--exclude TERMS` | Comma-separated terms to exclude |
-| `--exact` | Exact phrase match |
-| `--timelimit D/W/M/Y` | Time filter shorthand (Duck API only). Prefer `--time-range`. |
-
-> **Duck API filters** (`--site`, `--filetype`, `--inurl`, `--exclude`, `--exact`) are silently ignored on SearXNG with a warning.
-
-## Edge Cases
-
-- `--time-range` values must be **lowercase**: `day`, `week`, `month`, `year`
+- `--time-range` values are **lowercase**: `day`, `week`, `month`, `year`
 - `-v, --verbose` output goes to **stderr** — safe to pipe stdout
+- Duck-only filters are ignored on SearXNG (warning printed). Use `--api` to force Duck.
 - Exit codes: `0` = success, `1` = search error
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| `web-search: command not found` | Add `~/.local/bin` to PATH: `export PATH="$HOME/.local/bin:$PATH"` |
+| `web-search: command not found` | Run `./install.sh` once, or call `~/.local/bin/web-search "q"`. Don't prefix calls with `export PATH=`. |
 | `uv: command not found` | Run `install.sh` again — it auto-installs uv |
 | Dependency errors | `web-search --update` |
 | All SearXNG instances fail | Configure a private instance via `credgoo searx` |

@@ -126,7 +126,7 @@ dependencies = [
 
 [[package]]
 name = "fetch-url-skill"
-version = "2.7"
+version = "2.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "credgoo" },

@@ -1,6 +1,6 @@
 [project]
 name = "fetch-url-skill"
-version = "2.7"
+version = "2.7.1"
 description = "Fetch URL content using text-based browsers or APIs"
 readme = "SKILL.md"
 requires-python = ">=3.9"

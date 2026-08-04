@@ -709,7 +709,7 @@ def main():
         epilog="""
 Examples:
   %(prog)s "https://example.com"           # Just works (auto-select)
-  %(prog)s "https://reddit.com/r/python"   # Auto-detects Reddit, uses markdown
+  %(prog)s "https://reddit.com/r/python"   # Auto-detects Reddit, uses w3m
   %(prog)s "https://stackoverflow.com/..." # Auto-detects, bypasses blocks
   %(prog)s "https://docs.python.org" --tool jina  # Force specific tool
         """

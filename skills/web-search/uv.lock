@@ -195,7 +195,7 @@ wheels = [
 
 [[package]]
 name = "web-search-skill"
-version = "2.2.1"
+version = "2.2.2"
 source = { virtual = "." }
 dependencies = [
     { name = "credgoo" },
