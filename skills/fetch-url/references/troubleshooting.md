@@ -17,8 +17,10 @@ fetch-url "https://example.com" --tool markdown
 
 ### w3m "gunzip" error
 
+Rare — the skill's `w3m_config` sets `accept_encoding identity` to prevent it.
+
 ```bash
-fetch-url "https://example.com" --tool lynx
+fetch-url "https://example.com" --tool lynx   # if it still occurs
 ```
 
 ### Request timed out

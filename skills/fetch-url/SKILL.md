@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-version: "2.7"
+version: "2.7.1"
 description: "Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jina, markdown, chrome) with smart fallback. Use when the user wants to read an article, docs, or scrape text from a page. Triggers on: fetch this URL, read this page, extract the text, scrape this site, get the article content. Works on Reddit, StackOverflow, GitHub, docs sites, and more."
 ---
 
@@ -11,6 +11,20 @@ fetch-url "https://example.com"          # That's it.
 ```
 
 Extracts text from any webpage. Works globally after install. **No credentials needed** — the free tools (w3m, lynx, jina, markdown) cover most sites.
+
+## Keep it simple
+
+The default auto-selects the best tool per site. Don't add flags you don't need.
+
+| ✗ Don't | ✓ Do |
+|---------|------|
+| `export PATH="$HOME/.local/bin:$PATH"; fetch-url "url" --tool jina -v 2>&1 \| head -100` | `fetch-url "url"` |
+| `fetch-url "url" --tool auto --clean -v` | `fetch-url "url"` |
+
+- **Output is already cleaned** (empty lines collapsed). No `head`, no `2>&1`.
+- **`fetch-url: command not found`?** Install once (below) or use the full path `~/.local/bin/fetch-url "url"`. Don't prefix every call with `export PATH=`.
+- **Tool auto-selects per site** (Reddit→w3m, GitHub→jina, StackOverflow→markdown). Reach for `--tool` only when the default output is poor.
+- **JS/Cloudflare-protected site?** `fetch-url "url" --tool chrome` (or `--tool markdown --md-method browser`).
 
 ## Install
 
