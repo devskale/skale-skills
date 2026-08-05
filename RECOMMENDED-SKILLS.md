@@ -85,6 +85,28 @@ npx @anthropic-ai/skills add <name>
 | **peep** | X/Twitter — read, search, post, bookmarks, trending | [devskale/peep](https://github.com/devskale/peep) |
 | **impeccable** | Design skill: shape, critique, harden, polish frontend UI + anti-pattern detector. Cross-harness (pi, Claude, Codex, Cursor, …). Setup guide: [`guides/impeccable-setup.md`](guides/impeccable-setup.md) | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) · `npx impeccable install` |
 
+### Matt Pocock's Skills (`mattpocock/skills`) — recommended, install globally
+
+Engineering skills for real work: `grill-me`, `tdd`, `diagnosing-bugs`, `triage`, `code-review`, `implement`, `research`, `prototype`, `domain-modeling`, `codebase-design`, and ~25 more. **Install globally once** so every project sees the same version — no per-project `skills-lock.json` drift.
+
+```bash
+# Install once, globally (user-level)
+npx skills@latest add mattpocock/skills -g -y
+```
+
+Files land at `~/.agents/skills/`; Pi auto-discovers them via symlinks in `~/.pi/agent/skills/`. One source of truth, available in every project.
+
+```bash
+# Update all global skills to latest
+npx skills@latest update -g
+
+# Remove specific skills (or all) from the global scope
+npx skills@latest remove -g -y <skill>...   # e.g. remove -g -y tdd grill-me
+npx skills@latest remove -g -y -s '*'       # all global skills
+```
+
+> ⚠️ **`pi config` / `pi config -l` does not manage these.** `mattpocock/skills` ships no pi manifest, so it is **not** a pi package — `pi config` only toggles resources from installed packages. These skills load via `~/.pi/agent/skills/` symlinks, so add and remove them with the `skills` CLI above, not `pi config`. To temporarily disable one without removing it, delete the symlink from `~/.pi/agent/skills/` (re-add with `npx skills@latest add mattpocock/skills -g -y`).
+
 ## What We Maintain Here
 
 Only **custom skills** we actively develop:
