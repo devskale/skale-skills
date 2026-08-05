@@ -1,6 +1,6 @@
 ---
 name: surf
-version: "1.4.3"
+version: "1.4.5"
 description: "Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screenshots, and tab-aware automation — no daemon, no debug port, no extension, no per-connection dialog. Sessions stay intact (cookies, logins, tabs). Uses macOS AppleScript + Chrome's 'Allow JavaScript from Apple Events'. Use when the user wants to automate, scrape, click, fill, read, or screenshot the browser they are already logged into. Triggers on: control my Chrome, drive my browser, automate my logged-in browser, scrape this page, fill this form, click this, read the page, take a browser screenshot, surf."
 ---
 
@@ -36,7 +36,8 @@ Navigation & tabs
   surf here                       active/target tab: URL | title; --json
   surf select [wN.tN | reset]     pin a tab (operate background tabs w/o focus); reset to clear
   surf find-tab "<q>" [--activate]  search tabs by URL/title; --activate focuses first match
-  surf open <url> · new [<url>] · reload · back · fwd · close
+  surf open <url> [--new]         reuse an open tab (exact URL) or navigate; --new forces a fresh nav
+  surf new [<url>] · reload · back · fwd · close
 
 Read
   surf title | url
@@ -98,6 +99,7 @@ Ops: `title`/`url`/`text`/`html`/`attr`/`count`/`list`/`exists`/`visible`/`click
 - **`press` uses real key synthesis** — so Enter submits and `cmd+a` selects all (unlike JS-dispatched events) — and activates the target window first; it cannot press keys on a background tab. Needs **Accessibility** for your terminal.
 - **`eval` returns one stringified value.** For complex shapes, return JSON: `surf eval 'JSON.stringify({...})'`.
 - **Exit codes:** `0` = success · `1` = error / assertion failed / timeout. Not-found is *not* an error for read/interact commands (they return JSON `{ok:false}` with rc 0); assertions and `wait*` return rc 1 on failure.
+- **`open` reuses by default.** `surf open <url>` switches to an already-open tab instead of navigating — no duplicate tabs. Tier 1: exact URL match (trailing slash ignored). Tier 2: same-origin path-segment prefix — `open localhost:3000/dashboard` reuses a tab at `localhost:3000/dashboard/ai-chat`, landing on the deeper (already logged-in) page. Pass `--new` to force a fresh navigation of the target tab.
 
 ## References
 

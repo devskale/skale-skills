@@ -53,9 +53,56 @@ cmd_here() {
   fi
 }
 
-cmd_open()   { [ "${1-}" ] || die "open needs a url"; local tgt W T; tgt="$(get_target)"
-  if [ "$tgt" = "front" ]; then osascript -e "tell application \"$APP\" to set URL of active tab of front window to \"$1\"" >/dev/null && echo "ok: $1"
-  else W=$(echo "$tgt"|cut -d' ' -f1); T=$(echo "$tgt"|cut -d' ' -f2); osascript -e "tell application \"$APP\" to set URL of tab $T of window $W to \"$1\"" >/dev/null && echo "ok (w$W.t$T): $1"; fi
+cmd_open() {
+  local url="" force_new=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --new) force_new=true; shift ;;
+      -*) die "open: unknown flag $1 (try: surf help open)" ;;
+      *) [ -z "$url" ] && url="$1" || die "open: unexpected argument '$1'"; shift ;;
+    esac
+  done
+  [ -n "$url" ] || die "open needs a url"
+
+  # Reuse by default — two tiers, tried in order (--new skips both):
+  #   1. exact URL match (trailing slash ignored)
+  #   2. same-origin path-segment prefix: the request path is a prefix of an
+  #      open tab's path at a "/" boundary — e.g. open "localhost:3000/dashboard"
+  #      reuses a tab at "localhost:3000/dashboard/ai-chat". Lands on the deeper
+  #      (already logged-in) page instead of duplicating.
+  if ! $force_new; then
+    local hit W T taburl
+    # Tier 1: exact.
+    hit="$(_surf_find_tab_by_url "$url")"
+    if [ -n "$hit" ]; then
+      W="$(printf '%s' "$hit" | awk '{print $1}')"
+      T="$(printf '%s' "$hit" | awk '{print $2}')"
+      _surf_activate_tab "$W" "$T"
+      _surf_pin_target "$W" "$T" "$url"
+      echo "reuse: w$W.t$T  $url"
+      return 0
+    fi
+    # Tier 2: same-origin path-segment prefix.
+    hit="$(_surf_find_tab_by_prefix "$url")"
+    if [ -n "$hit" ]; then
+      W="$(printf '%s' "$hit" | cut -f1)"
+      T="$(printf '%s' "$hit" | cut -f2)"
+      taburl="$(printf '%s' "$hit" | cut -f3-)"
+      _surf_activate_tab "$W" "$T"
+      _surf_pin_target "$W" "$T" "$taburl"
+      echo "reuse: w$W.t$T  $url  →  $taburl"
+      return 0
+    fi
+  fi
+
+  # No reusable tab: navigate the target tab (current behavior).
+  local tgt W T; tgt="$(get_target)"
+  if [ "$tgt" = "front" ]; then
+    osascript -e "tell application \"$APP\" to set URL of active tab of front window to \"$url\"" >/dev/null && echo "ok: $url"
+  else
+    W="$(echo "$tgt" | cut -d' ' -f1)"; T="$(echo "$tgt" | cut -d' ' -f2)"
+    osascript -e "tell application \"$APP\" to set URL of tab $T of window $W to \"$url\"" >/dev/null && echo "ok (w$W.t$T): $url"
+  fi
 }
 cmd_new()    {
   local u="${1-about:blank}"
@@ -93,6 +140,81 @@ cmd_close() {
   fi
 }
 
+# ── tab helpers (shared by find-tab and open's reuse path) ─────────────
+
+# Bring window W to the front and make tab T its active tab. Best-effort
+# (ignore errors — used for focusing a reused/matched tab).
+_surf_activate_tab() {
+  osascript -e "tell application \"$APP\" to set index of window $1 to 1" >/dev/null 2>&1 || true
+  osascript -e "tell application \"$APP\" to set active tab index of window $1 to $2" >/dev/null 2>&1 || true
+  osascript -e "tell application \"$APP\" to activate" >/dev/null 2>&1 || true
+}
+
+# First tab whose URL exactly matches $1. A single trailing slash is ignored on
+# both sides, so "https://x.com" matches a tab showing "https://x.com/". Echoes
+# "W T" on the first match; nothing on no match. Uses cmd_tabs --json (in-process).
+# JSON is passed as argv (not stdin) to avoid stdin contention with cmd_tabs'
+# internal osascript|python pipe.
+_surf_find_tab_by_url() {
+  local tabs_json
+  tabs_json="$(cmd_tabs --json 2>/dev/null || true)"
+  [ -n "$tabs_json" ] || return 0
+  SURF_URL="$1" python3 -c '
+import sys, json, os
+def norm(u):
+    return u[:-1] if (u and u.endswith("/") and u != "/") else u
+want = norm(os.environ["SURF_URL"])
+try:
+    data = json.loads(sys.argv[1])
+except Exception:
+    data = []
+for t in data:
+    if norm(t.get("url", "") or "") == want:
+        print("%d %d" % (t["window"], t["tab"]))
+        break
+' "$tabs_json"
+}
+
+# First tab whose URL is a same-origin path-segment prefix of $1: the request's
+# scheme://host:port must match, and its path must be a prefix of the tab's path
+# at a "/" boundary. So open "localhost:3000/dashboard" reuses a tab at
+# "localhost:3000/dashboard/ai-chat" (lands on the deeper logged-in page), but
+# "…/ai-chat" does NOT match "…/ai-chat-settings". Echoes "W<TAB>T<TAB>url" of
+# the first match; nothing on no match.
+_surf_find_tab_by_prefix() {
+  local tabs_json
+  tabs_json="$(cmd_tabs --json 2>/dev/null || true)"
+  [ -n "$tabs_json" ] || return 0
+  SURF_URL="$1" python3 -c '
+import sys, json, os
+from urllib.parse import urlsplit
+
+def norm_path(p):
+    # strip a single trailing slash (but keep root "/") so "/a/" == "/a"
+    return p[:-1] if (len(p) > 1 and p.endswith("/")) else p
+
+want = urlsplit(os.environ["SURF_URL"])
+want_origin = (want.scheme, want.netloc)
+want_path = norm_path(want.path or "")
+if not want_path:
+    sys.exit(0)  # no path to prefix-match (e.g. bare "https://host")
+try:
+    data = json.loads(sys.argv[1])
+except Exception:
+    data = []
+for t in data:
+    u = t.get("url", "") or ""
+    cur = urlsplit(u)
+    if (cur.scheme, cur.netloc) != want_origin:
+        continue
+    cp = norm_path(cur.path or "")
+    # prefix at a "/" boundary: cp == want_path, or cp starts with want_path + "/"
+    if cp == want_path or cp.startswith(want_path + "/"):
+        print("%d\t%d\t%s" % (t["window"], t["tab"], u))
+        break
+' "$tabs_json"
+}
+
 # ── find-tab: search open tabs by URL or title (substring, case-insensitive) ──
 cmd_find_tab() {
   [ "${1-}" ] || die "find-tab needs a query (matched against URL or title)"
@@ -113,9 +235,7 @@ for t in data:
   if $activate; then
     first="$(printf '%s\n' "$rows" | head -1)"
     W="$(printf '%s\n' "$first" | cut -f1)"; T="$(printf '%s\n' "$first" | cut -f2)"
-    osascript -e "tell application \"$APP\" to set index of window $W to 1" >/dev/null 2>&1 || true
-    osascript -e "tell application \"$APP\" to set active tab index of window $W to $T" >/dev/null 2>&1 || true
-    osascript -e "tell application \"$APP\" to activate" >/dev/null 2>&1 || true
+    _surf_activate_tab "$W" "$T"
     echo "activated: w$W.t$T" >&2
   fi
 }

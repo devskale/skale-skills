@@ -1,6 +1,6 @@
 # Surf — Command Reference
 
-Complete reference for `surf`, the macOS AppleScript CLI for your real Google Chrome. v1.3.1.
+Complete reference for `surf`, the macOS AppleScript CLI for your real Google Chrome. v1.4.5.
 
 `surf` targets the **active tab of the front window** unless you `surf select` a tab. Selectors are CSS (`document.querySelector` / `querySelectorAll`). `--json` is supported on `tabs`, `here`, `title`, `url`, `text`, `html`, `attr`, `count`, `exists`, `visible`, `assert` (v1.4.3); `list`, `table`, `cookie --json`, `localstorage` are JSON natively.
 
@@ -28,7 +28,7 @@ The target is stored in `~/.config/surf/target` as `W T URL` (override with `SUR
 |---|---|
 | `surf tabs` | every window → tab as `wN.tN  URL  \|  title`. `--json` → `[{window,tab,url,title}]` |
 | `surf here` | `URL \| title` of the target tab. `--json` → `{window,tab,url,title}` |
-| `surf open <url>` | navigate the target tab |
+| `surf open <url> [--new]` | reuse an open tab (exact URL, then same-origin path-segment prefix) or navigate the target tab; `--new` forces navigation |
 | `surf new [<url>]` | new tab in a normal (non-incognito, JS-capable) window (default `about:blank`) |
 | `surf reload` | reload target tab |
 | `surf back` / `surf fwd` | `history.back()` / `history.forward()` |

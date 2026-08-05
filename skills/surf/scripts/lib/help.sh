@@ -118,16 +118,32 @@ SEE ALSO
 EOF
 ;;
     open) cat <<'EOF'
-surf open — navigate the target tab to a URL
+surf open — be on a URL (reuse an open tab, else navigate)
 
 USAGE
-  surf open <url>
+  surf open <url> [--new]
+
+RETURNS
+  "reuse: wN.tN  <url>"  — a tab with that URL was already open; switched to it
+                          (and pinned as the target). No navigation.
+  "ok: <url>"            — no reusable tab; navigated the target tab.
+  "ok (wN.tN): <url>"    — same, with a pinned target.
+
+NOTES
+  Reuse is the default — two tiers, tried in order:
+    1. exact URL match (a single trailing slash is ignored)
+    2. same-origin path-segment prefix: the request path is a prefix of an open
+       tab's path at a "/" boundary — e.g. open "localhost:3000/dashboard" reuses
+       a tab at "localhost:3000/dashboard/ai-chat", landing on the deeper
+       (already logged-in) page instead of duplicating.
+  --new skips both tiers and navigates the target tab (forces a fresh load).
 
 EXAMPLE
   surf open "https://example.com"
+  surf open --new "https://example.com"   # force a fresh navigation
 
 SEE ALSO
-  new · back · fwd · reload
+  new · find-tab · select · back · fwd · reload
 EOF
 ;;
     new) cat <<'EOF'
