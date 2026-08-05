@@ -78,6 +78,17 @@ get_target() {
   echo "$_SURF_RESOLVED"
 }
 
+# Pin tab W.T as the target (writes the target file). $3 = url (optional; fetched
+# if omitted). Invalidates the per-process target cache so a later get_target()
+# re-reads. Used by cmd_select and cmd_open's reuse path.
+_surf_pin_target() {
+  local W="$1" T="$2" U="${3-}"
+  [ -n "$U" ] || U="$(osascript -e "tell application \"$APP\" to get URL of tab $T of window $W" 2>/dev/null || true)"
+  mkdir -p "$(dirname "$TARGET_FILE")"
+  printf '%s %s %s\n' "$W" "$T" "$U" > "$TARGET_FILE"
+  unset _SURF_RESOLVED
+}
+
 cmd_select() {
   local arg="${1-}"
   if [ -z "$arg" ] || [ "$arg" = "show" ]; then
@@ -91,8 +102,7 @@ cmd_select() {
   if [[ "$arg" =~ ^w([0-9]+)\.t([0-9]+)$ ]]; then
     local W=${BASH_REMATCH[1]} T=${BASH_REMATCH[2]} U
     U="$(osascript -e "tell application \"$APP\" to get URL of tab $T of window $W" 2>/dev/null || true)"
-    mkdir -p "$(dirname "$TARGET_FILE")"
-    printf '%s %s %s\n' "$W" "$T" "$U" > "$TARGET_FILE"
+    _surf_pin_target "$W" "$T" "$U"
     echo "target → window $W, tab $T  ($U)"
   else
     die "select: expected wN.tN (e.g. w1.t3), reset, or blank. List refs with: surf tabs"

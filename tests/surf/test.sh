@@ -95,7 +95,26 @@ else
     assert "count p is 2"            "[ \"\$(surf count 'p' 2>/dev/null)\" = '2' ]"
     assert "eval returns JSON-ish"   "surf eval '1+1' 2>/dev/null | grep -q '2'"
     assert "title works"             "surf title 2>/dev/null | grep -qi 'example'"
+    # reuse: opening the same URL reuses the open tab (trailing slash normalized)
+    REUSE_OUT=$(surf open "https://example.com/" 2>&1 || true)
+    assert "open reuses existing tab"   "printf '%s' "$REUSE_OUT" | grep -q '^reuse:'"
+    # --new forces a fresh navigation (no reuse)
+    NAV_OUT=$(surf open --new "https://example.com" 2>&1 || true)
+    assert "open --new navigates (no reuse)" "printf '%s' "$NAV_OUT" | grep -q '^ok:'"
+    # prefix tier: open a deeper path, then open its prefix → reuse the deeper tab
+    surf new "https://example.org/a/b/c" >/dev/null 2>&1 && sleep 1.5 || true
+    PREFIX_OUT=$(surf open "https://example.org/a/b" 2>&1 || true)
+    assert "open prefix reuses deeper tab" "printf '%s' "$PREFIX_OUT" | grep -q '^reuse:'"
 fi
+echo ""
+
+# ── 10. open reuse (--new) ─────────────────────────────────────────────
+echo "[10] open reuse behavior..."
+assert "SKILL.md documents --new"   "grep -q -- '--new' SKILL.md"
+assert "nav.sh has reuse logic"     "grep -q 'reuse:' scripts/lib/nav.sh"
+assert "help open mentions reuse"   "surf help open 2>&1 | grep -qi 'reuse'"
+assert "help open mentions --new"   "surf help open 2>&1 | grep -q -- '--new'"
+assert "nav.sh has prefix tier"     "grep -q '_surf_find_tab_by_prefix' scripts/lib/nav.sh"
 echo ""
 
 echo "==============================="

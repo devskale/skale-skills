@@ -59,6 +59,8 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 
 ## Done
 
+- [x] v1.4.5 — `open` Tier 2 reuse: same-origin path-segment prefix. `surf open "localhost:3000/dashboard"` now reuses a tab at `localhost:3000/dashboard/ai-chat` (lands on the deeper, already logged-in page) instead of duplicating. Boundary-safe: `…/ai-chat` does not match `…/ai-chat-settings`. Tier 1 (exact) still tried first. furious 40/40.
+- [x] v1.4.4 — `open` reuses by default: `surf open <url>` switches to an already-open tab with that URL (exact match, single trailing slash ignored) instead of navigating — no more duplicate tabs. `--new` forces a fresh navigation of the target tab. On reuse the tab is activated + pinned as the target. Refactor: shared `_surf_activate_tab` / `_surf_pin_target` / `_surf_find_tab_by_url` helpers (find-tab and select now use them too). furious 37/37.
 - [x] v1.4.3 — Tier 5: `table` scraper; rich-text `fill` (contenteditable auto-detect, `mode` field); consistent `--json` on title/url/html/attr/exists/visible/assert. Fix: title/url dispatch now passes `"$@"` (--json was silently dropped). furious 124/124.
 - [x] v1.4.2 — Tier 3 commands: `form` (batch fill), `find-tab` (--activate), `bookmarks` (--profile/--json), `cookie`, `localstorage`, `download` (Chrome v136+ temp-dir aware), `shot-full` (scroll + Pillow stitch). furious 111/111.
 - [x] v1.4.1 — robust JS-failure classification: O(1) `about:blank` sentinel probe (mirrors `doctor`'s validated toggle test) + incognito short-circuit; drops the O(N) 10-tab scan and `surf tabs` subprocess re-entry. furious 101/101.
