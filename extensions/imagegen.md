@@ -8,7 +8,7 @@ Pi extension with two entry points, both backed by one shared core (`generateAnd
   adjust style, try variants.
 - **`/imagegen` command** (alias `/img`) — direct, no-LLM generation:
   ```
-  /imagegen a red cube on white --model tu@z-image-turbo --size 1024x1024
+  /imagegen a red cube on white --model tu@z-image-turbo --size 512x512
   /img a fox logo, flat vector            # alias; default model pollinations@flux
   ```
   Flags: `--model`/`-m`, `--size`/`-s`, `--n`/`-n`, `--seed`. Generates
@@ -130,7 +130,7 @@ pi.registerTool({
   parameters: Type.Object({
     prompt: Type.String(),
     model:  Type.Optional(Type.String()),  // "pollinations@flux" (default)
-    size:   Type.Optional(Type.String()),  // "1024x1024" (default)
+    size:   Type.Optional(Type.String()),  // "512x512" (default)
     n:      Type.Optional(Type.Number()),  // 1–4
     seed:   Type.Optional(Type.Number()),
   }),
@@ -170,7 +170,7 @@ cat <file>.txt                 # sidecar (WebP/GIF/BMP)
 | Param | Default | Reason |
 |---|---|---|
 | `model` | `pollinations@flux` | ~1.8 s latency → cheap iteration |
-| `size` | `1024x1024` | square, broadly supported |
+| `size` | `512x512` | compact, broadly supported (512–640px range keeps files small) |
 | output dir | `~/Pictures/generated/` on macOS (or `./uploads/` if present in cwd for πui web URLs; `./generated/` elsewhere) | a stable home dir for generated images; override with `IMAGEGEN_OUTPUT_DIR` |
 
 ### Iteration model (v1)
@@ -316,7 +316,7 @@ curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \
 curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $(credgoo tu)" \
-  -d '{"model":"tu@z-image-turbo","prompt":"a tiny red cube on white, centered","size":"1024x1024"}'
+  -d '{"model":"tu@z-image-turbo","prompt":"a tiny red cube on white, centered","size":"512x512"}'
 ```
 
 ---
