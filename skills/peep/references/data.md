@@ -7,7 +7,7 @@ inbox, and archive import. Cache writes are best-effort and never break live com
 ## Local cache
 
 ```bash
-peep cache                                  # stats (tweet/profile/bookmark counts)
+peep cache --stats                             # stats (tweet/profile/bookmark counts)
 peep local-search "typescript"              # offline FTS5 over cached tweets
 peep local-search "bug" --author @steipete --since 2025-01-01
 ```
@@ -67,6 +67,18 @@ peep starred folders       # all folders
 peep starred stats         # priority distribution
 ```
 
+### Media cache
+
+`peep starred media` downloads and manages cached images for starred bookmarks (100MB FIFO):
+
+```bash
+peep starred media --all            # download images for all starred bookmarks
+peep starred media --tweet <id>     # download for a specific tweet
+peep starred media --list           # list cached media files
+peep starred media --stats          # media cache stats (bytes used / max)
+peep starred media --clear          # delete all cached media
+```
+
 Priority levels: `low` ⚪ · `normal` 🟢 · `high` 🟠 · `critical` 🔴.
 
 ## AI Inbox
@@ -107,7 +119,7 @@ peep mutes --add @username                 # or: peep mute @username
 peep mutes --remove @username              # or: peep unmute @username
 ```
 
-Aliases: `ban`/`unban` = block/unblock; `mute`/`unmute` = mute/unmute. `--import-file` accepts handles or tweet/profile URLs (one per line).
+Aliases: `ban`/`unban` = block/unblock; `mute`/`unmute` = mute/unmute. `--import-file` is **blocks-only** — `mutes` has no import flag; to bulk-mute, loop `peep mutes --add @handle`.
 
 ## Research
 
