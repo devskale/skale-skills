@@ -1,7 +1,7 @@
 ---
 name: peep
-version: "0.9.0"
-description: "Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/replies, search, mentions, user timelines, home feed, bookmarks, likes, news/trending, lists, following/followers. Knowledge skill — drives the `peep` binary directly (no bundled scripts). Use when the user wants to read or catch up on X/Twitter, fetch a tweet/thread by URL or ID, search tweets, list bookmarks/likes, or see who someone follows. Triggers on: read a tweet, tweet thread, X, Twitter, bookmarks, timeline, mentions, search tweets, followers, following, trending, news, peep."
+version: "0.9.1"
+description: "Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/replies, search, mentions, user timelines, home feed, bookmarks, likes, news/trending, lists, following/followers. Knowledge skill — drives the `peep` binary directly (no bundled scripts); requires installing the binary (see Setup). Use when the user wants to read or catch up on X/Twitter, fetch a tweet/thread by URL or ID, search tweets, list bookmarks/likes, or see who someone follows. Triggers on: read a tweet, tweet thread, X, Twitter, bookmarks, timeline, mentions, search tweets, followers, following, trending, news, peep."
 license: MIT
 ---
 
@@ -19,12 +19,55 @@ peep whoami                                  # which account am I?
 
 > **Use peep to READ.** It hits X's undocumented GraphQL with cookie auth; X blocks bots fast, so avoid posting. Write commands (`tweet`/`reply`/`follow`/…) are **off by default** — see [Write commands](#write-commands--disabled-by-default-discouraged).
 
-## Install
+## Setup / Install
+
+peep is a **standalone binary** published as a GitHub release from [`devskale/peep`](https://github.com/devskale/peep). It needs **no Python/Node runtime** — just the binary on your `PATH`. Pick one install method:
+
+### Option 1 — GitHub release binary (recommended, macOS + Linux)
+
+Grab the prebuilt binary for your platform from the [`latest` release](https://github.com/devskale/peep/releases/latest):
 
 ```bash
-curl -sL https://skale.dev/peep/install.sh | sh     # macOS / Linux x64 → installs the `peep` binary
+# macOS (arm64/x86_64)
+curl -sL https://github.com/devskale/peep/releases/download/latest/peep-darwin -o peep
+# Linux x64
+# curl -sL https://github.com/devskale/peep/releases/download/latest/peep-linux-x64 -o peep
+
+chmod +x peep
+sudo mv peep /usr/local/bin/          # or ~/.local/bin (add to PATH)
 ```
-Build from source: `git clone https://github.com/devskale/peep && cd peep && bun install && bun run build:binary`. Verify with `peep --version`.
+
+### Option 2 — install script (auto-detects OS/arch)
+
+```bash
+curl -sL https://raw.githubusercontent.com/devskale/peep/main/scripts/install.sh | sh
+```
+
+Fetches the latest GitHub release and drops `peep` into `/usr/local/bin` (or `~/.local/bin` if not writable). If it lands in `~/.local/bin`, add that to your PATH:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # add to ~/.bashrc / ~/.zshrc
+```
+
+> Note: the install script currently builds **macOS + Linux x64** binaries only. For Linux arm64, use the direct release download or build from source.
+
+### Option 3 — build from source (needs bun)
+
+```bash
+git clone https://github.com/devskale/peep && cd peep
+bun install && bun run build:binary   # produces ./peep
+sudo mv peep /usr/local/bin/
+```
+
+### Verify
+
+```bash
+peep --version   # → 0.9.0 (…)
+peep check       # → which credentials are sourced + from where
+peep whoami      # → the X account the cookies belong to (needs auth, below)
+```
+
+> **Auth isn't part of install.** peep reuses your logged-in X browser session — see [Authentication](#authentication-read-this-first). Until you've logged into x.com in a browser, `whoami` will report missing credentials.
 
 ## Authentication (read this first)
 
@@ -88,7 +131,7 @@ peep search "x" --all --cursor "<cursor>" --json   # continue from a prior page
 
 Every read silently populates `~/.peep/cache.db` (SQLite + FTS5):
 ```bash
-peep cache                                        # cache stats
+peep cache --stats                                  # cache stats (tweet/profile/bookmark counts)
 peep local-search "typescript" --author @steipete # offline FTS5 search
 peep archive import ~/Downloads/twitter.zip       # import an X data export
 ```

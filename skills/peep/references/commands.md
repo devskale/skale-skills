@@ -43,7 +43,7 @@ peep reuses your logged-in X/Twitter session (cookie auth). `peep help [command]
 
 | Command | Flags | Notes |
 |---|---|---|
-| `user-tweets <@handle>` | `-n N`, `--cursor <s>`, `--max-pages N`, `--delay ms`, `--json` | Profile timeline. Auto-paginates when `-n > 20`. |
+| `user-tweets <@handle>` | `-n N`, `--cursor <s>`, `--max-pages N`, `--delay ms`, `--json` | Profile timeline. Auto-paginates when `-n > 20`. **Hard cap: 200 tweets / 10 pages per run** — use `--cursor` to continue past it. |
 | `about <@handle>` | `--json` | Account origin/location (`accountBasedIn`, `locationAccurate`, …). |
 
 ## News & trending (Explore tabs)
