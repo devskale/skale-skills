@@ -310,7 +310,10 @@ interface ImageItem {
 }
 
 type TextBlock = { type: "text"; text: string };
-type ImageBlock = { type: "image"; source: { type: "base64"; mediaType: string; data: string } };
+// pi-native image block shape — pi's normalizeToolResultImages reads `data` and
+// `mimeType` directly (Buffer.from(block.data, "base64")). The OpenAI-style
+// `source: { type, mediaType, data }` shape crashes that path (data is undefined).
+type ImageBlock = { type: "image"; data: string; mimeType: string };
 type ContentBlock = TextBlock | ImageBlock;
 
 // ── Shared core: validate → resolve key → call proxy → persist to disk ───────
@@ -503,7 +506,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 				text: `Generated ${saved.length} image${saved.length > 1 ? "s" : ""} via ${provider}@${modelId} (${size}):\n${locationLines}`,
 			});
 			for (const s of saved) {
-				content.push({ type: "image", source: { type: "base64", mediaType: s.mime, data: s.b64 } });
+				content.push({ type: "image", data: s.b64, mimeType: s.mime });
 			}
 			const asciiArt = await maybeAscii(saved, ctx.model);
 			if (asciiArt) {
@@ -563,7 +566,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		// content (goes into LLM context for later turns) + details (for our renderer)
 		const content: ContentBlock[] = [
 			{ type: "text", text: summary },
-			...saved.map((s): ImageBlock => ({ type: "image", source: { type: "base64", mediaType: s.mime, data: s.b64 } })),
+			...saved.map((s): ImageBlock => ({ type: "image", data: s.b64, mimeType: s.mime })),
 		];
 		ctx.sessionManager.appendCustomMessageEntry(IMAGEGEN_MSG, content as any, true, {
 			provider,
