@@ -43,7 +43,7 @@ const PROXY_BASE =
 	process.env.UNIINFER_PROXY_URL?.replace(/\/+$/, "") || "https://uniinfer.skale.dev/v1";
 
 const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "pollinations@flux";
-const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "1024x1024";
+const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "512x512";
 const ASCII_COLS = 64;
 const ASCII_ROWS = 22;
 
