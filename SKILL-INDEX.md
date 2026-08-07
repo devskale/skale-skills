@@ -31,6 +31,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
 | 🟢 global | **figure** | Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec ... | `~/.pi/agent/skills/figure` |
+| 🟢 global | **peep** | Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/repli... | `~/.pi/agent/skills/peep` |
 
 ### Available (not installed)
 
@@ -42,7 +43,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
 | ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) ... |
 | ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
-| ⚪ available | **youtube** | Search YouTube for fresh, long, deep content — podcasts, lectures, and deep dives — ranked by a c... |
+| ⚪ available | **youtube** | Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later tra... |
 
 ## Extensions
 
