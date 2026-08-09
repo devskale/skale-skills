@@ -12,6 +12,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | youtube | `youtube "query"` | 32 | YouTube search via Invidious API with auto-fallback |
 | vtd | `vtd transcript --url '...'` | 43 | Video/audio/transcript downloader (yt-dlp) |
 | rodney | `rodney start/open/stop` | 32 | Headless Chrome automation |
+| viewimg | `viewimg img.jpg [--open]` | 10 | Show an image in the terminal (view-only, no VLM) |
 
 ## Installation (as a pi package)
 
@@ -167,6 +168,7 @@ bash tests/web-search/test.sh
 bash tests/youtube/test.sh
 bash tests/video-transcript-downloader/test.sh
 bash tests/rodney/test.sh
+bash tests/viewimg/test.sh
 ```
 
 Always run the relevant test after modifying a skill.

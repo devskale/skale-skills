@@ -22,7 +22,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 - `npm:pi-mcp-adapter`
 - `npm:@ogulcancelik/pi-herdr`
 - `npm:@ff-labs/pi-fff`
-- `{'source': 'git:github.com/devskale/skale-skills', 'skills': ['fetch-url', 'web-search', 'surf', '+skills/rodney/SKILL.md'], 'extensions': ['extensions/heartbeat.ts', 'extensions/xmodel.ts', 'extensions/statusline.ts'], 'prompts': ['-prompts/learn.md']}`
+- `{'source': 'git:github.com/devskale/skale-skills', 'skills': ['web-search', 'fetch-url'], 'extensions': ['extensions/heartbeat.ts', 'extensions/xmodel.ts', 'extensions/statusline.ts', 'extensions/imagegen.ts']}`
 
 ## Skills
 
@@ -30,7 +30,6 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
-| 🟢 global | **figure** | Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec ... | `~/.pi/agent/skills/figure` |
 | 🟢 global | **peep** | Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/repli... | `~/.pi/agent/skills/peep` |
 
 ### Available (not installed)
@@ -39,9 +38,11 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 |--------|------|-------------|
 | ⚪ available | **d2** | Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the ... |
 | ⚪ available | **fetch-url** | Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jin... |
+| ⚪ available | **figure** | Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec ... |
 | ⚪ available | **rodney** | Drive a persistent headless Chrome from the CLI for web scraping, screenshots, form filling, PDF ... |
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
 | ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) ... |
+| ⚪ available | **viewimg** | Display an image in the terminal (view-only, no VLM). Renders the image as colorful block art wit... |
 | ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
 | ⚪ available | **youtube** | Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later tra... |
 
@@ -49,16 +50,15 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 ### Active
 
-| Status | Name | Description | Source |
-|--------|------|-------------|--------|
-| 🟢 global | **imagegen** | /** | `~/.pi/agent/extensions/imagegen` |
-| 🟢 global | **statusline** | /** | `~/.pi/agent/extensions/statusline` |
+_None._
 
 ### Available (not installed)
 
 | Status | Name | Description |
 |--------|------|-------------|
 | ⚪ available | **heartbeat** | /** |
+| ⚪ available | **imagegen** | /** |
+| ⚪ available | **statusline** | /** |
 | ⚪ available | **xmodel** | /** |
 
 ## Prompts

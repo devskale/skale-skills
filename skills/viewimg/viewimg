@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# viewimg — show an image in the terminal (view-only, no VLM).
+#
+#   viewimg <image-file> [--size WxH] [--open] [--no-color] [--help]
+#
+# Renders the image as ANSI block art via chafa (default), or opens it in a
+# native window with `open` on macOS (--open). Never analyzes the image.
+set -uo pipefail
+
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+
+usage() {
+    cat <<'EOF'
+viewimg — show an image in the terminal (view-only, no VLM)
+
+Usage:
+  viewimg <image-file> [--size WxH] [--open] [--no-color] [--help]
+
+  --size WxH     chafa block size (default 60x30)
+  --open         open in a native window (macOS `open`) instead of in-terminal
+  --no-color     plain ASCII fallback (no ANSI color)
+  --help         this help
+
+View-only: never analyzes the image. Understanding is opt-in (read_image / /readimg).
+EOF
+}
+
+# ── parse args ──
+src=""; size="60x30"; open_mode=0; no_color=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --size) size="${2:-60x30}"; shift 2 ;;
+        --open) open_mode=1; shift ;;
+        --no-color) no_color=1; shift ;;
+        --help|-h) usage; exit 0 ;;
+        --*) echo "viewimg: unknown flag: $1" >&2; usage >&2; exit 2 ;;
+        *) src="$1"; shift ;;
+    esac
+done
+
+[ -n "$src" ] || { echo "viewimg: no image file given" >&2; usage >&2; exit 2; }
+[ -f "$src" ] || { echo "viewimg: not a file: $src" >&2; exit 2; }
+
+# ── open in native window ──
+if [ "$open_mode" -eq 1 ]; then
+    if command -v open >/dev/null 2>&1; then
+        open "$src"
+        echo "viewimg: opened $src in a native window"
+        exit 0
+    fi
+    echo "viewimg: --open needs macOS \`open\` (not found)" >&2
+    exit 1
+fi
+
+# ── in-terminal render via chafa ──
+if command -v chafa >/dev/null 2>&1; then
+    if [ "$no_color" -eq 1 ]; then
+        chafa --format symbols --colors 2 --size "$size" "$src"
+    else
+        chafa --format symbols --colors 256 --size "$size" "$src"
+    fi
+    exit $?
+fi
+
+# ── fallback ──
+if command -v open >/dev/null 2>&1; then
+    echo "viewimg: chafa not found — opening in a native window instead" >&2
+    open "$src"
+    exit 0
+fi
+echo "viewimg: chafa not found. Install it (macOS: brew install chafa; Linux: apt install chafa)." >&2
+exit 1

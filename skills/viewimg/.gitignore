@@ -1,0 +1,6 @@
+# viewimg skill
+.venv/
+.env
+uv.lock
+*.egg-info/
+.last-update

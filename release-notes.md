@@ -4,6 +4,11 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-09
 
+### viewimg (new skill)
+- **Added:** `viewimg` — show an image in the terminal **view-only** (never VLM). Renders as ANSI block art via `chafa`, or opens natively with `open` on macOS (`--open`). Understanding stays opt-in (`read_image` / `/readimg`).
+
+## 2026-08-09
+
 ### figure / imagegen / d2
 - **Changed:** generated/derived output now lands in the **XDG-standard** `$XDG_CACHE_HOME/generated/` (default `~/.cache/generated/`) — regenerable cache belongs in the cache dir per the XDG Base Directory Specification (web-grounded). No more hardcoded `~/generated/images` / `~/Pictures/generated` / `~/.generated`.
 - **figure:** output dir resolves `$XDG_CACHE_HOME/generated` (override `FIGURE_OUT_DIR`); docs updated.
