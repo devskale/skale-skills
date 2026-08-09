@@ -11,6 +11,9 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
+import { isValidImage } from "./image-utils";
+
+export { isValidImage };
 
 /** Default timeout for a child-pi VLM sub-call. */
 export const VLM_TIMEOUT_MS = 90_000;
@@ -128,19 +131,6 @@ export function readImageFileBlock(filePath: string): any | undefined {
 	} catch {
 		return undefined;
 	}
-}
-
-/** Validate an image buffer by magic bytes. */
-export function isValidImage(buf: Buffer): boolean {
-	if (buf.length < 32) return false;
-	const h = buf;
-	return (
-		(h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e && h[3] === 0x47) || // PNG
-		(h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff) || // JPEG
-		(h[0] === 0x47 && h[1] === 0x49 && h[2] === 0x46) || // GIF
-		(h[0] === 0x42 && h[1] === 0x4d) || // BMP
-		(h[0] === 0x52 && h[1] === 0x49 && h[2] === 0x46 && h[3] === 0x46 && h[8] === 0x57 && h[9] === 0x45 && h[10] === 0x42 && h[11] === 0x50) // WebP
-	);
 }
 
 /** Write an image block (base64) to a temp file for VLM delegation. Returns the path + validity. */

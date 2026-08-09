@@ -63,6 +63,7 @@ import {
 } from "@earendil-works/pi-tui";
 
 import { isStaleCtxError, reconstructLastCustomEntry } from "./session-state";
+import { isVisionCapable } from "./image-utils";
 import {
 	debug,
 	detectSavedScreenshot,
@@ -1003,10 +1004,6 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			activePreset = undefined;
 		}
 		updateStatus(ctx);
-	}
-
-	function isVisionCapable(m: Model<Api> | undefined): boolean {
-		return !!m && Array.isArray((m as any).input) && (m as any).input.includes("image");
 	}
 
 	/** Pick a vision-capable model: prefer a *vision* preset, else any image-capable model. */

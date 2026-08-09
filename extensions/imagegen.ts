@@ -33,6 +33,7 @@ import process from "node:process";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Container, Image, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { guessMime, isVisionCapable } from "./image-utils";
 
 // execFile (no shell) promisified — used for credgoo + chafa so the event loop
 // never blocks on a slow child process. Args are passed as arrays (no shell
@@ -249,19 +250,6 @@ function chafaAvailable(): Promise<boolean> {
 			.catch(() => false);
 	}
 	return _chafaAvailable;
-}
-
-/** True if the active model accepts image input (so it can iterate on the result). */
-function isVisionCapable(model: unknown): boolean {
-	return !!model && Array.isArray((model as any).input) && (model as any).input.includes("image");
-}
-
-function guessMime(b64: string): string {
-	if (b64.startsWith("/9j/")) return "image/jpeg";
-	if (b64.startsWith("UklGR")) return "image/webp";
-	if (b64.startsWith("R0lGOD")) return "image/gif";
-	// PNG base64 starts with iVBOR
-	return "image/png";
 }
 
 /** Render an image file to ANSI/ASCII text via chafa (async, no shell).

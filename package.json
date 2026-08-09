@@ -3,7 +3,7 @@
   "version": "1.2.4",
   "keywords": ["pi-package"],
   "pi": {
-    "extensions": ["./extensions/*.ts", "!extensions/session-state.ts", "!extensions/xmodel-config.ts", "!extensions/xmodel-vision-utils.ts"],
+    "extensions": ["./extensions/*.ts", "!extensions/session-state.ts", "!extensions/xmodel-config.ts", "!extensions/xmodel-vision-utils.ts", "!extensions/image-utils.ts"],
     "skills": ["./skills"],
     "prompts": ["./prompts"]
   }
