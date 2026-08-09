@@ -12,7 +12,7 @@ precedence / dedup model — this doc is the *workflow* counterpart.
 Dev overrides (project-path packages, skill symlinks, loose extension files) are fine **while**
 you work — they're how you get live feedback. The problem is leaving them in place after the
 work ships: they then collide with the git package on every startup (see
-[installation.md → Loose-file conflicts](installation.md#loose-file-conflicts)).
+[installation.md → Troubleshooting: the loose-file conflict](installation.md#troubleshooting-the-loose-file-conflict)).
 
 ## Dev setups
 

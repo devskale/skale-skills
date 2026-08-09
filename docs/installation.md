@@ -1,33 +1,128 @@
-# Installation & Precedence
+# Installing skale-skills in pi
 
-> **Operational runbook:** [install-runbook.md](install-runbook.md) — the fast detect → install → clean → verify procedure to add this repo's skills & extensions to a pi install. This doc is the deep *why* (identity, dedup, precedence); the runbook is the *what to type*.
+This repo is a **pi package** — `package.json` declares a `pi` manifest (`./skills`,
+`./extensions/*.ts`, `./prompts`). Install it once from git, globally, then activate only the
+skills you use.
 
-## Recommended
-
-Install this package **once** from git, globally:
+## Install (one line)
 
 ```bash
 pi install git:github.com/devskale/skale-skills
 ```
 
-This writes `git:github.com/devskale/skale-skills` into `~/.pi/agent/settings.json` and clones
-it to `~/.pi/agent/git/github.com/devskale/skale-skills`. Heartbeat, statusline, and all skills
-then load everywhere on the machine.
+This clones to `~/.pi/agent/git/github.com/devskale/skale-skills` and writes
+`git:github.com/devskale/skale-skills` into `~/.pi/agent/settings.json`. The package then
+loads **everywhere** on the machine.
 
-## The conflict gotcha (read this before editing settings)
+> A bare entry loads **all** skills and extensions the package ships. Each loaded skill adds
+> its name + description to the system-prompt catalog, so loading everything causes context
+> rot and routing competition. Install the package, then **narrow to what you use** (below).
 
-Do **not** register this package's extension files via a raw `extensions:` path entry
-*while also* having the git package installed — e.g.:
+## Activate only the skills you use
 
-```jsonc
-// ~/.pi/agent/settings.json — BROKEN: causes a tool-name conflict
-{
-  "packages": ["git:github.com/devskale/skale-skills"],
-  "extensions": ["~/code/skale-skills/extensions/heartbeat.ts"]  // ❌ duplicate
-}
+The package ships all skills, but you typically want 2–8. Two ways — pick one:
+
+**Interactive (recommended):**
+
+```bash
+pi config            # TUI: space=toggle, Tab=switch scope, esc=close
+pi config -l         # start in (project) scope; inherited globals shown DIMMED
 ```
 
-**Why it breaks:** pi deduplicates packages by *identity*:
+**Or hand-edit** the package entry in `~/.pi/agent/settings.json` to the whitelist form —
+plain names/paths mean "only these load":
+
+```jsonc
+// ~/.pi/agent/settings.json
+{ "packages": [{
+  "source": "git:github.com/devskale/skale-skills",
+  "skills": ["web-search", "fetch-url"],   // only these two skills load
+  "extensions": ["extensions/heartbeat.ts",
+                 "extensions/xmodel.ts",
+                 "extensions/statusline.ts"]
+}]}
+```
+
+Restart pi to apply.
+
+### Filter semantics (what decides what loads)
+
+| `skills` / `extensions` array | Result |
+|---|---|
+| key **omitted** | load **all** of that type |
+| `[]` | load **none** (explicitly off) |
+| `["name1", "name2"]` (plain) | load **only** named (whitelist) |
+| `"!pattern"` | exclude glob matches |
+| `"+path"` / `"-path"` | force include / exclude an exact path |
+
+Plain-name includes match by skill **directory name** (e.g. `"rodney"`). Paths match relative
+to package root (e.g. `"+skills/rodney/SKILL.md"`).
+
+> ⚠️ **`+path` gotcha:** force-includes (`"+extensions/x.ts"`) re-enable within an otherwise-on
+> set — used **alone** they turn the whole type on. For "only these", use plain names/paths,
+> not `+path`. The `pi config` TUI manages this for you; hand-editing is where it bites.
+
+## Update
+
+```bash
+pi update git:github.com/devskale/skale-skills   # one package
+pi update --all                                    # pi + all packages
+```
+
+---
+
+## Troubleshooting: the loose-file conflict
+
+> Skip this unless you see `[Skill conflicts]` at startup, or a `Tool "..." conflicts` error.
+
+Pi **auto-loads** anything dropped directly into `~/.pi/agent/skills/` and
+`~/.pi/agent/extensions/` — including **symlinks**. When a loose copy of a repo resource sits
+there *and* the git package is installed, the two are **different identities** → both load →
+conflict (a startup warning for skills, a **fatal load error** for tool-registering
+extensions).
+
+This is what bites a bare `pi install` on a machine with old symlink setups, hand-copies, or
+leftover dev overrides. **Identity, not content, decides dedup** — making a loose file
+byte-identical to the package does **not** fix it; delete it.
+
+### Detect
+
+```bash
+# loose skills/symlinks that the package also ships:
+for s in ~/.pi/agent/skills/*; do [ -e "$s" ] || continue; n=$(basename "$s")
+  [ -e ~/.pi/agent/git/github.com/devskale/skale-skills/skills/$n ] && echo "CONFLICT: $n"
+done
+
+# loose extensions that the package also ships:
+for e in ~/.pi/agent/extensions/*.ts; do [ -e "$e" ] || continue; n=$(basename "$e")
+  [ -e ~/.pi/agent/git/github.com/devskale/skale-skills/extensions/$n ] && echo "CONFLICT: $n"
+done
+```
+
+> **Which extensions register tools?** `grep -l registerTool extensions/*.ts` (e.g.
+> `heartbeat.ts`, `imagegen.ts`, `xmodel.ts`). A loose copy of one of these is a **hard load
+> error**, not a warning. Event-only extensions (e.g. `statusline.ts`) only silently shadow —
+> still delete the loose copy.
+
+### Fix
+
+Delete the loose copies — the git package is the canonical source:
+
+```bash
+rm ~/.pi/agent/skills/<name>         # symlink or directory
+rm ~/.pi/agent/extensions/<name>.ts  # loose file
+```
+
+Then restart pi and confirm a **clean startup** — no `[Skill conflicts]` block, no
+`Tool "..." conflicts` error. `pi list` won't surface load-time tool clashes; a clean restart
+is the only real proof.
+
+> Back up a loose file **before** deleting it **only if it differs** from the package copy —
+> it may carry local customizations. `diff` it first.
+
+### Why this happens (the deep model)
+
+Pi deduplicates packages by **identity**:
 
 | Source type | Identity |
 |-------------|----------|
@@ -35,183 +130,24 @@ Do **not** register this package's extension files via a raw `extensions:` path 
 | git         | repository URL without ref |
 | local path  | resolved absolute path |
 
-A git package and a local-path entry are **different identities**, so pi loads both and you get
-`Error: Tool "heartbeat" conflicts with ...`. This happens even though the two files are
-byte-identical — identity, not content, decides dedup.
+A git package and a loose path/symlink are different identities, so pi loads both and they
+clash — even if byte-identical. The git package is canonical: install it once, delete every
+loose copy of its resources, and you get exactly one identity per resource.
 
-## Precedence rule
-
-> **The git package is canonical.** Declare it once globally. Per-project needs are best met by
-> **symlinking skills/extensions from the global clone** (see below), not by re-declaring the
-> package in the project. Never add the same resources again under a different identity.
-
-A project `packages` entry with the same identity is allowed, but note: **it clones the package
-again at project scope** (`<project>/.pi/git/…`) — a separate copy from the global clone, **even
-for an `autoload:false` delta** (the delta only changes filter merge, not cloning). The two merge
-modes:
-
-```jsonc
-// ~/.pi/agent/settings.json (global)
-{ "packages": ["git:github.com/devskale/skale-skills"] }
-
-// ~/configs/.pi/settings.json (project — same identity, project wins, no clash)
-{ "packages": ["git:github.com/devskale/skale-skills"] }
-```
-
-**Two merge modes when the same package is in both scopes:**
-
-| Project entry | Behavior |
-|---|---|
-| plain `{ "source": "..." }` or string | **Replaces** the global entry for this project — re-list anything you want to keep. |
-| `{ "source": "...", "autoload": false }` | **Delta over global** — toggle only what changes; everything else is inherited. `pi config -l` writes this automatically. *(Still clones at project scope — see clone-free alternative below.)* |
-
-```jsonc
-// .pi/settings.json — delta: add one skill for this project, inherit the rest from global
-{ "packages": [{
-  "source": "git:github.com/devskale/skale-skills",
-  "autoload": false,
-  "skills": ["+skills/rodney"]
-}]}
-```
-
-### Clone-free per-project skills (preferred over a project package entry)
-
-Because a project `packages` entry re-clones the whole package, the **lightweight way** to give
-one project a skill that lives in the global clone is a **symlink** — no second clone, no
-`packages` entry, edits stay live once you `pi update` the global clone:
+**Per-project skills** (when you want one skill in one project without re-cloning the whole
+package): symlink it from the global clone —
 
 ```bash
-# d2 in this project only, sourced from the one global (GitHub-pulled) clone:
-ln -s ~/.pi/agent/git/github.com/devskale/skale-skills/skills/d2 .pi/skills/d2
-```
-(pi discovers `.pi/skills/` and follows symlinks, so this loads as a project skill. Don't
-symlink a skill that's *also* in the global whitelist, or it loads twice.)
-
-## Selective loading (filter package resources)
-
-The git package ships **all** skills and extensions declared in its manifest. Loading
-everything is rarely what you want — each loaded skill adds its name + description to the
-system prompt catalog (progressive disclosure keeps the *body* out of context, but the
-*catalog* is always in). Install only what you use (typically 4–8 skills); loading all of a
-large collection causes context rot and routing competition.
-
-Use the **object form** to whitelist specific resources:
-
-```jsonc
-// ~/.pi/agent/settings.json
-{
-  "packages": [
-    {
-      "source": "git:github.com/devskale/skale-skills",
-      "skills": ["d2", "rodney", "fetch-url", "web-search"],  // only these load
-      "extensions": ["./extensions/*.ts"]                     // omit a key to load all of a type
-    }
-  ]
-}
+ln -s ~/.pi/agent/git/github.com/devskale/skale-skills/skills/<name> <project>/.pi/skills/<name>
 ```
 
-Filter syntax (layers over the manifest, narrows what it declares):
-- Omit a key → load **all** resources of that type the package provides.
-- `[]` → load **none** of that type (e.g. `"extensions": []` for skills-only).
-- `["name1", "name2"]` → load only named skills (by directory name).
-- `!pattern` → exclude matches; `+path` / `-path` → force include/exclude an exact path.
+pi discovers `.pi/skills/` and follows symlinks. Don't symlink a skill that's *also* in the
+global whitelist, or it loads twice.
 
-Toggle resources interactively without editing JSON: `pi config` opens a TUI to enable/disable
-any skill / extension / prompt / theme from installed packages. It starts in global scope; press
-**Tab** to switch to project-local, or run `pi config -l` to start there with inherited global
-resources dimmed. In project mode it writes `autoload: false` delta entries (see above).
+---
 
-> When migrating from loose symlinks to the package, **remove the loose copies** — see
-> [Loose-file conflicts](#loose-file-conflicts) below. Otherwise both identities load and pi
-> emits `[Skill conflicts]` at startup.
+## Dev loop (editing this repo)
 
-## Loose-file conflicts (the other vectors)
-
-The identity rule above covers `settings.json` entries. But pi **also** auto-loads any
-file dropped directly into two agent directories, and those collide with the git package just
-the same — they are *different identities* (a loose path vs. a git URL):
-
-| Dir | What pi loads there | Conflict symptom |
-|-----|---------------------|------------------|
-| `~/.pi/agent/skills/` | skill dirs or **symlinks** (e.g. `fetch-url`, `web-search`) | `[Skill conflicts]` warning at startup |
-| `~/.pi/agent/extensions/` | loose `.ts` extension files (e.g. `statusline.ts`) | **tool-registering extensions → hard error** (see below); event-only extensions → loose file shadows/overrides the package copy |
-
-#### Tool-registering extensions collide hard
-
-If the loose extension registers a tool (e.g. `generate_image` via `pi.registerTool()`),
-the collision is not a silent shadow — it's a fatal load error and pi won't start:
-
-```
-Error: Failed to load extension "...git/.../skale-skills/extensions/imagegen.ts":
-Tool "generate_image" conflicts with ~/.pi/agent/extensions/imagegen.ts
-```
-
-This is why `statusline` (event/widget only, no tool) tolerates a dev symlink, but
-`imagegen` (registers `generate_image`) does not — the git-package copy and the
-loose copy both try to register the same tool name.
-
-These get left behind after manual `install.sh` runs, hand-copies, or old symlink setups. They
-load **in addition to** the git package → conflict, even if byte-identical. Identity, not
-content, decides dedup.
-
-### How to check for them
-
-```bash
-ls ~/.pi/agent/skills/             # should be empty if the git package provides them
-ls ~/.pi/agent/extensions/         # only files NOT in the git package belong here
-```
-
-### Fix
-
-Delete the loose copies — the git package is the canonical source:
-
-```bash
-rm ~/.pi/agent/skills/<name>        # symlink or directory
-rm ~/.pi/agent/extensions/<name>.ts # loose file
-```
-
-> Do **not** "fix" this by making the loose file byte-identical to the package — that doesn't
-> change its identity, so the conflict persists. Delete it.
-
-#### Dev machine: keep the symlink, suppress the package copy instead
-
-If you develop this repo locally and want **live edits** via a symlink
-(`~/.pi/agent/extensions/imagegen.ts` → your checkout), you can't also let the
-git package load its extensions — the two copies conflict. On a dev machine,
-tell the git package to load **skills only** and let extensions come from your
-symlinks:
-
-```jsonc
-// ~/.pi/agent/settings.json (dev machine)
-{
-  "packages": [{
-    "source": "git:github.com/devskale/skale-skills",
-    "skills": ["fetch-url", "web-search"],
-    "extensions": []   // ← dev: extensions via symlinks, package = skills only
-  }]
-}
-```
-
-Event-only extensions (statusline) can coexist either way since they register
-no tool to clash on; tool-registering ones (imagegen) require this split.
-
-See [development.md](development.md) for the loop that produces these leftovers and how to
-avoid leaving them behind.
-
-## Live dev setup (optional)
-
-A tempting shortcut is to point a project setting at a local checkout:
-
-```jsonc
-// ~/code/.pi/settings.json — BROKEN if the global git package is also installed
-{ "packages": ["~/code/skale-skills"] }
-```
-
-A local path is a **different identity** from the git URL. Project settings **merge** over global —
-they don't shadow a different identity — so under `~/code` both the local path *and* the global git
-package load and you hit the [conflict gotcha](#the-conflict-gotcha-read-this-before-editing-settings)
-above (different identities → both load).
-
-For live edits while developing this repo, follow the dev loop in [development.md](development.md)
-(edit → push → `pi update`), or on a dev machine tell the git package to load **skills only** and
-bring extensions in via symlinks (see [Loose-file conflicts](#loose-file-conflicts-the-other-vectors)).
+While developing skills/extensions here, load the working tree **without** leaving conflicts
+for the git package. Prefer session-only flags; land changes upstream before removing any
+override. Full workflow: [development.md](development.md).

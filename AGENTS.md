@@ -15,116 +15,16 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 
 ## Installation (as a pi package)
 
-This repo is a **pi package** — `package.json` declares a `pi` manifest (`./skills`, `./extensions/*.ts`, `./prompts`). Install it; don't symlink individual files (symlinks + the package co-load as different identities → conflicts; see [docs/installation.md](docs/installation.md)).
-
-> **Adding this repo's skills & extensions to a pi install?** Follow the [**Install Runbook**](docs/install-runbook.md) — a 4-step detect → install → clean → verify procedure with copy-pasteable diagnostics. It catches the loose-symlink/loose-file conflicts that bite a bare `pi install`. The deep *why* (identity, dedup, precedence) is in [docs/installation.md](docs/installation.md).
-
-### Install once, globally
+This repo is a **pi package** — `package.json` declares a `pi` manifest (`./skills`, `./extensions/*.ts`, `./prompts`). Install it once, globally, then activate only what you use:
 
 ```bash
-pi install git:github.com/devskale/skale-skills
+pi install git:github.com/devskale/skale-skills   # install once, globally
+pi config                                          # activate only the skills you use
 ```
 
-Clones to `~/.pi/agent/git/github.com/devskale/skale-skills`, writes to `~/.pi/agent/settings.json`.
+Default activation: **`web-search` + `fetch-url`** skills (extensions: heartbeat, xmodel, statusline).
 
-### Default state (minimal global install)
-
-```jsonc
-// ~/.pi/agent/settings.json
-{ "packages": [{
-  "source": "git:github.com/devskale/skale-skills",
-  "skills": ["fetch-url", "web-search"],                       // whitelist: only these load
-  "extensions": ["extensions/heartbeat.ts",
-                 "extensions/xmodel.ts",
-                 "extensions/statusline.ts"]   // plain paths = whitelist (not +path)
-}]}
-```
-
-Use plain paths/names to whitelist (only these load). `+path` force-includes re-enable within
-an otherwise-on set — used alone they turn the whole type on (see gotcha below).
-
-**Filter semantics** (verified from pi source — these decide what loads):
-
-| `skills` / `extensions` array | Result |
-|---|---|
-| key **omitted** | load **all** of that type |
-| `[]` | load **none** (explicitly off) |
-| `["name1", "name2"]` (plain) | load **only** named (whitelist) |
-| `"!pattern"` | exclude glob matches |
-| `"+path"` / `"-path"` | force include / exclude an exact path |
-
-Plain-name includes match by skill **directory name** (e.g. `"rodney"`). Paths match relative to package root (e.g. `"+skills/rodney/SKILL.md"`).
-
-### Turn skills/extensions on
-
-**Interactive (`pi config`) — recommended:**
-
-```bash
-pi config            # TUI: space=toggle, Tab=switch scope, esc=close
-pi config -l         # start in (project) scope; inherited globals shown DIMMED
-```
-
-`pi config` opens in (user) scope; press **Tab** to flip to (project). `pi config -l` opens
-straight in project mode where resources inherited from global are dimmed, so you see exactly
-what this project adds or removes. The TUI writes `+path`/`-path` patterns (and `autoload: false`)
-for you; restart pi to apply.
-
-**Project entries have two merge modes** — the key distinction:
-
-| Project entry | Behavior |
-|---|---|
-| plain `{ "source": "..." }` or string | **Replaces** the global entry for this project — re-list anything you want to keep. |
-| `{ "source": "...", "autoload": false }` | **Delta over global** — toggle only what changes; the rest is inherited. `pi config -l` writes this automatically. |
-
-```jsonc
-// .pi/settings.json — delta: add rodney for THIS project, inherit fetch-url/web-search from global
-{ "packages": [{
-  "source": "git:github.com/devskale/skale-skills",
-  "autoload": false,            // <- delta, not a replace
-  "skills": ["+skills/rodney"]
-}]}
-```
-
-> Project settings (`.pi/settings.json`) **merge** nested keys over global — never redeclare the
-> whole config. Identity = git URL without ref / npm name / resolved local path.
->
-> ⚠️ **A project `packages` entry clones the package at project scope** (`<project>/.pi/git/…`)
-> — a *separate clone* from the global one, **even for an `autoload:false` delta** (the delta
-> only changes how filters merge; it does not reuse the global clone). To activate a skill
-> per-project **without re-cloning**, symlink it from the global clone into the project:
-> `ln -s ~/.pi/agent/git/<owner>/<repo>/skills/<name> <project>/.pi/skills/<name>`.
-
-**Per-project install** (when the package itself should be project-scoped, not just its filters):
-
-```bash
-cd ~/code/some-project
-pi install git:github.com/devskale/skale-skills -l   # -l -> .pi/settings.json, clones to .pi/git/
-pi config -l                                          # toggle what THIS project needs
-```
-
-### Howto: install a specific extension (e.g. statusline, xmodel)
-
-Extensions are `[]` (off) by default. To turn specific ones on **everywhere**, use **plain includes** (whitelist form):
-```jsonc
-// ~/.pi/agent/settings.json — change the package entry
-{ "packages": [{
-  "source": "git:github.com/devskale/skale-skills",
-  "skills": ["fetch-url", "web-search"],
-  "extensions": ["extensions/statusline.ts", "extensions/xmodel.ts"]  // only these load
-}]}
-```
-Or per-project via `pi config` after the `-l` install above.
-
-> ⚠️ **`+path` gotcha:** force-includes (`"+extensions/x.ts"`) re-enable within an otherwise-on set — used **alone** they turn the whole type on (plain-name whitelist is what limits loading). For "only these", use plain paths/names as above. The `pi config` TUI manages this for you; hand-editing is where it bites.
-
-> **Conflict rule:** tool-registering extensions (e.g. `imagegen.ts`) **cannot** co-load as both a package copy and a loose symlink — fatal error. Event-only extensions (`statusline`) tolerate it. Keep it simple: use the package, delete loose copies. Full detail: [docs/installation.md](docs/installation.md).
-
-### Update
-
-```bash
-pi update git:github.com/devskale/skale-skills   # one package
-pi update --all                                    # pi + all packages
-```
+Full install, activate, filter, project-scope, update, and conflict docs: **[docs/installation.md](docs/installation.md)**.
 
 ## Credentials — credgoo (First-Class Citizen)
 
@@ -165,8 +65,7 @@ Rules: never commit real tokens, always gitignore `.env`, always suppress credgo
 
 | Doc | What |
 |-----|------|
-| [docs/install-runbook.md](docs/install-runbook.md) | Fast detect → install → clean → verify runbook to add this repo's skills & extensions to pi |
-| [docs/installation.md](docs/installation.md) | pi install, precedence, and conflict gotchas (canonical = git package) — the deep *why* |
+| [docs/installation.md](docs/installation.md) | Install the pi package, activate only what you use, and the loose-symlink conflict gotcha |
 | [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides |
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 
