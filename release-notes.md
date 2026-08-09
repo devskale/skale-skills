@@ -4,6 +4,14 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-09
 
+### figure / imagegen / d2
+- **Changed:** generated/derived output now lands in the **XDG-standard** `$XDG_CACHE_HOME/generated/` (default `~/.cache/generated/`) — regenerable cache belongs in the cache dir per the XDG Base Directory Specification (web-grounded). No more hardcoded `~/generated/images` / `~/Pictures/generated` / `~/.generated`.
+- **figure:** output dir resolves `$XDG_CACHE_HOME/generated` (override `FIGURE_OUT_DIR`); docs updated.
+- **imagegen:** `outputDir()` resolves `$XDG_CACHE_HOME/generated` (override `IMAGEGEN_OUTPUT_DIR`); `uploads/` web-serving unchanged.
+- **d2:** documented `~/.cache/generated/` as the default for rendered diagrams.
+
+## 2026-08-09
+
 ### xmodel v0.4.0
 - **Changed:** `read` (and `view`/`generate_image`) are now **display-only** — they show the image but **never trigger the VLM**. Understanding is opt-in.
 - **Added:** `read_image` tool + `/readimg` command — explicit "understand" path that runs the VLM on an image and returns the text analysis. `/readimg` with no args shows help; `/readimg settings` opens the vision hub to pick the image model (`_vision.vlm`).
