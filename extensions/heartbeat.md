@@ -95,6 +95,13 @@ After editing settings or the file, run `/reload` inside pi (or restart pi).
   restored on `session_start` / `session_tree` / `session_compact`. The timer
   itself is not auto-restarted (it is process-global); re-run `/heartbeat` to
   resume.
+- **Idle-only delivery (default):** a beat that comes due while pi is mid-turn
+  (busy) is **shifted** by one interval (capped at 5 minutes max) and re-checked
+  — it is **not consumed** (the count isn't bumped), so a long agent run just
+  pushes the beat out instead of stacking a burst of reminders mid-work. The
+  beat fires only when pi is idle.
+- **`/heartbeat` with no args prints help** (instead of starting a default
+  heartbeat).
 - All `ctx.ui` calls are wrapped so a missing/stale UI context degrades
   gracefully instead of crashing.
 
