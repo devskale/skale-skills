@@ -38,6 +38,10 @@ node build/build_figures.mjs diagrams/my-fig.fig.mjs
 node build/build_figures.mjs                       # build every *.fig.mjs under diagrams/
 ```
 
+**Output dir** (resolved, never hardcoded): `FIGURE_OUT_DIR` env → `./diagrams-built/`
+(project-local, gitignored) → `~/Pictures/generated/figures/` (macOS) → `./generated/`.
+Each figure lands in `<out>/<name>/<name>.svg` + `.png`.
+
 **Self-verification (always-on lint).** Every build prints a geometry lint to **stderr**:
 out-of-bounds nodes/labels, text collisions, node-box overlaps, and aspect-ratio bloat
 (warnings — non-blocking; the figure still renders), plus a hard error (exit 1) when an
@@ -81,6 +85,7 @@ export default {
 | `assets/` | Reusable CC0 icons (`icons/`), images (`images/`), and the house font **Patrick Hand** (`fonts/`, OFL). Reuse before redrawing. See `assets/README.md`. |
 | `styleguide/` | The house style — `STYLE.md` (the look: sketchy strokes, palette, badges, semantic colours), `reference/NOTICE.md`. |
 | `diagrams/` | Figure specs (`*.fig.mjs`) + built `.svg`/`.png`. Kept examples: `architectures/` (react/rewoo/traditional RAG), `scope/` (scope-map). |
+| `_scratch/` | **Local one-off figures** (gitignored) — throwaway/experimental specs that shouldn't be committed. |
 | `LICENSING.md` | **Read this.** Everything published must be usable without attribution (self-made / CC0 / OFL). No vendor logos, no CC-BY. |
 | `package.json` | Zero runtime deps — PNG rasterization uses the system `rsvg-convert` (librsvg). |
 
