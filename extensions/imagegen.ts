@@ -33,7 +33,7 @@ import process from "node:process";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Container, Image, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { guessMime, isVisionCapable } from "./image-utils";
+import { guessMime, isVisionCapable } from "./lib/image-utils";
 
 // execFile (no shell) promisified — used for credgoo + chafa so the event loop
 // never blocks on a slow child process. Args are passed as arrays (no shell
