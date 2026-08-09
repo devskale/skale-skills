@@ -884,8 +884,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			"Takes a path to an image file (png, jpg, gif, webp, bmp).",
 		promptSnippet: "Analyze an image file with a vision model to understand its contents",
 		promptGuidelines: [
-			"Use read_image when you need to actually understand an image's contents (extract text, diagnose a screenshot, interpret a chart). " +
-				"The plain read tool only displays the image; it does not give you its contents. Call read_image with the image file path.",
+			"read_image is OPT-IN: call it ONLY when the user EXPLICITLY asks to understand/analyze an image's contents (extract text, diagnose a screenshot, interpret a chart). " +
+				"NEVER call read_image autonomously right after a plain `read`/`viewimg` \u2014 those are display-only and fast, and running the VLM is slow and costs tokens. " +
+				"If the user just asks to read/view/show an image, use read/viewimg and do nothing more.",
 		],
 		parameters: Type.Object({
 			path: Type.String({ description: "Path to the image file to analyze (png, jpg, gif, webp, bmp)." }),
@@ -1395,7 +1396,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		const n = images.length;
 		newContent.push({
 			type: "text",
-			text: `[xmodel view · ${n} image${n > 1 ? "s" : ""} shown to you — view-only, not analysed. Ask me to analyse it if needed (/xm vision delegate).]`,
+			text: `[xmodel view · ${n} image${n > 1 ? "s" : ""} shown to you — view-only, not analysed. Do NOT call read_image unless the user explicitly asks to understand this image.]`,
 		});
 		return { content: newContent };
 	}
