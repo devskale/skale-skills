@@ -37,9 +37,8 @@
  * (clamped to model capabilities automatically)
  */
 
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
-import { execFile, spawn } from "node:child_process";
 import { Type } from "typebox";
 import { StringEnum, type Api, type Model } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -64,6 +63,16 @@ import {
 } from "@earendil-works/pi-tui";
 
 import { isStaleCtxError, reconstructLastCustomEntry } from "./session-state";
+import {
+	debug,
+	detectSavedScreenshot,
+	forensic,
+	isValidImage,
+	readImageFileBlock,
+	runChildPi,
+	textOf,
+	writeImageTmp,
+} from "./xmodel-vision-utils";
 import {
 	defaultVision,
 	globalPresetsPath,
@@ -114,16 +123,6 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	function fmt(m: Model<Api> | undefined): string {
 		return m ? `${(m as any).provider ?? "?"}/${(m as any).id ?? "?"}` : "<none>";
-	}
-
-	/** Forensic log — append-only, off by default (set XMODEL_DEBUG=1). */
-	function debug(tag: string, data: Record<string, unknown>): void {
-		if (process.env.XMODEL_DEBUG !== "1") return;
-		try {
-			const line = `${new Date().toISOString()} [${tag}] ${JSON.stringify(data)}\n`;
-			const fs = require("node:fs");
-			fs.appendFileSync("/tmp/xmodel-debug.log", line);
-		} catch {}
 	}
 
 	function describe(p: Preset): string {
@@ -1051,84 +1050,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	// Vision delegation pipeline:  compress → VLM (own context) → text feedback
 	// =========================================================================
 	const COMPRESSOR_TIMEOUT_MS = 30_000;
-	const VLM_TIMEOUT_MS = 90_000;
 	const VISION_BRIEF_SYS =
 		"You write a focused query for a vision model. Given the coding-agent conversation, output ONLY what the vision model should examine/answer about the upcoming image — the task goal plus any specific things to check. No preamble, no code dumps. Respect the char budget.";
 	const VISION_VLM_SYS =
 		"You are a vision analyst embedded in a coding agent. Given a task brief and one image, report concrete, actionable observations about the image in service of the task (UI state, visible text, errors, layout, discrepancies, colours). Be precise and concise. Output only the analysis.";
 
-	function runChildPi(opts: { model: string; systemPrompt: string; prompt: string; imageFile?: string; timeoutMs?: number }): Promise<string> {
-		return new Promise((resolve) => {
-			// --mode json -p (NOT bare --print): text mode tries TUI init that hangs on piped stdout.
-			// This is the same recipe the official pi-subagents package uses.
-			const args = [
-				"--mode", "json", "-p",
-				"--no-tools", "--no-extensions", "--no-context-files",
-				"--no-skills", "--no-prompt-templates", "--no-themes",
-				"--model", opts.model,
-				"--system-prompt", opts.systemPrompt,
-			];
-			if (opts.imageFile) args.push(`@${opts.imageFile}`);
-			args.push(opts.prompt);
-			const timeoutMs = opts.timeoutMs ?? VLM_TIMEOUT_MS;
-			debug("runChildPi", { model: opts.model, hasImage: !!opts.imageFile, promptLen: opts.prompt.length, timeoutMs });
-			const proc = spawn("pi", args, { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
-			let deltaText = "";          // accumulated assistant text deltas (small, no image)
-			let lastMsgEndText = "";      // last assistant message_end text (small, no image)
-			let lineBuf = "";
-			let outLen = 0;
-			const t0 = Date.now();
-			const timer = setTimeout(() => proc.kill("SIGTERM"), timeoutMs);
-			const onLine = (line: string) => {
-				line = line.trim();
-				if (!line) return;
-				try {
-					const j = JSON.parse(line);
-					// stream assistant text deltas (avoids parsing the giant agent_end that embeds the image)
-					if (j.type === "message_update" && j.assistantMessageEvent?.type === "text_delta") {
-						deltaText += j.assistantMessageEvent.delta || "";
-					} else if (j.type === "message_end" && j.message?.role === "assistant") {
-						const c = j.message.content;
-						lastMsgEndText = typeof c === "string" ? c : Array.isArray(c) ? c.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join(" ") : "";
-					}
-				} catch {}
-			};
-			proc.stdout.on("data", (d: Buffer) => {
-				const s = d.toString(); outLen += s.length;
-				if (outLen > 16 << 20) { proc.kill(); return; } // cap memory
-				lineBuf += s;
-				let nl: number;
-				while ((nl = lineBuf.indexOf("\n")) >= 0) {
-					onLine(lineBuf.slice(0, nl));
-					lineBuf = lineBuf.slice(nl + 1);
-				}
-			});
-			const finish = (reason: string) => {
-				clearTimeout(timer);
-				onLine(lineBuf); // flush trailing partial line
-				const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-				const text = (deltaText.trim() || lastMsgEndText.trim());
-				debug("runChildPi done", { model: opts.model, reason, outLen, elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
-				forensic("runChildPi done", { model: opts.model, reason, outLen, elapsedSec: elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none", imageFile: opts.imageFile });
-				if (!text) forensic("runChildPi empty", { model: opts.model, reason, outLen, elapsedSec: elapsed, imageFile: opts.imageFile });
-				resolve(text);
-			};
-			proc.on("close", () => finish("close"));
-			proc.on("error", () => finish("error"));
-		});
-	}
-
-	/** Parse JSONL stdout from `pi --mode json -p`; pull the last assistant text from the agent_end event. */
 	function extractFinalAssistantText(_jsonl: string): string {
 		return ""; // unused: runChildPi now stream-parses text_delta/message_end (see git 6302ffa)
-	}
-
-	function textOf(content: unknown): string {
-		if (typeof content === "string") return content;
-		if (Array.isArray(content)) {
-			return content.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join(" ");
-		}
-		return "";
 	}
 
 	/** Heuristic gather of recent user/assistant text to feed the compressor. */
@@ -1173,66 +1101,6 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	}
 
 	/** Forensic log — ALWAYS on (image-data debugging for MCP path). */
-	function forensic(tag: string, data: Record<string, unknown>): void {
-		try {
-			const fs2 = require("node:fs");
-			fs2.appendFileSync("/tmp/xmodel-forensic.log", `${new Date().toISOString()} [${tag}] ${JSON.stringify(data)}\n`);
-		} catch {}
-	}
-
-	/** Detect a screenshot/image saved to disk in a tool_result's text (e.g. chrome_devtools "Saved screenshot to /tmp/x.png"). */
-	function detectSavedScreenshot(content: unknown): string | undefined {
-		const text = Array.isArray(content) ? content.filter((b: any) => b && b.type === "text").map((b: any) => b.text || "").join("\n") : "";
-		const m = text.match(/saved (?:screenshot|image|snapshot|capture)[^\n]*?\s(\/\S+\.(?:png|jpe?g|webp|gif|bmp))/i);
-		return m ? m[1] : undefined;
-	}
-
-	/** Read an image file from disk into a synthetic image block (base64 + mimeType) for delegation. */
-	function readImageFileBlock(filePath: string): any | undefined {
-		try {
-			if (!existsSync(filePath)) return undefined;
-			const buf = readFileSync(filePath);
-			if (!isValidImage(buf)) return undefined;
-			const ext = filePath.toLowerCase().split(".").pop() ?? "png";
-			const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : ext === "gif" ? "image/gif" : ext === "bmp" ? "image/bmp" : "image/png";
-			return { type: "image", data: buf.toString("base64"), mimeType, _bytes: buf.length };
-		} catch {
-			return undefined;
-		}
-	}
-
-	function isValidImage(buf: Buffer): boolean {
-		if (buf.length < 32) return false;
-		const h = buf;
-		return (
-			(h[0] === 0x89 && h[1] === 0x50 && h[2] === 0x4e && h[3] === 0x47) || // PNG
-			(h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff) || // JPEG
-			(h[0] === 0x47 && h[1] === 0x49 && h[2] === 0x46) || // GIF
-			(h[0] === 0x42 && h[1] === 0x4d) || // BMP
-			(h[0] === 0x52 && h[1] === 0x49 && h[2] === 0x46 && h[3] === 0x46 && h[8] === 0x57 && h[9] === 0x45 && h[10] === 0x42 && h[11] === 0x50) // WebP
-		);
-	}
-
-	function writeImageTmp(img: any): { path: string; valid: boolean; bytes: number } {
-		const mt = (img.mimeType || "image/png") as string;
-		const rawData: string = typeof img.data === "string" ? img.data : "";
-		forensic("writeImageTmp in", { mimeType: mt, dataLen: rawData.length, dataHead: rawData.slice(0, 40), hasData: !!img.data });
-		const sub = (mt.split("/")[1] || "png").toLowerCase();
-		const ext = /^(png|jpe?g|gif|webp|bmp|tiff?)$/.test(sub) ? sub.replace("jpeg", "jpg") : "png";
-		const p = join("/tmp", `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
-		let buf: Buffer;
-		try {
-			buf = rawData.startsWith("data:") ? Buffer.from(rawData.split(",")[1] ?? "", "base64") : Buffer.from(rawData, "base64");
-		} catch {
-			buf = Buffer.alloc(0);
-		}
-		writeFileSync(p, buf);
-		const valid = isValidImage(buf);
-		forensic("writeImageTmp out", { path: p, fileBytes: buf.length, valid, magic: buf.slice(0, 8).toString("hex") });
-		return { path: p, valid, bytes: buf.length };
-	}
-
-	/** Resolve the VLM ref string: explicit config, else auto-pick from registry. */
 	function resolveVlm(ctx: ExtensionContext): string | undefined {
 		if (visionCfg.vlm) return visionCfg.vlm;
 		const m = pickVisionModel(ctx);
