@@ -54,17 +54,18 @@ credgoo MY_NEW_SERVICE_KEY
 ```python
 # Standard pattern in Python
 from credgoo import get_api_key
-import contextlib, io
 
-with contextlib.redirect_stdout(io.StringIO()):
-    token = get_api_key("MY_SERVICE_KEY")
+token = get_api_key("MY_SERVICE_KEY")
 ```
 
 Resolution order: `env var` → `credgoo` → `.env` (last resort, gitignored)
 
 Current services: `WEB_SEARCH_BEARER`, `FETCH_URL_BEARER`, `searx`
 
-Rules: never commit real tokens, always gitignore `.env`, always suppress credgoo stdout in Python.
+Rules: never commit real tokens, always gitignore `.env`. `get_api_key` never
+prints to stdout (all output lives in the `credgoo` CLI), so no stdout
+suppression is needed. A missing key is logged at DEBUG — silent by default;
+configure a DEBUG handler on the `credgoo` logger to see it.
 
 ## Docs
 

@@ -74,10 +74,8 @@ Every skill that needs credentials follows this exact pattern:
 
 ```python
 # 1. Import with graceful fallback
-try:
-    from credgoo import get_api_key
-except ImportError:
-    get_api_key = None  # type: ignore
+from credgoo import get_api_key
+```
 
 # 2. Resolution function: env → credgoo → .env
 def get_bearer_token() -> str | None:
@@ -86,15 +84,9 @@ def get_bearer_token() -> str | None:
     if token := os.environ.get("MY_SKILL_TOKEN"):
         return token
 
-    # Credgoo (suppress stdout — it logs by default)
-    if get_api_key:
-        try:
-            import contextlib, io
-            with contextlib.redirect_stdout(io.StringIO()):
-                if token := get_api_key("MY_SKILL_TOKEN"):
-                    return token
-        except Exception:
-            pass
+    # Credgoo
+    if token := get_api_key("MY_SKILL_TOKEN"):
+        return token
 
     # .env file (last resort)
     env_file = Path(__file__).parent.parent / ".env"
@@ -106,9 +98,13 @@ def get_bearer_token() -> str | None:
     return None
 ```
 
-### Why `contextlib.redirect_stdout`?
+### Why no `contextlib.redirect_stdout`?
 
-credgoo logs to `stdout` by default (`logger.info` without handlers goes to stdout). If you don't suppress it, key retrieval prints noise that breaks CLI output and JSON piping. Always wrap it.
+`get_api_key` never prints to stdout — all output lives in the `credgoo` CLI's
+`main()`, not the library. A missing key is logged at DEBUG on the `credgoo`
+logger, which is silent by default (Python's `logging.lastResort` only fires on
+WARNING+). So no stdout suppression is ever needed in skills. If you want to see
+the missing-key diagnostic, configure a DEBUG handler on the `credgoo` logger.
 
 ### Fallback keys
 
@@ -121,14 +117,10 @@ def get_bearer_token() -> str | None:
         if token := os.environ.get(env_key):
             return token
 
-    if get_api_key:
-        for key in ("FETCH_URL_BEARER", "WEB_SEARCH_BEARER"):
-            try:
-                with contextlib.redirect_stdout(io.StringIO()):
-                    if token := get_api_key(key):
-                        return token
-            except Exception:
-                pass
+    if token := get_api_key("FETCH_URL_BEARER"):
+        return token
+    if token := get_api_key("WEB_SEARCH_BEARER"):
+        return token
     return None
 ```
 

@@ -325,7 +325,7 @@ cd "$SKILL_DIR"
 
 Resolution order in Python:
 1. Environment variable
-2. credgoo (with `contextlib.redirect_stdout` to suppress output)
+2. credgoo (`get_api_key` — never prints to stdout, so no suppression needed)
 3. `.env` file (last resort, gitignored)
 
 Check related keys as fallback (e.g. `WEB_SEARCH_BEARER` if `FETCH_URL_BEARER` not set).
