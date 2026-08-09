@@ -4,6 +4,13 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-09
 
+### extensions
+- **Added:** shared `extensions/lib/image-utils.ts` unifying `isVisionCapable`, `guessMime`, and `isValidImage` across xmodel + imagegen (each previously carried a copy).
+- **Moved:** shared helper modules (`session-state.ts`, `xmodel-config.ts`, `xmodel-vision-utils.ts`, `image-utils.ts`) into `extensions/lib/` — a subdir pi doesn't auto-discover as extensions, so the `package.json` extension glob is clean again (no `!` exclusions). Extensions import via `./lib/<name>`.
+- **Removed:** a Middle Man re-export (`isValidImage` now imported directly) and dead `extractFinalAssistantText`.
+
+## 2026-08-09
+
 ### xmodel
 - **Added:** extracted the pure config store into `extensions/xmodel-config.ts` and the stateless vision helpers into `extensions/xmodel-vision-utils.ts`. xmodel.ts dropped from 1719 → 1468 lines. The stateful vision pipeline (delegate/human/view) stays in xmodel.ts.
 
