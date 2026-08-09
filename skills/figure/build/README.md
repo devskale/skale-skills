@@ -37,7 +37,7 @@ npm run build          # both
 If `rsvg-convert` is missing, the build still emits the SVG and skips the PNG with a
 warning — the diagram is never lost.
 
-Rendered images (`.svg` + `.png`) are written to `~/generated/images/<name>/`
+Rendered images (`.svg` + `.png`) are written to `~/.generated/<name>/`
 (override with the `FIGURE_OUT_DIR` env var) — **not** next to the spec — so this skill's
 `diagrams/` stays clean. Commit the spec; the renders are regenerated. The builder scans
 `figure/diagrams/` **recursively**, so specs in subfolders build automatically.
@@ -47,7 +47,7 @@ Rendered images (`.svg` + `.png`) are written to `~/generated/images/<name>/`
 **Each diagram gets its own folder** under a topic group in `diagrams/` (e.g.
 `diagrams/architectures/rewoo-agent/`), never loose in `diagrams/` — the spec lives there,
 and any variants of the same diagram share that folder. (Rendered images go to
-`~/generated/images/<name>/`, not here — see the build section.) Create
+`~/.generated/<name>/`, not here — see the build section.) Create
 `figure/diagrams/<topic>/<diagram>/<name>.fig.mjs` with a default-exported spec.
 Coordinates are absolute; `(x,y)` is a node's top-left; author on a loose grid. See
 `../diagrams/architectures/rewoo-agent/rewoo-agent.fig.mjs` for a worked example.

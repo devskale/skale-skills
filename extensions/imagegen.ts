@@ -398,8 +398,8 @@ function embedMetadata(buf: Buffer, mime: string, meta: ImageMeta): { buf: Buffe
 /** Choose output dir.
  *  1. IMAGEGEN_OUTPUT_DIR env (absolute, or relative to cwd) — explicit override.
  *  2. uploads/ if it exists in cwd — web-served in πui (opt-in: create uploads/).
- *  3. ~/Pictures/generated/ on macOS — a stable home dir for generated images.
- *  4. ./generated/ — last-resort project-local default (non-mac). */
+ *  3. ~/.generated/ — a single predictable home for generated images.
+ *  4. ./generated/ — last-resort project-local default. */
 function outputDir(cwd: string): { dir: string; webUrl: boolean } {
 	const override = process.env.IMAGEGEN_OUTPUT_DIR?.trim();
 	if (override) {
@@ -413,7 +413,7 @@ function outputDir(cwd: string): { dir: string; webUrl: boolean } {
 	}
 	if (process.platform === "darwin") {
 		const home = os.homedir();
-		if (home) return { dir: path.join(home, "Pictures", "generated"), webUrl: false };
+		if (home) return { dir: path.join(home, ".generated"), webUrl: false };
 	}
 	return { dir: path.join(cwd, "generated"), webUrl: false };
 }
@@ -642,7 +642,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		description:
 			"Generate an image from a text prompt. Returns the image inline (the model can see it and iterate) plus an ASCII preview. " +
 			'Model is any available "provider@modelid" from the proxy catalog, e.g. "pollinations@dreamshaper" (cheap, default) or "tu@z-image-turbo" (high quality). ' +
-			"Images are saved to ~/Pictures/generated/ on macOS (./uploads/ if present, or ./generated/ otherwise); the prompt is embedded in the file metadata.",
+			"Images are saved to ~/.generated/ (./uploads/ if present, or ./generated/ otherwise); the prompt is embedded in the file metadata.",
 		promptSnippet: "Generate an image from a text prompt; model sees the result and can iterate",
 		promptGuidelines: [
 			"Use generate_image when the user asks to create, draw, or generate an image/picture/illustration/logo. " +
