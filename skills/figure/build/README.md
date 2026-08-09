@@ -9,31 +9,33 @@ matching SVG **and** PNG. Same spec → identical figure, every time.
 
 - `compose.mjs` — the library. `composeSVG(spec)` → house-style SVG string. Owns the
   palette, fonts, boxes, arrows, badges, title swipe, frame.
-- `raster.mjs` — shared SVG→PNG renderer (Playwright + embedded Patrick Hand).
+- `raster.mjs` — shared SVG→PNG renderer (`rsvg-convert` / librsvg, embedded Patrick Hand).
 - `build_figures.mjs` — CLI. Builds `figure/diagrams/*.fig.mjs` → `<name>.svg` + `<name>.png`.
 
 ## Build
 
-The toolchain needs [Playwright](https://playwright.dev) (declared in `figure/package.json`).
+The toolchain needs **`rsvg-convert`** (from **librsvg**) for the PNG step — a lightweight
+native rasterizer; the SVG step is pure Node with zero dependencies. Install it once:
 
-**On your own machine / a fresh clone** — install once, then use the npm scripts:
+```
+# macOS
+brew install librsvg
+# Linux (Debian/Ubuntu / Fedora)
+sudo apt install librsvg2-bin      # or: sudo dnf install librsvg2-tools
+```
+
+Then build via the npm scripts (no browser download — no Playwright/Chromium):
 
 ```
 cd figure
-npm install            # installs playwright
-npx playwright install chromium
+npm install            # no runtime deps (devDependencies empty)
 npm run figures        # build all diagrams -> diagrams/*.svg + *.png
 npm run icons          # re-render assets/**/*.svg -> matching *.png
 npm run build          # both
 ```
 
-**In this managed sandbox** — Playwright is already present globally and Chromium is
-pre-installed, so skip the install and point Node at the global modules:
-
-```
-NODE_PATH=/opt/node22/lib/node_modules node figure/build/build_figures.mjs          # all specs
-NODE_PATH=/opt/node22/lib/node_modules node figure/build/build_figures.mjs figure/diagrams/agentic-rag.fig.mjs
-```
+If `rsvg-convert` is missing, the build still emits the SVG and skips the PNG with a
+warning — the diagram is never lost.
 
 Rendered images (`.svg` + `.png`) are written to `~/generated/images/<name>/`
 (override with the `FIGURE_OUT_DIR` env var) — **not** next to the spec — so this skill's
