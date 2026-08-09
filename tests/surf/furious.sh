@@ -203,6 +203,25 @@ surf select "$EX" >/dev/null
 chk "shot-el h1 -> PNG"       "surf shot-el 'h1' /tmp/surf-el.png >/dev/null 2>&1 && sips -g pixelWidth /tmp/surf-el.png >/dev/null 2>&1"
 chk "shot-el missing -> fail" "surf shot-el '.zz-nope' /tmp/x.png >/dev/null 2>&1; [ \$? -ne 0 ]"
 
+section "L3. shot occlusion-proof (captures backing surface)"
+# shot must capture the window's OWN backing surface (screencapture -l), not the
+# screen composite — so content is captured even when another window overlaps it.
+# Probe: the produced PNG should be DPR-scaled (2x on Retina) of the window bounds,
+# which -R region grabs never are (they're 1x screen points). Self-contained shot
+# so the check doesn't depend on the L-section's RC.
+surf shot /tmp/surf-occ.png >/dev/null 2>&1
+if [ -f /tmp/surf-occ.png ]; then
+  PW=$(sips -g pixelWidth /tmp/surf-occ.png 2>/dev/null | awk '/pixelWidth/{print $2}')
+  BW=$(osascript -e 'tell application "Google Chrome" to get bounds of window 1' 2>/dev/null | awk -F', ' '{print $3-$1}')
+  if [ -n "$PW" ] && [ -n "$BW" ] && [ "$PW" -ge $((BW*2)) ]; then
+    mark "shot is DPR-scaled (backing-surface capture, not screen-region)" pass
+  else
+    mark "shot DPR-scaled (backing-surface capture)" FAIL
+  fi
+else
+  mark "shot occlusion check skipped (no shot)" skip
+fi
+
 section "N. v1.2 — doctor / batch / wait-stable"
 
 # doctor: runs; the JS-toggle line is deterministic given the suite's JS_OK precondition.

@@ -77,7 +77,6 @@ cmd_open() {
     if [ -n "$hit" ]; then
       W="$(printf '%s' "$hit" | awk '{print $1}')"
       T="$(printf '%s' "$hit" | awk '{print $2}')"
-      _surf_activate_tab "$W" "$T"
       _surf_pin_target "$W" "$T" "$url"
       echo "reuse: w$W.t$T  $url"
       return 0
@@ -88,7 +87,6 @@ cmd_open() {
       W="$(printf '%s' "$hit" | cut -f1)"
       T="$(printf '%s' "$hit" | cut -f2)"
       taburl="$(printf '%s' "$hit" | cut -f3-)"
-      _surf_activate_tab "$W" "$T"
       _surf_pin_target "$W" "$T" "$taburl"
       echo "reuse: w$W.t$T  $url  →  $taburl"
       return 0

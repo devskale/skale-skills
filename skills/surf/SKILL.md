@@ -1,6 +1,6 @@
 ---
 name: surf
-version: "1.4.5"
+version: "1.4.7"
 description: "Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screenshots, and tab-aware automation — no daemon, no debug port, no extension, no per-connection dialog. Sessions stay intact (cookies, logins, tabs). Uses macOS AppleScript + Chrome's 'Allow JavaScript from Apple Events'. Use when the user wants to automate, scrape, click, fill, read, or screenshot the browser they are already logged into. Triggers on: control my Chrome, drive my browser, automate my logged-in browser, scrape this page, fill this form, click this, read the page, take a browser screenshot, surf."
 ---
 
@@ -95,11 +95,11 @@ Ops: `title`/`url`/`text`/`html`/`attr`/`count`/`list`/`exists`/`visible`/`click
 - **Tabs that lie about JS.** `x.com`, Chrome **app/PWA windows**, and **incognito** windows make `execute javascript` fail with *"Executing JavaScript through AppleScript is turned off"* **even when the global toggle is ON**. If reads/`eval` fail on one tab, `surf select` a normal-site tab and retry. `surf doctor` probes JS on a throwaway `about:blank` tab, so it is immune to this and reliably reports the true global state.
 - **`wait-stable` foregrounds the tab.** Chrome throttles background-tab timers to ~1/sec, so a `setInterval`-driven mutation in a background tab can read as "quiet" and exit early. Keep the mutating tab foreground, or mutate via continuous DOM changes — the observer also fires on `appendChild`/attributes/`characterData`.
 - **`select` is drift-resilient and never silent.** It stores `W T URL`; if indices shift (reorder/close) the next op re-resolves by URL and re-pins (note on stderr); a tab that navigated in place is followed silently; a gone tab falls back to the active tab. It never deletes the target on uncertainty. Re-list current refs with `surf tabs`.
-- **`shot` captures the window rectangle** (`screencapture -R`), so a background-tab target is activated first. Needs **Screen Recording** for your terminal.
+- **`shot` captures the window by its CGWindowID** (`screencapture -l`) — the window's own backing surface, so content is captured **even when another window overlaps it** (no focus steal). Falls back to a screen-region grab if the ID can't be resolved. Needs **Screen Recording** for your terminal.
 - **`press` uses real key synthesis** — so Enter submits and `cmd+a` selects all (unlike JS-dispatched events) — and activates the target window first; it cannot press keys on a background tab. Needs **Accessibility** for your terminal.
 - **`eval` returns one stringified value.** For complex shapes, return JSON: `surf eval 'JSON.stringify({...})'`.
 - **Exit codes:** `0` = success · `1` = error / assertion failed / timeout. Not-found is *not* an error for read/interact commands (they return JSON `{ok:false}` with rc 0); assertions and `wait*` return rc 1 on failure.
-- **`open` reuses by default.** `surf open <url>` switches to an already-open tab instead of navigating — no duplicate tabs. Tier 1: exact URL match (trailing slash ignored). Tier 2: same-origin path-segment prefix — `open localhost:3000/dashboard` reuses a tab at `localhost:3000/dashboard/ai-chat`, landing on the deeper (already logged-in) page. Pass `--new` to force a fresh navigation of the target tab.
+- **`open` reuses by default, across ALL Chrome windows.** `surf open <url>` finds an already-open tab in any window instead of navigating — no duplicate tabs. Tier 1: exact URL match (trailing slash ignored). Tier 2: same-origin path-segment prefix — `open localhost:3000/dashboard` reuses a tab at `localhost:3000/dashboard/ai-chat`, landing on the deeper (already logged-in) page. Reuse pins the tab as the target **without stealing focus** (Chrome stays in the background). Pass `--new` to force a fresh navigation of the target tab.
 
 ## References
 
