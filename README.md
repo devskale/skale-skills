@@ -152,6 +152,7 @@ vtd transcript --url 'https://youtube.com/watch?v=…'
 | **[youtube](skills/youtube)** | YouTube search via Invidious with auto-fallback |
 | **[video-transcript-downloader](skills/video-transcript-downloader)** | Download video/audio/subtitles/transcripts (yt-dlp) |
 | **[d2](skills/d2)** | Diagrams-as-code with the D2 language |
+| **[viewimg](skills/viewimg)** | Show image(s) in the terminal (view-only, no VLM); `--open` opens all in one window |
 
 _Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, improve-skill, readme-write) moved to [`skills/deprecated/`](skills/deprecated/)._
 
@@ -161,8 +162,8 @@ _Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, 
 |---|---|
 | **[heartbeat](extensions/heartbeat.ts)** | Recurring reminder/heartbeat timer the agent can start/stop |
 | **[statusline](extensions/statusline.ts)** | Custom footer — machine name, token stats, context usage |
-| **[xmodel](extensions/xmodel.ts)** | Custom model providers (zai/GLM, opencode, zen.fg, local endpoints) |
-| **[imagegen](extensions/imagegen.ts)** | Text→image (Pollinations/TU via uniinfer) with ASCII preview for iteration |
+| **[xmodel](extensions/xmodel.ts)** | Model/thinking fast-switcher + vision pipeline — `read` is display-only (never VLM), understanding is opt-in via `read_image` tool / `/readimg` command |
+| **[imagegen](extensions/imagegen.ts)** | Text→image (any provider/modelid, self-healing defaults) with ASCII preview + `read` for inline display |
 
 ### Prompts
 

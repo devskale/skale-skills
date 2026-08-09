@@ -23,7 +23,11 @@ pi install git:github.com/devskale/skale-skills   # install once, globally
 pi config                                          # activate only the skills you use
 ```
 
-Default activation: **`web-search` + `fetch-url`** skills (extensions: heartbeat, xmodel, statusline).
+Default activation: **`web-search` + `fetch-url`** skills (extensions: heartbeat, xmodel, statusline, imagegen).
+
+> **View vs. understand images:** `read` and the `viewimg` skill are **display-only** — they show an
+> image inline / in the terminal but **never fire the VLM**. Understanding is **opt-in**: the `read_image`
+> tool or `/readimg` command runs the vision model. `xmodel` is still active and powers this separation.
 
 Full install, activate, filter, project-scope, update, and conflict docs: **[docs/installation.md](docs/installation.md)**.
 
