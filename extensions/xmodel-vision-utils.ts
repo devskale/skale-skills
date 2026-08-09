@@ -13,8 +13,6 @@ import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { isValidImage } from "./image-utils";
 
-export { isValidImage };
-
 /** Default timeout for a child-pi VLM sub-call. */
 export const VLM_TIMEOUT_MS = 90_000;
 

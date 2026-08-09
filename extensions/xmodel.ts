@@ -63,12 +63,11 @@ import {
 } from "@earendil-works/pi-tui";
 
 import { isStaleCtxError, reconstructLastCustomEntry } from "./session-state";
-import { isVisionCapable } from "./image-utils";
+import { isVisionCapable, isValidImage } from "./image-utils";
 import {
 	debug,
 	detectSavedScreenshot,
 	forensic,
-	isValidImage,
 	readImageFileBlock,
 	runChildPi,
 	textOf,
@@ -1051,10 +1050,6 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		"You write a focused query for a vision model. Given the coding-agent conversation, output ONLY what the vision model should examine/answer about the upcoming image — the task goal plus any specific things to check. No preamble, no code dumps. Respect the char budget.";
 	const VISION_VLM_SYS =
 		"You are a vision analyst embedded in a coding agent. Given a task brief and one image, report concrete, actionable observations about the image in service of the task (UI state, visible text, errors, layout, discrepancies, colours). Be precise and concise. Output only the analysis.";
-
-	function extractFinalAssistantText(_jsonl: string): string {
-		return ""; // unused: runChildPi now stream-parses text_delta/message_end (see git 6302ffa)
-	}
 
 	/** Heuristic gather of recent user/assistant text to feed the compressor. */
 	function gatherRecentContext(ctx: ExtensionContext, maxChars = 8000): string {
