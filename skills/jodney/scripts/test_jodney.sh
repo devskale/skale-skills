@@ -11,9 +11,8 @@ echo "=== Jodney Skill Test ==="
 if ! command -v jodney &> /dev/null; then
     echo "ERROR: jodney not found in PATH"
     echo ""
-    echo "Install options:"
-    echo "  1. Build from source: git clone https://github.com/simonw/jodney && cd jodney && go build -o jodney ."
-    echo "  2. Install via uv: uv pip install jodney"
+    echo "Install:"
+    echo "  git clone git@github.com:devskale/jodney.git && cd jodney && go build -o ~/.local/bin/jodney ."
     exit 1
 fi
 
