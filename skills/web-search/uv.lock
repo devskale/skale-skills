@@ -118,7 +118,7 @@ wheels = [
 [[package]]
 name = "credgoo"
 version = "0.1.13"
-source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Fcredgoo#8f33e58a6c12ef94dc02f48c1d2d540d0667ef60" }
+source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Fcredgoo#5f58d24b802d27a89ab2bc18f6974e78cfc57c0c" }
 dependencies = [
     { name = "requests", version = "2.32.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "requests", version = "2.34.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
