@@ -7,8 +7,8 @@
 // organised in per-topic subfolders (e.g. diagrams/architectures/). Each spec module
 // default-exports a spec object (see compose.mjs). Rendered images (.svg + .png) are
 // written to a dedicated OUTPUT dir, NOT next to the spec, so the skill's diagrams/
-// stays clean. Output dir is a single predictable home: ~/.generated/ (override with
-// FIGURE_OUT_DIR).
+// stays clean. Output dir is XDG-standard: $XDG_CACHE_HOME/generated (default
+// ~/.cache/generated); override with FIGURE_OUT_DIR.
 
 import { readdirSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
@@ -22,13 +22,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));            // figure/build
 const DIAGRAMS = join(HERE, '..', 'diagrams');
 const SCALE = 2;                                                // figures are already large
 
-// Resolve the output dir — a single predictable home: ~/.generated/.
-//   FIGURE_OUT_DIR env (absolute/relative) overrides it.
+// Resolve the output dir — XDG-standard cache home for regenerable generated output.
+//   $XDG_CACHE_HOME/generated  (default ~/.cache/generated); FIGURE_OUT_DIR overrides.
 function resolveOutDir() {
   const override = process.env.FIGURE_OUT_DIR?.trim();
   if (override) return resolve(override);
-  const home = homedir();
-  return home ? join(home, '.generated') : join(process.cwd(), '.generated');
+  const xdgCache = process.env.XDG_CACHE_HOME?.trim();
+  const base = xdgCache ? resolve(xdgCache) : join(homedir(), '.cache');
+  return join(base, 'generated');
 }
 const OUT_DIR = resolveOutDir();
 
