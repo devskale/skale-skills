@@ -33,14 +33,13 @@ on rebuild.
 cd skills/figure
 brew install librsvg                # provides rsvg-convert (PNG step); SVG is pure Node
 
-# write a spec, then build it -> .svg + .png land in ~/generated/images/<name>/
+# write a spec, then build it -> .svg + .png land in ~/.generated/<name>/
 node build/build_figures.mjs diagrams/my-fig.fig.mjs
 node build/build_figures.mjs                       # build every *.fig.mjs under diagrams/
 ```
 
-**Output dir** (resolved, never hardcoded): `FIGURE_OUT_DIR` env → `./diagrams-built/`
-(project-local, gitignored) → `~/Pictures/generated/figures/` (macOS) → `./generated/`.
-Each figure lands in `<out>/<name>/<name>.svg` + `.png`.
+**Output dir**: a single predictable home — `~/.generated/` (override with `FIGURE_OUT_DIR`).
+Each figure lands in `~/.generated/<name>/<name>.svg` + `.png`.
 
 **Self-verification (always-on lint).** Every build prints a geometry lint to **stderr**:
 out-of-bounds nodes/labels, text collisions, node-box overlaps, and aspect-ratio bloat

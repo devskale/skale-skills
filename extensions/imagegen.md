@@ -142,7 +142,7 @@ cat <file>.txt                 # sidecar (WebP/GIF/BMP)
 |---|---|---|
 | `model` | `pollinations@dreamshaper` | ~0.0001 pollen → cheapest iteration (flux is 0.0020) |
 | `size` | `512x512` | compact, broadly supported (512–640px range keeps files small) |
-| output dir | `~/Pictures/generated/` on macOS (or `./uploads/` if present in cwd for πui web URLs; `./generated/` elsewhere) | a stable home dir for generated images; override with `IMAGEGEN_OUTPUT_DIR` |
+| output dir | `~/.generated/` (or `./uploads/` if present in cwd for πui web URLs; `./generated/` elsewhere) | a single predictable home for generated images; override with `IMAGEGEN_OUTPUT_DIR` |
 
 ### Iteration model (v1)
 

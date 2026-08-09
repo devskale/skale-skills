@@ -32,6 +32,19 @@ d2 diagram.d2 diagram.txt            # ASCII preview — verify structure (the a
 d2 diagram.d2                        # → diagram.svg (self-contained default)
 ```
 
+## Output dir
+
+Save **rendered** diagrams (`.svg`/`.png`/`.pdf`) to `~/.generated/` by default — a
+single predictable home, matching the `figure` skill and `imagegen`. Keep the `.d2`
+source in the repo/project (editable, version-controllable); the rendered output is a
+build artifact. Override per-run with an explicit path when the user wants output
+elsewhere (e.g. in-repo for a deliverable).
+
+```bash
+d2 diagram.d2 ~/.generated/diagram.svg
+bash scripts/d2png diagram.d2 ~/.generated/diagram.png
+```
+
 ## Core Syntax
 
 ```d2
