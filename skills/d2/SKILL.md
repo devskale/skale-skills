@@ -34,15 +34,15 @@ d2 diagram.d2                        # → diagram.svg (self-contained default)
 
 ## Output dir
 
-Save **rendered** diagrams (`.svg`/`.png`/`.pdf`) to `~/.generated/` by default — a
-single predictable home, matching the `figure` skill and `imagegen`. Keep the `.d2`
-source in the repo/project (editable, version-controllable); the rendered output is a
-build artifact. Override per-run with an explicit path when the user wants output
-elsewhere (e.g. in-repo for a deliverable).
+Save **rendered** diagrams (`.svg`/`.png`/`.pdf`) to `$XDG_CACHE_HOME/generated/` (default
+`~/.cache/generated/`) by default — the XDG-standard home for regenerable output, matching the
+`figure` skill and `imagegen`. Keep the `.d2` source in the repo/project (editable,
+version-controllable); the rendered output is a build artifact. Override per-run with an
+explicit path when the user wants output elsewhere (e.g. in-repo for a deliverable).
 
 ```bash
-d2 diagram.d2 ~/.generated/diagram.svg
-bash scripts/d2png diagram.d2 ~/.generated/diagram.png
+d2 diagram.d2 ~/.cache/generated/diagram.svg
+bash scripts/d2png diagram.d2 ~/.cache/generated/diagram.png
 ```
 
 ## Core Syntax
