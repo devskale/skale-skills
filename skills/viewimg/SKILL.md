@@ -12,21 +12,21 @@ Understanding is a separate, explicit step (`read_image` / `/readimg`).
 ## Usage
 
 ```bash
-viewimg <image-file> [--size WxH] [--open]
+viewimg <image-file>... [--size WxH] [--open] [--no-color] [--help]
 ```
 
 | Flag | Meaning |
 |------|---------|
 | `--size WxH` | chafa block size (default `60x30`) |
-| `--open` | open in a native window instead of in-terminal (uses `open` on macOS) |
+| `--open` | open **all** images together in **one** native window (uses `open -a Preview` on macOS) |
 | `--no-color` | plain ASCII fallback (no ANSI color) |
 | `--help` | usage |
 
 ## Behavior
 
-- **Default:** renders the image as ANSI block art directly in the terminal via `chafa`.
-- **`--open`:** opens the image in a native window (`open` on macOS) — crisp, real image.
-- **Fallback:** if `chafa` is missing and no `--open`, falls back to `open` (macOS) / prints a hint.
+- **Default:** renders each image as ANSI block art directly in the terminal via `chafa`.
+- **`--open`:** opens **all** images in **one** Preview window (tabs) via `open -a Preview` —
+  no multiple windows, even across repeated calls (Preview reuses its window).
 
 ## Why view-only?
 

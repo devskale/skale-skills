@@ -38,8 +38,16 @@ check "--help → exit 0" 0 "$SCRIPT" --help
 if command -v chafa >/dev/null 2>&1; then
     check "render image → exit 0" 0 "$SCRIPT" "$IMG" --size 20x10
     check "render --no-color → exit 0" 0 "$SCRIPT" "$IMG" --size 20x10 --no-color
+    check "render multiple → exit 0" 0 "$SCRIPT" "$IMG" "$IMG" --size 20x10
 else
     echo "  (skipping render tests: chafa not installed)"
+fi
+
+# multiple files in one window (open present on macOS)
+if command -v open >/dev/null 2>&1; then
+    check "--open multiple → exit 0" 0 "$SCRIPT" "$IMG" "$IMG" --open
+else
+    echo "  (skipping --open test: open not available)"
 fi
 
 echo "-------------"

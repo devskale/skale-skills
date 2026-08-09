@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# viewimg — show an image in the terminal (view-only, no VLM).
+# viewimg — show image(s) in the terminal (view-only, no VLM).
 #
-#   viewimg <image-file> [--size WxH] [--open] [--no-color] [--help]
+#   viewimg <image-file>... [--size WxH] [--open] [--no-color] [--help]
 #
-# Renders the image as ANSI block art via chafa (default), or opens it in a
-# native window with `open` on macOS (--open). Never analyzes the image.
+# Renders each image as ANSI block art via chafa (default), or opens ALL images
+# together in ONE native window with `open` on macOS (--open). Never analyzes.
 set -uo pipefail
 
 SELF="${BASH_SOURCE[0]}"
@@ -17,13 +17,13 @@ SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 
 usage() {
     cat <<'EOF'
-viewimg — show an image in the terminal (view-only, no VLM)
+viewimg — show image(s) in the terminal (view-only, no VLM)
 
 Usage:
-  viewimg <image-file> [--size WxH] [--open] [--no-color] [--help]
+  viewimg <image-file>... [--size WxH] [--open] [--no-color] [--help]
 
   --size WxH     chafa block size (default 60x30)
-  --open         open in a native window (macOS `open`) instead of in-terminal
+  --open         open ALL images together in ONE native window (macOS `open`)
   --no-color     plain ASCII fallback (no ANSI color)
   --help         this help
 
@@ -32,7 +32,7 @@ EOF
 }
 
 # ── parse args ──
-src=""; size="60x30"; open_mode=0; no_color=0
+files=(); size="60x30"; open_mode=0; no_color=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --size) size="${2:-60x30}"; shift 2 ;;
@@ -40,38 +40,46 @@ while [ $# -gt 0 ]; do
         --no-color) no_color=1; shift ;;
         --help|-h) usage; exit 0 ;;
         --*) echo "viewimg: unknown flag: $1" >&2; usage >&2; exit 2 ;;
-        *) src="$1"; shift ;;
+        *) files+=("$1"); shift ;;
     esac
 done
 
-[ -n "$src" ] || { echo "viewimg: no image file given" >&2; usage >&2; exit 2; }
-[ -f "$src" ] || { echo "viewimg: not a file: $src" >&2; exit 2; }
+[ "${#files[@]}" -gt 0 ] || { echo "viewimg: no image file given" >&2; usage >&2; exit 2; }
+for f in "${files[@]}"; do
+    [ -f "$f" ] || { echo "viewimg: not a file: $f" >&2; exit 2; }
+done
 
-# ── open in native window ──
+# ── open ALL images in ONE native window ──
 if [ "$open_mode" -eq 1 ]; then
     if command -v open >/dev/null 2>&1; then
-        open "$src"
-        echo "viewimg: opened $src in a native window"
+        # `open -a Preview f1 f2 ...` opens all files as tabs in a single Preview
+        # window, and Preview reuses that same window on later calls — so multiple
+        # viewimg --open calls never stack up separate windows.
+        open -a Preview "${files[@]}"
+        echo "viewimg: opened ${#files[@]} image(s) in one Preview window"
         exit 0
     fi
     echo "viewimg: --open needs macOS \`open\` (not found)" >&2
     exit 1
 fi
 
-# ── in-terminal render via chafa ──
+# ── in-terminal render via chafa (one per image) ──
 if command -v chafa >/dev/null 2>&1; then
-    if [ "$no_color" -eq 1 ]; then
-        chafa --format symbols --colors 2 --size "$size" "$src"
-    else
-        chafa --format symbols --colors 256 --size "$size" "$src"
-    fi
-    exit $?
+    for f in "${files[@]}"; do
+        echo "== $f =="
+        if [ "$no_color" -eq 1 ]; then
+            chafa --format symbols --colors 2 --size "$size" "$f"
+        else
+            chafa --format symbols --colors 256 --size "$size" "$f"
+        fi
+    done
+    exit 0
 fi
 
-# ── fallback ──
+# ── fallback: open all in one window ──
 if command -v open >/dev/null 2>&1; then
     echo "viewimg: chafa not found — opening in a native window instead" >&2
-    open "$src"
+    open -a Preview "${files[@]}"
     exit 0
 fi
 echo "viewimg: chafa not found. Install it (macOS: brew install chafa; Linux: apt install chafa)." >&2
