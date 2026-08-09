@@ -1,6 +1,6 @@
 {
   "name": "skale-skills",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "keywords": ["pi-package"],
   "pi": {
     "extensions": ["./extensions/*.ts", "!extensions/session-state.ts", "!extensions/xmodel-config.ts", "!extensions/xmodel-vision-utils.ts"],

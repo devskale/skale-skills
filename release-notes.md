@@ -4,6 +4,18 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-09
 
+### xmodel
+- **Added:** extracted the pure config store into `extensions/xmodel-config.ts` and the stateless vision helpers into `extensions/xmodel-vision-utils.ts`. xmodel.ts dropped from 1719 → 1468 lines. The stateful vision pipeline (delegate/human/view) stays in xmodel.ts.
+
+### surf
+- **Changed:** split `help.sh` (920-line data monolith) into `help-overview.sh` (the categorized index) + `help-command.sh` (per-command detail + dispatcher). Verified byte-identical output for all 45 commands.
+- **Documented:** `surf.sh` now declares THE SEAM — `run_js` (engine.sh) + `get_target` (target.sh) are the two load-bearing interfaces every command routes through; `$APP`/`$TARGET_FILE` are read-only shared config.
+
+### package
+- **Fixed:** helper modules (`session-state.ts`, `xmodel-config.ts`, `xmodel-vision-utils.ts`) are now excluded from the extension glob so pi doesn't try to load them as extensions.
+
+## 2026-08-09
+
 ### fetch-url / web-search
 - **Changed:** dropped the copy-pasted global-first `sys.path` credgoo bootstrap and the `credgoo_get` wrapper. Both now import `get_api_key` directly (declared dependency, resolved to credgoo 0.1.14). Missing keys log at DEBUG — silent by default, opt-in loud via a DEBUG handler. Removed the `contextlib.redirect_stdout` cargo-cult from docs.
 
