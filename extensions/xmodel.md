@@ -59,9 +59,11 @@ main model can't see images, xmodel routes it through a vision pipeline. The mod
 ### Display vs. understand (`read` vs. `read_image` / `/readimg`)
 
 `read` is a **display** tool — it shows the image to you but **never triggers the VLM**
-(`view`-only). Understanding is **opt-in**: use the `read_image` tool (agent) or `/readimg`
-command (you) to run the VLM and get a text analysis. `generate_image` and `view` are also
-display-only. Only analysis-oriented tools (screenshots, MCP captures) still auto-delegate.
+(`view`-only). The **`viewimg`** skill is the CLI companion for the same thing (in-terminal
+block art, or `--open` for all images in one window). Understanding is **opt-in**: use the
+`read_image` tool (agent) or `/readimg` command (you) to run the VLM and get a text analysis.
+`generate_image` and `view` are also display-only. Only analysis-oriented tools (screenshots,
+MCP captures) still auto-delegate.
 
 | Mode | Behaviour |
 |---|---|
