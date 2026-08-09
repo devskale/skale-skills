@@ -608,8 +608,10 @@ USAGE
   surf shot [<path>]      default ./surf-shot.png
 
 NOTES
-  Captures the window rectangle via screencapture; a background-tab target is
-  activated first. Needs Screen Recording for your terminal.
+  Captures the window by its CGWindowID (screencapture -l), so the window's own
+  backing surface is captured even when another window overlaps it — no focus steal.
+  Falls back to a screen-region capture if the ID can't be resolved. Needs Screen
+  Recording for your terminal.
 
 EXAMPLE
   surf shot ~/page.png
@@ -769,8 +771,9 @@ USAGE
   surf shot-full [<path>]      default ./surf-shot-full.png
 
 NOTES
-  Scrolls the page slice by slice, captures each viewport, stitches with Pillow.
-  Needs Screen Recording. Caveats: lazy images may need longer to render;
+  Scrolls the page slice by slice, captures each viewport by CGWindowID (-l), and
+  stitches with Pillow. Unfocused: runs entirely in the background with no focus
+  steal. Needs Screen Recording. Caveats: lazy images may need longer to render;
   position:fixed/sticky elements repeat in each slice.
 
 EXAMPLE

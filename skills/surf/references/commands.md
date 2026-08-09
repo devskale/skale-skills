@@ -1,6 +1,6 @@
 # Surf — Command Reference
 
-Complete reference for `surf`, the macOS AppleScript CLI for your real Google Chrome. v1.4.5.
+Complete reference for `surf`, the macOS AppleScript CLI for your real Google Chrome. v1.4.7.
 
 `surf` targets the **active tab of the front window** unless you `surf select` a tab. Selectors are CSS (`document.querySelector` / `querySelectorAll`). `--json` is supported on `tabs`, `here`, `title`, `url`, `text`, `html`, `attr`, `count`, `exists`, `visible`, `assert` (v1.4.3); `list`, `table`, `cookie --json`, `localstorage` are JSON natively.
 
@@ -28,7 +28,7 @@ The target is stored in `~/.config/surf/target` as `W T URL` (override with `SUR
 |---|---|
 | `surf tabs` | every window → tab as `wN.tN  URL  \|  title`. `--json` → `[{window,tab,url,title}]` |
 | `surf here` | `URL \| title` of the target tab. `--json` → `{window,tab,url,title}` |
-| `surf open <url> [--new]` | reuse an open tab (exact URL, then same-origin path-segment prefix) or navigate the target tab; `--new` forces navigation |
+| `surf open <url> [--new]` | reuse an open tab **in any Chrome window** (exact URL, then same-origin path-segment prefix) or navigate the target tab; `--new` forces navigation. Reuse pins the target without stealing focus |
 | `surf new [<url>]` | new tab in a normal (non-incognito, JS-capable) window (default `about:blank`) |
 | `surf reload` | reload target tab |
 | `surf back` / `surf fwd` | `history.back()` / `history.forward()` |
@@ -109,7 +109,7 @@ Activates the target tab's window first (can't press keys on a background tab). 
 
 | Command | Notes |
 |---|---|
-| `surf shot [<path>]` | window screenshot → PNG (default `./surf-shot.png`). Brings the window to front, reads `bounds`, `screencapture -R`. Needs **Screen Recording** for the terminal. |
+| `surf shot [<path>]` | window screenshot → PNG (default `./surf-shot.png`). Captures the window by its **CGWindowID** (`screencapture -l`) — reads the window's own backing surface, so content is captured **even when another window overlaps it** (no focus steal). Falls back to `screencapture -R` if the ID can't be resolved. Needs **Screen Recording** for the terminal. |
 | `surf shot-el "<sel>" [<path>]` | element screenshot: scrolls into view, reads `getBoundingClientRect` + `devicePixelRatio` + chrome height, captures the window, crops with built-in `sips`. Best-effort positioning. → `{"ok":...}` for missing selectors |
 
 ## Diagnostics

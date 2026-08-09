@@ -2,7 +2,7 @@
 
 Checkable roadmap. Workflow per item: **implement → validate (`tests/surf/furious.sh`) → commit → check the box.**
 
-Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `select`, navigation/tabs, reads, assertions, interactions, waits (MutationObserver), screenshots, `--json`, `doctor`, `batch`, classified JS-failure messages.
+Status: `surf v1.4.7` — modular `lib/` structure, stale-target resilient `select`, navigation/tabs, reads, assertions, interactions, waits (MutationObserver), screenshots (occlusion-proof `shot`), `--json`, `doctor`, `batch`, classified JS-failure messages.
 
 ## Tier 1 — core gaps (real friction)
 
@@ -68,3 +68,5 @@ Status: `surf v1.3.1` — modular `lib/` structure, stale-target resilient `sele
 - [x] v1.3.1 — modular `lib/` (engine/target/nav/read/wait/interact/assert/shot/meta/main); stale-target resilient `select` (URL-sticky, re-pins on drift); github-org stats + drift tests (98/98 furious)
 - [x] v1.2.0 — `doctor`, `batch`, `wait-stable` (MutationObserver); JSON tab helpers in tests (93/93 furious)
 - [x] v0.1.0 — tabs/here/open/new/reload/back/fwd/close, title/url/text/html/attr/count/eval, click/fill, select (bg tabs), shot, setup (52/52 furious)
+- [x] v1.4.6 — `shot` is occlusion-proof: captures by CGWindowID (`screencapture -l`) instead of screen region, so the window's own backing surface is captured even when another window overlaps it (no focus steal). Self-compiling Swift CGWindowID resolver with cache; falls back to `-R` when unavailable.
+- [x] v1.4.7 — focus-free everywhere possible: `shot`, `shot-el`, `shot-full` (all now `-l` backing-surface, no activate/focus steal) and `open` reuse (pins target across ALL windows without bringing Chrome to front). Only `press` (real keystrokes), `new` (AppleScript tab creation), `find-tab --activate`, and `setup` still focus by design.
