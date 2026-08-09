@@ -44,6 +44,10 @@ import { existsSync, readFileSync } from "node:fs";
 const DEFAULT_MESSAGE = "Time to check in — what are you working on?";
 const STATUS_KEY = "heartbeat";
 const ENTRY_TYPE = "heartbeat:config";
+// When pi is busy (mid-turn) a due beat is SHIFTED by one interval and re-checked —
+// it is not consumed (count not bumped), so a long agent run just pushes the beat
+// out rather than stacking a burst of reminders. The shift is capped at 5 min max.
+const BUSY_SHIFT_MAX_MS = 300_000; // 5 min cap
 
 // ── State (module-level; config persisted via appendEntry) ────
 interface HBState {
@@ -56,6 +60,7 @@ interface HBState {
   nextAt: number;
   count: number;
   paused: boolean;
+  busy: boolean;    // true while pi is mid-turn (tracked via turn_start/turn_end)
 }
 
 const state: HBState = {
@@ -68,6 +73,7 @@ const state: HBState = {
   nextAt: 0,
   count: 0,
   paused: false,
+  busy: false,
 };
 
 let timerId: ReturnType<typeof setTimeout> | undefined;
@@ -103,6 +109,7 @@ function resetAll() {
   state.lastAt = 0;
   state.nextAt = 0;
   state.count = 0;
+  state.busy = false;
 }
 
 function isStaleError(e: unknown): boolean {
@@ -114,8 +121,11 @@ function statusLine(): string {
   const rem = Math.max(0, Math.floor((state.nextAt - Date.now()) / 1000));
   const tot = Math.floor(state.intervalMs / 1000);
   if (state.paused) return `⏰ PAUSED ${rem}s`;
+  // Clamp the fill bar to 0..10. After a busy-shift nextAt can be far out (e.g. a
+  // 5s interval shifted 2min), which would otherwise drive pct/f negative and make
+  // String.repeat throw RangeError.
   const pct = tot > 0 ? Math.round(((tot - rem) / tot) * 100) : 0;
-  const f = Math.round(pct / 10);
+  const f = Math.max(0, Math.min(10, Math.round(pct / 10)));
   return `⏰ ${rem}s [${"█".repeat(f)}${"░".repeat(10 - f)}] #${state.count}`;
 }
 
@@ -167,43 +177,56 @@ function scheduleNext(pi: ExtensionAPI, ctx: any) {
   if (!state.active || state.paused) return;
   const d = Math.max(0, state.intervalMs - (Date.now() - state.lastAt));
   state.nextAt = Date.now() + d;
-  timerId = setTimeout(() => {
-    if (!state.active || state.paused) return;
-    state.count++;
-    state.lastAt = Date.now();
-    state.nextAt = Date.now() + state.intervalMs;
-    try {
-      pi.sendUserMessage(`⏰ **Heartbeat #${state.count}**\n\n${state.message}`, { deliverAs: "followUp" });
-    } catch (e) {
-      if (isStaleError(e)) { resetTimers(); return; }
-      throw e;
-    }
+  timerId = setTimeout(() => onBeatDue(pi, ctx), d);
+}
 
-    if (state.maxCount > 0 && state.count >= state.maxCount) {
-      const total = state.count;
-      resetTimers();
-      safeSetStatus(ctx, undefined);
-      safeNotify(ctx, `⏹ Heartbeat finished after ${total} reminder${total === 1 ? "" : "s"}.`, "success");
-      persist(pi);
-      return;
-    }
-    scheduleNext(pi, ctx);
-  }, d);
+/**
+ * A beat came due. If pi is busy (mid-turn) we SHIFT it by one interval (capped
+ * at 5 min) and re-check later — we do NOT consume it (count is not bumped), so
+ * a long agent run keeps pushing the beat out instead of stacking a burst of
+ * reminders mid-work. Only when pi is idle do we actually fire.
+ */
+function onBeatDue(pi: ExtensionAPI, ctx: any) {
+  if (!state.active || state.paused) return;
+  if (state.busy) {
+    // Shift by one interval (capped at 5 min) — do NOT consume the beat.
+    const shift = Math.min(state.intervalMs, BUSY_SHIFT_MAX_MS);
+    state.nextAt = Date.now() + shift;
+    timerId = setTimeout(() => onBeatDue(pi, ctx), shift);
+    return;
+  }
+  fireReminder(pi, ctx);
+}
+
+/** Send the next reminder (only ever called when not busy). */
+function fireReminder(pi: ExtensionAPI, ctx: any) {
+  state.count++;
+  state.lastAt = Date.now();
+  state.nextAt = Date.now() + state.intervalMs;
+  try {
+    pi.sendUserMessage(`⏰ **Heartbeat #${state.count}**\n\n${state.message}`, { deliverAs: "followUp" });
+  } catch (e) {
+    if (isStaleError(e)) { resetTimers(); return; }
+    throw e;
+  }
+
+  if (state.maxCount > 0 && state.count >= state.maxCount) {
+    const total = state.count;
+    resetTimers();
+    safeSetStatus(ctx, undefined);
+    safeNotify(ctx, `⏹ Heartbeat finished after ${total} reminder${total === 1 ? "" : "s"}.`, "success");
+    persist(pi);
+    return;
+  }
+  scheduleNext(pi, ctx);
 }
 
 function scheduleOneShot(pi: ExtensionAPI, ctx: any, delayMs: number) {
   state.nextAt = Date.now() + delayMs;
   oneShotTimerId = setTimeout(() => {
     if (!state.active) return;
-    state.count++;
-    state.lastAt = Date.now();
-    state.nextAt = state.lastAt;
-    safeNotify(ctx, `⏰ **Heartbeat #${state.count}**\n\n${state.message}`, "info");
-    const total = state.count;
-    resetTimers();
-    safeSetStatus(ctx, undefined);
-    safeNotify(ctx, `⏹ One-shot reminder sent.`, "success");
-    persist(pi);
+    // Same idle-only rule as recurring: shift while busy, fire when idle.
+    onBeatDue(pi, ctx);
   }, delayMs);
 }
 
@@ -242,7 +265,7 @@ function reconstruct(ctx: any): { active: boolean; message: string; intervalMs: 
 
 // ── Centralized control (used by command AND tool) ────────────
 export interface ControlOpts {
-  action: "start" | "status" | "stop" | "message" | "time" | "pause" | "resume";
+  action: "start" | "status" | "stop" | "message" | "time" | "pause" | "resume" | "help";
   message?: string;
   duration?: string;       // "30s" | "5m" | "2h" | "1d"
   maxCount?: number;       // 0 = forever
@@ -258,6 +281,31 @@ export interface ControlResult {
 }
 
 function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
+  // ── help (bare /heartbeat with no args) ──────────────────
+  if (o.action === "help") {
+    return {
+      text: [
+        "⏰ Heartbeat — recurring reminder (fires only when pi is idle)",
+        "",
+        "USAGE",
+        "  /heartbeat <duration> [\"message\"]   start (30s | 5m | 2h | 1d; bare = seconds)",
+        "  /heartbeat \"message\"                start with default 60s",
+        "  /heartbeat -f file.md [--lines N]   start, message from file",
+        "  /heartbeat <dur> --limit N           stop after N beats (0 = forever)",
+        "  /heartbeat <dur> --once              one-shot: fire once, then stop",
+        "  /heartbeat message <text>            change message live",
+        "  /heartbeat time <duration>           change interval live",
+        "  /heartbeat pause | resume | status | off",
+        "",
+        "WHILE BUSY",
+        "  A beat due while pi is mid-turn is SHIFTED by one interval (capped at 5 min),",
+        "  not consumed — it fires only when pi is idle.",
+      ].join("\n"),
+      level: "info",
+      state: snapshot(),
+    };
+  }
+
   // ── status ───────────────────────────────────────────────
   if (o.action === "status") {
     if (!state.active) return { text: "No heartbeat active.", level: "info", state: snapshot() };
@@ -374,7 +422,6 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
   state.message = msg;
   state.intervalMs = intervalMs;
   state.maxCount = typeof o.maxCount === "number" && o.maxCount >= 0 ? o.maxCount : 0;
-  state.paused = typeof o.paused === "boolean" ? o.paused : false;
   state.startedAt = Date.now();
   state.lastAt = Date.now();
   state.nextAt = Date.now() + intervalMs;
@@ -412,6 +459,9 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
 // ── Raw-string parser for the slash command ──────────────────
 function parseCommand(raw: string): ControlOpts {
   const first = raw.match(/^\s*(\S+)/)?.[1] ?? "";
+
+  if (first === "help" || first === "?") return { action: "help" };
+  if (first === "") return { action: "help" };   // bare /heartbeat -> help, not start
 
   if (first === "status") return { action: "status" };
   if (first === "off" || first === "stop") return { action: "stop" };
@@ -477,6 +527,17 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_compact", (_e, ctx) => restore(ctx));
   pi.on("session_shutdown", () => resetAll());
 
+  // ── Busy/idle tracking: only fire heartbeats when pi is idle ──
+  // turn_start → busy (pi is mid-turn: LLM response + tool calls). turn_end → idle.
+  // A beat due while busy is SHIFTED by one interval (capped at 5 min, not consumed) and re-checked,
+  // so long agent runs push the beat out instead of stacking a burst mid-work.
+  pi.on("turn_start", (_e) => {
+    state.busy = true;
+  });
+  pi.on("turn_end", (_e) => {
+    state.busy = false;
+  });
+
   // ── Human slash command: /heartbeat … ─────────────────────
   pi.registerCommand("heartbeat", {
     description: "Recurring reminder. /heartbeat 30s | \"msg\" | -f file.md | message <txt> | time <dur> | status | off",
@@ -513,7 +574,7 @@ export default function (pi: ExtensionAPI) {
         "inspect it, and 'stop' to end it.",
     ],
     parameters: Type.Object({
-      action: StringEnum(["start", "status", "stop", "message", "time", "pause", "resume"] as const),
+      action: StringEnum(["start", "status", "stop", "message", "time", "pause", "resume", "help"] as const),
       message: Type.Optional(Type.String({ description: "Reminder text (for action 'start' or 'message')" })),
       duration: Type.Optional(Type.String({
         description: "Interval, e.g. '30s', '5m', '2h', '1d' (bare number = seconds). For actions 'start' and 'time'.",
