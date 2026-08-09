@@ -3,6 +3,6 @@
 uv.lock
 .env
 .last-update
-.rodney/
+.jodney/
 node_modules/
 __pycache__/

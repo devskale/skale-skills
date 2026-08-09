@@ -214,4 +214,4 @@ State (the pinned tab) lives in `~/.config/surf/target`. No background process e
 ## References
 
 - **Skill source:** [`skills/surf/`](../../skills/surf/) · **Full command reference:** [`skills/surf/references/commands.md`](../../skills/surf/references/commands.md)
-- **Comparison context:** [browser-tools-comparison.md](browser-tools-comparison.md) · **chrome-devtools-mcp setup:** [chrome-dev.md](chrome-dev.md) · **rodney setup:** [`guides/rodney-setup.md`](../../guides/rodney-setup.md)
+- **Comparison context:** [browser-tools-comparison.md](browser-tools-comparison.md) · **chrome-devtools-mcp setup:** [chrome-dev.md](chrome-dev.md) · **rodney setup:** [`guides/jodney-setup.md`](../../guides/jodney-setup.md)

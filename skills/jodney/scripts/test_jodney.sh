@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Test script for rodney skill - verifies installation and basic functionality
+# Test script for jodney skill - verifies installation and basic functionality
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "=== Rodney Skill Test ==="
+echo "=== Jodney Skill Test ==="
 
-# Check if rodney is available
-if ! command -v rodney &> /dev/null; then
-    echo "ERROR: rodney not found in PATH"
+# Check if jodney is available
+if ! command -v jodney &> /dev/null; then
+    echo "ERROR: jodney not found in PATH"
     echo ""
     echo "Install options:"
-    echo "  1. Build from source: git clone https://github.com/simonw/rodney && cd rodney && go build -o rodney ."
-    echo "  2. Install via uv: uv pip install rodney"
+    echo "  1. Build from source: git clone https://github.com/simonw/jodney && cd jodney && go build -o jodney ."
+    echo "  2. Install via uv: uv pip install jodney"
     exit 1
 fi
 
-echo "✓ rodney found: $(command -v rodney)"
+echo "✓ jodney found: $(command -v jodney)"
 echo ""
 
 # Check Chrome/Chromium
@@ -30,9 +30,9 @@ else
 fi
 echo ""
 
-# Show rodney version/info
-echo "=== Rodney Info ==="
-rodney --version 2>/dev/null || rodney --help | head -3
+# Show jodney version/info
+echo "=== Jodney Info ==="
+jodney --version 2>/dev/null || jodney --help | head -3
 echo ""
 
 # Basic workflow test (optional - requires Chrome)
@@ -41,26 +41,26 @@ if [ "${RUN_INTEGRATION_TEST:-false}" = "true" ]; then
 
     # Use local session for isolation
     echo "Starting Chrome..."
-    rodney start --local
+    jodney start --local
 
     echo "Opening example.com..."
-    rodney open https://example.com
-    rodney waitstable
+    jodney open https://example.com
+    jodney waitstable
 
     echo "Extracting title..."
-    title=$(rodney title)
+    title=$(jodney title)
     echo "  Title: $title"
 
     echo "Taking screenshot..."
-    rodney screenshot /tmp/rodney-test.png
-    echo "  Saved: /tmp/rodney-test.png"
+    jodney screenshot /tmp/jodney-test.png
+    echo "  Saved: /tmp/jodney-test.png"
 
     echo "Stopping Chrome..."
-    rodney stop
+    jodney stop
 
     # Cleanup (force remove all contents)
-    rm -rf .rodney 2>/dev/null || true
-    rm -f /tmp/rodney-test.png
+    rm -rf .jodney 2>/dev/null || true
+    rm -f /tmp/jodney-test.png
 
     echo "✓ Integration test passed"
 else
