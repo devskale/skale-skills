@@ -13,7 +13,7 @@ date: 2026-06-05
 
 | # | Tool | Type | Language | Protocol | In this repo? |
 |---|------|------|----------|----------|---------------|
-| 1 | [**rodney**](#1-rodney) | CLI → headless Chrome | Python (rod/Go) | CDP | ✅ skills/rodney |
+| 1 | [**rodney**](#1-rodney) | CLI → headless Chrome | Python (rod/Go) | CDP | ✅ skills/jodney |
 | 2 | [**Chrome DevTools MCP**](#2-chrome-devtools-mcp) | MCP server → live Chrome | Node.js | CDP | ✅ guides/chrome-dev.md |
 | 3 | [**agent-browser**](#3-agent-browser--vercel-labs) | CLI + daemon | Rust | CDP | ✅ guides/vcl-agent-browser.md |
 | 4 | [**CloakBrowser**](#4-cloakbrowser) | Stealth Chromium lib | Python/C++ | CDP | ✅ testbed/cloakbrowser/ |
@@ -557,9 +557,9 @@ sudo mkswap /swapfile && sudo swapon /swapfile
 ```
 
 ### Links
-- Setup → [guides/rodney-setup.md](rodney-setup.md)
-- Full skill → [skills/rodney/SKILL.md](../skills/rodney/SKILL.md)
-- Tests → `bash tests/rodney/test.sh`
+- Setup → [guides/jodney-setup.md](jodney-setup.md)
+- Full skill → [skills/jodney/SKILL.md](../skills/jodney/SKILL.md)
+- Tests → `bash tests/jodney/test.sh`
 
 ---
 
@@ -1616,7 +1616,7 @@ These tools **can** be composed:
 ### Tool Homepages
 | Tool | Link |
 |------|------|
-| rodney | [skills/rodney/SKILL.md](../skills/rodney/SKILL.md) (this repo) |
+| rodney | [skills/jodney/SKILL.md](../skills/jodney/SKILL.md) (this repo) |
 | Chrome DevTools MCP | [github.com/anthropics/chrome-devtools-mcp](https://github.com/anthropics/chrome-devtools-mcp) |
 | agent-browser | [github.com/vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) |
 | CloakBrowser | [github.com/CloakHQ/CloakBrowser](https://github.com/CloakHQ/CloakBrowser) · [cloakbrowser.dev](https://cloakbrowser.dev/) · [PyPI](https://pypi.org/project/cloakbrowser/) |
@@ -1639,7 +1639,7 @@ These tools **can** be composed:
 ### In-Repo Guides
 | Guide | What |
 |-------|------|
-| [guides/rodney-setup.md](rodney-setup.md) | Rodney install & setup |
+| [guides/jodney-setup.md](jodney-setup.md) | Rodney install & setup |
 | [guides/chrome-dev.md](chrome-dev.md) | Chrome DevTools MCP setup |
 | [guides/vcl-agent-browser.md](vcl-agent-browser.md) | Vercel agent-browser setup |
 | [tests/eval_browsers.md](../tests/eval_browsers.md) | Terminal browser eval (w3m, chawan) |

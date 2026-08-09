@@ -148,7 +148,7 @@ vtd transcript --url 'https://youtube.com/watch?v=…'
 | **[web-search](skills/web-search)** ⭐ | Web search via SearXNG + Duck API (images, news, videos) |
 | **[fetch-url](skills/fetch-url)** ⭐ | Web content extraction with smart fallback (Reddit, SO, GitHub, docs) |
 | **[figure](skills/figure)** ⭐ | Hand-drawn architecture/pipeline figures from a small spec |
-| **[rodney](skills/rodney)** | Headless Chrome automation (scrape, screenshot, PDF, a11y, CI assertions) |
+| **[jodney](skills/jodney)** | Headless Chrome automation (scrape, screenshot, PDF, a11y, CI assertions) |
 | **[youtube](skills/youtube)** | YouTube search via Invidious with auto-fallback |
 | **[video-transcript-downloader](skills/video-transcript-downloader)** | Download video/audio/subtitles/transcripts (yt-dlp) |
 | **[d2](skills/d2)** | Diagrams-as-code with the D2 language |
@@ -203,7 +203,7 @@ Install the package once, then activate only the skills you use. **All 14 skills
       "web-search",   // ✅ active
       "fetch-url",    // ✅ active
       // "surf",                       // uncomment any line to activate
-      // "rodney",
+      // "jodney",
       // "youtube",
       // "video-transcript-downloader",
       // "d2",
@@ -281,7 +281,7 @@ No global runner — each skill ships its own suite:
 ```bash
 bash tests/fetch-url/test.sh
 bash tests/web-search/test.sh
-bash tests/rodney/test.sh
+bash tests/jodney/test.sh
 bash tests/surf/test.sh && bash tests/surf/furious.sh   # surf: structure + furious live validation
 bash tests/imagegen/test.sh                             # imagegen extension (proxy + live gen)
 ```

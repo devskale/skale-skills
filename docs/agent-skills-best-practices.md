@@ -321,7 +321,7 @@ Practical setup for a project:
       web-search/              -- skill: loaded when searching the web
         SKILL.md
         references/
-      rodney/                  -- skill: loaded for browser automation
+      jodney/                  -- skill: loaded for browser automation
         SKILL.md
         references/
     .claude/skills/            -- alternative agent skills directory
@@ -703,7 +703,7 @@ Selective loading (do not load every skill)
     {
       "packages": [{
         "source": "git:github.com/devskale/skale-skills",
-        "skills": ["d2", "rodney", "fetch-url", "web-search"]
+        "skills": ["d2", "jodney", "fetch-url", "web-search"]
       }]
     }
 
@@ -1006,8 +1006,8 @@ Sanity checks after cleanup
   Real-world example: AGENTS.md creation skill with investigation
   workflow, extraction patterns, gotchas, validation checklist.
 
-[REF-19]  Pi agent -- rodney skill
-  /Users/johannwaldherr/code/agents/skills/skale-skills/skills/rodney/SKILL.md
+[REF-19]  Pi agent -- jodney skill
+  /Users/johannwaldherr/code/agents/skills/skale-skills/skills/jodney/SKILL.md
   Real-world example: browser automation skill. Demonstrates CLI tool
   pattern, references/ directory, gotchas section, command reference
   split across multiple files.
