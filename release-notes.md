@@ -4,6 +4,15 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-09
 
+### fetch-url / web-search
+- **Changed:** dropped the copy-pasted global-first `sys.path` credgoo bootstrap and the `credgoo_get` wrapper. Both now import `get_api_key` directly (declared dependency, resolved to credgoo 0.1.14). Missing keys log at DEBUG — silent by default, opt-in loud via a DEBUG handler. Removed the `contextlib.redirect_stdout` cargo-cult from docs.
+
+### extensions (xmodel / heartbeat)
+- **Added:** shared `extensions/session-state.ts` with `reconstructLastCustomEntry` + `isStaleCtxError`.
+- **Changed:** xmodel + heartbeat now import these from the shared module instead of duplicating them; each keeps its own session handler wiring. statusline untouched (different read shape).
+
+## 2026-08-09
+
 ### viewimg
 - **Changed:** `viewimg` accepts **multiple files**; `--open` opens **all** images in **one** Preview window (tabs) via `open -a Preview` — Preview reuses its window across calls, so repeated `viewimg --open` never stacks up multiple windows.
 
