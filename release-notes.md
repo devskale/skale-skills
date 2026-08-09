@@ -2,6 +2,17 @@
 
 Log of notable changes to skale-skills. Newest first.
 
+## 2026-08-09
+
+### xmodel v0.4.0
+- **Changed:** `read` (and `view`/`generate_image`) are now **display-only** — they show the image but **never trigger the VLM**. Understanding is opt-in.
+- **Added:** `read_image` tool + `/readimg` command — explicit "understand" path that runs the VLM on an image and returns the text analysis. `/readimg` with no args shows help; `/readimg settings` opens the vision hub to pick the image model (`_vision.vlm`).
+- **Added:** `analyzeImageFile` helper (VLM sub-call via child-pi `@file`), shared by `read_image` and `/readimg`.
+
+### imagegen
+- **Changed:** default model → `pollinations@dreamshaper` (cheapest); model discovery via the OpenAI-compatible `/models` catalog (any provider/modelid), generic key resolution, keyless providers supported.
+- **Added:** self-healing default — remembers last-good model per provider, falls back through cheaper models on 402, learns costs from 402 responses (no hardcoded models/costs).
+
 ## 2026-06-22
 
 ### web-search

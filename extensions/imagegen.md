@@ -9,7 +9,7 @@ Pi extension with two entry points, both backed by one shared core (`generateAnd
 - **`/imagegen` command** (alias `/img`) — direct, no-LLM generation:
   ```
   /imagegen a red cube on white --model tu@z-image-turbo --size 512x512
-  /img a fox logo, flat vector            # alias; default model pollinations@flux
+  /img a fox logo, flat vector            # alias; default model pollinations@dreamshaper
   ```
   Flags: `--model`/`-m`, `--size`/`-s`, `--n`/`-n`, `--seed`. Generates
   immediately, saves to `./generated/`, and renders the image **inline** in the
@@ -38,16 +38,17 @@ When iteration is *not* wanted and shell reuse *is*, the existing
 
 ## Backends
 
-Two image backends, both reached through the **uniinfer proxy** so the
-extension has a single, uniform call. No backend branching in the extension.
+Any image-capable model the **uniinfer proxy** catalog offers can be used —
+the extension has no backend branching and no hardcoded provider list. It
+reaches every backend through one uniform call:
 
-| | Pollinations | TU |
-|---|---|---|
-| `model:` | `pollinations@flux` (and `kontext`, `nanobanana`, `seedream`, `ideogram-v4`, …) | `tu@z-image-turbo` |
-| Auth | `Bearer $(credgoo pollinations)` | `Bearer $(credgoo tu)` |
-| Latency | ~1.8 s | ~28 s |
-| Typical output | JPEG 512×512 (~11 KB) | PNG 1024×1024 (~917 KB) |
-| Best for | **Fast iteration** (default) | Final high-quality render |
+```http
+POST https://uniinfer.skale.dev/v1/images/generations
+Authorization: Bearer <provider key>   (optional for keyless providers)
+Content-Type: application/json
+
+{ "model": "provider@modelid", "prompt": "...", "size": "WxH", "n": 1 }
+```
 
 ### The `provider@modelid` convention
 
@@ -57,68 +58,38 @@ The proxy splits the `model` field on `@`:
 - remainder → **model id** (passed through verbatim to the backend)
 
 ```
-pollinations@flux    →  GET  gen.pollinations.ai/image/<prompt>?model=flux&...
-tu@z-image-turbo     →  POST aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations
+pollinations@dreamshaper →  GET  gen.pollinations.ai/image/<prompt>?model=dreamshaper&...
+tu@z-image-turbo        →  POST aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations
+openai@gpt-image-1       →  POST <openai>/images/generations
 ```
 
-This is the entire routing contract — defined in the proxy's
-`proxy_routers/media.py` via `parse_provider_model(..., allowed_providers=\
-["pollinations","tu"])`. The extension just forwards `model` unchanged.
+This is the entire routing contract — the extension just forwards `model`
+unchanged. The proxy enforces which providers actually support image
+generation; the extension discovers the full catalog and lets the proxy decide.
 
----
-
-## Unified API contract
-
-Both backends look identical at the edges:
-
-```http
-POST https://uniinfer.skale.dev/v1/images/generations
-Authorization: Bearer <credgoo key for the provider>
-Content-Type: application/json
-
-{ "model": "provider@modelid", "prompt": "...", "size": "WxH", "n": 1 }
-```
-
-```json
-{
-  "created": 1719264000,
-  "model": "pollinations@flux",
-  "data": [{ "b64_json": "<base64>", "url": "https://gen.pollinations.ai/..." }]
-}
-```
-
-- `b64_json` is **always present** (proxy fetches the URL for backends that
-  only return URLs and base64-encodes it). This is what the extension returns
-  to the model and writes to disk.
-- `url` is present for Pollinations, absent for TU. Optional — don't rely on it.
-
-### Model discovery
+### Model discovery (OpenAI-compatible catalog)
 
 ```
-GET https://uniinfer.skale.dev/v1/image/models/pollinations   (no auth)
-GET https://uniinfer.skale.dev/v1/image/models/tu              (needs bearer)
+GET https://uniinfer.skale.dev/v1/models   (no auth)
 ```
 
-Returns `{ object: "list", data: [{ id, object: "model", owned_by: "skaledev" }] }`.
-Filter server-side: Pollinations models are the ones with `image` in
-`output_modalities`. Hardcoded fallback (from `media.py`):
-`flux, kontext, gptimage, gptimage-large, zimage, klein`.
+Returns the full OpenAI-compatible model list for **all** providers. The
+extension filters to image-capable entries (explicit `type: "image"`, or an
+`image` in `modalities.output`) and caches the result for 1h. This is how it
+knows which `provider@modelid` values are available without any hardcoding.
 
 ---
 
 ## Credentials
 
-Both backends require a key. Resolution per provider:
+Key resolution is generic and per-provider, in order: env var
+(`<PROVIDER>_API_KEY`, e.g. `POLLINATIONS_API_KEY`) → `credgoo <service>` (the
+provider name, or an override like `tu`/`pollinations`) → `~/.pi/agent/auth.json`.
 
-| Provider | Resolution order |
-|---|---|
-| `pollinations` | `POLLINATIONS_API_KEY` env → `credgoo pollinations` |
-| `tu` | `TU_API_KEY` env → `credgoo tu` → `~/.pi/agent/auth.json` (`tu-aqueduct`) |
-
-The proxy accepts a **direct provider key** as the Bearer (no `@encryption`
-suffix needed). So `credgoo <provider>` output is passed straight through as
-`Authorization: Bearer <key>`. If no key resolves, fail hard with a message
-naming both options (`credgoo <provider>` or the relevant env var).
+Keyless providers (e.g. `pollinations`, `ollama`) work with **no Bearer at all**
+— the extension only sends `Authorization` when a key resolves. Providers that
+need a key and have none will surface the proxy's error, which names the
+missing credential.
 
 ---
 
@@ -129,7 +100,7 @@ pi.registerTool({
   name: "generate_image",
   parameters: Type.Object({
     prompt: Type.String(),
-    model:  Type.Optional(Type.String()),  // "pollinations@flux" (default)
+    model:  Type.Optional(Type.String()),  // "pollinations@dreamshaper" (default)
     size:   Type.Optional(Type.String()),  // "512x512" (default)
     n:      Type.Optional(Type.Number()),  // 1–4
     seed:   Type.Optional(Type.Number()),
@@ -169,7 +140,7 @@ cat <file>.txt                 # sidecar (WebP/GIF/BMP)
 
 | Param | Default | Reason |
 |---|---|---|
-| `model` | `pollinations@flux` | ~1.8 s latency → cheap iteration |
+| `model` | `pollinations@dreamshaper` | ~0.0001 pollen → cheapest iteration (flux is 0.0020) |
 | `size` | `512x512` | compact, broadly supported (512–640px range keeps files small) |
 | output dir | `~/Pictures/generated/` on macOS (or `./uploads/` if present in cwd for πui web URLs; `./generated/` elsewhere) | a stable home dir for generated images; override with `IMAGEGEN_OUTPUT_DIR` |
 
@@ -184,6 +155,28 @@ param (path or base64) routed to the edit endpoint. Out of scope for v1.
 
 See [Image display & ASCII fallback](#image-display--ascii-fallback) below for
 what happens when the model or terminal can't show the image.
+
+### Self-healing default model (no hardcoded models/costs)
+
+Nothing about models or prices is hardcoded. The extension discovers and learns
+dynamically, persisting state to `~/.pi/agent/imagegen-state.json`:
+
+- **Live model list** — fetched from the OpenAI-compatible `GET /models`
+  catalog (cached 1h), filtered to image-capable models, so new/removed
+  providers and models are picked up automatically.
+- **Last-good model** — whichever model last generated successfully for a
+  provider is remembered and used as the next default, so the default follows
+  what actually works.
+- **Learned costs** — per-model pollen cost is parsed from 402 responses
+  (`"costs ~0.0020 pollen"`) and persisted. Fallback ordering is cheapest-first
+  by learned cost, with unknown-cost models probed last.
+
+On a **402 insufficient balance** (or any model failure), the extension falls
+back through cheaper models automatically instead of failing hard — and the
+winning model becomes the new remembered default, so the next call self-heals.
+The static `DEFAULT_MODEL` (`pollinations@dreamshaper`) is only the initial
+seed; it's overridden by learned state after the first success. Non-402 failures
+of the requested model are surfaced as-is, not masked.
 
 ---
 
@@ -310,7 +303,7 @@ Both verified working against the proxy:
 curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $(credgoo pollinations)" \
-  -d '{"model":"pollinations@flux","prompt":"a tiny red cube on white, centered","size":"512x512"}'
+  -d '{"model":"pollinations@dreamshaper","prompt":"a tiny red cube on white, centered","size":"512x512"}'
 
 # TU — high quality
 curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \

@@ -76,7 +76,7 @@ assert_soft "proxy models endpoint responds" "[ \"$MODELS_HTTP\" = \"200\" ]"
 
 if [ "$MODELS_HTTP" = "200" ]; then
     curl -s -m 10 "$PROXY_BASE/image/models/pollinations" -o "$TMP/models.json" 2>/dev/null
-    assert_soft "pollinations returns flux"    "grep -q '\"flux\"' $TMP/models.json"
+    assert_soft "pollinations returns dreamshaper"    "grep -q '\"dreamshaper\"' $TMP/models.json"
     assert_soft "pollinations returns kontext" "grep -q '\"kontext\"' $TMP/models.json"
 fi
 echo ""
@@ -93,12 +93,12 @@ assert_soft "pollinations key resolvable" "[ -n \"\$POLL_KEY\" ]"
 assert_soft "tu key resolvable"           "[ -n \"\$TU_KEY\" ]"
 echo ""
 
-# === 5. Live generation: pollinations@flux ===========================
-echo "[5] Generate via pollinations@flux (fast)..."
+# === 5. Live generation: pollinations@dreamshaper ===================
+echo "[5] Generate via pollinations@dreamshaper (cheap)..."
 if [ -n "$POLL_KEY" ]; then
     curl -s -m 90 -X POST "$PROXY_BASE/images/generations" \
         -H "Content-Type: application/json" -H "Authorization: Bearer $POLL_KEY" \
-        -d '{"model":"pollinations@flux","prompt":"a small red cube on white background","size":"512x512"}' \
+        -d '{"model":"pollinations@dreamshaper","prompt":"a small red cube on white background","size":"512x512"}' \
         -o "$TMP/poll.json" 2>/dev/null || true
     if python3 -c "import json,sys; d=json.load(open('$TMP/poll.json')); assert d['data'][0]['b64_json']" 2>/dev/null; then
         PASS=$((PASS + 1))
@@ -106,7 +106,7 @@ if [ -n "$POLL_KEY" ]; then
         python3 -c "import json,base64; d=json.load(open('$TMP/poll.json')); open('$TMP/poll.png','wb').write(base64.b64decode(d['data'][0]['b64_json']))" 2>/dev/null
     else
         WARN=$((WARN + 1))
-        echo "  WARN: pollinations@flux returned no image (network/rate limit?)"
+        echo "  WARN: pollinations@dreamshaper returned no image (network/rate limit?)"
     fi
 else
     WARN=$((WARN + 1))
