@@ -13,9 +13,7 @@ import subprocess
 import platform as platform_module
 import json
 import re
-import glob
-import contextlib
-import io
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -26,43 +24,20 @@ try:
 except ImportError:
     pass  # Will show error when API mode is actually used
 
-# Prefer a globally-installed credgoo (`uv tool install credgoo`) over the copy
-# bundled in this skill's venv. We do it by inserting the global tool's
-# site-packages at the front of sys.path before importing, so `import credgoo`
-# resolves global-first. No subprocess, no re-resolution. If no global install
-# exists, the bundled copy (kept so `--update` stays self-contained) is used.
-_global_credgoo_sp = glob.glob(
-    os.path.join(
-        os.environ.get("UV_TOOL_DIR", str(Path.home() / ".local/share/uv/tools/credgoo")),
-        "lib", "*", "site-packages",
-    )
-)
-if _global_credgoo_sp and _global_credgoo_sp[0] not in sys.path:
-    sys.path.insert(0, _global_credgoo_sp[0])
-
+# credgoo is a declared dependency (uv sync installs it into this skill's venv).
+# The missing-key message is surfaced through `logging` at DEBUG — silent by
+# default, opt-in loud. Configure a DEBUG handler to see "no key" diagnostics.
 try:
     from credgoo import get_api_key
 except ImportError:
-    get_api_key = None  # type: ignore
-
-
-def credgoo_get(service: str) -> Optional[str]:
-    """Fetch a key via credgoo. Failures are loud (stderr), never silently masked."""
-    if get_api_key is None:
-        print(
-            "credgoo unavailable. Install globally: "
-            "uv tool install \"credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo\"",
-            file=sys.stderr,
-        )
+    # Graceful fallback so importing this module (e.g. for logic tests under a
+    # bare `python3`) never hard-fails when credgoo isn't installed in that
+    # interpreter. The launcher runs under the skill venv, where credgoo exists.
+    def get_api_key(service, **kwargs):  # type: ignore
         return None
-    try:
-        key = get_api_key(service)
-    except Exception as e:
-        print(f"credgoo error for '{service}': {e}", file=sys.stderr)
-        return None
-    if not key:
-        print(f"credgoo returned no key for '{service}'", file=sys.stderr)
-    return key
+
+logging.basicConfig(level=logging.WARNING)
+
 
 # Configuration
 SCRIPT_DIR = Path(__file__).parent
@@ -197,7 +172,7 @@ def get_bearer_token() -> Optional[str]:
 
     # Credgoo
     for key in ("FETCH_URL_BEARER", "WEB_SEARCH_BEARER"):
-        if token := credgoo_get(key):
+        if token := get_api_key(key):
             return token
 
     return None
