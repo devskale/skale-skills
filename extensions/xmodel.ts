@@ -65,6 +65,8 @@ import {
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
+import { isStaleCtxError, reconstructLastCustomEntry } from "./session-state";
+
 const VERSION = "0.4.1";
 
 type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -1111,22 +1113,16 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	/** Reconstruct active preset from session entries. Safe to call from any lifecycle handler. */
 	function reconstructActive(ctx: ExtensionContext) {
-		const entries = ctx.sessionManager.getEntries();
-		const last = entries
-			.filter((e: any) => e.type === "custom" && e.customType === "xmodel-state")
-			.pop() as { data?: { name: string } } | undefined;
-		if (last?.data?.name && presets[last.data.name]) {
-			activeName = last.data.name;
-			activePreset = presets[last.data.name];
+		const data = reconstructLastCustomEntry(ctx, "xmodel-state");
+		const name = (data as { name?: string } | undefined)?.name;
+		if (name && presets[name]) {
+			activeName = name;
+			activePreset = presets[name];
 		} else {
 			activeName = undefined;
 			activePreset = undefined;
 		}
 		updateStatus(ctx);
-	}
-
-	function isStaleCtxError(e: unknown): boolean {
-		return /stale after session replacement/i.test(String(e));
 	}
 
 	function isVisionCapable(m: Model<Api> | undefined): boolean {

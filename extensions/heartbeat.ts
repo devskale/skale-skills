@@ -40,6 +40,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
+import { isStaleCtxError, reconstructLastCustomEntry } from "./session-state";
 
 const DEFAULT_MESSAGE = "Time to check in — what are you working on?";
 const STATUS_KEY = "heartbeat";
@@ -110,10 +111,6 @@ function resetAll() {
   state.nextAt = 0;
   state.count = 0;
   state.busy = false;
-}
-
-function isStaleError(e: unknown): boolean {
-  return /stale after session replacement/i.test(String(e));
 }
 
 // ── Formatting helpers ────────────────────────────────────────
@@ -206,7 +203,7 @@ function fireReminder(pi: ExtensionAPI, ctx: any) {
   try {
     pi.sendUserMessage(`⏰ **Heartbeat #${state.count}**\n\n${state.message}`, { deliverAs: "followUp" });
   } catch (e) {
-    if (isStaleError(e)) { resetTimers(); return; }
+    if (isStaleCtxError(e)) { resetTimers(); return; }
     throw e;
   }
 
@@ -232,10 +229,10 @@ function scheduleOneShot(pi: ExtensionAPI, ctx: any, delayMs: number) {
 
 // ── Safe ctx.ui wrappers (guard stale proxy + missing ui) ─────
 function safeSetStatus(ctx: any, value: string | undefined) {
-  try { ctx.ui.setStatus(STATUS_KEY, value); } catch (e) { if (!isStaleError(e)) throw e; }
+  try { ctx.ui.setStatus(STATUS_KEY, value); } catch (e) { if (!isStaleCtxError(e)) throw e; }
 }
 function safeNotify(ctx: any, msg: string, level: "info" | "warning" | "error" | "success" = "info") {
-  try { ctx.ui.notify(msg, level); } catch (e) { if (!isStaleError(e)) throw e; }
+  try { ctx.ui.notify(msg, level); } catch (e) { if (!isStaleCtxError(e)) throw e; }
 }
 
 // ── Config persistence (survives reload / branch switch) ──────
@@ -249,18 +246,6 @@ function persist(pi: ExtensionAPI) {
       paused: state.paused,
     });
   } catch { /* appendEntry best-effort */ }
-}
-
-function reconstruct(ctx: any): { active: boolean; message: string; intervalMs: number; maxCount: number; paused: boolean } | null {
-  try {
-    let last: any = null;
-    for (const entry of ctx?.sessionManager?.getEntries?.() ?? []) {
-      if (entry?.type === "custom" && entry?.customType === ENTRY_TYPE) last = entry.data;
-    }
-    return last;
-  } catch {
-    return null;
-  }
 }
 
 // ── Centralized control (used by command AND tool) ────────────
@@ -512,7 +497,7 @@ export default function (pi: ExtensionAPI) {
   const restore = (ctx: any) => {
     resetAll();
     try {
-      const saved = reconstruct(ctx);
+      const saved = reconstructLastCustomEntry(ctx, ENTRY_TYPE);
       if (saved) {
         if (typeof saved.message === "string") state.message = saved.message;
         if (typeof saved.intervalMs === "number" && saved.intervalMs > 0) state.intervalMs = saved.intervalMs;
