@@ -4,32 +4,19 @@
 // (e.g. on a phone). PNGs are written at a high scale for crisp preview.
 //
 // Usage:
-//   NODE_PATH=/opt/node22/lib/node_modules node figure/assets/render_pngs.mjs [dir ...]
-// Requires Playwright's Chromium. The Patrick Hand house font is loaded so text renders
+//   node figure/assets/render_pngs.mjs [dir ...]
+// Uses `rsvg-convert` (librsvg) — a lightweight native rasterizer, cross-platform
+// (Homebrew on macOS, librsvg2-bin on Linux). No Chromium/Playwright download. The
+// Patrick Hand house font is embedded as a data: URI in the SVG, so text renders
 // correctly (never a sans fallback).
 
-import { readdirSync, existsSync, readFileSync } from 'node:fs';
+import { readdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
-
-// Resolve Playwright from wherever it's installed (honours NODE_PATH, unlike bare ESM import).
-const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
+import { renderSVG } from '../build/raster.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));           // figure/assets
-const FONT = join(HERE, 'fonts', 'PatrickHand-Regular.ttf');
 const SCALE = 4;                                               // 120px art -> 480px PNG
-
-// Find the bundled Chromium regardless of the exact revision dir.
-function findChrome() {
-  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
-  for (const d of (existsSync(root) ? readdirSync(root) : [])) {
-    const p = join(root, d, 'chrome-linux', 'chrome');
-    if (d.startsWith('chromium-') && existsSync(p)) return p;
-  }
-  return undefined; // let Playwright resolve its default
-}
 
 function walkSvgs(dir) {
   const out = [];
@@ -46,32 +33,17 @@ const roots = targets.length ? targets : [HERE];
 const svgs = roots.flatMap((r) => (existsSync(r) ? walkSvgs(r) : []));
 if (!svgs.length) { console.log('no SVGs found'); process.exit(0); }
 
-const fontB64 = existsSync(FONT) ? readFileSync(FONT).toString('base64') : null;
-const fontCss = fontB64
-  ? `@font-face{font-family:'Patrick Hand';src:url(data:font/ttf;base64,${fontB64});}`
-  : '';
-
-const browser = await chromium.launch({ executablePath: findChrome() });
-const page = await browser.newPage({ deviceScaleFactor: 1 });
-
+let failed = 0;
 for (const svgPath of svgs) {
   const svg = readFileSync(svgPath, 'utf8');
-  const m = svg.match(/viewBox="([\d.\s-]+)"/);
-  const [, , , vw, vh] = m ? m[1].trim().split(/\s+/).map(Number) : [0, 0, 120, 120];
-  const w = Math.round((vw || 120) * SCALE);
-  const h = Math.round((vh || 120) * SCALE);
-  await page.setViewportSize({ width: w, height: h });
-  await page.setContent(
-    `<!doctype html><meta charset="utf-8">
-     <style>${fontCss}
-       html,body{margin:0;padding:0;background:transparent}
-       svg{display:block;width:${w}px;height:${h}px}</style>${svg}`,
-    { waitUntil: 'networkidle' }
-  );
-  await page.evaluate(() => document.fonts && document.fonts.ready);
   const pngPath = svgPath.replace(/\.svg$/i, '.png');
-  await page.locator('svg').screenshot({ path: pngPath, omitBackground: true });
-  console.log('rendered', relative(process.cwd(), pngPath));
+  try {
+    const png = renderSVG(svg, SCALE);
+    writeFileSync(pngPath, png);
+    console.log('rendered', relative(process.cwd(), pngPath));
+  } catch (e) {
+    process.stderr.write(`⚠ ${relative(process.cwd(), svgPath)} — PNG render skipped: ${e.message}\n`);
+    failed++;
+  }
 }
-
-await browser.close();
+if (failed) process.exit(1);

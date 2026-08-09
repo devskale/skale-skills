@@ -1,10 +1,10 @@
 ---
 name: figure
-version: "1.1.0"
+version: "1.2.0"
 description: "Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec — sketchy Excalidraw-style nodes, pastel fills, dashed arrows, numbered step badges, semantic colour coding. Bundles a Node compositor that assembles CC0 icons + the Patrick Hand font into matching SVG + PNG. Same spec → identical figure every time. Use when the user wants to draw, create, or render an architecture diagram, pipeline figure, workflow diagram, or any .fig.mjs. Triggers: draw a diagram, architecture figure, pipeline figure, render a figure, .fig.mjs, make a diagram."
 metadata:
   author: skale-dev
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # figure — hand-drawn architecture figures from a spec
@@ -31,7 +31,7 @@ on rebuild.
 
 ```bash
 cd skills/figure
-npm install && npx playwright install chromium    # one-time; needs Playwright
+brew install librsvg                # provides rsvg-convert (PNG step); SVG is pure Node
 
 # write a spec, then build it -> .svg + .png land in ~/generated/images/<name>/
 node build/build_figures.mjs diagrams/my-fig.fig.mjs
@@ -44,12 +44,9 @@ out-of-bounds nodes/labels, text collisions, node-box overlaps, and aspect-ratio
 edge's `from`/`to` isn't a declared node. Read it to catch placement mistakes without
 opening the image. Lint a spec standalone: `node build/review_figure.mjs diagrams/x.fig.mjs`.
 
-**In a managed sandbox** where Playwright is already global, skip the install and point
-Node at the global modules:
-
-```bash
-NODE_PATH=/opt/node22/lib/node_modules node build/build_figures.mjs diagrams/my-fig.fig.mjs
-```
+**No browser needed.** PNG rasterization uses the lightweight `rsvg-convert` (librsvg) —
+no Playwright, no Chromium download. If `rsvg-convert` is missing, the build still emits
+the SVG and skips the PNG with a warning.
 
 ## Authoring a figure
 
@@ -85,7 +82,7 @@ export default {
 | `styleguide/` | The house style — `STYLE.md` (the look: sketchy strokes, palette, badges, semantic colours), `reference/NOTICE.md`. |
 | `diagrams/` | Figure specs (`*.fig.mjs`) + built `.svg`/`.png`. Kept examples: `architectures/` (react/rewoo/traditional RAG), `scope/` (scope-map). |
 | `LICENSING.md` | **Read this.** Everything published must be usable without attribution (self-made / CC0 / OFL). No vendor logos, no CC-BY. |
-| `package.json` | Pins the Playwright dev dependency. |
+| `package.json` | Zero runtime deps — PNG rasterization uses the system `rsvg-convert` (librsvg). |
 
 ## House style (the short version)
 
@@ -115,4 +112,4 @@ Then enable the `figure` skill via `pi config` (space = toggle). Or symlink it s
 ln -s "$(pwd)/skills/figure" ~/.pi/agent/skills/figure
 ```
 
-Requires Node ≥18 and Playwright (`npm install` inside the skill dir).
+Requires Node ≥18 and `rsvg-convert` (macOS: `brew install librsvg`; Linux: `apt install librsvg2-bin` / `dnf install librsvg2-tools`).
