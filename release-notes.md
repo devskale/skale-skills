@@ -4,6 +4,12 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-09
 
+### viewimg
+- **Changed:** `viewimg` accepts **multiple files**; `--open` opens **all** images in **one** Preview window (tabs) via `open -a Preview` — Preview reuses its window across calls, so repeated `viewimg --open` never stacks up multiple windows.
+
+### xmodel
+- **Changed:** `read_image` is **opt-in** — the model must not autonomously call it right after a plain `read`/`viewimg` (those are display-only and fast). Only an explicit "understand/analyze" request fires the VLM.
+
 ### viewimg (new skill)
 - **Added:** `viewimg` — show an image in the terminal **view-only** (never VLM). Renders as ANSI block art via `chafa`, or opens natively with `open` on macOS (`--open`). Understanding stays opt-in (`read_image` / `/readimg`).
 
