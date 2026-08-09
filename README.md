@@ -217,7 +217,7 @@ Prefer a checklist? `pi config` opens a TUI of every skill/extension from instal
 
 Filter semantics: omit a key = load **all** of that type · `[]` = load **none** · plain names = **whitelist** (only these load).
 
-📖 [docs/installation.md](docs/installation.md) (precedence + the loose-symlink conflict gotcha) · [install runbook](docs/install-runbook.md)
+📖 [docs/installation.md](docs/installation.md) (install + activate + the loose-symlink conflict gotcha)
 
 ### Claude Code, Codex, OpenCode
 
@@ -252,7 +252,7 @@ See [`CONVENTION.md`](CONVENTION.md) and [`RECOMMENDED-SKILLS.md`](RECOMMENDED-S
 |---|---|
 | Browser automation (surf, rodney, chrome-devtools-mcp comparison) | [docs/browser-use/](docs/browser-use/) |
 | Skill flow diagrams (web-search, fetch-url, surf, figure) | [docs/skill-diagrams.md](docs/skill-diagrams.md) |
-| Install & precedence | [docs/installation.md](docs/installation.md) · [runbook](docs/install-runbook.md) |
+| Install & activate | [docs/installation.md](docs/installation.md) |
 | Dev loop (edit → ship → clean) | [docs/development.md](docs/development.md) |
 | Credentials (credgoo) | [docs/credgoo.md](docs/credgoo.md) |
 | Authoring best practices | [agent-skills](docs/agent-skills-best-practices.md) · [AGENTS.md](docs/agents-md-best-practices.md) · [pi-extensions](docs/pi-extensions-best-practices.md) |
