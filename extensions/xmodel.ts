@@ -1,5 +1,5 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.3.3
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.4.0
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
@@ -65,7 +65,7 @@ import {
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
-const VERSION = "0.3.3";
+const VERSION = "0.4.0";
 
 type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -729,7 +729,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.3.3 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /xm version | /xm off",
+		description: "xmodel v0.4.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /readimg <file> | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -869,6 +869,78 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		},
 	});
 
+	// --- Explicit image understanding: read_image tool + /readimg command ---
+	// `read` is display-only (never VLM). When the user or agent wants to UNDERSTAND
+	// an image, they use this explicit path, which runs the VLM and feeds the text
+	// analysis back to the main model. The image block is kept inline so the user
+	// sees it too.
+	pi.registerTool({
+		name: "read_image",
+		label: "Read Image (VLM)",
+		description:
+			"Analyze an image file with a vision model and return a text description of what's in it. " +
+			"Use when you need to UNDERSTAND an image (read text in it, diagnose a screenshot, interpret a chart/diagram). " +
+			"Unlike the plain `read` tool (which only displays the image for the user), this runs a VLM and gives you the content as text. " +
+			"Takes a path to an image file (png, jpg, gif, webp, bmp).",
+		promptSnippet: "Analyze an image file with a vision model to understand its contents",
+		promptGuidelines: [
+			"Use read_image when you need to actually understand an image's contents (extract text, diagnose a screenshot, interpret a chart). " +
+				"The plain read tool only displays the image; it does not give you its contents. Call read_image with the image file path.",
+		],
+		parameters: Type.Object({
+			path: Type.String({ description: "Path to the image file to analyze (png, jpg, gif, webp, bmp)." }),
+		}),
+		async execute(_id, params, _signal, _onUpdate, ctx) {
+			const raw = (params as any).path as string;
+			const filePath = raw.startsWith("/") ? raw : join(ctx.cwd, raw);
+			const analysis = await analyzeImageFile(ctx, filePath);
+			// Keep the image inline for the user; give the main model the text analysis.
+			const img = readImageFileBlock(filePath);
+			const content: any[] = [];
+			if (img) content.push(img);
+			content.push({ type: "text", text: `[xmodel vision]: ${analysis}` });
+			return { content, details: { path: filePath } };
+		},
+	});
+
+	pi.registerCommand("readimg", {
+		description: "/readimg — analyze an image with a vision model (understand it). /readimg <file> · /readimg settings · (no args = help)",
+		handler: async (args, ctx) => {
+			const raw = (args ?? "").trim();
+
+			// No args → help + current settings
+			if (!raw) {
+				const trusted = ctx.isProjectTrusted();
+				const lines = [
+					"Usage:",
+					"  /readimg <image-file>    analyze an image with a vision model (understand it)",
+					"  /readimg settings        configure the vision model used for analysis",
+					"",
+					"`read` is display-only and NEVER triggers the VLM. Use /readimg (or the",
+					"read_image tool) when you actually need to understand an image's contents.",
+					"",
+					`Vision model: ${visionDisplay(ctx.cwd, trusted, "vlm")}`,
+				];
+				ctx.ui.notify(`xmodel /readimg\n${lines.join("\n")}`, "info");
+				return;
+			}
+
+			// settings subcommand → the vision settings hub (vlm etc.)
+			if (raw === "settings" || raw === "config") {
+				return settingsHub(ctx);
+			}
+
+			// Otherwise: treat as a file path to analyze
+			const filePath = raw.startsWith("/") ? raw : join(ctx.cwd, raw);
+			if (!existsSync(filePath)) {
+				ctx.ui.notify(`xmodel: file not found: ${filePath}`, "error");
+				return;
+			}
+			const analysis = await analyzeImageFile(ctx, filePath);
+			ctx.ui.notify(`xmodel /readimg → ${analysis}`, "info");
+		},
+	});
+
 	// --- Optional system-prompt instructions for active preset ---
 	pi.on("before_agent_start", async (event, ctx) => {
 		// auto-vision (switch mode only): user attached images to this prompt
@@ -906,6 +978,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 		if (images.length === 0) return;
 		if (isVisionCapable(ctx.model)) return; // main model sees images natively — nothing to do
+		// UNHOOKED: `read`, `view`, and `generate_image` are DISPLAY tools — show the image
+		// but never fire the VLM on them. Understanding is opt-in via the explicit
+		// `read_image` tool / `/readimg` command. Only analysis-oriented tools (screenshots,
+		// MCP captures, etc.) still auto-delegate.
+		if (event.toolName === "read" || event.toolName === "view" || event.toolName === "generate_image") {
+			return viewOnly(event, images);
+		}
 		const mode = visionCfg.mode;
 		if (mode === "off") return;
 		if (mode === "view") {
@@ -1399,6 +1478,41 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		ctx.ui.setStatus("xmodel-vision", undefined);
 		ctx.ui.notify(`xmodel: vision delegate done (${images.length} img → ${vlm})`, "info");
 		return { content: newContent };
+	}
+
+	/**
+	 * Analyze a single image file with the VLM and return the text analysis.
+	 * Used by the explicit `read_image` tool and `/readimg` command — the opt-in
+	 * "understand" path. Runs the VLM in a child pi with the file attached, so it
+	 * works regardless of the main model's vision capability. Returns the analysis
+	 * text, or a fallback message on any failure.
+	 */
+	async function analyzeImageFile(ctx: ExtensionContext, filePath: string): Promise<string> {
+		const vlm = resolveVlm(ctx);
+		if (!vlm) {
+			ctx.ui.notify("xmodel: no vision model configured (set _vision.vlm)", "warning");
+			return "(xmodel: no vision model configured — set _vision.vlm to enable image understanding)";
+		}
+		if (!existsSync(filePath)) return `(xmodel: file not found: ${filePath})`;
+		const buf = readFileSync(filePath);
+		if (!isValidImage(buf)) return `(xmodel: ${filePath} is not a valid image)`;
+		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", `👁 ${vlm}`));
+		ctx.ui.notify(`xmodel: analyzing ${filePath} with ${vlm} …`, "info");
+		let analysis = "";
+		try {
+			for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
+				analysis = await runChildPi({
+					model: vlm,
+					systemPrompt: VISION_VLM_SYS,
+					prompt: `Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+					imageFile: filePath,
+				});
+			}
+			if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
+		} finally {
+			ctx.ui.setStatus("xmodel-vision", undefined);
+		}
+		return analysis || `(xmodel: vision model returned no usable analysis for ${filePath})`;
 	}
 
 	// =========================================================================

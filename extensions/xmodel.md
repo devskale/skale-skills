@@ -13,6 +13,7 @@ Lives at `~/.pi/agent/extensions/xmodel.ts` (symlinked into the skale-skills rep
 | `/xm` | Picker — switch preset (or `(off)`) |
 | `/xm settings` | **Vision hub** — pi-style settings list for the vision pipeline (mode, vlm, compressor, brief) with global/project scope |
 | `/xm vision [mode] [global\|project]` | Show, or set, the vision mode (`delegate` \| `view` \| `switch` \| `human` \| `off`) |
+| `/readimg <file>` | **Understand an image** — run the VLM on a file and return the analysis. No args = help; `/readimg settings` = vision hub. |
 | `/xm edit [name]` | Add/edit a preset (provider, model, thinking, instructions) |
 | `/xm rm [name]` | Remove a preset |
 | `/xm models [query]` | Browse provider/model from the live registry |
@@ -54,6 +55,13 @@ When a fallback is active, the status line shows `↩ fallback: <preset>`. `retr
 When an image appears (a `read` of `*.png`, an MCP screenshot, an attached image) and the
 main model can't see images, xmodel routes it through a vision pipeline. The mode lives under
 `_vision` in the config files and is controlled by **`/xm settings`** or **`/xm vision`**.
+
+### Display vs. understand (`read` vs. `read_image` / `/readimg`)
+
+`read` is a **display** tool — it shows the image to you but **never triggers the VLM**
+(`view`-only). Understanding is **opt-in**: use the `read_image` tool (agent) or `/readimg`
+command (you) to run the VLM and get a text analysis. `generate_image` and `view` are also
+display-only. Only analysis-oriented tools (screenshots, MCP captures) still auto-delegate.
 
 | Mode | Behaviour |
 |---|---|

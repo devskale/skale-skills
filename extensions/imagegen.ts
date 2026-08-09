@@ -16,9 +16,11 @@
  *
  *   POST <proxy>/v1/images/generations
  *   Authorization: Bearer <credgoo key for the provider>
- *   { model: "pollinations@flux" | "tu@z-image-turbo", prompt, size, n }
+ *   { model: "provider@modelid", prompt, size, n }
  *
- * See extensions/imagegen.md for the full design doc.
+ * Model discovery uses the OpenAI-compatible GET <proxy>/models catalog (no
+ * auth) filtered to image-capable models, so any provider/modelid the proxy
+ * offers can be used. See extensions/imagegen.md for the full design doc.
  */
 
 import { execFile } from "node:child_process";
@@ -42,7 +44,10 @@ const execFileAsync = promisify(execFile);
 const PROXY_BASE =
 	process.env.UNIINFER_PROXY_URL?.replace(/\/+$/, "") || "https://uniinfer.skale.dev/v1";
 
-const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "pollinations@flux";
+// Default model per provider. pollinations@dreamshaper is the cheapest
+// pollinations model (~0.0001 pollen vs flux's 0.0020); tu@z-image-turbo is
+// TU's only model. Override with IMAGEGEN_MODEL (a full provider@modelid).
+const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "pollinations@dreamshaper";
 const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "512x512";
 const ASCII_COLS = 64;
 const ASCII_ROWS = 22;
@@ -50,11 +55,126 @@ const ASCII_ROWS = 22;
 /** customType for the direct-command result message (rendered inline). */
 const IMAGEGEN_MSG = "imagegen-result";
 
-// Known image providers — first segment of the `provider@modelid` string.
-const PROVIDER_KEYS: Record<string, { env: string; credgoo: string; authFile?: string }> = {
-	pollinations: { env: "POLLINATIONS_API_KEY", credgoo: "pollinations" },
-	tu: { env: "TU_API_KEY", credgoo: "tu", authFile: "tu-aqueduct" },
+// Known provider → credgoo service name overrides. Unlisted providers use
+// their provider name as the credgoo service. This is the only provider-ish
+// map, and it's purely a key-lookup convenience — any provider is allowed.
+const CREDGOO_SERVICE: Record<string, string> = {
+	pollinations: "pollinations",
+	tu: "tu",
 };
+
+// ── Persistent state: last-good model + learned costs per provider ─────────
+// Nothing about models or prices is hardcoded. The extension discovers the
+// live model list from the proxy's OpenAI-compatible /models catalog, learns
+// per-model cost from 402 responses ("costs ~N pollen"), and remembers which
+// model last generated successfully so it can auto-fix the default. Stored in
+// ~/.pi/agent/imagegen-state.json.
+const STATE_PATH = path.join(os.homedir(), ".pi", "agent", "imagegen-state.json");
+const MODEL_CACHE_TTL_MS = 60 * 60 * 1000; // refresh model list after 1h
+
+interface ImagegenState {
+	lastGoodModel?: Record<string, string>; // provider -> modelId that last succeeded
+	costs?: Record<string, Record<string, number>>; // provider -> modelId -> learned cost
+	imageModels?: { models: string[]; at: number }; // cached live image model list ("provider@modelid")
+}
+
+function loadState(): ImagegenState {
+	try {
+		return JSON.parse(fs.readFileSync(STATE_PATH, "utf8")) as ImagegenState;
+	} catch {
+		return {};
+	}
+}
+
+function saveState(state: ImagegenState): void {
+	try {
+		fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
+		fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2));
+	} catch {
+		/* non-fatal: state is an optimization, not a requirement */
+	}
+}
+
+/** The modelId that last generated successfully for a provider, if any. */
+function lastGoodModel(provider: string): string | undefined {
+	return loadState().lastGoodModel?.[provider];
+}
+
+/** Remember this provider/model as the next default (persisted). */
+function rememberLastGood(provider: string, modelId: string): void {
+	const state = loadState();
+	state.lastGoodModel = { ...(state.lastGoodModel ?? {}), [provider]: modelId };
+	saveState(state);
+}
+
+/** Record a learned per-model pollen cost from a 402 response (persisted). */
+function learnCost(provider: string, modelId: string, cost: number): void {
+	const state = loadState();
+	state.costs = {
+		...(state.costs ?? {}),
+		[provider]: { ...(state.costs?.[provider] ?? {}), [modelId]: cost },
+	};
+	saveState(state);
+}
+
+/** Parse "costs ~0.0020 pollen" out of a 402 error detail string. */
+function parseCost(error: string): number | undefined {
+	const m = /costs?\s+~?([0-9.]+)\s+pollen/i.exec(error);
+	if (!m) return undefined;
+	const c = parseFloat(m[1]);
+	return isFinite(c) ? c : undefined;
+}
+
+/**
+ * Fetch the live image-capable model list from the OpenAI-compatible /models
+ * catalog (no auth; the proxy serves it publicly). Returns full
+ * "provider@modelid" ids, cached briefly. Empty on failure.
+ */
+async function fetchImageModels(): Promise<string[]> {
+	const cached = loadState().imageModels;
+	if (cached && Date.now() - cached.at < MODEL_CACHE_TTL_MS) return cached.models;
+	try {
+		const resp = await fetch(`${PROXY_BASE}/models`);
+		if (!resp.ok) return [];
+		const body = (await resp.json()) as { data?: Array<{ id?: string; type?: string; modalities?: { output?: string[] } }> };
+		// Image-capable = explicit type "image", or an output modality of image.
+		const models = (body.data ?? [])
+			.filter((m) => m?.id && (m.type === "image" || (m.modalities?.output ?? []).includes("image")))
+			.map((m) => m.id as string);
+		if (models.length) {
+			const state = loadState();
+			state.imageModels = { models, at: Date.now() };
+			saveState(state);
+		}
+		return models;
+	} catch {
+		return [];
+	}
+}
+
+/** Image-capable model ids for a single provider, from the live catalog. */
+async function imageModelsForProvider(provider: string): Promise<string[]> {
+	const all = await fetchImageModels();
+	return all.filter((id) => id.startsWith(`${provider}@`)).map((id) => id.slice(provider.length + 1));
+}
+
+/**
+ * Ordered candidate modelIds to try for a provider: the requested model first,
+ * then the provider's live image models ordered by learned cost (cheapest
+ * first, unknown costs last), bounded so we don't probe the whole catalog.
+ * 402s are free (rejected before generation), so probing unknown-cost models
+ * only costs balance on success. If the provider isn't image-capable or has a
+ * single model, we just try the requested one.
+ */
+async function fallbackCandidates(provider: string, requested: string): Promise<string[]> {
+	const models = await imageModelsForProvider(provider);
+	if (!models.length) return [requested];
+	const costs = loadState().costs?.[provider] ?? {};
+	const others = models.filter((m) => m !== requested);
+	const known = others.filter((m) => costs[m] != null).sort((a, b) => (costs[a] ?? 0) - (costs[b] ?? 0));
+	const unknown = others.filter((m) => costs[m] == null);
+	return [requested, ...known, ...unknown].slice(0, 9);
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,20 +188,21 @@ function splitProviderModel(model: string): { provider: string; modelId: string 
 	return { provider: model.slice(0, idx), modelId: model.slice(idx + 1) };
 }
 
-/** Resolve the API key for a provider: env → credgoo → ~/.pi/agent/auth.json.
+/** Resolve an API key for a provider: env → credgoo → ~/.pi/agent/auth.json.
+ *  Generic across providers — unlisted providers use their name as the credgoo
+ *  service. Returns null when no key is configured (keyless providers are fine).
  *  Async because credgoo can take seconds — never block the event loop on it. */
 async function resolveKey(provider: string): Promise<string | null> {
-	const cfg = PROVIDER_KEYS[provider];
-	if (!cfg) return null;
+	const service = CREDGOO_SERVICE[provider] ?? provider;
 
-	// 1. Environment variable
-	const fromEnv = process.env[cfg.env];
+	// 1. Environment variable (provider name uppercased, e.g. POLLINATIONS_API_KEY)
+	const fromEnv = process.env[`${provider.toUpperCase()}_API_KEY`];
 	if (fromEnv && fromEnv.trim()) return fromEnv.trim();
 
 	// 2. credgoo (suppress its stdout chatter). Try the PATH binary, then ~/.local/bin.
 	for (const cmd of ["credgoo", path.join(os.homedir(), ".local", "bin", "credgoo")]) {
 		try {
-			const { stdout } = await execFileAsync(cmd, [cfg.credgoo], {
+			const { stdout } = await execFileAsync(cmd, [service], {
 				encoding: "utf8",
 				timeout: 8000,
 			});
@@ -93,15 +214,13 @@ async function resolveKey(provider: string): Promise<string | null> {
 	}
 
 	// 3. ~/.pi/agent/auth.json (e.g. tu-aqueduct)
-	if (cfg.authFile) {
-		try {
-			const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
-			const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
-			const entry = auth[cfg.authFile];
-			if (entry?.key) return entry.key;
-		} catch {
-			/* not present */
-		}
+	try {
+		const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
+		const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
+		const entry = auth[service];
+		if (entry?.key) return entry.key;
+	} catch {
+		/* not present */
 	}
 
 	return null;
@@ -329,37 +448,100 @@ interface GenOpts {
 }
 
 type GenResult =
-	| { ok: true; saved: ImageItem[]; provider: string; modelId: string; size: string }
+	| {
+			ok: true;
+			saved: ImageItem[];
+			provider: string;
+			modelId: string;
+			size: string;
+			fellBack?: boolean;
+			fromModel?: string;
+	  }
 	| { ok: false; error: string };
 
 async function generateAndSave(opts: GenOpts): Promise<GenResult> {
-	const model = (opts.model || DEFAULT_MODEL).trim();
-	const { provider, modelId } = splitProviderModel(model);
-	if (!PROVIDER_KEYS[provider]) {
-		return { ok: false, error: `unknown provider "${provider}". Known: ${Object.keys(PROVIDER_KEYS).join(", ")}` };
-	}
 	const size = (opts.size || DEFAULT_SIZE).trim();
 	const n = Math.max(1, Math.min(4, Math.floor(opts.n ?? 1)));
 
-	const key = await resolveKey(provider);
-	if (!key) {
-		const cfg = PROVIDER_KEYS[provider];
-		return {
-			ok: false,
-			error: `no API key for provider "${provider}". Set ${cfg.env} or run \`credgoo ${cfg.credgoo}\`.`,
-		};
-	}
+	// Resolve the model. Explicit --model wins; otherwise the stored last-good
+	// model for the provider wins over the env/compile-time default.
+	const defaultProvider = DEFAULT_MODEL.split("@")[0];
+	const stored = lastGoodModel(defaultProvider);
+	const model = (opts.model || (stored ? `${defaultProvider}@${stored}` : DEFAULT_MODEL)).trim();
+	const { provider, modelId } = splitProviderModel(model);
 
+	// Resolve an API key if the provider has one. Keyless providers (e.g.
+	// pollinations, ollama) proceed without a Bearer — the proxy handles it.
+	const key = await resolveKey(provider);
+
+	// Try the requested model, then fall back through the provider's live image
+	// models ordered by learned cost. On success, persist the winner as the
+	// provider's new last-good default so the next call self-heals.
+	const candidates = await fallbackCandidates(provider, modelId);
+	let lastError: string | undefined;
+	let fellBack = false;
+	for (const candidate of candidates) {
+		const attempt = await generateOnce({
+			provider,
+			modelId: candidate,
+			key,
+			prompt: opts.prompt,
+			size,
+			n,
+			seed: opts.seed,
+			signal: opts.signal,
+			cwd: opts.cwd,
+		});
+		if (attempt.ok) {
+			rememberLastGood(provider, candidate);
+			if (fellBack) {
+				attempt.fellBack = true;
+				attempt.fromModel = modelId;
+			}
+			return attempt;
+		}
+		// Learn the cost of this model from a 402 (rejected before generating),
+		// so future fallback ordering is accurate. Non-402 errors are terminal.
+		const cost = parseCost(attempt.error);
+		if (cost != null) {
+			learnCost(provider, candidate, cost);
+			if (candidate === modelId) fellBack = true; // requested model is unaffordable
+		} else if (candidate === modelId) {
+			return attempt; // non-402 failure of the requested model: don't mask it
+		}
+		lastError = attempt.error;
+	}
+	return { ok: false, error: lastError ?? "generation failed" };
+}
+
+interface GenerateOnceOpts {
+	provider: string;
+	modelId: string;
+	key: string;
+	prompt: string;
+	size: string;
+	n: number;
+	seed?: number;
+	signal?: AbortSignal;
+	cwd: string;
+}
+
+/** One generation attempt with a single model. Returns saved images or error. */
+async function generateOnce(opts: GenerateOnceOpts): Promise<GenResult> {
+	const { provider, modelId } = opts;
 	let data: { data?: Array<{ b64_json?: string; url?: string }> };
 	try {
 		const resp = await fetch(`${PROXY_BASE}/images/generations`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+			headers: {
+				"Content-Type": "application/json",
+				...(opts.key ? { Authorization: `Bearer ${opts.key}` } : {}),
+			},
 			body: JSON.stringify({
 				model: `${provider}@${modelId}`,
 				prompt: opts.prompt,
-				size,
-				n,
+				size: opts.size,
+				n: opts.n,
 				...(opts.seed != null ? { seed: opts.seed } : {}),
 			}),
 			signal: opts.signal,
@@ -403,9 +585,9 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 		const { buf: writtenBuf, sidecar } = embedMetadata(rawBuf, mime, {
 			prompt: opts.prompt,
 			model: `${provider}@${modelId}`,
-			size,
+			size: opts.size,
 			seed: opts.seed,
-			n,
+			n: opts.n,
 		});
 		fs.writeFileSync(abs, writtenBuf);
 		if (sidecar) fs.writeFileSync(`${abs}.txt`, sidecar);
@@ -415,7 +597,7 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 		saved.push({ b64, url: it.url, mime, path: abs, webUrl: webUrl ? `/uploads/${file}` : undefined });
 	}
 	if (!saved.length) return { ok: false, error: "generated images had no usable data" };
-	return { ok: true, saved, provider, modelId, size };
+	return { ok: true, saved, provider, modelId, size: opts.size };
 }
 
 /** Build the ASCII preview if needed (display fallback OR model signal). */
@@ -459,7 +641,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		label: "Generate Image",
 		description:
 			"Generate an image from a text prompt. Returns the image inline (the model can see it and iterate) plus an ASCII preview. " +
-			'Model is "provider@modelid", e.g. "pollinations@flux" (fast, default) or "tu@z-image-turbo" (high quality). ' +
+			'Model is any available "provider@modelid" from the proxy catalog, e.g. "pollinations@dreamshaper" (cheap, default) or "tu@z-image-turbo" (high quality). ' +
 			"Images are saved to ~/Pictures/generated/ on macOS (./uploads/ if present, or ./generated/ otherwise); the prompt is embedded in the file metadata.",
 		promptSnippet: "Generate an image from a text prompt; model sees the result and can iterate",
 		promptGuidelines: [
@@ -470,7 +652,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			prompt: Type.String({ description: "Text-to-image prompt. Be vivid: subject, style, composition, lighting, mood." }),
 			model: Type.Optional(
 				Type.String({
-					description: `provider@modelid (default: ${DEFAULT_MODEL}). Providers: pollinations (flux, kontext, nanobanana, seedream, ideogram-v4…), tu (z-image-turbo).`,
+					description: `Any available "provider@modelid" image model from the proxy catalog (default: ${DEFAULT_MODEL}). Omit to auto-pick; discover options via the catalog.`,
 				}),
 			),
 			size: Type.Optional(Type.String({ description: `Image size WxH (default: ${DEFAULT_SIZE}).` })),
@@ -498,12 +680,13 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 				return { content: [{ type: "text" as const, text: `Error: ${res.error}` }], isError: true };
 			}
 
-			const { saved, provider, modelId, size } = res;
+			const { saved, provider, modelId, size, fellBack, fromModel } = res;
 			const content: ContentBlock[] = [];
 			const locationLines = saved.map((s) => `  • ${s.webUrl ?? s.path}`).join("\n");
+			const fallbackNote = fellBack ? ` (auto-fell back from ${fromModel} — insufficient balance/error)` : "";
 			content.push({
 				type: "text",
-				text: `Generated ${saved.length} image${saved.length > 1 ? "s" : ""} via ${provider}@${modelId} (${size}):\n${locationLines}`,
+				text: `Generated ${saved.length} image${saved.length > 1 ? "s" : ""} via ${provider}@${modelId} (${size})${fallbackNote}:\n${locationLines}`,
 			});
 			for (const s of saved) {
 				content.push({ type: "image", data: s.b64, mimeType: s.mime });
@@ -515,7 +698,14 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 
 			return {
 				content,
-				details: { provider, model: modelId, size, paths: saved.map((s) => s.path), asciiPreview: !!asciiArt },
+				details: {
+					provider,
+					model: modelId,
+					size,
+					paths: saved.map((s) => s.path),
+					asciiPreview: !!asciiArt,
+					...(fellBack ? { fellBack: true as const, fromModel } : {}),
+				},
 			};
 		},
 
@@ -524,7 +714,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 				return new Text(theme.fg("warning", "🖼 generating…"), 0, 0);
 			}
 			const details = (
-				result as { details?: { provider?: string; model?: string; size?: string; paths?: string[] } }
+				result as { details?: { provider?: string; model?: string; size?: string; paths?: string[]; fellBack?: boolean; fromModel?: string } }
 			).details;
 			if (result.isError || !details) {
 				const txt = result.content?.[0] && "text" in result.content[0] ? result.content[0].text : "error";
@@ -532,7 +722,8 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			}
 			const count = details.paths?.length ?? 0;
 			const where = details.paths?.[0] ?? "";
-			const label = `🖼 ${details.provider}@${details.model} • ${count} image${count > 1 ? "s" : ""} → ${where}`;
+			const fb = details.fellBack ? ` (from ${details.fromModel})` : "";
+			const label = `🖼 ${details.provider}@${details.model}${fb} • ${count} image${count > 1 ? "s" : ""} → ${where}`;
 			return new Text(theme.fg("success", label), 0, 0);
 		},
 	});
