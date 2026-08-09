@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# d2png — render a .d2 diagram to PNG WITHOUT Playwright/Chromium.
+#
+#   bash scripts/d2png diagram.d2 [out.png] [-- <d2 flags>]
+#
+# Pipeline:
+#   1. d2 … .svg      render the deliverable SVG (native, no browser download)
+#   2. rsvg-convert   rasterize SVG -> PNG (librsvg; lightweight, cross-platform)
+#
+# This replaces d2's built-in PNG export, which triggers a ~141 MiB Playwright +
+# FFMPEG download on first use. rsvg-convert is a small native binary (macOS:
+# `brew install librsvg`; Linux: `apt install librsvg2-bin` / `dnf install librsvg2-tools`).
+# The SVG step is unchanged and dependency-free.
+#
+# Anything after `--` is forwarded to the d2 SVG render (e.g. `-- --sketch --theme 4`).
+# Exit 0 clean; 1 on render failure; 2 on bad usage. STDOUT = the .png path (pipeable).
+set -uo pipefail
+
+# ── resolve rsvg-convert across macOS (Homebrew) + Linux (apt/dnf/path) ──
+find_rsvg() {
+  for c in /opt/homebrew/bin/rsvg-convert /usr/local/bin/rsvg-convert \
+           /usr/bin/rsvg-convert /usr/local/bin/rsvg-convert rsvg-convert; do
+    if command -v "$c" >/dev/null 2>&1; then echo "$c"; return 0; fi
+  done
+  return 1
+}
+
+# ── parse args: src [out] -- <extras forwarded to d2 svg render> ──
+src=""; out=""; extras=(); seen=0
+for a in "$@"; do
+  if [ "$a" = "--" ]; then seen=1; continue; fi
+  if [ $seen -eq 1 ]; then extras+=("$a"); continue; fi
+  if [ -z "$src" ]; then src="$a"; elif [ -z "$out" ]; then out="$a"; fi
+done
+
+[ -n "$src" ] || { echo "usage: d2png <diagram.d2> [out.png] [-- <d2 flags>]" >&2; exit 2; }
+[ -f "$src" ] || { echo "d2png: not a file: $src" >&2; exit 2; }
+[ "${out##*.}" = "png" ] || out="${out:-${src%.d2}.png}"
+out="${out%.png}.png"
+
+rsvg="$(find_rsvg)" || { echo "d2png: rsvg-convert not found. Install librsvg (macOS: brew install librsvg; Linux: apt install librsvg2-bin / dnf install librsvg2-tools)." >&2; exit 1; }
+
+# 1. Render SVG natively (no browser download).
+svgtmp="$(mktemp -t d2png.XXXXXX).svg"
+if ! d2 "$src" "$svgtmp" ${extras[@]+"${extras[@]}"} >/dev/null 2>&1; then
+  echo "✗ d2 render failed:" >&2
+  d2 "$src" "$svgtmp" ${extras[@]+"${extras[@]}"} >&2
+  rm -f "$svgtmp"
+  exit 1
+fi
+
+# 2. Rasterize SVG -> PNG.
+if ! "$rsvg" -z 2 -f png -o "$out" "$svgtmp" >/dev/null 2>&1; then
+  echo "✗ rsvg-convert failed (SVG left at $svgtmp):" >&2
+  exit 1
+fi
+rm -f "$svgtmp"
+
+echo "$out"

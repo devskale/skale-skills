@@ -1,6 +1,6 @@
 ---
 name: d2
-version: "1.3.1"
+version: "1.4.0"
 description: "Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the `d2` CLI directly (no bundled scripts). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
 license: MIT
 ---
@@ -25,6 +25,7 @@ Or clone + add to pi config (`~/.pi/agent/settings.json`): `"skills": ["~/code/s
 ```bash
 bash scripts/d2v diagram.d2          # ONE command: validate → ASCII to stderr → svg → width-bloat check
 bash scripts/d2v diagram.d2 -- --sketch --theme 4   # forward flags to d2 (sketch/themes — sketch is CLI-only, vars ignore it)
+bash scripts/d2png diagram.d2        # PNG via rsvg-convert (no Playwright/Chromium download)
 # (the raw loop it runs, if you need the pieces:)
 d2 validate diagram.d2               # grammar check
 d2 diagram.d2 diagram.txt            # ASCII preview — verify structure (the agent's self-check)
@@ -59,7 +60,7 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 - **Default layout is `dagre`; prefer `elk` for delivery.** dagre is a Sugiyama-style layoutor built for *directed acyclic* graphs — weak on cycles, bidirectional/undirected edges, and dense fan-in/fan-out (more crossings, poorer spacing as graphs grow). **ELK** (Eclipse Layout Kernel) routes and spaces dense graphs better. Set `layout-engine: elk` in `vars.d2-config`. (`tala` is paid and usually absent.)
 - **The ASCII/text export ignores `--layout` and `vars.d2-config.layout-engine`.** Verified: `--layout dagre` vs `elk` (and the `vars` setting) produce **byte-identical `.txt`**. So ASCII self-verification works with any engine, **but it will not reflect the layout of your delivered SVG/PNG** — what you read in `.txt` is the exporter's fixed layout, not your configured one. Verify *structure* in ASCII; trust the SVG by construction.
 - **Vertical (default ELK) is agent-verifiable; `direction: right` is not.** A wide horizontal diagram terminal-wraps into noise in ASCII, so you can't self-verify it. Build and verify vertical; switch to horizontal only as a final delivery choice.
-- **SVG is the sane default — zero dependencies, self-contained** (`--bundle=true` by default). **PNG/PDF trigger a ~141 MiB Playwright + FFMPEG download** on first run. Deliver SVG unless the user needs raster.
+- **SVG is the sane default — zero dependencies, self-contained** (`--bundle=true` by default). **PNG via `scripts/d2png` uses `rsvg-convert` (librsvg)** — a lightweight native rasterizer, NO Playwright/FFMPEG download. (d2's built-in PNG export would trigger a ~141 MiB Playwright + FFMPEG download on first run — avoid it; use `d2png` instead.) Deliver SVG unless the user needs raster.
 - **No native HTML export.** Formats: svg, png, pdf, pptx, gif, txt. For an HTML deliverable, embed the SVG with `--no-xml-tag` (drops `<?xml?>` so it embeds) and `--salt <name>` (unique IDs when embedding multiple SVGs).
 - **`d2 validate` is permissive — it does NOT catch unknown shapes or invalid style keywords.** Verified: `shape: note`, `style.dashed`, and `style.stroke-dasharray` all pass `d2 validate` but fail at `d2` (render/compile) with `unknown shape "note"` / `invalid style keyword: "dashed"`. So the validate-then-render loop must actually **render** to catch these — `validate` only checks grammar. To self-verify shape/style correctness without opening an SVG, render to `.txt` (ASCII) — a failed compile errors out identically there.
 - **Shape/style keyword cheatsheet (verified on d2 0.7.1):** `shape: note` → FAIL (use `shape: document` or `shape: callout` for a legend); `shape: stored-data` / `stored_data` → FAIL (use `shape: cylinder`); `shape: component` → FAIL (no such shape — use the default rectangle / `shape: square`; a C4 "component" is just a box); `style.dashed` → FAIL on nodes AND edges; `style.stroke-dasharray: 4 4` → FAIL. To dash a border/edge use `style.stroke-dash: 4` (works on both). `d2 fmt x.d2 --check` lints without writing; `d2 fmt x.d2` formats in place; `fmt --check` is idempotent after `fmt`.
@@ -81,8 +82,8 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 | Format | Command | Notes |
 |---|---|---|
 | SVG | `d2 x.d2 x.svg` | Default. Self-contained, web-friendly. |
-| PNG | `d2 x.d2 x.png` | Needs Playwright (first-run ~141 MiB download). |
-| PDF | `d2 x.d2 x.pdf` | Needs Playwright. Clickable links. |
+| PNG | `bash scripts/d2png x.d2 x.png` | SVG → `rsvg-convert` (librsvg). No Playwright download. |
+| PDF | `d2 x.d2 x.pdf` | Needs Playwright (d2 built-in). |
 | ASCII | `d2 x.d2 x.txt` | Any engine (exporter ignores `--layout`). **Use to self-verify structure.** |
 | PPTX/GIF | `d2 x.d2 x.pptx` | For multi-board compositions. |
 

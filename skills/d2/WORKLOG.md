@@ -8,7 +8,11 @@
 
 ## Status
 
-- **Version:** v1.1.0 (recipes + diagram-types + delivery-polish guides; 35-test suite)
+- **Version:** v1.4.0 (lightweight PNG via rsvg-convert — no Playwright)
+- **v1.4.0 (2026-08-09):** added `scripts/d2png` — render a .d2 to PNG via SVG → `rsvg-convert`
+  (librsvg), replacing d2's built-in PNG export which triggers a ~141 MiB Playwright + FFMPEG
+  download on first run. Same trick as the figure skill. Cross-platform rsvg resolution
+  (macOS Homebrew + Linux apt/dnf). SVG output unchanged (zero deps). 45-test suite.
 - **v1.3.1 (2026-08-02):** second dogfood pass on python-openutils (uniinfer architecture
   diagram). New gotchas folded into SKILL.md: (1) `\n` works in NODE labels but FAILS in
   connection/edge labels ("unexpected text after unquoted string") — keep edge labels

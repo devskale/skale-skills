@@ -161,6 +161,25 @@ else
 fi
 echo ""
 
+# ── 11. d2png helper (rsvg-convert, no Playwright) ───────────────
+echo "[11] d2png helper (rsvg-convert, no Playwright)..."
+if [ -x scripts/d2png ] && command -v d2 >/dev/null 2>&1; then
+    V="$(mktemp -d)"
+    printf 'a -> b: hi\n' > "$V/clean.d2"
+    bash scripts/d2png "$V/clean.d2" "$V/out.png" >/dev/null 2>&1 && rp=0 || rp=$?
+    assert "d2png produces a PNG (exit 0)" "[ $rp -eq 0 ] && [ -s \"$V/out.png\" ]"
+    if [ $rp -eq 0 ]; then
+        MAGIC="$(od -An -tx1 -N4 "$V/out.png" | tr -d ' ')"
+        assert "d2png is a real PNG (magic bytes)" "[ \"$MAGIC\" = '89504e47' ]"
+        bash scripts/d2png "$V/clean.d2" "$V/sk.png" -- --sketch >/dev/null 2>&1 && rk=0 || rk=$?
+        assert "d2png forwards -- to d2 (sketch applied)" "[ $rk -eq 0 ] && [ -s \"$V/sk.png\" ]"
+    fi
+    rm -rf "$V"
+else
+    assert "d2png present" "[ -x scripts/d2png ]"
+fi
+echo ""
+
 echo "==============================="
 echo "  PASS: $PASS   FAIL: $FAIL"
 echo "==============================="
