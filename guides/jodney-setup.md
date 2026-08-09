@@ -6,9 +6,16 @@ Headless Chrome automation from the CLI. Scrape, screenshot, fill forms, export 
 
 ## 1. Install jodney (per machine, once)
 
+Build the Go binary from source (jodney is not on PyPI):
+
 ```bash
-uv tool install jodney
+# Requires Go 1.21+ and Chrome or Chromium
+git clone git@github.com:devskale/jodney.git
+cd jodney
+go build -o ~/.local/bin/jodney .
 ```
+
+Verify: `jodney --version` → `0.5.0-devskale`.
 
 Requires Chrome or Chromium.
 

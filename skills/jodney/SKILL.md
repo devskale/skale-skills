@@ -32,11 +32,24 @@ jodney stop                               # 5. ALWAYS stop when done
 
 ## Install
 
+jodney is not published to PyPI — build the Go binary from source:
+
 ```bash
-uv tool install jodney
+# Requires Go 1.21+ and Chrome or Chromium installed
+# (set ROD_CHROME_BIN if Chrome isn't at the default location)
+git clone git@github.com:devskale/jodney.git
+cd jodney
+go build -o ~/.local/bin/jodney .   # put it on your PATH
 ```
 
-Requires Chrome or Chromium. Set `ROD_CHROME_BIN` if not at default location.
+Or, if you already have the repo checked out:
+
+```bash
+go build -o jodney .
+sudo mv jodney /usr/local/bin/   # or cp to a dir on your PATH
+```
+
+Verify with `jodney --version` (expect `0.5.0-devskale`).
 
 ## Project Setup
 
@@ -48,7 +61,7 @@ To add jodney to a project, add this to the project's AGENTS.md:
 Use jodney for headless Chrome automation (scraping, screenshots, forms, PDFs, a11y, smoke tests).
 
 ### Setup
-1. Install: `uv tool install jodney`
+1. Install: `go build -o ~/.local/bin/jodney .` (from a clone of devskale/jodney)
 2. Verify: `jodney start && jodney stop`
 3. Link skill: `ln -s /path/to/skale-skills/skills/jodney .pi/skills/jodney`
 
