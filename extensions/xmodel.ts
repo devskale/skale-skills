@@ -62,8 +62,8 @@ import {
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
-import { isStaleCtxError, reconstructLastCustomEntry } from "./session-state";
-import { isVisionCapable, isValidImage } from "./image-utils";
+import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
+import { isVisionCapable, isValidImage } from "./lib/image-utils";
 import {
 	debug,
 	detectSavedScreenshot,
@@ -72,7 +72,7 @@ import {
 	runChildPi,
 	textOf,
 	writeImageTmp,
-} from "./xmodel-vision-utils";
+} from "./lib/xmodel-vision-utils";
 import {
 	defaultVision,
 	globalPresetsPath,
@@ -87,7 +87,7 @@ import {
 	type PresetsConfig,
 	type ThinkingLevel,
 	type VisionConfig,
-} from "./xmodel-config";
+} from "./lib/xmodel-config";
 
 const VERSION = "0.4.1";
 

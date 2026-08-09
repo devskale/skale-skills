@@ -40,7 +40,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import { isStaleCtxError, reconstructLastCustomEntry } from "./session-state";
+import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
 
 const DEFAULT_MESSAGE = "Time to check in — what are you working on?";
 const STATUS_KEY = "heartbeat";

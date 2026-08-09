@@ -32,6 +32,11 @@ skale-skills/
 3. To activate: `ln -s $(pwd)/extensions/<name>.ts ~/.pi/agent/extensions/<name>.ts`
 4. To deactivate: `rm ~/.pi/agent/extensions/<name>`
 
+**Shared helper modules** (imported by multiple extensions, no default factory)
+go in `extensions/lib/*.ts` — a subdir pi does **not** auto-discover as extensions
+(no `index.ts`/`package.json`), so they don't need `!` exclusions in the
+`./extensions/*.ts` glob. Extensions import them via `./lib/<name>`.
+
 ### Prompts
 
 1. Create `prompts/<name>.md` with optional frontmatter (`description`)
