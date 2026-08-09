@@ -7,7 +7,9 @@
 // organised in per-topic subfolders (e.g. diagrams/architectures/). Each spec module
 // default-exports a spec object (see compose.mjs). Rendered images (.svg + .png) are
 // written to a dedicated OUTPUT dir, NOT next to the spec, so the skill's diagrams/
-// stays clean. Default ~/generated/images/<name>/; override with FIGURE_OUT_DIR.
+// stays clean. Output dir is resolved (never hardcoded): FIGURE_OUT_DIR env override →
+// ./diagrams-built/ (project-local, gitignored) → ~/Pictures/generated/figures/ (macOS)
+// → ./generated/.
 
 import { readdirSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, resolve, basename } from 'node:path';
@@ -20,9 +22,23 @@ import { reviewSpec } from './review_figure.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));            // figure/build
 const DIAGRAMS = join(HERE, '..', 'diagrams');
 const SCALE = 2;                                                // figures are already large
-// Rendered images go to a dedicated output dir (not next to the spec), keeping the
-// skill's diagrams/ clean. Override with FIGURE_OUT_DIR; default ~/generated/images/<name>/.
-const OUT_DIR = process.env.FIGURE_OUT_DIR ? resolve(process.env.FIGURE_OUT_DIR) : join(homedir(), 'generated', 'images');
+
+// Resolve the output dir — never hardcoded. Precedence:
+//   1. FIGURE_OUT_DIR env (absolute, or relative to cwd) — explicit override
+//   2. ./diagrams-built/ in cwd — project-local, gitignored
+//   3. ~/Pictures/generated/figures/ on macOS — stable home dir (matches imagegen)
+//   4. ./generated/ — last-resort project-local default
+function resolveOutDir() {
+  const override = process.env.FIGURE_OUT_DIR?.trim();
+  if (override) return resolve(override);
+  const cwdLocal = join(process.cwd(), 'diagrams-built');
+  if (process.platform === 'darwin') {
+    const home = homedir();
+    if (home) return join(home, 'Pictures', 'generated', 'figures');
+  }
+  return cwdLocal;
+}
+const OUT_DIR = resolveOutDir();
 
 // Walk a directory tree and collect every *.fig.mjs spec (any depth).
 function findSpecs(dir) {
@@ -62,7 +78,7 @@ for (const specPath of specs) {
     continue;
   }
 
-  const outDir = join(OUT_DIR, name);                        // -> ~/generated/images/<name>/
+  const outDir = join(OUT_DIR, name);                        // -> <out>/<name>/
   mkdirSync(outDir, { recursive: true });
   const svg = composeSVG(spec);
   writeFileSync(join(outDir, `${name}.svg`), svg + '\n');
