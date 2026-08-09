@@ -1,5 +1,5 @@
 # surf/lib/main.sh — dispatch. Sourced by surf.sh (entry calls main "$@").
-# Help text lives in lib/help.sh (cmd_help / _surf_help_overview / _surf_help_command).
+# Help text lives in lib/help-overview.sh + lib/help-command.sh (cmd_help / _surf_help_overview / _surf_help_command).
 
 main() {
   case "${1-}" in
