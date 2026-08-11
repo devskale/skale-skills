@@ -11,7 +11,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | web-search | `web-search "query"` | 38 | Web search via SearXNG + Duck API |
 | youtube | `youtube "query"` | 32 | YouTube search via Invidious API with auto-fallback |
 | vtd | `vtd transcript --url '...'` | 43 | Video/audio/transcript downloader (yt-dlp) |
-| jodney | `jodney start/open/stop` | 32 | Headless Chrome automation |
+| rodney | `rodney start/open/stop` | 32 | Headless Chrome automation |
 | viewimg | `viewimg img.jpg [--open]` | 10 | Show an image in the terminal (view-only, no VLM) |
 
 ## Installation (as a pi package)
@@ -100,7 +100,7 @@ Deep-dive authoring guides distilled from specs, research, and real-world skills
 
 | Guide | What |
 |-------|------|
-| [guides/jodney-setup.md](guides/jodney-setup.md) | Jodney headless Chrome setup |
+| [guides/rodney-setup.md](guides/rodney-setup.md) | Rodney headless Chrome setup |
 
 ## Browser Automation — Chrome 136+ Breaking Changes
 
@@ -133,7 +133,7 @@ Deep-dive authoring guides distilled from specs, research, and real-world skills
 | Reuse your Chrome cookies via Python (macOS/Linux) | **agentauth-py** | `pip install agentauth-py && agent-auth grab <domain>` — reverse-engineers App-Bound Encryption. |
 | Reuse real Chrome via MCP, no debug port | **Hangwin mcp-chrome** | Chrome extension + local bridge. |
 | Reuse real Chrome via MCP, with human-in-loop | **Playwright MCP Bridge Extension** | Microsoft's official extension, sideloaded. |
-| Just need a fresh isolated browser | **jodney** (our tool) | `jodney start && jodney open <url> && jodney stop`. Already in this repo. |
+| Just need a fresh isolated browser | **rodney** (our tool) | `rodney start && rodney open <url> && rodney stop`. Already in this repo. |
 | Need a stealth anti-detect browser | **CloakBrowser** (our testbed) | Stealth Chromium, own browser. |
 | Need an MCP for any browser | **Playwright MCP** | Cross-browser, no real-session reuse by default. |
 
@@ -141,7 +141,7 @@ Deep-dive authoring guides distilled from specs, research, and real-world skills
 
 - **Never** write a doc, script, or guide that suggests `chrome --remote-debugging-port=9222` against the default profile — it doesn't work.
 - If you find a tutorial older than March 2025, **verify** before citing it.
-- For our own tools (jodney, CloakBrowser tests): they launch their own browser — Chrome 136+ doesn't affect them.
+- For our own tools (rodney, CloakBrowser tests): they launch their own browser — Chrome 136+ doesn't affect them.
 - Full comparison + decision flows: [docs/browser-use/browser-tools-comparison.md](docs/browser-use/browser-tools-comparison.md)
 
 ## External Skills
@@ -172,7 +172,7 @@ bash tests/fetch-url/test.sh
 bash tests/web-search/test.sh
 bash tests/youtube/test.sh
 bash tests/video-transcript-downloader/test.sh
-bash tests/jodney/test.sh
+bash tests/rodney/test.sh
 bash tests/viewimg/test.sh
 ```
 

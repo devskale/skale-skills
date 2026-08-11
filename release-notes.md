@@ -2,6 +2,14 @@
 
 Log of notable changes to skale-skills. Newest first.
 
+## 2026-08-11
+
+### rodney
+- **Renamed:** the `jodney` skill back to **`rodney`** (matches `devskale/rodney`, working branch `skale`). Renamed skill dir `skills/jodney/` → `skills/rodney/`, `tests/jodney/` → `tests/rodney/`, `guides/jodney-setup.md` → `guides/rodney-setup.md`, and `test_jodney.sh` → `test_rodney.sh`.
+- **Fixed:** env vars to match the `skale` branch — `RODNEY_CHROME_BIN`/`RODNEY_TIMEOUT` → `ROD_CHROME_BIN`/`ROD_TIMEOUT` (go-rod standard); kept `RODNEY_HOME`.
+- **Removed:** the `--update` self-update command from docs — the `skale` branch no longer has it; install/refresh now `git clone -b skale` + `go build`.
+- **Docs:** updated AGENTS.md, README, SKILL-INDEX, browser-tools comparison, surf/peep cross-refs, diagrams, and setup guides to the `rodney` name.
+
 ## 2026-08-09
 
 ### extensions

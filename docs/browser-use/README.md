@@ -6,6 +6,7 @@ Everything about browser automation for AI agents — tools, setups, and Chrome 
 
 | I want to… | Read this |
 |------------|-----------|
+| **Choose between surf / rodney / chrome-devtools-mcp** | [which-browser-tool.md](which-browser-tool.md) |
 | Compare all browser tools (feature matrix, token costs) | [browser-tools-comparison.md](browser-tools-comparison.md) |
 | Reuse my real Chrome session (cookies, logins) | [browser-session-reuse.md](browser-session-reuse.md) |
 | Set up OpenChrome MCP | [openchrome-usage.md](openchrome-usage.md) |
@@ -13,6 +14,11 @@ Everything about browser automation for AI agents — tools, setups, and Chrome 
 | Set up Vercel agent-browser | [vcl-agent-browser.md](vcl-agent-browser.md) |
 
 ## Tool Decision Flow
+
+For the **surf vs rodney vs chrome-devtools-mcp** choice, see
+[which-browser-tool.md](which-browser-tool.md) — it's the single source of truth.
+
+For the full tool landscape (Chrome 136 constraints, session reuse, stealth, cloud):
 
 ```
 Need a browser?

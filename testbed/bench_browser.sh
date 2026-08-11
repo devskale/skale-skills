@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# rodney vs agent-browser — Performance & Resource Benchmark v2
+# jodney vs agent-browser — Performance & Resource Benchmark v2
 # Fixed: macOS ps compatibility, click targets
 # ============================================================
 set -uo pipefail
@@ -50,21 +50,21 @@ winner() {
 }
 
 echo "═══════════════════════════════════════════════════════"
-echo "  BROWSER BENCHMARK v2: rodney vs agent-browser"
+echo "  BROWSER BENCHMARK v2: jodney vs agent-browser"
 echo "═══════════════════════════════════════════════════════"
 echo "  URL:        $URL  |  Iters: $ITERATIONS  |  $(date)"
 echo "  OS:         $(uname -srm)  |  CPUs: $(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null)"
-echo "  Rodney:     $(rodney --version 2>/dev/null)  |  Agent-Br: $(agent-browser --version 2>/dev/null)"
+echo "  Jodney:     $(jodney --version 2>/dev/null)  |  Agent-Br: $(agent-browser --version 2>/dev/null)"
 echo "═══════════════════════════════════════════════════════"
 
-cleanup() { rodney stop 2>/dev/null; agent-browser close 2>/dev/null; sleep 1; }
+cleanup() { jodney stop 2>/dev/null; agent-browser close 2>/dev/null; sleep 1; }
 trap cleanup EXIT
 
 # ══════════════════════════════════════════════════════════
-#  TEST A: RODNEY
+#  TEST A: JODNEY
 # ══════════════════════════════════════════════════════════
 echo ""; echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  TEST A: RODNEY (Python/rod → CDP → Chrome)"
+echo "  TEST A: JODNEY (Python/rod → CDP → Chrome)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 R_START=() R_NAV=() R_TEXT=() R_CLICK=() R_STOP=()
@@ -77,32 +77,32 @@ for i in $(seq 1 $ITERATIONS); do
   BASE=$(get_rss_kb "chrom")
 
   # START
-  T1=$(timestamp); rodney start 2>&1; T2=$(timestamp)
+  T1=$(timestamp); jodney start 2>&1; T2=$(timestamp)
   ms=$(ms_diff T1 T2); R_START+=("$ms")
   RS=$(get_rss_kb "chrom"); R_RSS_START+=("$RS")
   echo "    start:   ${ms}ms    RAM: ${RS} KB"
 
   # NAV
-  T1=$(timestamp); rodney open "$URL" 2>&1; T2=$(timestamp)
+  T1=$(timestamp); jodney open "$URL" 2>&1; T2=$(timestamp)
   ms=$(ms_diff T1 T2); R_NAV+=("$ms")
   RS=$(get_rss_kb "chrom"); R_RSS_NAV+=("$RS")
   echo "    nav:     ${ms}ms    RAM: ${RS} KB"
 
   # WAIT STABLE
-  rodney waitstable >/dev/null 2>&1
+  jodney waitstable >/dev/null 2>&1
 
   # TEXT EXTRACT
-  T1=$(timestamp); rodney text "body" 2>&1 | wc -c | tr -d ' '; T2=$(timestamp)  # just measure time
+  T1=$(timestamp); jodney text "body" 2>&1 | wc -c | tr -d ' '; T2=$(timestamp)  # just measure time
   # redo for timing without pipe overhead
-  T1=$(timestamp); OUT=$(rodney text "body" 2>&1); T2=$(timestamp)
+  T1=$(timestamp); OUT=$(jodney text "body" 2>&1); T2=$(timestamp)
   ms=$(ms_diff T1 T2); R_TEXT+=("$ms")
   echo "    text:    ${ms}ms    (${#OUT} chars extracted)"
 
   # CLICK (target a link or button)
   T1=$(timestamp)
-  if rodney exists "a" 2>/dev/null; then rodney click "a" 2>&1 >/dev/null
-  elif rodney exists "button" 2>/dev/null; then rodney click "button" 2>&1 >/dev/null
-  else rodney click "h1" 2>&1 >/dev/null; fi
+  if jodney exists "a" 2>/dev/null; then jodney click "a" 2>&1 >/dev/null
+  elif jodney exists "button" 2>/dev/null; then jodney click "button" 2>&1 >/dev/null
+  else jodney click "h1" 2>&1 >/dev/null; fi
   T2=$(timestamp)
   ms=$(ms_diff T1 T2); R_CLICK+=("$ms")
   echo "    click:   ${ms}ms"
@@ -111,7 +111,7 @@ for i in $(seq 1 $ITERATIONS); do
   echo "    RAM end: ${RS} KB"
 
   # STOP
-  T1=$(timestamp); rodney stop 2>&1; T2=$(timestamp)
+  T1=$(timestamp); jodney stop 2>&1; T2=$(timestamp)
   ms=$(ms_diff T1 T2); R_STOP+=("$ms")
   echo "    stop:    ${ms}ms"
 
@@ -181,44 +181,44 @@ AB_O_AVG=$(avg "${AB_OPEN[@]}");   AB_SN_AVG=$(avg "${AB_SNAP[@]}")
 AB_CK_AVG=$(avg "${AB_CLICK[@]}"); AB_CL_AVG=$(avg "${AB_CLOSE[@]}")
 AB_RS_OP=$(avg "${AB_RSS_OPEN[@]}")
 
-printf '\n%-34s %9s %10s  %s\n' "METRIC" "rodney" "agnt-br" "WINNER"
+printf '\n%-34s %9s %10s  %s\n' "METRIC" "jodney" "agnt-br" "WINNER"
 printf '%-34s %9s %10s  %s\n' "─────────────────────────────────" "─────────" "──────────" "───────"
 
 printf '%-34s %7s ms %7s ms  %s\n' "Cold start / open" "$R_S_AVG" "$AB_O_AVG" \
-  "$(winner "$R_S_AVG" "$AB_O_AVG" "rodney" "ab")"
+  "$(winner "$R_S_AVG" "$AB_O_AVG" "jodney" "ab")"
 
 printf '%-34s %7s ms %7s ms  %s\n' "Navigate to page" "$R_N_AVG" "$AB_O_AVG" \
-  "$(winner "$R_N_AVG" "$AB_O_AVG" "rodney" "ab")"
+  "$(winner "$R_N_AVG" "$AB_O_AVG" "jodney" "ab")"
 
 printf '%-34s %7s ms %7s ms  %s\n' "Page read (text/snapshot)" "$R_T_AVG" "$AB_SN_AVG" \
-  "$(winner "$R_T_AVG" "$AB_SN_AVG" "rodney" "ab")"
+  "$(winner "$R_T_AVG" "$AB_SN_AVG" "jodney" "ab")"
 
 printf '%-34s %7s ms %7s ms  %s\n' "Click element" "$R_C_AVG" "$AB_CK_AVG" \
-  "$(winner "$R_C_AVG" "$AB_CK_AVG" "rodney" "ab")"
+  "$(winner "$R_C_AVG" "$AB_CK_AVG" "jodney" "ab")"
 
 printf '%-34s %7s ms %7s ms  %s\n' "Stop / close" "$R_ST_AVG" "$AB_CL_AVG" \
-  "$(winner "$R_ST_AVG" "$AB_CL_AVG" "rodney" "ab")"
+  "$(winner "$R_ST_AVG" "$AB_CL_AVG" "jodney" "ab")"
 
 R_TOT=$((R_S_AVG + R_N_AVG + R_T_AVG + R_C_AVG + R_ST_AVG))
 AB_TOT=$((AB_O_AVG + AB_SN_AVG + AB_CK_AVG + AB_CL_AVG))
 printf '%-34s %7s ms %7s ms  %s\n' "TOTAL workflow" "$R_TOT" "$AB_TOT" \
-  "$(winner "$R_TOT" "$AB_TOT" "rodney" "ab")"
+  "$(winner "$R_TOT" "$AB_TOT" "jodney" "ab")"
 
 echo ""
 
 printf '%-34s %8s KB %8s KB  %s\n' "RAM after navigate" "$R_RS_NAV" "$AB_RS_OP" \
-  "$(winner "$R_RS_NAV" "$AB_RS_OP" "rodney" "ab")"
+  "$(winner "$R_RS_NAV" "$AB_RS_OP" "jodney" "ab")"
 
 KB_TO_MB() { echo "$(echo "scale=1; $1 / 1024" | bc 2>/dev/null || echo '?') MB"; }
 echo ""
-echo "  (RAM in MB: rodney ≈ $(KB_TO_MB $R_RS_NAV) | agent-browser ≈ $(KB_TO_MB $AB_RS_OP))"
+echo "  (RAM in MB: jodney ≈ $(KB_TO_MB $R_RS_NAV) | agent-browser ≈ $(KB_TO_MB $AB_RS_OP))"
 
 echo ""
 echo "═══════════════════════════════════════════════════════"
 echo "  RAW DATA"
 echo "═══════════════════════════════════════════════════════"
 echo ""
-echo "rodney:"
+echo "jodney:"
 echo "  start:${R_START[*]} ms  nav:${R_NAV[*]} ms  text:${R_TEXT[*]} ms  click:${R_CLICK[*]} ms  stop:${R_STOP[*]} ms"
 echo "  rss_nav: ${R_RSS_NAV[*]} KB  rss_post: ${R_RSS_POST[*]} KB"
 echo ""
