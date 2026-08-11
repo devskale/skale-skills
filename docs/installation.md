@@ -56,7 +56,7 @@ Restart pi to apply.
 | `"+path"` / `"-path"` | force include / exclude an exact path |
 
 Plain-name includes match by skill **directory name** (e.g. `"rodney"`). Paths match relative
-to package root (e.g. `"+skills/jodney/SKILL.md"`).
+to package root (e.g. `"+skills/rodney/SKILL.md"`).
 
 > ⚠️ **`+path` gotcha:** force-includes (`"+extensions/x.ts"`) re-enable within an otherwise-on
 > set — used **alone** they turn the whole type on. For "only these", use plain names/paths,

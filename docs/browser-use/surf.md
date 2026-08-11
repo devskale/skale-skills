@@ -1,6 +1,6 @@
 ---
 name: surf-guide
-description: "Surf — lean macOS CLI to drive your real, logged-in Google Chrome via AppleScript. Setup, capabilities, recipes, and a head-to-head comparison with rodney and chrome-devtools-mcp."
+description: "Surf — lean macOS CLI to drive your real, logged-in Google Chrome via AppleScript. Setup, capabilities, recipes, and where it fits vs rodney and chrome-devtools-mcp (see which-browser-tool.md)."
 version: 1.0.0
 date: 2026-07-12
 ---
@@ -149,37 +149,14 @@ done
 
 ## Comparison: `surf` vs `rodney` vs `chrome-devtools-mcp`
 
-These three overlap but solve different problems. Pick by what you need.
+These three overlap but solve different problems. For the decision-first, agent-readable
+comparison (when to pick each, the decision tree, and how they compose), see
+**[which-browser-tool.md](which-browser-tool.md)** — it is the single source of truth.
 
-| | **surf** | **rodney** | **chrome-devtools-mcp** |
-|---|---|---|---|
-| **Mechanism** | macOS AppleScript + Chrome JS-from-Apple Events | Go binary (`go-rod`) → CDP | MCP server (Puppeteer) → CDP `--autoConnect` |
-| **Whose browser** | ✅ your real, logged-in Chrome | ❌ launches its own Chrome | ✅ your real Chrome |
-| **Per-connection dialog** | ✅ **none** | ✅ none (own browser) | ❌ **"Allow remote debugging?" every connect** (Chrome 144+, won't-fix) |
-| **Platform** | macOS only | cross-platform | cross-platform |
-| **Install weight** | ~11 KB, **zero deps** | Go binary (~11 MB) + Python shim | `npx`, downloads on demand |
-| **Headless** | ❌ (drives visible Chrome) | ✅ default + `--show` | ❌ (your visible browser) |
-| **Form factor** | bash CLI | bash CLI | MCP tools (drops into pi/Claude/etc.) |
-| **Selectors** | CSS + arbitrary JS | CSS + JS + a11y tree | rich (text/role/CSS) + JS |
-| **Background tabs (no focus)** | ✅ `select w1.tN` | ❌ one session | ⚠️ via `select_page` |
-| **Screenshots** | ✅ window (`shot`, needs Screen Recording) | ✅ page + element | ✅ page + element |
-| **Network / console / perf** | ❌ | ❌ | ✅ **console, network, perf traces, Lighthouse, heap** |
-| **Assertions / CI** | DIY via `eval`/`count` + exit codes | ✅ built-in (`exists`, `assert`, `count`) | ❌ |
-| **PDF / a11y audit** | ❌ | ✅ PDF + a11y tree | ✅ Lighthouse audits |
-| **Multi-tab session** | ✅ your real tabs | isolated profile | ✅ your real tabs |
-| **Agentic / LLM-driven** | ❌ (you are the loop) | ❌ (you are the loop) | ❌ (you are the loop) |
-| **Best for** | Quick control of the browser you're in, on macOS, zero setup | Headless automation, scraping, CI, cross-platform | Deep debugging — console, network, perf — of a live session |
-
-### When to pick which
-
-- **`surf`** — *"I'm on a Mac, I want to click/fill/scrape in the browser I'm already logged into, and I don't want a daemon, a port, or a permission dialog."* The lightest path to your real session.
-- **`rodney`** — *"I need a clean, scriptable browser for scraping, form automation, PDF export, a11y checks, or CI smoke tests — cross-platform, headless, with assertions."* It launches its own isolated browser (not yours).
-- **`chrome-devtools-mcp`** — *"I need to debug a live page — read console logs, inspect network requests, record a performance trace, run Lighthouse, take a heap snapshot."* Accept the per-connection "Allow" click; you're at the keyboard anyway.
-
-**They compose.** Run several:
-- `surf` for everyday click/fill/scrape on your real session (no friction).
-- `chrome-devtools-mcp` when you need console/network/perf on that same session.
-- `rodney` for isolated/headless jobs and CI.
+In one line:
+- **`surf`** — your real, logged-in Chrome on macOS, zero setup.
+- **`rodney`** — a fresh isolated headless browser for scraping/mocking/CI (never touches your session).
+- **`chrome-devtools-mcp`** — read a live page's internals (console/perf/Lighthouse).
 
 ## Limitations & gotchas
 
@@ -188,7 +165,7 @@ These three overlap but solve different problems. Pick by what you need.
 - **`shot` needs Screen Recording** permission for your terminal. `surf shot` detects the failure and opens the settings pane for you.
 - **Targets the active tab of the front window** by default. Use `surf select wN.tN` to pin a tab (works on background tabs); re-run `surf tabs` if a ref goes stale after you reorder/close.
 - **Not agentic.** `surf` is a deterministic remote control — **you** are the reasoning loop. For LLM-driven browsing use [browser-use](https://github.com/browser-use/browser-use) or [Stagehand](https://github.com/browserbase/stagehand) (separate browser) or [Skyvern](https://github.com/Skyvern-AI/skyvern) (can `cdp-connect` to your Chrome — heavier).
-- **No network/console/perf.** That's chrome-devtools-mcp's job (see above).
+- **No network/console/perf *reading*.** surf can't capture console logs, network responses, or perf traces — and neither can rodney (its `mock`/`block` intercepts requests but doesn't *read* traffic). That's chrome-devtools-mcp's job (see [which-browser-tool.md](which-browser-tool.md)).
 - **`eval` returns one stringified value.** Return JSON for complex shapes.
 
 ## How it works (under the hood)
@@ -214,4 +191,4 @@ State (the pinned tab) lives in `~/.config/surf/target`. No background process e
 ## References
 
 - **Skill source:** [`skills/surf/`](../../skills/surf/) · **Full command reference:** [`skills/surf/references/commands.md`](../../skills/surf/references/commands.md)
-- **Comparison context:** [browser-tools-comparison.md](browser-tools-comparison.md) · **chrome-devtools-mcp setup:** [chrome-dev.md](chrome-dev.md) · **rodney setup:** [`guides/jodney-setup.md`](../../guides/jodney-setup.md)
+- **Comparison:** [which-browser-tool.md](which-browser-tool.md) (surf vs rodney vs chrome-devtools-mcp) · **all tools:** [browser-tools-comparison.md](browser-tools-comparison.md) · **chrome-devtools-mcp setup:** [chrome-dev.md](chrome-dev.md) · **rodney setup:** [`guides/rodney-setup.md`](../../guides/rodney-setup.md)

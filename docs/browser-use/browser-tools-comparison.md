@@ -13,7 +13,7 @@ date: 2026-06-05
 
 | # | Tool | Type | Language | Protocol | In this repo? |
 |---|------|------|----------|----------|---------------|
-| 1 | [**rodney**](#1-rodney) | CLI → headless Chrome | Python (rod/Go) | CDP | ✅ skills/jodney |
+| 1 | [**rodney**](#1-rodney) | CLI → headless Chrome | Python (rod/Go) | CDP | ✅ skills/rodney |
 | 2 | [**Chrome DevTools MCP**](#2-chrome-devtools-mcp) | MCP server → live Chrome | Node.js | CDP | ✅ guides/chrome-dev.md |
 | 3 | [**agent-browser**](#3-agent-browser--vercel-labs) | CLI + daemon | Rust | CDP | ✅ guides/vcl-agent-browser.md |
 | 4 | [**CloakBrowser**](#4-cloakbrowser) | Stealth Chromium lib | Python/C++ | CDP | ✅ testbed/cloakbrowser/ |
@@ -46,7 +46,7 @@ date: 2026-06-05
 | Cross-browser testing (Fx/Safari) | **Playwright MCP** | Puppeteer MCP |
 | Chromium-only, CDP-deep work | **Puppeteer MCP** | Playwright MCP |
 | CI/CD smoke tests, assertions | **rodney** | Playwright MCP |
-| Network interception, routing | **agent-browser** | Playwright MCP |
+| Network interception, routing | **agent-browser** (read) · **rodney** (mock/block) | Playwright MCP |
 
 ---
 
@@ -495,7 +495,7 @@ I want cloud-hosted (no local Chrome install):
 **What:** Headless Chrome from the terminal. One persistent process — cookies/state survive across calls. Built in this repo.
 
 ```bash
-uv tool install rodney
+git clone git@github.com:devskale/rodney.git && cd rodney && go build -o ~/.local/bin/rodney .
 rodney start && rodney open https://example.com && rodney text "h1" && rodney stop
 ```
 
@@ -525,13 +525,14 @@ This is why rodney wins on RAM in benchmarks (~400–600 MB vs 600–900 MB for 
 - ✅ Built-in assertions (`exists`, `visible`, `count`, `assert`) — great for CI
 - ✅ Accessibility tree (`ax-tree`, `ax-find`, `ax-node`)
 - ✅ PDF export, element screenshots, form filling, file downloads
+- ✅ **Network interception** (`mock` serves a canned response, `block` fails requests client-side)
 - ✅ Session isolation (`--local` for per-project state)
 - ✅ Visible mode (`--show`) for debugging
-- ✅ 32 tests in our test suite
+- ✅ 35 tests in our test suite
 
 ### Weaknesses
 - ❌ CSS selectors only (no XPath, no semantic locators)
-- ❌ No network interception or request/response inspection
+- ❌ Network interception is **write-only** — no console/network *reading*, perf traces, or Lighthouse (that's chrome-devtools-mcp)
 - ❌ No batch mode — each call is a separate CLI invocation
 - ❌ JS evaluation is single-line only
 - ❌ Heavy SPAs can timeout on click/input
@@ -557,9 +558,9 @@ sudo mkswap /swapfile && sudo swapon /swapfile
 ```
 
 ### Links
-- Setup → [guides/jodney-setup.md](jodney-setup.md)
-- Full skill → [skills/jodney/SKILL.md](../skills/jodney/SKILL.md)
-- Tests → `bash tests/jodney/test.sh`
+- Setup → [guides/rodney-setup.md](rodney-setup.md)
+- Full skill → [skills/rodney/SKILL.md](../skills/rodney/SKILL.md)
+- Tests → `bash tests/rodney/test.sh`
 
 ---
 
@@ -1468,7 +1469,7 @@ For most AI agent projects in 2026:
 | **PDF** | ✅ | ❌ | ✅ | via Playwright | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Form fill** | ✅ | manual JS | ✅ | ✅ | ✅ | ✅ | ✅ (visual) | ✅ | ✅ |
 | **Assertions** | ✅ built-in | ❌ | ❌ | ❌ | via expect | custom | ❌ | ❌ | ❌ |
-| **Network intercept** | ❌ | ✅ | ✅ | via Playwright | ✅ | via Playwright | ❌ | ✅ | ✅ |
+| **Network intercept** | ✅ (mock/block) | ✅ | ✅ | via Playwright | ✅ | via Playwright | ❌ | ✅ | ✅ |
 | **Batch/chain** | ❌ | ❌ | ✅ | via scripts | ✅ (scripts) | ✅ (agent loop) | ❌ (sequential) | ✅ | ✅ |
 | **Diff** | ❌ | ❌ | ✅ snap+screen | ❌ | visual compare | ❌ | ❌ | ❌ | ❌ |
 | **State persist** | cookies/sess | browser profile | ✅ save/load | ✅ sessions | context storage | ✅ | ❌ | cloud sessions | cloud sessions |
@@ -1616,7 +1617,7 @@ These tools **can** be composed:
 ### Tool Homepages
 | Tool | Link |
 |------|------|
-| rodney | [skills/jodney/SKILL.md](../skills/jodney/SKILL.md) (this repo) |
+| rodney | [skills/rodney/SKILL.md](../skills/rodney/SKILL.md) (this repo) |
 | Chrome DevTools MCP | [github.com/anthropics/chrome-devtools-mcp](https://github.com/anthropics/chrome-devtools-mcp) |
 | agent-browser | [github.com/vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) |
 | CloakBrowser | [github.com/CloakHQ/CloakBrowser](https://github.com/CloakHQ/CloakBrowser) · [cloakbrowser.dev](https://cloakbrowser.dev/) · [PyPI](https://pypi.org/project/cloakbrowser/) |
@@ -1639,7 +1640,7 @@ These tools **can** be composed:
 ### In-Repo Guides
 | Guide | What |
 |-------|------|
-| [guides/jodney-setup.md](jodney-setup.md) | Rodney install & setup |
+| [guides/rodney-setup.md](rodney-setup.md) | Rodney install & setup |
 | [guides/chrome-dev.md](chrome-dev.md) | Chrome DevTools MCP setup |
 | [guides/vcl-agent-browser.md](vcl-agent-browser.md) | Vercel agent-browser setup |
 | [tests/eval_browsers.md](../tests/eval_browsers.md) | Terminal browser eval (w3m, chawan) |
