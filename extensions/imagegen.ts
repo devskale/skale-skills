@@ -18,9 +18,12 @@
  *   Authorization: Bearer <credgoo key for the provider>
  *   { model: "provider@modelid", prompt, size, n }
  *
- * Model discovery uses the OpenAI-compatible GET <proxy>/models catalog (no
- * auth) filtered to image-capable models, so any provider/modelid the proxy
- * offers can be used. See extensions/imagegen.md for the full design doc.
+ * Model discovery probes the per-provider GET <proxy>/v1/image/models/<provider>
+ * catalog (fallback: filtered /models) — no hardcoded model names. When a
+ * requested model is unavailable (400 invalid model) or unaffordable (402),
+ * the extension auto-probes the provider's other available models, cheapest-
+ * first by learned cost, and caches the last-good model. See extensions/imagegen.md
+ * for the full design doc.
  */
 
 import { execFile } from "node:child_process";
@@ -127,37 +130,68 @@ function parseCost(error: string): number | undefined {
 }
 
 /**
- * Fetch the live image-capable model list from the OpenAI-compatible /models
- * catalog (no auth; the proxy serves it publicly). Returns full
- * "provider@modelid" ids, cached briefly. Empty on failure.
+ * Whether an error means the requested model is unavailable (renamed/removed)
+ * rather than some other failure. These are "probe" signals: the model is
+ * gone, so we should fall back to an available one instead of failing hard.
+ * Matches the uniinfer proxy's 400 responses for bad model names/aliases.
  */
-async function fetchImageModels(): Promise<string[]> {
-	const cached = loadState().imageModels;
-	if (cached && Date.now() - cached.at < MODEL_CACHE_TTL_MS) return cached.models;
-	try {
-		const resp = await fetch(`${PROXY_BASE}/models`);
-		if (!resp.ok) return [];
-		const body = (await resp.json()) as { data?: Array<{ id?: string; type?: string; modalities?: { output?: string[] } }> };
-		// Image-capable = explicit type "image", or an output modality of image.
-		const models = (body.data ?? [])
-			.filter((m) => m?.id && (m.type === "image" || (m.modalities?.output ?? []).includes("image")))
-			.map((m) => m.id as string);
-		if (models.length) {
-			const state = loadState();
-			state.imageModels = { models, at: Date.now() };
-			saveState(state);
-		}
-		return models;
-	} catch {
-		return [];
-	}
+function isModelUnavailable(error: string): boolean {
+	return /invalid model or alias|invalid provider_model format|model[^\n]*(not found|does not exist|unknown|unavailable)/i.test(error);
 }
 
-/** Image-capable model ids for a single provider, from the live catalog. */
+/**
+ * Fetch the authoritative list of image-capable model ids for a provider.
+ *
+ * Primary source is the per-provider `/image/models/<provider>` endpoint
+ * (returns `{ data: [{ id }] }` of image models only — reliable and complete,
+ * e.g. 44 pollinations image models incl. zimage/flux that the general
+ * /models catalog misses). Falls back to filtering the OpenAI-compatible
+ * /models catalog by image type/modality if the per-provider endpoint is
+ * unreachable. Returns bare model ids (no provider@ prefix), cached briefly.
+ * Empty on failure.
+ */
 async function imageModelsForProvider(provider: string): Promise<string[]> {
-	const all = await fetchImageModels();
-	return all.filter((id) => id.startsWith(`${provider}@`)).map((id) => id.slice(provider.length + 1));
+	const cached = loadState().imageModels;
+	if (cached && Date.now() - cached.at < MODEL_CACHE_TTL_MS) {
+		return cached.models.filter((id) => id.startsWith(`${provider}@`)).map((id) => id.slice(provider.length + 1));
+	}
+
+	let models: string[] = [];
+	// 1. Per-provider image model list (authoritative).
+	try {
+		const resp = await fetch(`${PROXY_BASE}/image/models/${provider}`);
+		if (resp.ok) {
+			const body = (await resp.json()) as { data?: Array<{ id?: string }> };
+			models = (body.data ?? []).map((m) => m?.id).filter((id): id is string => !!id);
+		}
+	} catch {
+		/* fall through to /models */
+	}
+
+	// 2. Fallback: filter the general catalog by image type/modality.
+	if (!models.length) {
+		try {
+			const resp = await fetch(`${PROXY_BASE}/models`);
+			if (resp.ok) {
+				const body = (await resp.json()) as { data?: Array<{ id?: string; type?: string; modalities?: { output?: string[] } }> };
+				const all = (body.data ?? []).filter((m) => m?.id && (m.type === "image" || (m.modalities?.output ?? []).includes("image"))).map((m) => m.id as string);
+				models = all.filter((id) => id.startsWith(`${provider}@`)).map((id) => id.slice(provider.length + 1));
+			}
+		} catch {
+			/* empty */
+		}
+	}
+
+	if (models.length) {
+		const state = loadState();
+		const full = models.map((id) => `${provider}@${id}`);
+		state.imageModels = { models: full, at: Date.now() };
+		saveState(state);
+	}
+	return models;
 }
+
+
 
 /**
  * Ordered candidate modelIds to try for a provider: the requested model first,
@@ -488,13 +522,18 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 			return attempt;
 		}
 		// Learn the cost of this model from a 402 (rejected before generating),
-		// so future fallback ordering is accurate. Non-402 errors are terminal.
+		// so future fallback ordering is accurate. A model-unavailable 400
+		// (renamed/removed) is a probe signal — fall through to an available
+		// model rather than failing hard. Other non-402 errors of the requested
+		// model are terminal and surfaced as-is.
 		const cost = parseCost(attempt.error);
 		if (cost != null) {
 			learnCost(provider, candidate, cost);
 			if (candidate === modelId) fellBack = true; // requested model is unaffordable
+		} else if (isModelUnavailable(attempt.error)) {
+			if (candidate === modelId) fellBack = true; // requested model is gone — probe onward
 		} else if (candidate === modelId) {
-			return attempt; // non-402 failure of the requested model: don't mask it
+			return attempt; // non-402, non-unavailable failure of the requested model: don't mask it
 		}
 		lastError = attempt.error;
 	}
