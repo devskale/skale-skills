@@ -4,6 +4,14 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-12
 
+### d2 / figure
+- **Changed:** `d2` and `figure` are now **manual-only** — `disable-model-invocation: true` hides them from the model's auto-invocation. They're invoked explicitly via `/skill:d2` / `/skill:figure`.
+
+### visualize
+- **Changed:** added a related-skills note clarifying the split — `d2`/`figure` are manual diagram generators (single SVGs); `visualize` is the auto-invocable page layer that can embed their output.
+
+## 2026-08-12
+
 ### visualize (new)
 - **Added:** `visualize` skill — render any set of things as ONE self-contained HTML document and share a URL. Agent understands what you want to visualize, picks a structure (cards, grid, before-after, timeline, list, flow, hierarchy, comparison), builds a single portable HTML file, then opens it locally and uploads it to the throway store for a short-lived URL.
 - **Launcher:** `visualize open <file>` / `visualize share <file>` / `visualize validate <file>`; `install.sh`/`install.bat` → `~/.local/bin/visualize`.
