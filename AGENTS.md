@@ -13,6 +13,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | vtd | `vtd transcript --url '...'` | 43 | Video/audio/transcript downloader (yt-dlp) |
 | rodney | `rodney start/open/stop` | 32 | Headless Chrome automation |
 | viewimg | `viewimg img.jpg [--open]` | 10 | Show an image in the terminal (view-only, no VLM) |
+| visualize | `visualize open/share/validate` | 15 | Render any set of things as ONE self-contained HTML + share URL |
 
 ## Installation (as a pi package)
 

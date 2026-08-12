@@ -43,6 +43,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
 | ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) ... |
 | ⚪ available | **viewimg** | Display an image in the terminal (view-only, no VLM). Renders the image as colorful block art wit... |
+| ⚪ available | **visualize** | Render any set of things as ONE self-contained HTML document and give the user a URL. Understands... |
 | ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
 | ⚪ available | **youtube** | Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later tra... |
 
