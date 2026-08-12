@@ -67,16 +67,33 @@ This is the entire routing contract — the extension just forwards `model`
 unchanged. The proxy enforces which providers actually support image
 generation; the extension discovers the full catalog and lets the proxy decide.
 
-### Model discovery (OpenAI-compatible catalog)
+### Model discovery & auto-probing (no hardcoded names)
+
+Model names are **never hardcoded**. The extension discovers the live catalog
+and probes it, with last-used models cached for fast startup:
 
 ```
-GET https://uniinfer.skale.dev/v1/models   (no auth)
+GET https://uniinfer.skale.dev/v1/image/models/<provider>   (no auth, authoritative)
+GET https://uniinfer.skale.dev/v1/models                     (no auth, fallback)
 ```
 
-Returns the full OpenAI-compatible model list for **all** providers. The
-extension filters to image-capable entries (explicit `type: "image"`, or an
-`image` in `modalities.output`) and caches the result for 1h. This is how it
-knows which `provider@modelid` values are available without any hardcoding.
+- **Primary source** — the per-provider `/image/models/<provider>` endpoint
+  returns *only* that provider's image-capable models (`{ data: [{ id }] }`),
+  reliably and completely (e.g. 44 pollinations image models incl. `zimage`/
+  `flux` that the general catalog misses).
+- **Fallback** — if that endpoint is unreachable, it filters the general
+  OpenAI-compatible `/models` catalog to image-capable entries (`type: "image"`
+  or an `image` output modality).
+- **Cached 1h** — the discovered list is cached so startup doesn't re-fetch
+  every call.
+
+**Auto-probing on unavailable models.** When a requested model is gone
+(renamed/removed — the proxy returns `400 Invalid model or alias`), the
+extension treats it as a **probe signal**: it falls through to the provider's
+other available models instead of failing. Combined with the 402 balance
+fallback below, the requested model is tried first, then the live catalog is
+probed cheapest-first. The winning model becomes the cached last-good default,
+so the next call self-heals.
 
 ---
 
@@ -161,8 +178,8 @@ what happens when the model or terminal can't show the image.
 Nothing about models or prices is hardcoded. The extension discovers and learns
 dynamically, persisting state to `~/.pi/agent/imagegen-state.json`:
 
-- **Live model list** — fetched from the OpenAI-compatible `GET /models`
-  catalog (cached 1h), filtered to image-capable models, so new/removed
+- **Live model list** — fetched from the per-provider `/image/models/<provider>`
+  endpoint (fallback: filtered `/models` catalog), cached 1h, so new/removed
   providers and models are picked up automatically.
 - **Last-good model** — whichever model last generated successfully for a
   provider is remembered and used as the next default, so the default follows
@@ -171,11 +188,12 @@ dynamically, persisting state to `~/.pi/agent/imagegen-state.json`:
   (`"costs ~0.0020 pollen"`) and persisted. Fallback ordering is cheapest-first
   by learned cost, with unknown-cost models probed last.
 
-On a **402 insufficient balance** (or any model failure), the extension falls
-back through cheaper models automatically instead of failing hard — and the
-winning model becomes the new remembered default, so the next call self-heals.
-The static `DEFAULT_MODEL` (`pollinations@dreamshaper`) is only the initial
-seed; it's overridden by learned state after the first success. Non-402 failures
+On a **402 insufficient balance** or a **400 model-unavailable** (renamed/removed),
+the extension falls back through the provider's other available models
+automatically instead of failing hard — and the winning model becomes the new
+remembered default, so the next call self-heals. The static `DEFAULT_MODEL`
+(`pollinations@dreamshaper`) is only the initial seed; it's overridden by
+learned state after the first success. Other failures (auth, network, timeout)
 of the requested model are surfaced as-is, not masked.
 
 ---
