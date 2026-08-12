@@ -10,11 +10,20 @@ Pi extension with two entry points, both backed by one shared core (`generateAnd
   ```
   /imagegen a red cube on white --model tu@z-image-turbo --size 512x512
   /img a fox logo, flat vector            # alias; default model pollinations@dreamshaper
+  /imagegen                               # no args → usage/help panel
+  /imagegen settings                      # interactive menu: default model/size/count
   ```
   Flags: `--model`/`-m`, `--size`/`-s`, `--n`/`-n`, `--seed`. Generates
   immediately, saves to `./generated/`, and renders the image **inline** in the
   chat via a registered message renderer (`pi.registerMessageRenderer`). Zero
   model tokens — the agent loop is bypassed.
+
+  **No-args → help.** `/imagegen` with no arguments (or `help`/`-h`) renders a
+  usage panel inline instead of failing. **Settings menu** (`/imagegen settings`)
+  lets you pick a default model, size, and count from the **live discovered
+  catalog** (no hardcoded names) — the choice is persisted in
+  `~/.pi/agent/imagegen-state.json` and overrides the auto-healed default until
+  cleared.
 
 ---
 
