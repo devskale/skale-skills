@@ -62,7 +62,7 @@ warrant it.
 .report{max-width:56rem;margin:0 auto;padding:3rem 1.5rem 4rem}
 .kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .4rem}
 .meta{color:var(--muted);font-size:.85rem;margin-top:.5rem}
-.exec-summary{background:#fff;border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:.4rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem}
+.exec-summary{background:#fff;border:1px solid var(--line);border-radius:.5rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem}
 .exec-summary h2{margin-top:0}
 .findings li{margin-bottom:.5rem}
 section h2{font-size:1.2rem;font-weight:650;margin:2.5rem 0 .75rem}

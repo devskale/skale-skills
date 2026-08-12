@@ -10,7 +10,7 @@ composes cleanly.
 ```html
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport"
 content="width=device-width, initial-scale=1"><title>{{TITLE}}</title><style>
-:root{--accent:#10b981;--ink:#0f172a;--paper:#fafaf9;--muted:#71717a;--line:#e4e4e7}
+:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
      background:var(--paper);color:var(--ink);line-height:1.5}
@@ -20,7 +20,7 @@ main{max-width:72rem;margin:0 auto;padding:3rem 1.5rem 4rem}
 </main></body></html>
 ```
 
-One accent (`--accent`), warm paper, system-ui font. Every module below assumes this base.
+Neutral ink on warm paper, system-ui font. Every module below assumes this base. **No accent colour** — no `--accent`, no colored badges/swatches, no left bars. Emphasis via `--ink` and `--muted` only.
 
 ---
 
@@ -121,10 +121,10 @@ Numbered section wrapper (for reports and multi-part pages).
 ```
 
 ### exec-summary
-Report findings box (left ink border).
+Report findings box (plain bordered card — no left bar).
 
 ```html
-<section style="background:#fff;border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:.4rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem">
+<section style="background:#fff;border:1px solid var(--line);border-radius:.5rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem">
   <h2 style="margin-top:0;font-size:1.05rem">Executive summary</h2>
   <ul><li style="margin-bottom:.5rem"><strong>{{Finding}}</strong> — {{one line}}.</li></ul>
 </section>
