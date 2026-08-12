@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# d2fresh — render a .d2 diagram in a fresh, non-neutral style.
+#
+#   bash scripts/d2fresh diagram.d2 [out.svg] [-- <extra d2 flags>]
+#
+# Presets (theme-id is also pinned in vars.d2-config, so `d2 x.d2 x.svg`
+# reproduces the same look without flags — this script just makes switching
+# easy and adds the --sketch option):
+#
+#   --preset fresh    theme 5  Mixed Berry Blue   (default — colorful, light, readable)
+#   --preset warm     theme 101 Orange Creamsicle (warm, README-friendly)
+#   --preset classic  theme 4  Cool Classics      (muted, editorial)
+#   --preset terminal theme 300 Terminal          (dense, high-contrast)
+#   --sketch          hand-drawn / roughened lines (presentation / WIP feel)
+#
+# Pipeline: d2 validate → render SVG → optional PNG. STDOUT = the .svg path.
+# Exit 0 clean; 1 on failure; 2 on bad usage.
+set -uo pipefail
+
+SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+PRESET=fresh
+SKETCH=0
+
+# ── parse args ──
+src=""; out=""; extras=(); seen=0
+for a in "$@"; do
+  case "$a" in
+    --preset) PRESET=next; continue ;;
+    fresh|warm|classic|terminal)
+      if [ "$PRESET" = "next" ]; then PRESET="$a"; continue; fi ;;
+    --sketch) SKETCH=1; continue ;;
+    --) seen=1; continue ;;
+  esac
+  if [ $seen -eq 1 ]; then extras+=("$a"); continue; fi
+  if [ -z "$src" ]; then src="$a"; elif [ -z "$out" ]; then out="$a"; fi
+done
+
+[ "$PRESET" = "next" ] && { echo "d2fresh: --preset needs a value (fresh|warm|classic|terminal)" >&2; exit 2; }
+[ -n "$src" ] || { echo "usage: d2fresh <diagram.d2> [out.svg] [--preset fresh|warm|classic|terminal] [--sketch] [-- <d2 flags>]" >&2; exit 2; }
+[ -f "$src" ] || { echo "d2fresh: not a file: $src" >&2; exit 2; }
+out="${out:-${src%.d2}.svg}"
+
+case "$PRESET" in
+  fresh) theme=5 ;;
+  warm) theme=101 ;;
+  classic) theme=4 ;;
+  terminal) theme=300 ;;
+  *) theme="" ;;
+esac
+
+flags=()
+[ -n "$theme" ] && flags+=(--theme "$theme")
+[ "$SKETCH" -eq 1 ] && flags+=("--sketch")
+
+if ! d2 validate "$src" >/dev/null 2>&1; then
+  echo "✗ d2 validate failed:" >&2
+  d2 validate "$src" >&2
+  exit 1
+fi
+
+d2 "${flags[@]}" "$src" "$out" >/dev/null 2>&1 \
+  || { echo "✗ d2 render failed (${flags[*]:-default})" >&2; exit 1; }
+
+echo "$out"

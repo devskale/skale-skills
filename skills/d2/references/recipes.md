@@ -169,3 +169,8 @@ Source: [`recipes/deployment.d2`](recipes/deployment.d2)
 - **Cycles:** small retry loops are fine; long write-backs tangle — prefer a distinct downstream node.
 - **Verify before delivery:** `d2 validate x.d2` then render `.txt` and read the ASCII to confirm structure.
 - **Self-verify vs delivery:** ASCII uses the exporter's fixed layout, not your `--layout` — verify *structure* in ASCII, trust the SVG by construction.
+- **Over-labeling — don't annotate every node.** A diagram is an overview, not a wall of text. Two failure modes to avoid:
+  - **Inline descriptions in every node label** (`name: "foo\nlong explanation"`) — bloats every box, compresses the whole view, and buries the node's own name. Keep node labels ≤2 short lines; move detail into the surrounding doc.
+  - **A `callout`/annotation node per block** — a side note on *every* node reads as noise and tangles the layout. Use callouts **selectively**, only where the block's name doesn't tell the story (a decision rule, a credential, an unexpected fallback).
+  - **The fix for a family of similar nodes** (e.g. 5–7 fetch/extraction tools): **group them into a container** (`local: { label: "local text browsers · free"; w3m: "w3m"; lynx: "lynx" }`) and put ONE summary label on the container instead of a callout per child. The grouping itself conveys more (which tools are free/local vs. need creds) and slashes label count. Branch only when the branch is a genuinely parallel path.
+  - **Rule of thumb:** if you're tempted to add a description to most nodes, the diagram is too fine-grained — collapse to containers or drop detail to the doc. Aim for a handful of annotations at most.

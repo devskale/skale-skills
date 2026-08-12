@@ -58,17 +58,20 @@ main model can't see images, xmodel routes it through a vision pipeline. The mod
 
 ### Display vs. understand (`read` vs. `read_image` / `/readimg`)
 
-`read` is a **display** tool — it shows the image to you but **never triggers the VLM**
-(`view`-only). The **`viewimg`** skill is the CLI companion for the same thing (in-terminal
-block art, or `--open` for all images in one window). Understanding is **opt-in**: use the
-`read_image` tool (agent) or `/readimg` command (you) to run the VLM and get a text analysis.
-`generate_image` and `view` are also display-only. Only analysis-oriented tools (screenshots,
-MCP captures) still auto-delegate.
+Three orthogonal axes for an image:
+
+- **`read`** = **local inline display** — shows the image to you but **never triggers the VLM**.
+  `generate_image` and `viewimg` (CLI) are the same axis. Always inline, independent of vision mode.
+- **`view`** (vision mode) = **shared display** — uploads the image to throway + opens it in a real
+  browser, gives a URL. Also never triggers the VLM. Orthogonal to `read`: `read` is local, `view` is shared.
+- **`read_image`** / **`/readimg`** = **understand** — runs the VLM and returns a text analysis.
+
+Only analysis-oriented tools (screenshots, MCP captures) still auto-delegate.
 
 | Mode | Behaviour |
 |---|---|
 | `delegate` *(default)* | Compress recent context → one VLM sub-call → feed the text analysis back. The main model never switches and never blows its context window. |
-| `view` | **Show the image to the user only — no analysis, no VLM call, zero tokens.** The image stays inline (you see it); pi-ai strips it for a non-vision main model. A clean note replaces the noisy "model does not support images" line. Non-vision models only. |
+| `view` | **SHARED display** — upload the image to throway + open it in a real browser, give the URL. No VLM, zero tokens. Orthogonal to `read` (local inline display). Non-vision models only. |
 | `switch` | Legacy: flip the main model to a vision-capable model for the turn, then restore it at turn end. |
 | `human` | Ask **you** to describe the image. Shows the image in a TUI overlay with a 30s countdown (resets on keypress) and feeds your description back as the analysis. Always keeps the image inline. |
 | `off` | Do nothing — the image is left untouched (inline rendering if the terminal supports it). |
