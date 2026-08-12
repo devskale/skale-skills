@@ -7,8 +7,8 @@ and adapts. Each is the proven "house style" — start from a template rather th
 
 | Template | Style | Best for | Notes |
 |----------|-------|----------|-------|
-| [`cards.html`](cards.html) | Inline CSS, editorial | A set of things (cards, color-coded badges, legend) | Zero external deps, fully self-contained |
-| [`repo-tree.html`](repo-tree.html) | Inline CSS, editorial | Annotated repo / folder tree | Nested rows + connector lines, color-coded kind tags |
+| [`cards.html`](cards.html) | Inline CSS, editorial | A set of things (cards, categories) | Zero external deps, fully self-contained · clean neutral house style |
+| [`repo-tree.html`](repo-tree.html) | Inline CSS, editorial | Annotated repo / folder tree | Nested rows + connector lines, muted kind text |
 | [`system-map.html`](system-map.html) | Inline CSS, editorial | Multi-repo / multi-service platform | Multi-panel: topology, pipeline, fleet |
 | [`report.html`](report.html) | Inline CSS, editorial | A structured document | Kicker, exec summary, numbered sections, recommendations, TOC |
 | [`mermaid.html`](mermaid.html) | **Tailwind + Mermaid (CDN)** | Graph-shaped content, polished Pocock-style | Loads Tailwind + Mermaid from CDN — needs network; use for complex graphs |
