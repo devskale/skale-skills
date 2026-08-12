@@ -58,6 +58,8 @@ const ASCII_ROWS = 22;
 
 /** customType for the direct-command result message (rendered inline). */
 const IMAGEGEN_MSG = "imagegen-result";
+/** customType for the /imagegen help panel (rendered inline). */
+const IMAGEGEN_HELP_MSG = "imagegen-help";
 
 // Known provider → credgoo service name overrides. Unlisted providers use
 // their provider name as the credgoo service. This is the only provider-ish
@@ -80,6 +82,14 @@ interface ImagegenState {
 	lastGoodModel?: Record<string, string>; // provider -> modelId that last succeeded
 	costs?: Record<string, Record<string, number>>; // provider -> modelId -> learned cost
 	imageModels?: { models: string[]; at: number }; // cached live image model list ("provider@modelid")
+	settings?: ImagegenSettings; // user-chosen defaults from the settings menu
+}
+
+/** User-chosen defaults (persisted in imagegen-state.json, win over auto-heal). */
+interface ImagegenSettings {
+	model?: string; // full "provider@modelid"
+	size?: string;
+	n?: number;
 }
 
 function loadState(): ImagegenState {
@@ -97,6 +107,16 @@ function saveState(state: ImagegenState): void {
 	} catch {
 		/* non-fatal: state is an optimization, not a requirement */
 	}
+}
+
+function getSettings(): ImagegenSettings {
+	return loadState().settings ?? {};
+}
+
+function saveSettings(settings: ImagegenSettings): void {
+	const state = loadState();
+	state.settings = settings;
+	saveState(state);
 }
 
 /** The modelId that last generated successfully for a provider, if any. */
@@ -502,14 +522,17 @@ async function suggestSwitch(provider: string, current: string): Promise<string>
 }
 
 async function generateAndSave(opts: GenOpts): Promise<GenResult> {
-	const size = (opts.size || DEFAULT_SIZE).trim();
-	const n = Math.max(1, Math.min(4, Math.floor(opts.n ?? 1)));
+	const settings = getSettings();
+	const size = (opts.size || settings.size || DEFAULT_SIZE).trim();
+	const n = Math.max(1, Math.min(4, Math.floor(opts.n ?? settings.n ?? 1)));
 
-	// Resolve the model. Explicit --model wins; otherwise the stored last-good
-	// model for the provider wins over the env/compile-time default.
+	// Resolve the model. Explicit --model wins; then the user's settings-menu
+	// choice; then the stored last-good model for the provider; else the
+	// env/compile-time default.
 	const defaultProvider = DEFAULT_MODEL.split("@")[0];
 	const stored = lastGoodModel(defaultProvider);
-	const model = (opts.model || (stored ? `${defaultProvider}@${stored}` : DEFAULT_MODEL)).trim();
+	const configured = settings.model || (stored ? `${defaultProvider}@${stored}` : undefined);
+	const model = (opts.model || configured || DEFAULT_MODEL).trim();
 	const { provider, modelId } = splitProviderModel(model);
 
 	// Resolve an API key if the provider has one. Keyless providers (e.g.
@@ -784,10 +807,146 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 	});
 
 	// --- 2. The COMMAND (direct, no LLM) — shared core + inline-rendered result ---
+
+	/** Enumerate available image models across all providers (live catalog, no hardcoding). */
+	async function allImageModels(): Promise<Array<{ provider: string; id: string }>> {
+		// Prefer the cached authoritative per-provider list, then the live /models catalog.
+		const cached = loadState().imageModels;
+		if (cached && Date.now() - cached.at < MODEL_CACHE_TTL_MS) {
+			return cached.models.map((m) => {
+				const i = m.indexOf("@");
+				return { provider: m.slice(0, i), id: m.slice(i + 1) };
+			});
+		}
+		try {
+			const resp = await fetch(`${PROXY_BASE}/models`);
+			if (resp.ok) {
+				const body = (await resp.json()) as { data?: Array<{ id?: string; type?: string; modalities?: { output?: string[] } }> };
+				const out: Array<{ provider: string; id: string }> = [];
+				for (const m of body.data ?? []) {
+					if (!m.id) continue;
+					if (m.type === "image" || (m.modalities?.output ?? []).includes("image")) {
+						const i = m.id.indexOf("@");
+						if (i === -1) continue;
+						out.push({ provider: m.id.slice(0, i), id: m.id.slice(i + 1) });
+					}
+				}
+				if (out.length) return out;
+			}
+		} catch {
+			/* empty */
+		}
+		return [];
+	}
+
+	/** Render the /imagegen usage panel inline (no-args / "help"). */
+	function showHelp(ctx: ExtensionContext): void {
+		const s = getSettings();
+		const effective = s.model || (lastGoodModel(DEFAULT_MODEL.split("@")[0]) ? `${DEFAULT_MODEL.split("@")[0]}@${lastGoodModel(DEFAULT_MODEL.split("@")[0])}` : DEFAULT_MODEL);
+		const lines = [
+			"🖼 imagegen — generate an image directly (no LLM round-trip)",
+			"",
+			"Usage:",
+			"  /imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S]",
+			"  /img <prompt> …                       (alias)",
+			"",
+			"Flags:",
+			"  --model / -m  provider@modelid   (default below)",
+			"  --size  / -s  WxH               (default " + (s.size ?? DEFAULT_SIZE) + ")",
+			"  --n     / -n  1–4               (default " + (s.n ?? 1) + ")",
+			"  --seed       number             reproducible seed",
+			"",
+			"Settings:",
+			"  /imagegen settings   pick default model/size/count from the live catalog",
+			"  /imagegen help       show this panel",
+			"",
+			"Current default model: " + effective,
+			"  (set via settings menu, or auto-healed to the last working model)",
+		].join("\n");
+		ctx.sessionManager.appendCustomMessageEntry(IMAGEGEN_HELP_MSG, [{ type: "text", text: lines }] as any, true, { lines });
+	}
+
+	/** Interactive settings menu: pick default model/size/count from the live list. */
+	async function runSettingsMenu(ctx: ExtensionContext): Promise<void> {
+		if (!ctx.hasUI) {
+			ctx.ui.notify("imagegen: settings menu needs an interactive session", "warning");
+			return;
+		}
+		let settings = getSettings();
+		const defaultProvider = DEFAULT_MODEL.split("@")[0];
+		const lastGood = lastGoodModel(defaultProvider);
+
+		for (;;) {
+			const modelLabel = settings.model ?? (lastGood ? `auto (${defaultProvider}@${lastGood})` : `auto (${DEFAULT_MODEL})`);
+			const action = await ctx.ui.select(
+				"imagegen settings — what to change?",
+				[
+					`Default model: ${modelLabel}`,
+					`Default size: ${settings.size ?? DEFAULT_SIZE}`,
+					`Default count (n): ${settings.n ?? 1}`,
+					"Reset to auto (clear settings)",
+					"Done",
+				],
+			);
+			if (!action) break;
+			// select returns the chosen string (or undefined on cancel); map label→action
+			let chosen: string | undefined;
+			if (action.startsWith("Default model:")) chosen = "model";
+			else if (action.startsWith("Default size:")) chosen = "size";
+			else if (action.startsWith("Default count")) chosen = "n";
+			else if (action === "Reset to auto (clear settings)") chosen = "clear";
+			else if (action === "Done") break;
+			if (!chosen) break;
+
+			if (chosen === "model") {
+				const models = await allImageModels();
+				const options = [
+					"auto (last-good / default)",
+					...models.map((m) => `${m.provider}@${m.id}`),
+				];
+				if (options.length <= 1) {
+					ctx.ui.notify("imagegen: no image models available from the catalog", "error");
+					continue;
+				}
+				const picked = await ctx.ui.select("imagegen — default model:", options);
+				if (picked === undefined) continue;
+				const pickedModel = picked === "auto (last-good / default)" ? undefined : picked;
+				settings = { ...settings, model: pickedModel };
+				saveSettings(settings);
+				ctx.ui.notify(`imagegen: default model → ${pickedModel ?? "auto"}`, "info");
+			} else if (chosen === "size") {
+				const picked = await ctx.ui.select("imagegen — default size:", ["auto (512x512)", "256x256", "512x512", "768x768", "1024x1024", "custom…"]);
+				let size: string | undefined;
+				if (picked === "custom…") size = (await ctx.ui.input("imagegen — size (WxH):", "512x512")) || undefined;
+				else if (picked && picked !== "auto (512x512)") size = picked;
+				if (picked !== undefined) {
+					settings = { ...settings, size };
+					saveSettings(settings);
+					ctx.ui.notify(`imagegen: default size → ${size ?? "auto"}`, "info");
+				}
+			} else if (chosen === "n") {
+				const picked = await ctx.ui.select("imagegen — default count (n):", ["1", "2", "3", "4"]);
+				if (picked !== undefined) {
+					settings = { ...settings, n: Number(picked) };
+					saveSettings(settings);
+					ctx.ui.notify(`imagegen: default count → ${picked}`, "info");
+				}
+			} else if (chosen === "clear") {
+				settings = {};
+				saveSettings(settings);
+				ctx.ui.notify("imagegen: settings cleared — back to auto", "info");
+			}
+		}
+	}
+
 	async function runImagegenCommand(args: string, ctx: ExtensionContext): Promise<void> {
 		const raw = (args ?? "").trim();
-		if (!raw) {
-			ctx.ui.notify("imagegen: usage — /imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S]  (alias /img)", "warning");
+		if (!raw || /^(help|-h|--help)$/i.test(raw)) {
+			showHelp(ctx);
+			return;
+		}
+		if (/^settings$/i.test(raw)) {
+			await runSettingsMenu(ctx);
 			return;
 		}
 		const { prompt, model, size, n, seed } = parseImagegenArgs(raw);
@@ -809,7 +968,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 				if (options.length && ctx.hasUI) {
 					const picked = await ctx.ui.select(
 						`imagegen: ${res.error} — pick another model`,
-						options.map((m) => ({ label: `${provider}@${m}`, value: `${provider}@${m}` })),
+						options.map((m) => `${provider}@${m}`),
 					);
 					if (picked) {
 						ctx.ui.notify(`imagegen: retrying with ${picked} …`, "info");
@@ -859,7 +1018,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 	}
 
 	pi.registerCommand("imagegen", {
-		description: "/imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S] — generate an image directly (no LLM round-trip). Alias: /img",
+		description: "/imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S] — generate an image directly (no LLM round-trip). /imagegen settings opens the model/size menu. Alias: /img",
 		handler: async (args, ctx) => {
 			await runImagegenCommand(args ?? "", ctx);
 		},
@@ -870,6 +1029,29 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			await runImagegenCommand(args ?? "", ctx);
 		},
 	});
+
+	// --- 2b. Inline renderer for the /imagegen help panel ---
+	pi.registerMessageRenderer(
+		IMAGEGEN_HELP_MSG,
+		(message, _opts, theme): Component | undefined => {
+			const lines = ((message as { details?: { lines?: string } }).details?.lines ?? "").split("\n");
+			const c = new Container();
+			for (const ln of lines) {
+				if (!ln) {
+					c.addChild(new Spacer(1));
+				} else if (ln.startsWith("🖼")) {
+					c.addChild(new Text(theme.fg("accent", ln), 0, 0));
+				} else if (/^  \/|^  --|^  -m|^  -s|^  -n|^  --seed/.test(ln)) {
+					c.addChild(new Text(theme.fg("muted", ln), 0, 0));
+				} else if (/^Current|^Settings|^Usage|^Flags/.test(ln)) {
+					c.addChild(new Text(theme.fg("success", ln), 0, 0));
+				} else {
+					c.addChild(new Text(theme.fg("dim", ln), 0, 0));
+				}
+			}
+			return c;
+		},
+	);
 
 	// --- 3. Inline renderer for the command's result message (draws the Image) ---
 	pi.registerMessageRenderer(
