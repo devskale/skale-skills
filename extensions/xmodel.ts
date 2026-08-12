@@ -38,7 +38,8 @@
  */
 
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
+import { execFile } from "node:child_process";
+import { join, basename } from "node:path";
 import { Type } from "typebox";
 import { StringEnum, type Api, type Model } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -509,7 +510,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 		await ctx.ui.custom((tui: any, theme: any, _kb: any, done: (r: undefined) => void) => {
 			const scopeValues = trusted ? ["global", "project"] : ["global"];
-			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). view: show the image to the user only — no analysis, no tokens. switch: flip main model to vision for the turn. human: ask YOU to describe the image in a TUI overlay. off: do nothing.";
+			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). view: SHARED display — upload the image to throway + open it in a browser (no analysis, no tokens). Orthogonal to read (local inline). switch: flip main model to vision for the turn. human: ask YOU to describe the image in a TUI overlay. off: do nothing.";
 			const BRIEF_HELP = "Char budget for the task brief sent to the VLM.";
 			const KEEP_HELP = "Keep the original image inline in the result (delegate mode only), alongside the VLM text analysis. The non-vision main model still only receives the analysis — pi-ai strips image parts it can't process.";
 			// NOTE: for `values`-cycle rows, currentValue MUST be a bare entry of `values`
@@ -776,13 +777,18 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		async execute(_id, params, _signal, _onUpdate, ctx) {
 			const raw = (params as any).path as string;
 			const filePath = raw.startsWith("/") ? raw : join(ctx.cwd, raw);
-			const analysis = await analyzeImageFile(ctx, filePath);
-			// Keep the image inline for the user; give the main model the text analysis.
+			// Show the image FIRST, then feed it to the VLM. Previously the VLM ran
+			// before the image was assembled, so the user didn't see the image until
+			// the (slow) analysis had already finished. Build + stream the image block
+			// immediately via _onUpdate, then run the VLM and return the analysis.
 			const img = readImageFileBlock(filePath);
-			const content: any[] = [];
-			if (img) content.push(img);
-			content.push({ type: "text", text: `[xmodel vision]: ${analysis}` });
-			return { content, details: { path: filePath } };
+			if (img) {
+				_onUpdate?.({ content: [img] });
+			} else {
+				_onUpdate?.({ content: [{ type: "text", text: `(xmodel: no image block for ${filePath})` }] });
+			}
+			const analysis = await analyzeImageFile(ctx, filePath);
+			return { content: [{ type: "text", text: `[xmodel vision]: ${analysis}` }], details: { path: filePath } };
 		},
 	});
 
@@ -861,19 +867,37 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 		if (images.length === 0) return;
 		if (isVisionCapable(ctx.model)) return; // main model sees images natively — nothing to do
-		// UNHOOKED: `read`, `view`, and `generate_image` are DISPLAY tools — show the image
+		// UNHOOKED: `read` and `generate_image` are DISPLAY tools — show the image inline
 		// but never fire the VLM on them. Understanding is opt-in via the explicit
 		// `read_image` tool / `/readimg` command. Only analysis-oriented tools (screenshots,
-		// MCP captures, etc.) still auto-delegate.
-		if (event.toolName === "read" || event.toolName === "view" || event.toolName === "generate_image") {
+		// MCP captures, etc.) still auto-delegate. `read` is LOCAL display — always inline,
+		// orthogonal to `view` mode (which is SHARED throway display).
+		if (event.toolName === "read" || event.toolName === "generate_image") {
 			return viewOnly(event, images);
 		}
 		const mode = visionCfg.mode;
 		if (mode === "off") return;
 		if (mode === "view") {
-			// view-only: keep the image inline for the user (pi renders it; pi-ai strips it
-			// for this non-vision model at send time). No VLM call, no tokens — just a clean note.
-			return viewOnly(event, images);
+			// view mode: SHARED display — upload the image to throway + open it in the
+			// browser. This is orthogonal to `read` (which is LOCAL inline display only).
+			// view = throway share, no VLM, zero tokens. The model just gets the URL note.
+			const content: any[] = [];
+			const first = images[0];
+			const tmp = first ? writeImageTmp(first) : undefined;
+			if (tmp && tmp.valid) {
+				const url = await throwayOpenImage(ctx, tmp.path);
+				if (url) {
+					content.push({ type: "text", text: `[xmodel view · opened in browser: ${url} · expires ~4h]` });
+				} else {
+					content.push({ type: "text", text: `[xmodel view · could not upload to throway]` });
+				}
+				try {
+					unlinkSync(tmp.path);
+				} catch {}
+			} else {
+				content.push({ type: "text", text: `[xmodel view · no valid image to share]` });
+			}
+			return { content };
 		}
 		if (mode === "switch") {
 			await ensureVision(ctx, "tool_result");
@@ -1097,6 +1121,41 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		if (visionCfg.vlm) return visionCfg.vlm;
 		const m = pickVisionModel(ctx);
 		return m ? `${(m as any).provider}/${(m as any).id}` : undefined;
+	}
+
+	/**
+	 * Upload an image file to throway and open the resulting URL in the browser.
+	 * Returns the URL, or null on failure. Zero-token (no VLM) — pure display.
+	 */
+	async function throwayOpenImage(ctx: ExtensionContext, filePath: string): Promise<string | null> {
+		const THROWAWAY = "https://lubu.skale.dev/throway";
+		try {
+			const name = basename(filePath);
+			const resp = await new Promise<string>((resolve, reject) => {
+				execFile(
+					"curl",
+					["-sf", "-X", "POST", `${THROWAWAY}/?name=${name}`, "--data-binary", `@${filePath}`],
+					{ timeout: 20000, maxBuffer: 1024 * 1024 },
+					(err, stdout) => (err ? reject(err) : resolve(stdout)),
+				);
+			});
+			const url = (resp.match(/"url"\s*:\s*"([^"]+)"/) || [])[1];
+			if (!url) {
+				debug("throwayOpenImage: no url in response", { resp: resp.slice(0, 200) });
+				return null;
+			}
+			// Open in browser (macOS `open`). Best-effort — don't fail if no opener.
+			const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+			if (opener === "start") {
+				execFile("cmd", ["/c", "start", "", url]).catch(() => {});
+			} else {
+				execFile(opener, [url]).catch(() => {});
+			}
+			return url;
+		} catch (e) {
+			debug("throwayOpenImage failed", { err: String(e) });
+			return null;
+		}
 	}
 
 	/**

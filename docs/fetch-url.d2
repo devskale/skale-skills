@@ -1,0 +1,66 @@
+direction: down
+title: {
+  near: top-center
+  label: "fetch-url — block diagram"
+}
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    theme-id: 5
+  }
+}
+
+fetch-url: "fetch-url \"URL\" [flags]"
+launcher: "fetch-url launcher (bash)"
+fetch_py: "scripts/fetch.py"
+select: "fetch_url() → tool select"
+select_note: "auto per site, or --tool override" { shape: callout }
+dispatch: "fetch_with_fallback()"
+dispatch_note: "site hints first, then fallback on failure / invalid content" { shape: callout }
+
+local: {
+  label: "local text browsers · free"
+  w3m: "w3m"
+  lynx: "lynx"
+  chawan: "chawan"
+}
+apis: {
+  label: "free APIs · no creds"
+  jina: "jina"
+  markdown: "markdown"
+}
+chrome: "chrome"
+chrome_note: "Cloudflare / JS-protected · needs Chrome" { shape: callout }
+api: "api → amd.skale.dev"
+api_note: "skale endpoint · needs token" { shape: callout }
+api_cred: "FETCH_URL_BEARER"
+api_cred_note: "credgoo → Bearer" { shape: callout }
+out: "cleaned text → stdout"
+
+fetch-url -> launcher: calls
+launcher -> fetch_py: runs
+fetch_py -> select: fetch_url()
+select -> dispatch: auto / --tool
+dispatch -> local
+dispatch -> apis
+dispatch -> chrome: JS/Cloudflare
+dispatch -> api: needs token
+api -> api_cred: credgoo
+w3m -> out
+lynx -> out
+chawan -> out
+jina -> out
+markdown -> out
+chrome -> out
+api -> out
+
+select_note -> select
+dispatch_note -> dispatch
+chrome_note -> chrome
+api_note -> api
+api_cred_note -> api_cred
+
+select: {shape: diamond}
+api_cred: {shape: cylinder}
+out: {shape: rectangle}

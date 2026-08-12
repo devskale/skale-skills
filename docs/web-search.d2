@@ -1,0 +1,49 @@
+direction: down
+title: {
+  near: top-center
+  label: "web-search — block diagram"
+}
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    theme-id: 5
+  }
+}
+
+web-search: "web-search \"query\" [flags]"
+launcher: "search launcher (bash)"
+search_py: "scripts/search.py"
+select: "select_backend()"
+select_note: "--api→Duck · else Duck if token (unless --categories) · else public SearXNG" { shape: callout }
+duck: "Duck API"
+duck_note: "advanced filters: site, filetype, inurl, exclude, exact" { shape: callout }
+duck_cred: "WEB_SEARCH_BEARER"
+duck_cred_note: "credgoo → Bearer → amd.skale.dev/api/duck/search" { shape: callout }
+searxng: "SearXNG"
+searxng_note: "private first, then public fallback" { shape: callout }
+searxng_cred: "credgoo searx / SEARXNG_URL"
+searxng_cred_note: "private instance · public needs no creds" { shape: callout }
+format: "format_results()"
+out: "stdout / stderr"
+
+web-search -> launcher: calls
+launcher -> search_py: runs
+search_py -> select: select_backend()
+select -> duck: --api / token
+select -> searxng: default
+duck -> duck_cred: needs token
+searxng -> searxng_cred: optional
+duck -> format: results
+searxng -> format: results
+format -> out: markdown
+
+select_note -> select
+duck_note -> duck
+duck_cred_note -> duck_cred
+searxng_note -> searxng
+searxng_cred_note -> searxng_cred
+
+select: {shape: diamond}
+duck_cred: {shape: cylinder}
+searxng_cred: {shape: cylinder}
