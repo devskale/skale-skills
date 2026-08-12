@@ -6,3 +6,4 @@ uv.lock
 .instance-cache.json
 node_modules/
 __pycache__/
+lists/

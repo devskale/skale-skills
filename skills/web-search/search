@@ -21,6 +21,15 @@ fi
 STAMP_FILE="$SKILL_DIR/.last-update"
 AUTO_UPDATE_DAYS=7
 
+# ── Dependency environment (kept OUTSIDE the repo) ──
+# pi's package update runs `git clean -fdx`, which deletes ANY untracked/
+# gitignored file inside the package — including a `.venv/` created by `uv sync`.
+# Point uv's project environment at a cache dir instead so the skill stays
+# pristine and updates never wipe the virtualenv. See
+# docs/agent-skills-best-practices.md → Python dependencies & pi package updates.
+ENV_DIR="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/skale-skills/web-search}"
+export UV_PROJECT_ENVIRONMENT="$ENV_DIR"
+
 # ── Handle launcher-only flags ──
 case "${1:-}" in
     --update)

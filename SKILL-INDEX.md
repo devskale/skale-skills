@@ -22,7 +22,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 - `npm:pi-mcp-adapter`
 - `npm:@ogulcancelik/pi-herdr`
 - `npm:@ff-labs/pi-fff`
-- `{'source': 'git:github.com/devskale/skale-skills', 'skills': ['web-search', 'fetch-url'], 'extensions': ['extensions/heartbeat.ts', 'extensions/xmodel.ts', 'extensions/statusline.ts', 'extensions/imagegen.ts']}`
+- `{'source': 'git:github.com/devskale/skale-skills', 'skills': ['web-search', 'fetch-url', '+skills/rodney/SKILL.md'], 'extensions': ['extensions/heartbeat.ts', 'extensions/xmodel.ts', 'extensions/statusline.ts', 'extensions/imagegen.ts']}`
 
 ## Skills
 
