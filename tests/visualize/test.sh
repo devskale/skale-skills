@@ -27,8 +27,16 @@ echo "---------------"
 [ -f "$SKILL/install.bat" ] && ok || bad "install.bat missing"
 [ -x "$SCRIPT" ] && ok || bad "visualize not executable"
 [ -f "$SKILL/references/structures.md" ] && ok || bad "structures.md missing"
+[ -f "$SKILL/references/modules.md" ] && ok || bad "modules.md missing"
+[ -f "$SKILL/references/report.md" ] && ok || bad "report.md missing"
 [ -f "$SKILL/references/promptlib.md" ] && ok || bad "promptlib.md missing"
 [ -f "$SKILL/references/html-patterns.md" ] && ok || bad "html-patterns.md missing"
+
+# templates
+for t in cards repo-tree system-map report mermaid; do
+    [ -f "$SKILL/templates/$t.html" ] && ok || bad "template $t.html missing"
+done
+[ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
 # usage / errors
 check "no args → exit 2" 2 "$SCRIPT"
@@ -67,6 +75,16 @@ if command -v curl >/dev/null 2>&1; then
             ok
         else
             bad "share did not return a throway URL (got: $out)"
+        fi
+        # share --dir — create a browseable throway dir from a folder
+        mkdir -p "$TMP/dir"
+        echo hi > "$TMP/dir/one.txt"
+        echo there > "$TMP/dir/two.txt"
+        out="$("$SCRIPT" share --dir "$TMP/dir" 2>/dev/null)"
+        if printf '%s' "$out" | grep -q '^https://lubu.skale.dev/throway/'; then
+            ok
+        else
+            bad "share --dir did not return a throway dir URL (got: $out)"
         fi
     else
         echo "  (skipping share test: throway unreachable)"

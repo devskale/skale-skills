@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{REPO}} — repo tree</title>
+<style>
+:root{--accent:#10b981;--ink:#0f172a;--paper:#fafaf9;--muted:#71717a;--line:#e4e4e7}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:56rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:2rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0}
+.legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:1.1rem;font-size:.78rem;color:var(--muted)}
+.legend .sw{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+.tree{font-size:.9rem}
+.row{display:flex;align-items:baseline;gap:.6rem;padding:.16rem 0;border-radius:.35rem}
+.row:hover{background:#fff}
+.icon{width:1.1rem;text-align:center;flex:none;color:var(--muted)}
+.name{font-weight:600}
+.name.dir{color:var(--ink)}
+.desc{color:var(--muted);font-size:.78rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kind{flex:none;font-size:.75rem;color:var(--muted)}
+.connector{border-left:1px solid var(--line);margin-left:.5rem;padding-left:1rem}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.35rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>{{REPO}} — repo tree</h1>
+    <p class="sub">{{INTENT}}</p>
+    <div class="legend">
+      <span><span class="sw" style="background:#15803d"></span>{{KIND A}}</span>
+      <span><span class="sw" style="background:#4338ca"></span>{{KIND B}}</span>
+      <span><span class="sw" style="background:#b45309"></span>{{KIND C}}</span>
+    </div>
+  </header>
+
+  <div class="tree">
+    <div class="row"><span class="icon">📦</span><span class="name dir">{{REPO}}/</span><span class="desc">{{one-line}}</span></div>
+    <div class="connector">
+      <div class="row"><span class="icon">📁</span><span class="name dir">{{DIR}}/</span><span class="desc">{{summary}}</span></div>
+      <div class="connector">
+        <div class="row"><span class="icon">🔍</span><span class="name">{{item}}</span><span class="desc">{{one-line}}</span><span class="kind">{{KIND}}</span></div>
+        <div class="row"><span class="icon">📄</span><span class="name">{{item}}</span><span class="desc">{{one-line}}</span><span class="kind">{{KIND}}</span></div>
+      </div>
+      <div class="row"><span class="icon">📄</span><span class="name">{{file}}</span><span class="desc">{{one-line}}</span><span class="kind">{{KIND}}</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Built with the <code>visualize</code> skill · one self-contained HTML file · shared via
+    <code>lubu.skale.dev/throway</code> · expires ~4h
+  </div>
+</main>
+</body>
+</html>

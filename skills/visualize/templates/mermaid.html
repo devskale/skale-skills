@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — visualization</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+</script>
+<style>
+  /* Custom layer for things Tailwind doesn't cover cleanly */
+  .seam { stroke-dasharray: 4 4; }
+  .leak { stroke: #dc2626; }
+  .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+  .mermaid-card { background:#fff; border:1px solid #e4e4e7; border-radius:.75rem; padding:1rem; }
+</style>
+</head>
+<body class="bg-stone-50 text-slate-900 font-sans antialiased">
+<main class="max-w-5xl mx-auto px-6 py-12">
+  <header class="mb-10">
+    <p class="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-2">{{KICKER}}</p>
+    <h1 class="text-3xl font-bold tracking-tight text-slate-900">{{TITLE}}</h1>
+    <p class="text-slate-500 mt-1 max-w-2xl">{{INTENT}}</p>
+    <div class="flex gap-4 mt-4 text-xs text-slate-500 flex-wrap">
+      <span><span class="inline-block w-2.5 h-2.5 rounded-sm bg-slate-900 mr-1 align-middle"></span>{{LEGEND A}}</span>
+      <span><span class="inline-block w-2.5 h-2.5 rounded-sm bg-teal-600 mr-1 align-middle"></span>{{LEGEND B}}</span>
+      <span><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500 mr-1 align-middle"></span>{{LEGEND C}}</span>
+    </div>
+  </header>
+
+  <!-- Section with a Mermaid diagram (graph-shaped content) -->
+  <section class="mb-12">
+    <h2 class="text-lg font-semibold text-slate-800 mb-4">{{SECTION}}</h2>
+    <div class="mermaid-card">
+      <pre class="mermaid">
+        flowchart LR
+          A[{{Node A}}] --> B[{{Node B}}]
+          B --> C[{{Node C}}]
+          B -.-> D[{{Node D}}]
+      </pre>
+    </div>
+  </section>
+
+  <!-- Section with cards (the house card grid via Tailwind) -->
+  <section class="mb-12">
+    <h2 class="text-lg font-semibold text-slate-800 mb-4">{{SECTION}}</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <article class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        <h3 class="font-semibold text-slate-800">{{ITEM}}</h3>
+        <p class="text-sm text-slate-500 mt-1">{{one-line}}</p>
+        <span class="inline-block mt-3 text-xs font-semibold uppercase tracking-wide text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">{{TAG}}</span>
+      </article>
+      <article class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        <h3 class="font-semibold text-slate-800">{{ITEM}}</h3>
+        <p class="text-sm text-slate-500 mt-1">{{one-line}}</p>
+        <span class="inline-block mt-3 text-xs font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">{{TAG}}</span>
+      </article>
+      <article class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        <h3 class="font-semibold text-slate-800">{{ITEM}}</h3>
+        <p class="text-sm text-slate-500 mt-1">{{one-line}}</p>
+        <span class="inline-block mt-3 text-xs font-semibold uppercase tracking-wide text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">{{TAG}}</span>
+      </article>
+    </div>
+  </section>
+
+  <footer class="mt-12 pt-6 border-t border-slate-200 text-xs text-slate-400">
+    Built with the <code class="bg-white border border-slate-200 rounded px-1">visualize</code> skill · Tailwind + Mermaid · shared via
+    <code class="bg-white border border-slate-200 rounded px-1">lubu.skale.dev/throway</code> · expires ~4h
+  </footer>
+</main>
+</body>
+</html>

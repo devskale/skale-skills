@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — overview</title>
+<style>
+:root{--accent:#10b981;--ink:#0f172a;--paper:#fafaf9;--muted:#71717a;--line:#e4e4e7}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:72rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:2.5rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:1.1rem;font-size:.78rem;color:var(--muted)}
+.legend .sw{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+.section{margin-top:2.75rem}
+.section h2{font-size:1.05rem;margin:0 0 1rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.card{background:#fff;border:1px solid var(--line);border-radius:.75rem;padding:1.25rem;transition:transform .12s ease,box-shadow .12s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(15,23,42,.08)}
+.card h3{font-size:1.05rem;margin:0 0 .4rem}
+.card p{color:var(--muted);font-size:.88rem;margin:0 0 .75rem}
+.card .cat{font-size:.75rem;color:var(--muted);letter-spacing:.02em}
+.footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.35rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>{{TITLE}}</h1>
+    <p class="sub">{{INTENT}}</p>
+    <div class="legend">
+      <span><span class="sw" style="background:#0369a1"></span>{{CAT A}}</span>
+      <span><span class="sw" style="background:#b45309"></span>{{CAT B}}</span>
+      <span><span class="sw" style="background:#be185d"></span>{{CAT C}}</span>
+    </div>
+  </header>
+
+  <section class="section">
+    <h2>{{SECTION}}</h2>
+    <div class="grid">
+      <article class="card">
+        <h3>{{ITEM TITLE}}</h3>
+        <p>{{one-line description}}</p>
+        <div class="cat">{{CATEGORY}}</div>
+      </article>
+      <article class="card">
+        <h3>{{ITEM TITLE}}</h3>
+        <p>{{one-line description}}</p>
+        <div class="cat">{{CATEGORY}}</div>
+      </article>
+      <article class="card">
+        <h3>{{ITEM TITLE}}</h3>
+        <p>{{one-line description}}</p>
+        <div class="cat">{{CATEGORY}}</div>
+      </article>
+    </div>
+  </section>
+
+  <div class="footer">
+    Built with the <code>visualize</code> skill · one self-contained HTML file · shared via
+    <code>lubu.skale.dev/throway</code> · expires ~4h
+  </div>
+</main>
+</body>
+</html>

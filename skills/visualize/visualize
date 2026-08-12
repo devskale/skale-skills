@@ -3,6 +3,7 @@
 #
 #   visualize open   <file.html>            # open an HTML file in the browser
 #   visualize share  <file.html>            # upload to throway, print the URL
+#   visualize share  --dir <dir>            # upload a whole dir as a browseable throway dir
 #   visualize validate <file.html>          # check it's self-contained (no external refs)
 #   visualize --help
 #
@@ -27,6 +28,7 @@ visualize — render a set of things as ONE self-contained HTML document.
 Usage:
   visualize open <file.html>      # open the HTML in your browser (macOS / Linux / Windows)
   visualize share <file.html>     # upload to the throwaway store, print the URL
+  visualize share --dir <dir>     # upload a whole dir as a browseable throway dir
   visualize validate <file.html>  # verify the HTML is self-contained (no external refs)
   visualize --help                # this help
 
@@ -57,6 +59,24 @@ case "$cmd" in
         ;;
 
     share)
+        # Dir mode: upload a whole directory as a browseable throway dir.
+        if [ "${1:-}" = "--dir" ]; then
+            d="${2:-}"
+            [ -n "$d" ] && [ -d "$d" ] || { echo "visualize share --dir: expected a directory" >&2; exit 2; }
+            curl -sf "$THROWAWAY/api" >/dev/null 2>&1 || echo "visualize: (couldn't read throway contract; proceeding)" >&2
+            resp="$(curl -sf -X POST "$THROWAWAY/?dir=1")" || { echo "visualize share --dir: create failed" >&2; exit 1; }
+            dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
+            [ -n "${dirurl:-}" ] || { echo "visualize share --dir: could not parse dir URL" >&2; exit 1; }
+            dirid="$(basename "$dirurl")"
+            n=0
+            for f in "$d"/*; do
+                [ -f "$f" ] || continue
+                curl -sf -X POST "$THROWAWAY/$dirid" -F "file=@$f" >/dev/null 2>&1 && n=$((n+1))
+            done
+            echo "$dirurl"
+            echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
+            exit 0
+        fi
         [ $# -eq 1 ] || { echo "visualize share: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize share: not a file: $f" >&2; exit 2; }
         name="$(basename "$f")"
@@ -79,7 +99,7 @@ case "$cmd" in
         f="$1"; [ -f "$f" ] || { echo "visualize validate: not a file: $f" >&2; exit 2; }
         # Self-contained = no http(s) references to external styles/scripts/images.
         # (Ignoring the doctype/comment lines.) CDN references are the main offender.
-        bad="$(grep -oE '(src|href)=["'"'"']https?://[^"'"'"']+' "$f" | grep -v 'cdn.tailwindcss.com' || true)"
+        bad="$(grep -oE '(src|href)=["'"'"']https?://[^"'"'"']+' "$f" | grep -vE 'cdn\.tailwindcss\.com|cdn\.jsdelivr\.net' || true)"
         if [ -n "$bad" ]; then
             echo "visualize validate: NOT self-contained — external references found:" >&2
             echo "$bad" | sed 's/^/  /' >&2
