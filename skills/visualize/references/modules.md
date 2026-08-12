@@ -31,7 +31,7 @@ Kicker + title + sub + optional meta. The top of every page.
 
 ```html
 <header>
-  <p class="kicker" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:0 0 .3rem">{{KICKER}}</p>
+  <p class="kicker" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .3rem">{{KICKER}}</p>
   <h1 style="font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em">{{TITLE}}</h1>
   <p class="sub" style="color:var(--muted);margin:0;max-width:52rem">{{INTENT}}</p>
   <div class="meta" style="color:var(--muted);font-size:.85rem;margin-top:.5rem">{{AUTHOR}} · {{DATE}} · {{STATUS}}</div>
@@ -85,13 +85,13 @@ Horizontal pipeline steps (numbered).
 ```html
 <div style="display:flex;align-items:stretch;gap:.4rem;flex-wrap:wrap">
   <div style="flex:1;min-width:120px;background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:.7rem;text-align:center">
-    <span style="display:inline-block;background:var(--accent);color:#fff;width:1.2rem;height:1.2rem;border-radius:50%;font-size:.7rem;line-height:1.2rem;margin-bottom:.3rem">1</span>
+    <span style="display:inline-block;font-weight:650;color:var(--muted);margin-right:.3rem">1</span>
     <div style="font-weight:600;font-size:.85rem">{{STEP}}</div>
     <div style="color:var(--muted);font-size:.72rem;margin-top:.2rem">{{DETAIL}}</div>
   </div>
   <span style="align-self:center;color:var(--muted);font-size:1.1rem">→</span>
   <div style="flex:1;min-width:120px;background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:.7rem;text-align:center">
-    <span style="display:inline-block;background:var(--accent);color:#fff;width:1.2rem;height:1.2rem;border-radius:50%;font-size:.7rem;line-height:1.2rem;margin-bottom:.3rem">2</span>
+    <span style="display:inline-block;font-weight:650;color:var(--muted);margin-right:.3rem">2</span>
     <div style="font-weight:600;font-size:.85rem">{{STEP}}</div>
     <div style="color:var(--muted);font-size:.72rem;margin-top:.2rem">{{DETAIL}}</div>
   </div>
@@ -113,18 +113,18 @@ Numbered section wrapper (for reports and multi-part pages).
 
 ```html
 <section style="margin-top:2.5rem">
-  <h2 style="font-size:1.2rem;display:flex;align-items:center;gap:.5rem;margin:0 0 .75rem">
-    <span style="background:var(--accent);color:#fff;width:1.4rem;height:1.4rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem">{{N}}</span>{{SECTION TITLE}}
+  <h2 style="font-size:1.2rem;margin:0 0 .75rem">
+    <span style="font-weight:650;color:var(--muted);margin-right:.5rem">{{N}}</span>{{SECTION TITLE}}
   </h2>
   <p style="color:var(--ink)">{{content}}</p>
 </section>
 ```
 
 ### exec-summary
-Report findings box (left accent border).
+Report findings box (left ink border).
 
 ```html
-<section style="background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:.6rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem">
+<section style="background:#fff;border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:.4rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem">
   <h2 style="margin-top:0;font-size:1.05rem">Executive summary</h2>
   <ul><li style="margin-bottom:.5rem"><strong>{{Finding}}</strong> — {{one line}}.</li></ul>
 </section>
@@ -180,6 +180,7 @@ Mix freely — a report can embed a `card-grid` or `mermaid` inside a `section`.
 ## Rules
 
 - **Every module is self-contained** — its CSS is inline, so stacking never breaks layout.
-- **Share the base + house style** — one accent, one type scale. Don't introduce a second palette.
+- **Share the base + house style** — one muted ink + hairline `--line` + warm paper. Don't introduce a second palette.
+- **No AI-generated accents.** Never use colored pill badges on cards, colored `.ok`/`.bad` cell values, colored numbered-circle badges on headings, or a saturated accent on links/buttons — they read as "LLM slop." Numbers as plain muted text, links as ink with a hairline underline, neutral table values.
 - **Only include modules you use** — a simple page pulls 2–3, not a full template's unused CSS.
 - **Mermaid needs network** — use the inline modules by default; reach for `mermaid` only for graph-shaped content.

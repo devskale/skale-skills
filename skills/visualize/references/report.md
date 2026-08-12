@@ -60,15 +60,20 @@ warrant it.
 
 ```css
 .report{max-width:56rem;margin:0 auto;padding:3rem 1.5rem 4rem}
-.kicker{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:0 0 .3rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .4rem}
 .meta{color:var(--muted);font-size:.85rem;margin-top:.5rem}
-.exec-summary{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:.6rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem}
+.exec-summary{background:#fff;border:1px solid var(--line);border-left:3px solid var(--ink);border-radius:.4rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem}
 .exec-summary h2{margin-top:0}
 .findings li{margin-bottom:.5rem}
-section h2{font-size:1.2rem;display:flex;align-items:center;gap:.5rem;margin:2.5rem 0 .75rem}
-section h2 .n{background:var(--accent);color:#fff;width:1.4rem;height:1.4rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem}
+section h2{font-size:1.2rem;font-weight:650;margin:2.5rem 0 .75rem}
+section h2 .n{font-weight:650;color:var(--muted);margin-right:.5rem}
 .recs li{margin-bottom:.6rem}
 ```
+
+> **No AI-generated accents.** Do NOT use a colored accent on TOC links, colored
+> `.ok`/`.bad` cell values, or colored numbered-circle badges on section headings —
+> those read as "LLM slop." Use plain ink section numbers, neutral table values, and
+> a quiet muted TOC. One neutral `--ink` + hairline `--line` + warm paper is the house style.
 
 ## Tone & content
 
