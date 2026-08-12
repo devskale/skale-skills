@@ -2,6 +2,21 @@
 
 Log of notable changes to skale-skills. Newest first.
 
+## 2026-08-12
+
+### visualize (new)
+- **Added:** `visualize` skill — render any set of things as ONE self-contained HTML document and share a URL. Agent understands what you want to visualize, picks a structure (cards, grid, before-after, timeline, list, flow, hierarchy, comparison), builds a single portable HTML file, then opens it locally and uploads it to the throway store for a short-lived URL.
+- **Launcher:** `visualize open <file>` / `visualize share <file>` / `visualize validate <file>`; `install.sh`/`install.bat` → `~/.local/bin/visualize`.
+- **References:** `structures.md` (structure catalogue) + `html-patterns.md` (inline-CSS scaffold, SVG arrows, optional Mermaid).
+- **Test suite:** `tests/visualize/test.sh` — 15 checks incl. live throway upload.
+
+### extensions (imagegen)
+- **Changed:** model discovery now probes the per-provider `/image/models/<provider>` endpoint (fallback: filtered `/models` catalog) — no hardcoded model names.
+- **Added:** `isModelUnavailable` detection — a 400 model-unavailable (renamed/removed) is now a probe signal that falls through to an available model instead of failing hard; only genuine failures (auth/network/timeout) surface as-is.
+
+### deprecated
+- **Deprecated:** the `skiller` CLI moved to `deprecated/skiller/` (kept for reference). Its multi-agent-install niche is served by `openskills` / `npx @anthropic-ai/skills add` / `skills.sh`. Docs, README, and architecture diagrams updated to drop it.
+
 ## 2026-08-11
 
 ### rodney
