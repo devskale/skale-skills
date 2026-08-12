@@ -11,6 +11,12 @@ gives the user a URL. The whole point is **containment**: everything — styles,
 diagrams, data — lives inside a single `.html` file. Nothing external, nothing to build,
 nothing to host.
 
+> **Related skills.** `d2` (auto-laid-out technical diagrams) and `figure` (hand-drawn
+> presentation figures) are **manual-only** — invoke via `/skill:d2` / `/skill:figure`.
+> They produce single SVGs. `visualize` is the auto-invocable **page layer**: build a
+> page of many things, embedding a `d2`/`figure` SVG as one element when a diagram is
+> the right way to show something.
+
 ## The shape of the job
 
 The agent does three things, in order:

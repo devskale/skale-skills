@@ -5,9 +5,13 @@ description: "Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / work
 metadata:
   author: skale-dev
   version: "1.2.0"
+disable-model-invocation: true
 ---
 
 # figure — hand-drawn architecture figures from a spec
+
+> **Manual only.** This skill is hidden from the model's auto-invocation — invoke it
+> explicitly with `/skill:figure`. The agent won't reach for it on its own.
 
 A figure toolchain: write a small spec (nodes + edges + badges), get a consistent
 hand-drawn SVG **and** PNG assembled from a CC0 icon set + the Patrick Hand font. Same
