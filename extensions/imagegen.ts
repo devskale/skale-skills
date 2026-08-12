@@ -478,7 +478,28 @@ type GenResult =
 			fellBack?: boolean;
 			fromModel?: string;
 	  }
-	| { ok: false; error: string };
+	| { ok: false; error: string; creditExhausted?: boolean; suggested?: string };
+
+/** Parse a 402 / insufficient-balance / out-of-credits error. */
+function isCreditExhausted(error: string): boolean {
+	return /402|insufficient.{0,20}(balance|credit)|out of (credit|balance)|no (credit|balance)|credit.{0,10}(exhaust|limit)|balance.{0,10}(exhaust|insufficient)/i.test(error);
+}
+
+/**
+ * Build a "switch model" suggestion from the provider's other image models.
+ * Returns a short hint like "try pollinations@flux or pollinations@zimage".
+ */
+async function suggestSwitch(provider: string, current: string): Promise<string> {
+	try {
+		const models = await imageModelsForProvider(provider);
+		const others = models.filter((m) => m !== current);
+		if (!others.length) return "";
+		const names = others.slice(0, 3).map((m) => `${provider}@${m}`).join(", ");
+		return `try ${names}`;
+	} catch {
+		return "";
+	}
+}
 
 async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 	const size = (opts.size || DEFAULT_SIZE).trim();
@@ -537,7 +558,12 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 		}
 		lastError = attempt.error;
 	}
-	return { ok: false, error: lastError ?? "generation failed" };
+	// Terminal failure. If the requested model is out of credits (or every
+	// fallback was), return a structured error the caller can use to offer a
+	// switch to another model rather than a bare "generation failed".
+	const creditExhausted = lastError ? isCreditExhausted(lastError) : false;
+	const suggested = creditExhausted ? await suggestSwitch(provider, modelId) : "";
+	return { ok: false, error: lastError ?? "generation failed", creditExhausted, suggested };
 }
 
 interface GenerateOnceOpts {
@@ -703,7 +729,10 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 				signal: ctx.signal,
 			});
 			if (!res.ok) {
-				return { content: [{ type: "text" as const, text: `Error: ${res.error}` }], isError: true };
+				const creditNote = res.creditExhausted
+					? ` — ${res.suggested ? `model is out of credits; ${res.suggested}` : "model is out of credits; ask the user which model to switch to"}`
+					: "";
+				return { content: [{ type: "text" as const, text: `Error: ${res.error}${creditNote}` }], isError: true };
 			}
 
 			const { saved, provider, modelId, size, fellBack, fromModel } = res;
@@ -771,6 +800,39 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		const res = await generateAndSave({ prompt, model, size, n, seed, cwd: ctx.cwd, signal: ctx.signal });
 		ctx.ui.setStatus("imagegen", undefined);
 		if (!res.ok) {
+			// Out of credits → ask the user to switch to another model.
+			if (res.creditExhausted) {
+				const provider = (model || DEFAULT_MODEL).split("@")[0];
+				const models = await imageModelsForProvider(provider).catch(() => []);
+				const current = (model || DEFAULT_MODEL).split("@")[1];
+				const options = models.filter((m) => m !== current);
+				if (options.length && ctx.hasUI) {
+					const picked = await ctx.ui.select(
+						`imagegen: ${res.error} — pick another model`,
+						options.map((m) => ({ label: `${provider}@${m}`, value: `${provider}@${m}` })),
+					);
+					if (picked) {
+						ctx.ui.notify(`imagegen: retrying with ${picked} …`, "info");
+						const retry = await generateAndSave({ prompt, model: picked, size, n, seed, cwd: ctx.cwd, signal: ctx.signal });
+						if (retry.ok) {
+							const { saved, provider: p, modelId: m2, size: sz2 } = retry;
+							const lines = saved.map((s) => `  • ${s.webUrl ?? s.path}`).join("\n");
+							ctx.sessionManager.appendCustomMessageEntry(IMAGEGEN_MSG, [
+								{ type: "text", text: `Generated ${saved.length} image${saved.length > 1 ? "s" : ""} via ${p}@${m2} (${sz2}):\n${lines}` },
+								...saved.map((s): ImageBlock => ({ type: "image", data: s.b64, mimeType: s.mime })),
+							] as any, true, {
+								provider: p, model: m2, size: sz2, paths: saved.map((s) => s.path),
+								images: saved.map((s) => ({ b64: s.b64, mime: s.mime })),
+							});
+							ctx.ui.notify(`imagegen: ${saved.length} image${saved.length > 1 ? "s" : ""} → ${saved[0].path}`, "info");
+							return;
+						}
+					}
+				} else if (res.suggested) {
+					ctx.ui.notify(`imagegen: ${res.error} — ${res.suggested}`, "error");
+					return;
+				}
+			}
 			ctx.ui.notify(`imagegen: ${res.error}`, "error");
 			return;
 		}
