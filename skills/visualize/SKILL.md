@@ -115,7 +115,14 @@ between a fine page and one the user says is great.
 
 ### 2. Build — compose one self-contained HTML page
 
-**Compose from page modules**, don't rebuild or pick a full template. Read
+**MANDATORY: read a default template first.** Before writing any HTML, `read` at least
+one template from `templates/` (`cards.html`, `report.html`, `system-map.html`, `repo-tree.html`)
+that matches the structure you chose. Start from its CSS + scaffold — do **not** hand-write
+HTML/CSS from scratch. This is what keeps every page on the clean neutral house style
+(no AI-generated accents). The templates are the proven starting point; compose from them,
+never reinvent.
+
+Then **compose from page modules**, don't rebuild from nothing. Read
 [references/modules.md](references/modules.md) — the catalog of reusable modules
 (`header`, `legend`, `card-grid`, `tree`, `flow`, `table`, `section`, `exec-summary`,
 `recommendations`, `mermaid`, `footer`). Pick the modules that fit the request, stack them
@@ -174,8 +181,12 @@ Keep the local file too: it's the durable copy.
   deliverable.
 - **Visual first** — diagrams and layout carry the meaning; prose is sparse. If a diagram
   needs a paragraph to be understood, redraw it.
-- **Scannable** — generous whitespace, one accent colour, clear hierarchy. Editorial, not
-  corporate-dashboard.
+- **Scannable** — generous whitespace, neutral ink on warm paper, clear hierarchy.
+  Editorial, not corporate-dashboard.
+- **NO AI-generated accents.** Never use colored pill badges, colored `.ok`/`.bad` values,
+  saturated accent links, or colored numbered-circle badges — they scream "LLM slop."
+  See promptlib.md §0 for the full never-list. Numbers as plain muted text, links as ink
+  with a hairline underline.
 - **Honest about scope** — if the user named a subset, visualize exactly that; don't pad
   with everything else.
 

@@ -12,6 +12,19 @@ says *"that's lovely."* Read this when building; don't read it to decide what to
 
 ## 0. The foundation: real content, one structure
 
+> **NON-NEGOTIABLE — the "AI-generated" tells. NEVER use these.** They instantly read as
+> "LLM slop":
+> - **Colored pill badges** on cards/items (small rounded `border-radius:999px` pastel capsules).
+> - **A saturated accent color on links/buttons/TOC** (e.g. teal/blue/indigo link text).
+> - **Colored `.ok`/`.bad`/pass-fail values** (green/red text in tables).
+> - **Colored numbered-circle badges** on section headings or flow steps.
+>
+> The house style is **neutral editorial**: muted ink on warm paper, hairline `--line`
+> borders, one `--ink` for emphasis, numbers as plain muted text, links as ink with a
+> hairline underline. If you're tempted to add any of the above, don't — use plain text
+> and quiet structure instead. This is the single biggest differentiator between a page
+> that looks hand-designed and one that screams "generated."
+
 Before any styling, nail these two:
 
 - **Use the actual subject.** If the user asks to visualize "the repo," read the repo and
