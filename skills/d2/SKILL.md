@@ -3,9 +3,13 @@ name: d2
 version: "1.4.0"
 description: "Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the `d2` CLI directly (no bundled scripts). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
 license: MIT
+disable-model-invocation: true
 ---
 
 # D2 — Diagrams as Code
+
+> **Manual only.** This skill is hidden from the model's auto-invocation — invoke it
+> explicitly with `/skill:d2`. The agent won't reach for it on its own.
 
 D2 turns text into diagrams. **Knowledge skill** — no scripts; the agent drives the `d2` CLI directly. Requires the `d2` binary: `brew install d2`.
 
