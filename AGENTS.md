@@ -1,6 +1,6 @@
 # Skale Skills - Agent Instructions
 
-This repo contains **our own skills** (actively developed) and the `skiller` CLI.
+This repo contains **our own skills** (actively developed).
 External skills (docx, xlsx, etc.) should be installed from upstream — see `RECOMMENDED-SKILLS.md`.
 
 ## Our Skills
@@ -150,15 +150,11 @@ Install from upstream, don't maintain locally:
 
 ```bash
 # Install
-skiller install <name>           # install a local skill across agents
-npx @anthropic-ai/skills add <name>  # Anthropic skills
 openskills install <org>/<repo>  # openskills CLI
+npx @anthropic-ai/skills add <name>  # Anthropic skills
 
 # Browse and discover
-# https://skills.sh  ·  `skiller discovery <dir>` (scan a local dir)
-openskills install <org>/<repo>  # openskills CLI
-
-# Also check: https://skills.sh
+# https://skills.sh
 ```
 
 See `RECOMMENDED-SKILLS.md` for full list of sources and install commands.
@@ -212,13 +208,14 @@ Reverse-engineered public APIs at `api/`:
 
 - `api/ryanair/ryanair.md` — Ryanair fare search (free, no auth)
 
-## Skiller CLI
+## Managing skills across agents
+
+Install skills into pi or other agents with the ecosystem's standard tools:
 
 ```bash
-cd skiller && uv venv && source .venv/bin/activate && uv pip install -e .
-skiller --help
+openskills install <org>/<repo>       # multi-agent skill installer
+npx @anthropic-ai/skills add <name>   # Anthropic skills
+# browse/discover: https://skills.sh
 ```
 
-Key commands: `discovery`, `install`, `remove`, `list`.
-
-See `skiller/` and `CONVENTION.md` for full details.
+The former `skiller` CLI is retired — see [`deprecated/`](deprecated/README.md).

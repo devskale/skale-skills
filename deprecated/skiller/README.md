@@ -1,4 +1,8 @@
-# Skiller
+# Skiller (DEPRECATED)
+
+> ⚠️ **Retired.** This CLI is no longer maintained or installed. It lives under
+> [`deprecated/`](../README.md) for reference. Use `openskills`, `npx @anthropic-ai/skills add`,
+> or [skills.sh](https://skills.sh) instead — see [`RECOMMENDED-SKILLS.md`](../../RECOMMENDED-SKILLS.md).
 
 Install and manage **your own** skills across multiple AI agents from one place.
 
