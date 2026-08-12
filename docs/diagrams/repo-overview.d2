@@ -7,7 +7,6 @@ user: { shape: person; label: "Developer" }
 pi: { label: "pi (AI coding agent)" }
 
 package: "skale-skills (pi package)" {
-  skiller: { label: "skiller/ CLI\ninstall · discover" }
 
   extensions: "extensions/ — 4" {
     heartbeat: { label: "heartbeat\nrecurring timer" }
@@ -47,7 +46,6 @@ web: { shape: cloud; label: "Web\nSearXNG · Invidious ·\nChrome · yt-dlp · j
 
 user -> pi: runs
 pi -> package: "pi install (loads)" { style.animated: true }
-package.skiller -> package.skills: manages
 package.skills.web -> credgoo: keys
 package.skills.web -> web: "search · fetch"
 package.skills.browser -> web: "drive"

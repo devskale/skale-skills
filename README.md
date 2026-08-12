@@ -50,7 +50,7 @@ pi install git:github.com/devskale/skale-skills
   <img src="docs/architecture.svg" alt="skale-skills architecture" width="720">
 </p>
 
-**pi** loads this package (skills + extensions + prompts); the **skiller** CLI manages skills across agents; skills reach **credgoo** for credentials and the **Web** for fetch / search / browser control.
+**pi** loads this package (skills + extensions + prompts); skills reach **credgoo** for credentials and the **Web** for fetch / search / browser control.
 
 Source: [`docs/architecture.d2`](docs/architecture.d2) · edit and re-render with `d2 docs/architecture.d2 docs/architecture.svg`.
 
@@ -233,17 +233,17 @@ ln -s "$PWD/skills/surf" ~/.claude/skills/surf
 
 ---
 
-## `skiller` CLI
+## Managing skills across agents
 
-Discover, install, and remove skills across agents:
+Install skills into pi or other agents using the ecosystem's standard tools:
 
 ```bash
-cd skiller && uv venv && source .venv/bin/activate && uv pip install -e .
-skiller discovery <dir>     # scan a local dir for skills
-skiller install <name>      # install across agents
+openskills install <org>/<repo>       # multi-agent skill installer
+npx @anthropic-ai/skills add <name>   # Anthropic skills
+# browse/discover: https://skills.sh
 ```
 
-See [`CONVENTION.md`](CONVENTION.md) and [`RECOMMENDED-SKILLS.md`](RECOMMENDED-SKILLS.md) (external skill sources).
+See [`RECOMMENDED-SKILLS.md`](RECOMMENDED-SKILLS.md) for the full list of sources.
 
 ---
 
@@ -268,7 +268,7 @@ prompts/     → prompt templates (learn)
 docs/        → guides + best-practices (browser-use, install, credgoo, …)
 guides/      → setup guides (browser tools, Chrome DevTools, rodney)
 api/         → reverse-engineered public APIs
-skiller/     → skill discovery CLI (Python)
+deprecated/  → retired tools (skiller CLI)
 tests/       → per-skill test suites (e.g. tests/surf/furious.sh — 81 checks)
 ```
 

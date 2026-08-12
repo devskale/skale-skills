@@ -5,9 +5,8 @@ Skills not maintained here. Install from upstream sources.
 ## Quick Install
 
 ```bash
-skiller install <name>              # install a local skill across agents
-npx @anthropic-ai/skills add <name> # Anthropic skills
 openskills install <org>/<repo>     # openskills CLI
+npx @anthropic-ai/skills add <name> # Anthropic skills
 ```
 
 ## Where to Find Skills
@@ -50,10 +49,6 @@ We maintain a few extensions in [`extensions/`](extensions/):
 npm install -g openskills
 openskills install <org>/<repo>
 openskills install <org>/<repo>/<skill>   # specific skill
-
-# skiller — install local skills across multiple agents (pi, claude, opencode, ...)
-skiller install <name>           # install skill
-skiller remove <name>            # remove skill
 
 # Anthropic skills
 npx @anthropic-ai/skills add <name>
