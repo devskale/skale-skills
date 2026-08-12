@@ -41,6 +41,11 @@ Pick the structure that fits (see [references/structures.md](references/structur
 `overview-grid`, `cards`, `before-after`, `list`, `timeline`, `flow`, `comparison`,
 `hierarchy`. Don't over-engineer — one strong structure beats a kitchen sink.
 
+Then, when **building the page**, read [references/promptlib.md](references/promptlib.md) —
+the prompt library of design moves that make a visualization *lovely* (colour-coded
+grouping, editorial typography, card grids, provenance footer). It's the difference
+between a fine page and one the user says is great.
+
 ### 2. Build — one self-contained HTML file
 
 Write the HTML to the OS temp dir so nothing lands in the repo:
@@ -106,5 +111,7 @@ Requires `curl` (for `share`). `python3` improves URL parsing but is optional.
 
 - [references/structures.md](references/structures.md) — the catalogue of visualization
   structures and how to pick one
+- [references/promptlib.md](references/promptlib.md) — the prompt library of design moves
+  for building *lovely* pages (colour grouping, editorial type, card grids, provenance)
 - [references/html-patterns.md](references/html-patterns.md) — the HTML scaffold, inline
   CSS patterns, and diagram techniques

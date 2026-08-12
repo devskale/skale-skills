@@ -16,6 +16,7 @@ is genuinely two-sided (e.g. before/after comparison).
 | Dependencies, call graph, flow between things | `flow` |
 | Parent/child, nesting, containment | `hierarchy` |
 | Two or more options side by side | `comparison` |
+| Multi-repo / multi-service orchestration, a platform, a fleet | `system-map` |
 
 ## Cards
 
@@ -69,12 +70,32 @@ Use when the point is "X connects to Y connects to Z."
 Nesting/containment: parent → child, tree, folder structure, org chart.
 - Nested boxes with indentation, or a tree with connecting lines.
 - Collapse interactions are a nice-to-have, not required — the page must render statically.
+- **For a repo/`tree` view:** use the *annotated tree* — indented rows with a name,
+  one-line description, and colour-coded kind tag (skill/ext/docs/…). See
+  [promptlib.md](promptlib.md) §8 for the full recipe and CSS.
 
 ## Comparison
 
 Two or more options side by side, each with the same set of attributes.
 - A table or aligned columns; rows are attributes, columns are options.
 - Highlight the recommended option.
+
+---
+
+## System map
+
+For a **multi-repo / multi-service / multi-machine platform** — an orchestrator with
+sub-repos, a server fleet, a pipeline. A single flat tree undersells this; a *system map*
+shows how the parts relate. Usually **several panels in one page**, each a different lens:
+
+1. **Repo topology** — the metarepo box containing its sub-repos, each annotated with role
+   (frontend/backend/lib/data) + deploy target.
+2. **Pipeline / data flow** — the end-to-end flow as horizontal steps (upload → … → review).
+3. **Fleet / topology** — the servers/machines and what runs where.
+4. **Tree (top level)** — the orchestration skeleton (CLI, central config, sub-repos, docs).
+
+Pick the panels that fit the platform — not all four always apply. See
+[promptlib.md](promptlib.md) §9 for the full recipe and CSS.
 
 ---
 

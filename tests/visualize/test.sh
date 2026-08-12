@@ -27,6 +27,7 @@ echo "---------------"
 [ -f "$SKILL/install.bat" ] && ok || bad "install.bat missing"
 [ -x "$SCRIPT" ] && ok || bad "visualize not executable"
 [ -f "$SKILL/references/structures.md" ] && ok || bad "structures.md missing"
+[ -f "$SKILL/references/promptlib.md" ] && ok || bad "promptlib.md missing"
 [ -f "$SKILL/references/html-patterns.md" ] && ok || bad "html-patterns.md missing"
 
 # usage / errors
