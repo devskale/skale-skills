@@ -876,6 +876,36 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		const defaultProvider = DEFAULT_MODEL.split("@")[0];
 		const lastGood = lastGoodModel(defaultProvider);
 
+		/** Search-driven model picker: type a term, then pick from a short capped list. */
+		const pickModel = async (): Promise<string | undefined> => {
+			const models = await allImageModels();
+			if (!models.length) {
+				ctx.ui.notify("imagegen: no image models available from the catalog", "error");
+				return undefined;
+			}
+			// Loop until the filtered list is short enough to present (≤10), or cancelled.
+			let term = "";
+			let matched = models;
+			for (;;) {
+				if (term) matched = models.filter((m) => `${m.provider}@${m.id}`.toLowerCase().includes(term));
+				if (matched.length === 0) {
+					ctx.ui.notify(`imagegen: no models match “${term}”`, "warning");
+					return undefined;
+				}
+				if (matched.length <= 10) break;
+				const next = (await ctx.ui.input(
+					`imagegen — ${matched.length} models match; type a narrower filter (provider or name)`,
+					term,
+				))?.trim().toLowerCase();
+				if (next === undefined) return undefined; // cancelled
+				term = next;
+			}
+			const options = ["auto (last-good / default)", ...matched.map((m) => `${m.provider}@${m.id}`)];
+			const picked = await ctx.ui.select("imagegen — pick a model:", options);
+			if (picked === undefined) return undefined;
+			return picked === "auto (last-good / default)" ? undefined : picked;
+		};
+
 		for (;;) {
 			const modelLabel = settings.model ?? (lastGood ? `auto (${defaultProvider}@${lastGood})` : `auto (${DEFAULT_MODEL})`);
 			const action = await ctx.ui.select(
@@ -899,21 +929,11 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			if (!chosen) break;
 
 			if (chosen === "model") {
-				const models = await allImageModels();
-				const options = [
-					"auto (last-good / default)",
-					...models.map((m) => `${m.provider}@${m.id}`),
-				];
-				if (options.length <= 1) {
-					ctx.ui.notify("imagegen: no image models available from the catalog", "error");
-					continue;
-				}
-				const picked = await ctx.ui.select("imagegen — default model:", options);
-				if (picked === undefined) continue;
-				const pickedModel = picked === "auto (last-good / default)" ? undefined : picked;
+				const pickedModel = await pickModel();
+				if (pickedModel === undefined) continue;
 				settings = { ...settings, model: pickedModel };
 				saveSettings(settings);
-				ctx.ui.notify(`imagegen: default model → ${pickedModel ?? "auto"}`, "info");
+				ctx.ui.notify(`imagegen: default model → ${pickedModel || "auto"}`, "info");
 			} else if (chosen === "size") {
 				const picked = await ctx.ui.select("imagegen — default size:", ["auto (512x512)", "256x256", "512x512", "768x768", "1024x1024", "custom…"]);
 				let size: string | undefined;
