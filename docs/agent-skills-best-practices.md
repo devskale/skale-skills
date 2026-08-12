@@ -397,6 +397,45 @@ Script dependency management:
   - Use uv pip install for Python dependencies
   - Include install.sh / install.bat in the skill directory
 
+Python dependencies & pi package updates (keep the venv OUT of the repo)
+  If a skill ships in a pi package (git/npm), pi runs `git clean -fdx` inside the
+  package after every update to keep the checkout pristine. The `-x` flag removes
+  ALL untracked AND gitignored files — so a `.venv/` (or `node_modules/`, a
+  `package-lock.json`, etc.) created inside the package is silently deleted on
+  every `pi update`. This is pi's intended behavior, not a bug; the fix is to not
+  put the dependency environment in the repo path.
+
+  The ecosystem-standard pattern (mitsuhiko/agent-stuff, Anthropic skills) is to
+  keep the dependency environment OUTSIDE the package:
+
+    - Prefer self-contained scripts with inline PEP 723 metadata
+      (`#!/usr/bin/env -S uv run --script` + a `# /// script` block declaring
+      `requires-python` and `dependencies`). uv resolves deps into its global
+      cache (~/.cache/uv) — nothing lands in the repo, so `git clean` has nothing
+      to delete. Best for single-file scripts.
+
+    - For a project with a pyproject.toml, point uv's environment outside the
+      repo with UV_PROJECT_ENVIRONMENT. Set it in BOTH the launcher and
+      install.sh so `uv sync` and `uv run` never create `.venv/` in the package:
+
+        # launcher + install.sh
+        export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/<pkg>/<skill>}"
+
+      Then run with `uv run --project "$SKILL_DIR" scripts/foo.py` (NOT `cd
+      "$SKILL_DIR" && uv run` if the script writes output relative to cwd — use
+      --project to keep the caller's working directory).
+
+    - Do NOT `uv sync`/`uv venv` into the skill dir, and do not commit a
+      `.venv/`, `node_modules/`, or `package-lock.json`.
+
+  Runtime-output dirs (e.g. a skill that writes `./lists/`) must also be
+  gitignored AND created relative to the caller's cwd, not the skill dir, so
+  they never pollute the package or get cleaned.
+
+  Consequence if you ignore this: every `pi update` wipes the skill's
+  virtualenv and you must re-run `uv sync` (or the launcher's --update) each
+  time. The external-env pattern makes updates a no-op.
+
 
 11. Instruction Patterns That Work
 -----------------------------------

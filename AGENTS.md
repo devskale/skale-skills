@@ -190,6 +190,13 @@ Every skill must have:
 
 Never use: `readlink -f` (breaks macOS), `.env` with real tokens, `requirements.txt`.
 
+**Pi package updates run `git clean -fdx`** inside the package, which deletes any
+`.venv/`/`node_modules/`/`package-lock.json` in the repo path. Keep the Python
+venv OUTSIDE the repo via `UV_PROJECT_ENVIRONMENT` (set in launcher + install.sh,
+e.g. `$HOME/.cache/skale-skills/<skill>`), and run with `uv run --project` to
+preserve the caller's cwd. Full guidance: [agent-skills-best-practices.md →
+Python dependencies & pi package updates](docs/agent-skills-best-practices.md).
+
 ### Python
 
 - Type hints mandatory

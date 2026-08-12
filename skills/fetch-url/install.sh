@@ -3,6 +3,13 @@ set -e
 SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SKILL_DIR"
 
+# ── Dependency environment (kept OUTSIDE the repo) ──
+# Same as the launcher: pi's package update runs `git clean -fdx`, which wipes
+# any `.venv/` inside the package. Point uv at a cache dir so the skill stays
+# pristine and updates never delete the virtualenv (see
+# docs/agent-skills-best-practices.md → Python dependencies & pi package updates).
+export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/skale-skills/fetch-url}"
+
 echo "Installing fetch-url skill..."
 
 # Check for uv

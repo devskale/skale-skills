@@ -5,6 +5,7 @@ set -e
 # Tests the installed `fetch-url` command + source files
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/fetch-url"
+SKILL_DIR="$(pwd)"
 
 PASS=0
 FAIL=0
@@ -97,7 +98,7 @@ echo ""
 
 # ── 9. is_valid_content logic ──────────────────────────────────────────
 echo "[9] is_valid_content logic..."
-cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/fetch-url"
+cd "$SKILL_DIR"
 
 # Test: real error page is rejected
 REJECT=$(python3 -c "

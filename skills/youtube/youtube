@@ -9,11 +9,18 @@ done
 SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 STAMP_FILE="$SKILL_DIR/.last-update"
 
+# ── Dependency environment (kept OUTSIDE the repo) ──
+# pi's package update runs `git clean -fdx`, which wipes any `.venv/` inside
+# the package. Point uv at a cache dir so the skill stays pristine and updates
+# never delete the virtualenv (docs/agent-skills-best-practices.md).
+export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/skale-skills/youtube}"
+
 case "${1:-}" in
     --update|--self-update)
         cd "$SKILL_DIR"
         echo "Updating youtube..."
         git pull 2>&1 || true
+        uv sync --quiet 2>/dev/null
         date +%s > "$STAMP_FILE"
         echo "Updated."
         exit 0
@@ -30,7 +37,7 @@ case "${1:-}" in
     --install)
         cd "$SKILL_DIR"
         if command -v uv &>/dev/null; then
-            uv venv 2>/dev/null; uv sync 2>/dev/null
+            uv sync --quiet 2>/dev/null
         fi
         ln -sf "$SKILL_DIR/youtube" "$HOME/.local/bin/youtube" 2>/dev/null || true
         date +%s > "$STAMP_FILE"
@@ -45,8 +52,9 @@ if [ -f "$STAMP_FILE" ]; then
     now=$(date +%s)
     age=$(( (now - last) / 86400 ))
     if [ "$age" -gt 7 ]; then
-        (cd "$SKILL_DIR" && git pull 2>/dev/null && date +%s > "$STAMP_FILE") &
+        (cd "$SKILL_DIR" && git pull 2>/dev/null && uv sync --quiet 2>/dev/null && date +%s > "$STAMP_FILE") &
     fi
 fi
 
-exec python3 "$SKILL_DIR/scripts/search.py" "$@"
+# ── Run (from the caller's cwd — search.py writes ./lists/ relative to cwd) ──
+exec uv run --project "$SKILL_DIR" "$SKILL_DIR/scripts/search.py" "$@"

@@ -308,6 +308,20 @@ cd "$SKILL_DIR" && exec uv run scripts/main.py "$@"
 
 **Never use:** `readlink -f` (breaks on macOS), hardcoded absolute paths, `cd "/hardcoded/path"`.
 
+**Keep the venv OUT of the repo (pi package updates).** pi runs `git clean -fdx`
+inside a package after every update, which deletes any `.venv/`/`node_modules/`/
+`package-lock.json` in the package path. Point uv's environment outside the repo
+in BOTH the launcher and install.sh:
+
+```bash
+export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/<pkg>/<skill>}"
+```
+
+If the script writes output relative to the caller's cwd (e.g. `./lists/`), run
+with `uv run --project "$SKILL_DIR" "$SKILL_DIR/scripts/main.py"` instead of
+`cd "$SKILL_DIR" && uv run` so the caller's working directory is preserved. See
+docs/agent-skills-best-practices.md → Python dependencies & pi package updates.
+
 ### install.sh
 
 ```bash
