@@ -4,6 +4,14 @@ Log of notable changes to skale-skills. Newest first.
 
 ## 2026-08-12
 
+### visualize
+- **Added:** `references/promptlib.md` — a prompt library of design moves that make a visualization *lovely* (colour-coded grouping, editorial typography, card grids, provenance footer). SKILL.md points to it when building.
+- **Added:** annotated **repo tree** recipe (promptlib §8 + structures.md) — indented rows with name + one-line desc + colour-coded kind tag, deep dirs summarised. Live-tested on skale-skills and piui.
+- **Added:** **system map** recipe (promptlib §9 + structures.md) — multi-panel map for multi-repo / multi-service orchestrators (repo topology, pipeline, fleet, top-level tree). Live-tested on kontext.one.
+- **Test:** suite now checks promptlib.md exists (16 checks).
+
+## 2026-08-12
+
 ### d2 / figure
 - **Changed:** `d2` and `figure` are now **manual-only** — `disable-model-invocation: true` hides them from the model's auto-invocation. They're invoked explicitly via `/skill:d2` / `/skill:figure`.
 
