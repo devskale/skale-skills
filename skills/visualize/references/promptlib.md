@@ -141,6 +141,49 @@ makes the page feel intentional and trustworthy.
   each level visibly different.
 - **External deps for the core** — the layout must work from inline CSS alone. (Optional
   Mermaid for complex graphs is fine; the page itself must not depend on it.)
+- **Colored pill badges on every card** — the tell-tale AI-generated look. Small rounded
+  `border-radius:999px` capsules with pastel backgrounds and uppercase text scream "LLM
+  slop." **Never use them.** Categories go as plain muted text in the card footer, or as a
+  quiet legend — not a colored pill on each item.
+
+---
+
+## 6.5 Design principles (grounded in research)
+
+These come from Edward Tufte's data-visualization principles — the gold standard used by
+the FT, The Economist, Bloomberg, McKinsey. They make a report/visualization *trustworthy*,
+not just pretty.
+
+**1. Maximise the data-ink ratio.** `Data-Ink / Total Ink`. Every drop of ink should
+represent data. Erase non-data-ink (borders, backgrounds, unnecessary gridlines) and
+redundant duplicates. → In our pages: hairline `--line` borders, warm paper, no heavy
+chrome. Don't add decorative boxes/borders that carry no information.
+
+**2. Show data in comparison.** An isolated number is meaningless — the question is always
+"compared to what?" Juxtaposition creates meaning. → In our pages: use `table`,
+`before-after`, or side-by-side cards to put values in context, never a lone figure.
+
+**3. No chartjunk.** Decorative elements that add no information undermine authority —
+they signal the data alone isn't compelling. → In our pages: every visual element must
+earn its place. No gratuitous gradients, shadows, or icons that don't communicate.
+
+**4. Reveal mechanism, not just outcome.** Great graphics show *why*, not just *what*.
+Minard's map of Napoleon's campaign reveals the cause (winter), not just the loss. → In
+our pages: when showing a result, show the flow/process that produced it (`flow` module,
+a `mermaid` graph, a pipeline).
+
+**5. Show relevant complexity.** Oversimplifying misleads. Show how variables interact
+when that interaction is the point. → In our pages: use `system-map` or multivariate
+`table`s when the relationships matter, not a reductive single view.
+
+**6. Guard the lie factor.** The graphic must accurately reflect the data — no distorted
+scales, truncated axes, or area-as-one-dimensional tricks. → In our pages: keep charts
+honest; don't exaggerate differences to make a point.
+
+> **Apply these through the module system.** The modules are designed to embody these
+> principles (hairlines, comparison, mechanism via flow/mermaid, honest scales). When
+> composing, ask: *is every element earning its ink? is this shown in comparison? does it
+> reveal the mechanism?* If not, cut or rework it.
 
 ---
 
@@ -256,3 +299,25 @@ tour: 1 Repo topology → 2 Pipeline → 3 Fleet → 4 Tree.
   doesn't need a 4-panel map.
 - **Static data** — the flow/fleet/topology must reflect the real `repos.yml`/config, not
   invented servers or stages.
+
+---
+
+## 10. When to recommend d2 / figure (don't force an inline diagram)
+
+`visualize` builds simple diagrams inline (SVG arrows, Mermaid) — fine for a small graph
+embedded in a page. But some challenges are **better handed to `d2` or `figure`**, and you
+should **recommend them** (you can't auto-invoke them — they're manual-only).
+
+**Recommend `d2`** for complex technical graphs: sequence / ER / class diagrams,
+dependency or call graphs with many nodes, anything that needs auto-layout + self-
+verification, or a diagram that is *the deliverable* (`.svg`/`.png`/`.pdf` to commit).
+
+**Recommend `figure`** for hand-drawn, presentation-quality explainers — sketchy pipeline /
+workflow / architecture figures for a slide or report.
+
+**Build inline** only when the diagram is simple (a few nodes) and *one element among
+many* in a quick shareable page. Don't bounce the user to d2/figure for a trivial graph.
+
+**How to recommend:** one line at the end of the page, e.g. *"This graph is complex — for
+a proper auto-laid-out diagram run `/skill:d2`; for a hand-drawn figure `/skill:figure`."*
+Don't over-recommend.

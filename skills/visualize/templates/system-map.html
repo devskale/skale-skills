@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{PLATFORM}} — system map</title>
+<style>
+:root{--accent:#0d9488;--ink:#0f172a;--paper:#fafaf9;--muted:#71717a;--line:#e4e4e7}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:64rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:2rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:1.1rem;font-size:.78rem;color:var(--muted)}
+.legend .sw{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+.panel{margin-top:2.5rem}
+.panel h2{font-size:1.05rem;margin:0 0 1rem;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:.5rem}
+.panel h2 .n{background:var(--accent);color:#fff;width:1.4rem;height:1.4rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem}
+.meta{background:#fff;border:1px solid var(--line);border-radius:.9rem;padding:1.4rem}
+.metaname{font-weight:700;display:flex;align-items:center;gap:.5rem;margin-bottom:1rem}
+.metatag{font-size:.7rem;background:#ccfbf1;color:#0f766e;padding:.15rem .5rem;border-radius:999px;text-transform:uppercase}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.9rem}
+.subrepo{background:var(--paper);border:1px solid var(--line);border-radius:.6rem;padding:.9rem}
+.sr-name{font-weight:600;font-size:.95rem;display:flex;justify-content:space-between;align-items:center}
+.sr-desc{color:var(--muted);font-size:.8rem;margin:.3rem 0 .6rem}
+.sr-meta{font-size:.72rem;color:var(--muted);display:flex;gap:.4rem;flex-wrap:wrap}
+.sr-meta span{background:#fff;border:1px solid var(--line);border-radius:999px;padding:.1rem .45rem}
+.flow{display:flex;align-items:stretch;gap:.4rem;flex-wrap:wrap}
+.step{flex:1;min-width:120px;background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:.7rem;text-align:center}
+.st-n{display:inline-block;background:var(--accent);color:#fff;width:1.2rem;height:1.2rem;border-radius:50%;font-size:.7rem;line-height:1.2rem;margin-bottom:.3rem}
+.st-title{font-weight:600;font-size:.85rem}.st-sub{color:var(--muted);font-size:.72rem;margin-top:.2rem}
+.arrow{align-self:center;color:var(--muted);font-size:1.1rem}
+.servers{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.9rem}
+.server{background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:.9rem}
+.sv-name{font-weight:600}.sv-role{color:var(--muted);font-size:.8rem;margin:.2rem 0 .5rem}.sv-meta{font-size:.72rem;color:var(--muted)}
+.deploy{width:100%;border-collapse:collapse;font-size:.85rem;background:#fff;border:1px solid var(--line);border-radius:.6rem;overflow:hidden}
+.deploy th,.deploy td{padding:.6rem .8rem;text-align:left;border-bottom:1px solid var(--line)}
+.deploy th{background:var(--paper);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:var(--muted)}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.35rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>{{PLATFORM}} — system map</h1>
+<p class="sub">{{INTENT}}</p>
+<div class="legend"><span><span class="sw" style="background:#0f766e"></span>{{KIND A}}</span><span><span class="sw" style="background:#4338ca"></span>{{KIND B}}</span><span><span class="sw" style="background:#15803d"></span>{{KIND C}}</span></div>
+</header>
+
+<section class="panel"><h2><span class="n">1</span>Repo topology</h2><div class="meta">
+<div class="metaname">📦 {{PLATFORM}} <span class="metatag">metarepo</span></div>
+<div class="subgrid">
+<div class="subrepo"><div class="sr-name">{{REPO}} <span class="tag a">{{KIND}}</span></div><div class="sr-desc">{{role}}</div><div class="sr-meta"><span>{{deploy}}</span><span>{{target}}</span></div></div>
+<div class="subrepo"><div class="sr-name">{{REPO}} <span class="tag b">{{KIND}}</span></div><div class="sr-desc">{{role}}</div><div class="sr-meta"><span>{{deploy}}</span></div></div>
+</div></div></section>
+
+<section class="panel"><h2><span class="n">2</span>Pipeline</h2><div class="flow">
+<div class="step"><span class="st-n">1</span><div class="st-title">{{step}}</div><div class="st-sub">{{detail}}</div></div><div class="arrow">→</div>
+<div class="step"><span class="st-n">2</span><div class="st-title">{{step}}</div><div class="st-sub">{{detail}}</div></div><div class="arrow">→</div>
+<div class="step"><span class="st-n">3</span><div class="st-title">{{step}}</div><div class="st-sub">{{detail}}</div></div>
+</div></section>
+
+<section class="panel"><h2><span class="n">3</span>Fleet</h2><div class="servers">
+<div class="server"><div class="sv-name">{{server}}</div><div class="sv-role">{{role}}</div><div class="sv-meta">{{meta}}</div></div>
+<div class="server"><div class="sv-name">{{server}}</div><div class="sv-role">{{role}}</div><div class="sv-meta">{{meta}}</div></div>
+</div></section>
+
+<div class="footer">Built with the <code>visualize</code> skill · one self-contained HTML · shared via <code>lubu.skale.dev/throway</code> · expires ~4h</div>
+</main></body></html>

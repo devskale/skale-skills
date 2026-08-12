@@ -67,3 +67,4 @@ pi-mcp-adapter/
 # Exception: the figure skill ships its compositor SOURCE in a dir named `build/`.
 # The generic `build/` rule above (for compiled artifacts) would swallow it — un-ignore it.
 !skills/figure/build/
+temp/

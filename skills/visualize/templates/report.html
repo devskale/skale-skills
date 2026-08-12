@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — report</title>
+<style>
+:root{--accent:#0d9488;--ink:#0f172a;--paper:#fafaf9;--muted:#71717a;--line:#e4e4e7}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.6}
+.report{max-width:52rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+.kicker{font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:0 0 .3rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:0}
+.meta{color:var(--muted);font-size:.85rem;margin-top:.5rem}
+.exec-summary{background:#fff;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:.6rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem}
+.exec-summary h2{margin-top:0}
+.findings li{margin-bottom:.5rem}
+section h2{font-size:1.2rem;display:flex;align-items:center;gap:.5rem;margin:2.5rem 0 .75rem;scroll-margin-top:1rem}
+section h2 .n{background:var(--accent);color:#fff;width:1.4rem;height:1.4rem;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem}
+.recs li{margin-bottom:.6rem}
+.toc{background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:1rem 1.5rem;margin:1.5rem 0}
+.toc a{color:var(--accent);text-decoration:none}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.35rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main class="report">
+<header>
+  <p class="kicker">REPORT</p>
+  <h1>{{TITLE}}</h1>
+  <p class="sub">{{INTENT}}</p>
+  <div class="meta">{{AUTHOR}} · {{DATE}} · {{STATUS}}</div>
+</header>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ul>
+    <li><a href="#summary">Executive summary</a></li>
+    <li><a href="#s1">1. {{SECTION}}</a></li>
+    <li><a href="#recs">Recommendations</a></li>
+  </ul>
+</nav>
+
+<section id="summary" class="exec-summary">
+  <h2>Executive summary</h2>
+  <ul class="findings">
+    <li><strong>{{Finding 1}}</strong> — {{one line}}.</li>
+    <li><strong>{{Finding 2}}</strong> — {{one line}}.</li>
+    <li><strong>{{Finding 3}}</strong> — {{one line}}.</li>
+  </ul>
+</section>
+
+<section id="s1">
+  <h2><span class="n">1</span> {{SECTION}}</h2>
+  <p>{{prose — finding first, then evidence}}</p>
+  <!-- Embed a visual here: a card grid, an inline SVG, a chart -->
+</section>
+
+<section id="recs">
+  <h2>Recommendations</h2>
+  <ol class="recs">
+    <li><strong>{{Do X}}</strong> — {{because Y}}. (priority: {{high}})</li>
+    <li><strong>{{Do Z}}</strong> — {{because W}}. (priority: {{medium}})</li>
+  </ol>
+</section>
+
+<div class="footer">
+  Built with the <code>visualize</code> skill · one self-contained HTML file · shared via
+  <code>lubu.skale.dev/throway</code> · expires ~4h
+</div>
+</main>
+</body>
+</html>
