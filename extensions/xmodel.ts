@@ -1,5 +1,5 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.4.1
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.4.2
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
@@ -23,7 +23,7 @@
  *   /xm off               clear, restore defaults
  *   /xm settings          vision hub — pi-style settings list (global + project tiers)
  *   /xm vision [m] [g|p]  show / set vision mode (delegate|switch|human|off)
- *   Ctrl+Shift+F          cycle presets
+ *   Ctrl+Shift+M          cycle presets
  *   switch_model tool     agent (LLM) switches itself
  *   /xm version           show version
  *
@@ -90,7 +90,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.4.1";
+const VERSION = "0.4.2";
 
 interface OriginalState {
 	model: Model<Api> | undefined;
@@ -612,7 +612,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.4.1 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /readimg <file> | /xm version | /xm off",
+		description: "xmodel v0.4.2 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /readimg <file> | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -695,7 +695,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	});
 
 	// --- 2. Hotkey (user): cycle ---
-	pi.registerShortcut("ctrl+shift+f", {
+	pi.registerShortcut("ctrl+shift+m", {
 		description: "Cycle xmodel presets",
 		handler: (ctx) => cycle(ctx),
 	});
