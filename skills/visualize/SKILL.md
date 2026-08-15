@@ -220,3 +220,5 @@ Requires `curl` (for `share`). `python3` improves URL parsing but is optional.
   for building *lovely* pages (colour grouping, editorial type, card grids, provenance)
 - [references/html-patterns.md](references/html-patterns.md) — the HTML scaffold, inline
   CSS patterns, and diagram techniques
+- [references/inspirations.md](references/inspirations.md) — visual references worth
+  studying / borrowing from (add as you find them)
