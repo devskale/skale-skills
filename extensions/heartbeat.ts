@@ -20,8 +20,8 @@
  *   /heartbeat off                 stop
  *
  *
- * Only one heartbeat can be active at a time. Starting a new one
- * while one is already running returns a warning instead of stacking.
+ * Only one heartbeat can be active at a time. Starting a new one while
+ * one is already running OVERRIDES it (restarts with the new settings).
  *
  * Agent tool (LLM): same surface via the `heartbeat` tool — see promptGuidelines.
  *
@@ -381,9 +381,9 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
     return { text: "Heartbeat requires interactive mode.", level: "warning", state: snapshot() };
   }
 
-  if (state.active) {
-    return { text: "Heartbeat is already active. Use /heartbeat off to stop it first, or /heartbeat status to inspect it.", level: "warning", state: snapshot() };
-  }
+  // Starting while one is already active OVERRIDES it (restart with the new
+  // settings) instead of returning a warning — no need to /heartbeat off first.
+  const restarting = state.active;
 
   let msg = state.message;
   let intervalMs = state.intervalMs;
@@ -427,15 +427,17 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
   const modeLabel = o.once ? "one-shot" : "recurring";
   const freqLabel = o.once ? "" : ` (every ${humanDuration(intervalMs)})`;
   const limitLabel = state.maxCount > 0 ? `${state.maxCount} reminder${state.maxCount === 1 ? "" : "s"}` : "forever";
-  const pausedLabel = state.paused ? " (paused)" : "";
+  const title = restarting ? "🔄 Heartbeat Restarted" : "✅ Heartbeat Started";
+  const restartHint = restarting ? "  (previous heartbeat overridden)" : "";
   return {
     text: [
-      "✅ Heartbeat Started",
+      title,
       `  message: ${msg}`,
       `  mode: ${modeLabel}${freqLabel}`,
       `  limit: ${limitLabel}`,
+      restartHint,
       `  run /heartbeat off to stop`,
-    ].join("\n"),
+    ].filter(Boolean).join("\n"),
     level: "success",
     state: snapshot(),
   };
