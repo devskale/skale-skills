@@ -39,25 +39,72 @@ Everything below is polish that makes that foundation sing.
 
 ## 1. Establish a visual identity (the "house style")
 
-Set up a small palette and stick to it. This is what makes the page feel *designed* rather
-than *default*.
+Set up a small **token system** and stick to it. Reference tokens by **semantic role**, not
+by hex value — the type/module recipes say `accent`, never `#10b981`. This is what makes
+the page feel *designed* rather than *default*, and keeps every page on the same skin
+without re-deciding colours each time.
 
 ```css
 :root {
-  --accent: #10b981;          /* ONE accent — emerald, indigo, or similar */
-  --ink:    #0f172a;          /* near-black text */
-  --paper:  #fafaf9;          /* warm off-white background */
-  --muted:  #71717a;          /* secondary text */
-  --line:   #e4e4e7;          /* hairline borders */
+  /* semantic roles — the only colours a page should name */
+  --paper:  #fafaf9;   /* page background (warm off-white, stone-50) */
+  --paper-2:#f4f4f5;   /* secondary fill: cards, containers, wells */
+  --ink:    #0f172a;   /* primary text + emphasis (near-black) */
+  --muted:  #71717a;   /* secondary text, default arrow stroke */
+  --soft:   #a1a1aa;   /* tertiary: sublabels, boundary labels */
+  --line:   #e4e4e7;   /* hairline borders */
+  --accent: #10b981;   /* ONE focal accent — emerald, indigo, or similar */
+  --accent-tint: rgba(16,185,129,.08); /* fill for accent-bordered boxes */
+  --link:   #0f172a;   /* links as ink (hairline underline), not saturated */
 }
 ```
 
 Rules:
-- **One accent colour** used sparingly (headings, key highlights, a tint). Everything else
-  in neutrals. Two accents = noise.
+- **One accent rule.** `accent` is reserved for the 1–2 things the reader should look at
+  first (headings, key highlights, a tint). Everything else in neutrals. Two accents =
+  noise. If you're tempted to colour a third thing, it isn't the focus — leave it neutral.
+- **Semantic roles, not hex.** Recipes and modules reference `accent`, `muted`, `soft`,
+  `link` — never raw values. Changing the skin means changing this block, not hunting hex
+  values through the page.
 - **Warm paper background** (`#fafaf9` stone-50) reads more editorial than pure white.
 - **System-ui font stack** — zero font downloads, looks native everywhere:
   `font-family: system-ui, -apple-system, "Segoe UI", sans-serif;`
+
+### Light ↔ dark inversion (optional)
+
+If a page needs a dark variant, **flip the neutrals, keep the accent family.** Invert the
+RGB of `paper`/`paper-2`/`ink`/`muted`/`soft`/`line` (light `ink` becomes dark `paper`),
+and give the accent a slight hue-shift brighter so it reads on dark paper. Keep the same
+opacities. The semantic *roles* stay identical — only the material changes.
+
+```css
+:root[data-theme="dark"] {
+  --paper:   #0f172a;  /* ink flipped */
+  --paper-2: #1e293b;
+  --ink:     #fafaf9;  /* paper flipped */
+  --muted:   #a1a1aa;
+  --soft:    #71717a;
+  --line:    rgba(250,250,249,.12);
+  --accent:  #34d399;  /* brighter accent for dark paper */
+  --accent-tint: rgba(52,211,153,.10);
+}
+```
+
+### Series palette (multi-series charts only)
+
+A small set of **desaturated, editorial-tone** colours for chart types that genuinely need
+to distinguish overlapping entities. The **1-accent rule still holds** — `accent` is
+reserved for the focal series; the palette covers the rest. **Don't backfill these to
+non-chart types** — cards, trees, and system maps continue to use muted-ink variants.
+
+```css
+:root {
+  --series-1:#7c8f6f; --series-2:#5e7a9b; --series-3:#b8915a;
+  --series-4:#9c6b50; --series-5:#6e6479;
+}
+```
+
+Fills sit at ~0.18 opacity; strokes use the full colour.
 
 ---
 
@@ -66,29 +113,44 @@ Rules:
 The single highest-impact move for "a set of things." When items fall into categories,
 **colour-code the categories** and show a legend.
 
-- Give each category a distinct badge colour (see the palette below).
+- Give each category a distinct colour (see the palette below).
 - Add a compact **legend** under the header so the colours read instantly.
-- Keep category colours *muted pastels* — loud saturated fills scream dashboard.
+- **Keep category colours quiet — muted pastel tints or neutral fills.** Loud saturated
+  fills scream dashboard. And remember the **1-accent rule** (§1): `accent` is reserved
+  for the focal thing — category colours live in the *muted* family, never as a second
+  saturated hue.
+
+Categories are **plain text + a quiet tint**, not saturated pills. When the grouping is
+just a label (not a thing to focus on), plain muted text in the card footer reads cleaner
+than a badge at all. Reserve colour for categories the reader must distinguish at a
+*glance*.
 
 ```css
-.badge { display:inline-block; font-size:.7rem; text-transform:uppercase;
-         letter-spacing:.05em; padding:.18rem .55rem; border-radius:999px; font-weight:600; }
-.badge.web     { background:#e0f2fe; color:#0369a1; }   /* sky   */
-.badge.browser { background:#fef3c7; color:#b45309; }   /* amber */
-.badge.media   { background:#fce7f3; color:#be185d; }   /* pink  */
-.badge.diagram { background:#e0e7ff; color:#4338ca; }   /* indigo*/
-.badge.proto   { background:#dcfce7; color:#15803d; }   /* green */
+/* quiet tinted tags — muted, not saturated */
+.tag { display:inline-block; font-size:.7rem; text-transform:uppercase;
+       letter-spacing:.05em; padding:.18rem .5rem; border-radius:.35rem;
+       border:1px solid var(--line); color:var(--muted); font-weight:600; }
+.tag.web     { background:var(--paper-2); }
+.tag.browser { background:var(--paper-2); }
+.tag.media   { background:var(--paper-2); }
+.tag.diagram { background:var(--paper-2); }
+.tag.proto   { background:var(--paper-2); }
 ```
 
 Legend (in the header):
 
 ```html
 <div class="legend">
-  <span><span class="dot" style="background:#0369a1"></span>Web</span>
-  <span><span class="dot" style="background:#b45309"></span>Browser</span>
+  <span><span class="dot" style="background:var(--muted)"></span>Web</span>
+  <span><span class="dot" style="background:var(--soft)"></span>Browser</span>
   ...
 </div>
 ```
+
+> **When a category genuinely needs colour** (the reader must tell categories apart at a
+> glance, e.g. a system map's role tags), use the **series palette** from §1 — desaturated
+> editorial tones, not saturated accents. The 1-accent rule still holds: `accent` marks
+> the focus, the series palette marks the categories.
 
 ---
 
@@ -207,7 +269,8 @@ The exact recipe that produced the skale-skills overview:
 1. **Subject:** read the repo; list the real skills/extensions with one-line descriptions.
 2. **Structure:** `overview-grid` of `cards`.
 3. **Identity:** emerald accent, stone paper, system-ui.
-4. **Grouping:** colour-coded badges (web/browser/media/diagram/proto/ext) + header legend.
+4. **Grouping:** colour-coded tags (web/browser/media/diagram/proto/ext) + header legend —
+   quiet tinted tags (§2), not saturated pills.
 5. **Hierarchy:** big title → one-line sub → section headers → cards → muted prose.
 6. **Provenance footer** with the visualize/throway note.
 7. **Validate:** `visualize validate <file>` (self-contained) → `open` → `share`.
@@ -225,7 +288,7 @@ it lovely.
 2. **Structure:** `hierarchy` — nested indented rows with connector lines, not boxes.
 3. **Annotate every node:** name + one-line muted description + a colour-coded tag.
 4. **Colour-code by kind:** skill / extension / prompt / core / docs / test — with a
-   legend (reuse the badge palette from §2).
+   legend (quiet tinted tags from §2, not saturated badges).
 5. **Icons per node** (📁 dir, 📄 file, plus a per-kind emoji) for quick scanning.
 6. **Collapse deep dirs** — show the top ~2 levels richly, and summarise deeper ones
    (e.g. `deprecated/ → retired skills`) rather than listing every file.
@@ -330,6 +393,21 @@ workflow / architecture figures for a slide or report.
 
 **Build inline** only when the diagram is simple (a few nodes) and *one element among
 many* in a quick shareable page. Don't bounce the user to d2/figure for a trivial graph.
+
+**Pattern-aware routing (see patterns.md).** The semantic pattern you chose also points
+where the diagram belongs. Use the pattern's complexity budget as the tripwire: if the
+real content exceeds it, hand it off rather than force it into the page.
+
+| Pattern | Inline (page) | Hand to `d2` | Hand to `figure` |
+|---|---|---|---|
+| Fan-in queue / bottleneck | few sources, one bottleneck as a panel | many producers, dense fan-in, capacity is the point | — |
+| Stage framework w/ semantic slots | 3–4 stages as a timeline | — | polished editorial explainer for a deck |
+| Unstructured → structured artifact | simple source→artifact pair | — | hand-drawn transformation sketch |
+| Paired trace / divergence | 2 traces, ≤6 rules as aligned rows | many rules, rule-by-rule states are the point | — |
+| Trust boundary | ≤3 zones, few paths inline | many routed paths, boundary is the deliverable | — |
+| Governance / control catalog | ≤24 controls as a table | — | — (table is fine) |
+| Loop / flywheel | small 4–8 station loop | long write-back, dense cycle | — |
+| Provenance / evidence trail | ≤12 findings as a hierarchy | — | editorial evidence figure |
 
 **How to recommend:** one line at the end of the page, e.g. *"This graph is complex — for
 a proper auto-laid-out diagram run `/skill:d2`; for a hand-drawn figure `/skill:figure`."*

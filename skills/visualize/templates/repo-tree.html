@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{{REPO}} — repo tree</title>
 <style>
-:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5}
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
 main{max-width:56rem;margin:0 auto;padding:3rem 1.5rem 4rem}
@@ -33,9 +33,9 @@ h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
     <h1>{{REPO}} — repo tree</h1>
     <p class="sub">{{INTENT}}</p>
     <div class="legend">
-      <span><span class="sw" style="background:#15803d"></span>{{KIND A}}</span>
-      <span><span class="sw" style="background:#4338ca"></span>{{KIND B}}</span>
-      <span><span class="sw" style="background:#b45309"></span>{{KIND C}}</span>
+      <span><span class="sw" style="background:var(--muted)"></span>{{KIND A}}</span>
+      <span><span class="sw" style="background:var(--soft)"></span>{{KIND B}}</span>
+      <span><span class="sw" style="background:var(--line)"></span>{{KIND C}}</span>
     </div>
   </header>
 
