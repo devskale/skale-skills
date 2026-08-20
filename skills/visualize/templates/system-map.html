@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{{PLATFORM}} — system map</title>
 <style>
-:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5}
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
 main{max-width:64rem;margin:0 auto;padding:3rem 1.5rem 4rem}
@@ -19,7 +19,7 @@ h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
 .panel h2 .n{font-weight:650;color:var(--muted);margin-right:.5rem}
 .meta{background:#fff;border:1px solid var(--line);border-radius:.9rem;padding:1.4rem}
 .metaname{font-weight:700;display:flex;align-items:center;gap:.5rem;margin-bottom:1rem}
-.metatag{font-size:.7rem;background:#ccfbf1;color:#0f766e;padding:.15rem .5rem;border-radius:999px;text-transform:uppercase}
+.metatag{font-size:.7rem;background:var(--paper-2);color:var(--muted);border:1px solid var(--line);padding:.15rem .5rem;border-radius:.35rem;text-transform:uppercase}
 .subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.9rem}
 .subrepo{background:var(--paper);border:1px solid var(--line);border-radius:.6rem;padding:.9rem}
 .sr-name{font-weight:600;font-size:.95rem;display:flex;justify-content:space-between;align-items:center}
@@ -46,7 +46,7 @@ h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
 <header>
 <h1>{{PLATFORM}} — system map</h1>
 <p class="sub">{{INTENT}}</p>
-<div class="legend"><span><span class="sw" style="background:#0f766e"></span>{{KIND A}}</span><span><span class="sw" style="background:#4338ca"></span>{{KIND B}}</span><span><span class="sw" style="background:#15803d"></span>{{KIND C}}</span></div>
+<div class="legend"><span><span class="sw" style="background:var(--muted)"></span>{{KIND A}}</span><span><span class="sw" style="background:var(--soft)"></span>{{KIND B}}</span><span><span class="sw" style="background:var(--line)"></span>{{KIND C}}</span></div>
 </header>
 
 <section class="panel"><h2><span class="n">1</span>Repo topology</h2><div class="meta">

@@ -30,6 +30,8 @@ echo "---------------"
 [ -f "$SKILL/references/modules.md" ] && ok || bad "modules.md missing"
 [ -f "$SKILL/references/report.md" ] && ok || bad "report.md missing"
 [ -f "$SKILL/references/promptlib.md" ] && ok || bad "promptlib.md missing"
+[ -f "$SKILL/references/patterns.md" ] && ok || bad "patterns.md missing"
+[ -f "$SKILL/references/output.md" ] && ok || bad "output.md missing"
 [ -f "$SKILL/references/html-patterns.md" ] && ok || bad "html-patterns.md missing"
 
 # templates
@@ -60,6 +62,23 @@ EOF
 check "validate self-contained → exit 0" 0 "$SCRIPT" validate "$TMP/good.html"
 check "validate external ref → exit 1" 1 "$SCRIPT" validate "$TMP/bad.html"
 
+# lint — style taste-gate (AI-generated tells)
+cat > "$TMP/stylish.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5}
+a{color:var(--ink)}.tag{border:1px solid var(--line);border-radius:.35rem}</style></head>
+<body><a href="#">link</a><div class="tag">cat</div></body></html>
+EOF
+cat > "$TMP/ai-slop.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>.badge{background:#e0f2fe;border-radius:999px}
+a{color:#0369a1}.ok{color:#15803d}</style></head>
+<body><a href="#">x</a></body></html>
+EOF
+check "lint clean page → exit 0" 0 "$SCRIPT" lint "$TMP/stylish.html"
+check "lint AI-slop page → exit 1" 1 "$SCRIPT" lint "$TMP/ai-slop.html"
+check "lint missing file → exit 2" 2 "$SCRIPT" lint /nonexistent.html
+
 # open (macOS `open` present) — just check it accepts a real file
 if command -v open >/dev/null 2>&1; then
     check "open real file → exit 0" 0 "$SCRIPT" open "$TMP/good.html"
@@ -71,7 +90,7 @@ fi
 if command -v curl >/dev/null 2>&1; then
     if curl -sf --max-time 10 "https://lubu.skale.dev/throway/api" >/dev/null 2>&1; then
         out="$("$SCRIPT" share "$TMP/good.html" 2>/dev/null)"
-        if printf '%s' "$out" | grep -q '^https://lubu.skale.dev/throway/'; then
+        if printf '%s' "$out" | grep -qE '^https://(lubu\.)?skale\.dev/throway/'; then
             ok
         else
             bad "share did not return a throway URL (got: $out)"
@@ -81,7 +100,7 @@ if command -v curl >/dev/null 2>&1; then
         echo hi > "$TMP/dir/one.txt"
         echo there > "$TMP/dir/two.txt"
         out="$("$SCRIPT" share --dir "$TMP/dir" 2>/dev/null)"
-        if printf '%s' "$out" | grep -q '^https://lubu.skale.dev/throway/'; then
+        if printf '%s' "$out" | grep -qE '^https://(lubu\.)?skale\.dev/throway/'; then
             ok
         else
             bad "share --dir did not return a throway dir URL (got: $out)"

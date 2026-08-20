@@ -4,6 +4,11 @@ The catalogue of ways to lay out a set of things in one self-contained HTML page
 Pick ONE that fits the subject + intent. Don't combine structures unless the content
 is genuinely two-sided (e.g. before/after comparison).
 
+> **Before choosing a structure**, check [patterns.md](patterns.md). When behaviour,
+> state, enforcement, or risk is the point (work queues up, a boundary is crossed, a
+> loop feeds back, two things diverge), a *semantic pattern* owns the challenge and maps
+> to one of these structures. Pattern first, then structure.
+
 ## Choosing a structure
 
 | Subject / intent | Structure |

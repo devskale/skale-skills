@@ -30,9 +30,10 @@ Usage:
   visualize share <file.html>     # upload to the throwaway store, print the URL
   visualize share --dir <dir>     # upload a whole dir as a browseable throway dir
   visualize validate <file.html>  # verify the HTML is self-contained (no external refs)
+  visualize lint <file.html>      # style taste-gate: flag AI-generated tells
   visualize --help                # this help
 
-The agent builds the HTML (see SKILL.md). This launcher only opens, shares, validates.
+The agent builds the HTML (see SKILL.md). This launcher only opens, shares, validates, lints.
 EOF
 }
 
@@ -67,11 +68,12 @@ case "$cmd" in
             resp="$(curl -sf -X POST "$THROWAWAY/?dir=1")" || { echo "visualize share --dir: create failed" >&2; exit 1; }
             dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
             [ -n "${dirurl:-}" ] || { echo "visualize share --dir: could not parse dir URL" >&2; exit 1; }
-            dirid="$(basename "$dirurl")"
             n=0
             for f in "$d"/*; do
                 [ -f "$f" ] || continue
-                curl -sf -X POST "$THROWAWAY/$dirid" -F "file=@$f" >/dev/null 2>&1 && n=$((n+1))
+                # POST each file to the dir URL itself (the /d/<id> path); the
+                # response's files[] carries the per-file public URLs.
+                curl -sf -X POST "$dirurl" -F "file=@$f" >/dev/null 2>&1 && n=$((n+1))
             done
             echo "$dirurl"
             echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
@@ -92,6 +94,82 @@ case "$cmd" in
         [ -n "${url:-}" ] || { echo "visualize share: could not parse URL from response: $resp" >&2; exit 1; }
         echo "$url"
         echo "visualize: shared $name -> $url  (expires in ~4h)"
+        ;;
+
+    lint)
+        [ $# -eq 1 ] || { echo "visualize lint: expected one file" >&2; exit 2; }
+        f="$1"; [ -f "$f" ] || { echo "visualize lint: not a file: $f" >&2; exit 2; }
+        if command -v python3 >/dev/null 2>&1; then
+            python3 - "$f" <<'PYEOF'
+import sys, re, html
+path = sys.argv[1]
+src = open(path, encoding='utf-8', errors='replace').read()
+
+# strip comments so hrefs inside html comments don't count
+no_comments = re.sub(r'<!--.*?-->', '', src, flags=re.S)
+
+warns = []
+
+def add(msg):
+    warns.append(msg)
+
+# 1. Saturated accent on links/buttons/TOC (teal/blue/indigo link text)
+for m in re.finditer(r'(?:<a[^>]*style="[^"]*color\s*:\s*#[0-9a-fA-F]{6})', no_comments):
+    add('saturated accent on a link/button (inline color hex)')
+
+# 2. Colored pill badges: border-radius:999px (either order) + a non-neutral hex background
+for m in re.finditer(r'border-radius\s*:\s*99[0-9]px[^}]*?background\s*:\s*#[0-9a-fA-F]{6}|background\s*:\s*#[0-9a-fA-F]{6}[^}]*?border-radius\s*:\s*99[0-9]px', no_comments):
+    seg = m.group(0)
+    hb = re.search(r'background\s*:\s*(#[0-9a-fA-F]{6})', seg)
+    if hb and hb.group(1).lower() not in ('ffffff','fafaf9','f4f4f5','e4e4e7','e5e5e5'):
+        add('colored pill badge (border-radius:999px + non-neutral background)')
+
+# 3. Colored numbered-circle badges on headings/steps
+for m in re.finditer(r'border-radius\s*:\s*50%[^}]*?background\s*:\s*#[0-9a-fA-F]{6}|background\s*:\s*#[0-9a-fA-F]{6}[^}]*?border-radius\s*:\s*50%', no_comments):
+    seg = m.group(0)
+    hb = re.search(r'background\s*:\s*(#[0-9a-fA-F]{6})', seg)
+    if hb and hb.group(1).lower() not in ('ffffff','fafaf9','f4f4f5','e4e4e7','e5e5e5'):
+        add('colored numbered-circle badge (border-radius:50% + non-neutral background)')
+
+# 4. Colored .ok/.bad pass-fail values
+for m in re.finditer(r'class="[^"]*\b(?:ok|bad|pass|fail|success|danger|error)\b[^"]*"[^>]*style="[^"]*color\s*:\s*#[0-9a-fA-F]{6}', no_comments):
+    add('colored .ok/.bad/pass-fail value (inline color)')
+
+# 5. Saturated accent hex as text color (heuristic) — only inside CSS, not prose
+#    Restrict to <style> blocks and inline style="..." attributes so hex in body
+#    text (e.g. a page showing hex codes) isn't a false positive.
+for m in re.finditer(r'<style[^>]*>(.*?)</style>', no_comments, flags=re.S):
+    css = m.group(1)
+    for cm in re.finditer(r'color\s*:\s*(#[0-9a-fA-F]{6})', css):
+        hexv = cm.group(1).lower().lstrip('#')
+        if hexv in ('0f172a','1a1a1a','fafaf9','f4f4f5','ffffff','e4e4e7','e5e5e5','6b7280','71717a','a1a1aa','0f766e','e2e8f0','64748b','f8fafc','cbd5e1','94a3b8','475569','334155','1e293b'):
+            continue
+        add(f'saturated color used as text: #{hexv}')
+for m in re.finditer(r'style="[^"]*color\s*:\s*(#[0-9a-fA-F]{6})', no_comments):
+    hexv = m.group(1).lower().lstrip('#')
+    if hexv in ('0f172a','1a1a1a','fafaf9','f4f4f5','ffffff','e4e4e7','e5e5e5','6b7280','71717a','a1a1aa','0f766e','e2e8f0','64748b','f8fafc','cbd5e1','94a3b8','475569','334155','1e293b'):
+        continue
+    add(f'saturated color used as text: #{hexv}')
+
+if warns:
+    print('visualize lint: style taste-gate — potential AI-generated tells:')
+    for w in dict.fromkeys(warns):
+        print('  - ' + w)
+    print('Fix these before sharing (see promptlib.md §0).')
+    sys.exit(1)
+else:
+    print('visualize lint: OK — no AI-generated tells found')
+PYEOF
+        else
+            # python3-less fallback: a few simple greps
+            bad="$(grep -oE 'border-radius:99[0-9]px[^}]*background:#[0-9a-fA-F]{6}' "$f" | head -5)"
+            if [ -n "$bad" ]; then
+                echo "visualize lint: possible colored pill badges found:" >&2
+                echo "$bad" | sed 's/^/  /' >&2
+                exit 1
+            fi
+            echo "visualize lint: OK (basic check — install python3 for full taste-gate)" >&2
+        fi
         ;;
 
     validate)
