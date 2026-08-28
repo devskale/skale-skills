@@ -47,6 +47,7 @@ skiller_index.json
 profile.md
 
 tmp/
+notgit/
 
 # Testbed / benchmark runtime data
 testbed/
