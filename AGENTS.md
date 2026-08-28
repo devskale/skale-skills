@@ -14,6 +14,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | rodney | `rodney start/open/stop` | 32 | Headless Chrome automation |
 | viewimg | `viewimg img.jpg [--open]` | 10 | Show an image in the terminal (view-only, no VLM) |
 | visualize | `visualize open/share/validate` | 15 | Render any set of things as ONE self-contained HTML + share URL |
+| improve-ux | — (knowledge skill) | — | Improve UI/UX grounded in curated reference sites, with a rating loop |
 
 ## Installation (as a pi package)
 

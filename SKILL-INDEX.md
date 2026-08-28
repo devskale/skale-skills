@@ -22,7 +22,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 - `npm:pi-mcp-adapter`
 - `npm:@ogulcancelik/pi-herdr`
 - `npm:@ff-labs/pi-fff`
-- `{'source': 'git:github.com/devskale/skale-skills', 'skills': ['web-search', 'fetch-url', '+skills/rodney/SKILL.md'], 'extensions': ['extensions/heartbeat.ts', 'extensions/xmodel.ts', 'extensions/statusline.ts', 'extensions/imagegen.ts']}`
+- `{'source': 'git:github.com/devskale/skale-skills', 'skills': ['web-search', 'fetch-url', 'rodney', 'd2', 'figure', 'visualize', '+skills/peep/SKILL.md', '-skills/youtube/SKILL.md', '-skills/deprecated/**'], 'extensions': ['extensions/heartbeat.ts', 'extensions/xmodel.ts', 'extensions/statusline.ts', 'extensions/imagegen.ts']}`
 
 ## Skills
 
@@ -30,6 +30,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
+| 🟢 global | **improve-ux** | Improve UI/UX of web interfaces by grounding every change in curated example sites and design ref... | `~/.pi/agent/skills/improve-ux` |
 | 🟢 global | **peep** | Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/repli... | `~/.pi/agent/skills/peep` |
 
 ### Available (not installed)
@@ -43,7 +44,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
 | ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) ... |
 | ⚪ available | **viewimg** | Display an image in the terminal (view-only, no VLM). Renders the image as colorful block art wit... |
-| ⚪ available | **visualize** | Render any set of things as ONE self-contained HTML document and give the user a URL. Understands... |
+| ⚪ available | **visualize** | Render any set of things as ONE self-contained HTML document and give the user a URL — and genera... |
 | ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
 | ⚪ available | **youtube** | Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later tra... |
 
