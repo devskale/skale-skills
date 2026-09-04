@@ -432,3 +432,27 @@ accept_encoding identity
 - **Sanitize auth tokens** from error messages: `str(e).split("Authorization")[0]`
 - **Separate connect/read timeouts**: `timeout=(5, 15)` not `timeout=30`
 - **Error context**: capture `last_error` in loops instead of silently `continue`
+
+### Coding Guidelines
+
+Distilled from [Learnings from the Codex repo](https://johnjwang.com/post/2026/08/27/learnings-from-the-codex-repo/) — how OpenAI's Codex repo scaled to 135 authors shipping ~900 commits/month alongside agents. Meta-lesson: as implementation gets cheaper, tests, boundaries, and lint get *more* important, not less.
+
+**Rules ladder** — where a guideline goes:
+
+1. A correction shows up repeatedly in review → write it here so the next human or agent sees it **before** making the same mistake.
+2. Once the rule is stable and objectively checkable → automate it (assertion in `test.sh`, grep check, lint) and prune the prose. Expensive-and-checkable rules earn automation; judgment calls stay prose.
+
+**Test integrity** (Codex: "Never add or modify any code related to `CODEX_SANDBOX_*`"):
+
+- Code that tests observe — launcher flags (`--update`, `--selfcheck`), sentinel files (`.last-update`), env-var fallback order — is frozen. A test that looks like it's in the way is the finding: report it, never "fix" it away.
+- Test behavior that can regress; prune fake rigor — tests of statically defined values, negative tests of removed logic. Agents generate that volume effortlessly. (Codex: "Do not add tests for values that are statically defined.")
+- Behavior changes (flag parsing, backend fallback, output format) MUST add an integration test — a real invocation of the command. Unit checks can't see the user-facing loop. (Codex built a 7k-line harness that runs the real agent loop against stubbed model responses.)
+
+**Unambiguous call sites** (Codex enforces with a custom lint — 38 rules):
+
+- Keyword arguments over positional `True`/`None`/magic numbers: `fetch(url, timeout_ms=1000)`, not `fetch(url, True, None, 1000)`.
+- When an external API can't take keywords, comment each argument with its exact parameter name: `foo(/*enabled*/ False, 1000 /*timeout_ms*/)`.
+
+**Migrations leave tombstones** (Codex's TUI migration):
+
+Stage big behavior changes: new path alongside the old → flip the default → delete the old path → leave a tombstone so it can't creep back: a grep assertion in `test.sh` that fails if the old pattern returns (e.g., a retired backend must not be re-imported). One-time cleanup erodes on a repo many agents touch; CI doesn't forget.

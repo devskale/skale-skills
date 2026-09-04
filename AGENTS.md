@@ -211,6 +211,16 @@ Python dependencies & pi package updates](docs/agent-skills-best-practices.md).
 - Short commands (`fetch-url "url"`, not `cd ~/.pi/... && uv run scripts/...`)
 - Link all `references/` files
 
+## Coding
+
+Coding guidelines live in [CONVENTION.md → Coding Guidelines](CONVENTION.md) — read it when writing or reviewing skill code. Grounded in [Learnings from the Codex repo](https://johnjwang.com/post/2026/08/27/learnings-from-the-codex-repo/): as implementation gets cheaper, tests, boundaries, and lint matter more, not less.
+
+Always-on hard rules:
+
+- Never modify code that tests observe — launcher flags (`--update`, `--selfcheck`), `.last-update`, env-var fallback order — to make a failing test pass. The test is the finding: report it.
+- A change to skill behavior (flag parsing, backend fallback, output format) MUST add an integration test: a real invocation of the command.
+- A correction that repeats in review goes into the Coding Guidelines; once stable and objectively checkable, automate it in `test.sh` and prune the prose.
+
 ## API Docs
 
 Reverse-engineered public APIs at `api/`:
