@@ -22,6 +22,13 @@ exists (WCAG, Material, DTCG), cite the **number**, not just the vibe.
 Read **SOTA.md first** on any task — it's the ground truth for "what good looks
 like". Then pick sites from SITES.md for *visual* grounding.
 
+For a whole-review grounding, [jakubkrehel/skills](https://github.com/jakubkrehel/skills)
+(listed in SITES.md) bundles ready-made agent skills — `better-ui`, `better-typography`,
+`better-colors`, `better-accessibility`, `better-layout`, `better-writing`, `interface-review`,
+`break` (render a component in every state) and `variant`. Install with `npx skills add
+jakubkrehel/skills` and drive them for deep, category-specific reviews instead of
+reinventing each checklist.
+
 ## Workflow
 
 ### 1. Understand the target
