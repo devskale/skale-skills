@@ -34,13 +34,28 @@ export function debug(tag: string, data: Record<string, unknown>): void {
 	} catch {}
 }
 
+/** Result of a child-pi sub-call. `text` is the assistant output (may be empty).
+ *  `timedOut` is true when the hard timeout fired; `aborted` is true when the
+ *  caller's AbortSignal fired (user pressed Esc) and the child was killed early. */
+export interface ChildPiResult {
+	text: string;
+	timedOut: boolean;
+	aborted: boolean;
+	reason: string;
+}
+
 /**
  * Run a child `pi --mode json -p` sub-process and stream back its assistant text.
  * Used for the VLM sub-call (and the compressor). JSONL-parses stdout for
  * text_delta / message_end, so it never parses the giant agent_end that embeds
  * an image. Same recipe as the official pi-subagents package.
+ *
+ * Pass `opts.signal` to wire the caller's abort signal (e.g. `ctx.signal`, which
+ * fires when the user presses Esc) so the child is killed promptly instead of
+ * hanging until the timeout — otherwise Esc appears to "not work" while xm is
+ * running a vision sub-call.
  */
-export function runChildPi(opts: { model: string; systemPrompt: string; prompt: string; imageFile?: string; timeoutMs?: number }): Promise<string> {
+export function runChildPi(opts: { model: string; systemPrompt: string; prompt: string; imageFile?: string; timeoutMs?: number; signal?: AbortSignal; thinkingLevel?: string }): Promise<ChildPiResult> {
 	return new Promise((resolve) => {
 		// --mode json -p (NOT bare --print): text mode tries TUI init that hangs on piped stdout.
 		// This is the same recipe the official pi-subagents package uses.
@@ -51,6 +66,7 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 			"--model", opts.model,
 			"--system-prompt", opts.systemPrompt,
 		];
+		if (opts.thinkingLevel) args.push("--thinking", opts.thinkingLevel);
 		if (opts.imageFile) args.push(`@${opts.imageFile}`);
 		args.push(opts.prompt);
 		const timeoutMs = opts.timeoutMs ?? VLM_TIMEOUT_MS;
@@ -61,7 +77,14 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 		let lineBuf = "";
 		let outLen = 0;
 		const t0 = Date.now();
-		const timer = setTimeout(() => proc.kill("SIGTERM"), timeoutMs);
+		let timedOut = false;
+		let aborted = false;
+		const onAbort = () => { aborted = true; proc.kill("SIGTERM"); };
+		const timer = setTimeout(() => { timedOut = true; proc.kill("SIGTERM"); }, timeoutMs);
+		if (opts.signal) {
+			if (opts.signal.aborted) onAbort();
+			else opts.signal.addEventListener("abort", onAbort, { once: true });
+		}
 		const onLine = (line: string) => {
 			line = line.trim();
 			if (!line) return;
@@ -88,13 +111,14 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 		});
 		const finish = (reason: string) => {
 			clearTimeout(timer);
+			if (opts.signal) opts.signal.removeEventListener("abort", onAbort);
 			onLine(lineBuf); // flush trailing partial line
 			const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 			const text = (deltaText.trim() || lastMsgEndText.trim());
-			debug("runChildPi done", { model: opts.model, reason, outLen, elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
-			forensic("runChildPi done", { model: opts.model, reason, outLen, elapsedSec: elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none", imageFile: opts.imageFile });
-			if (!text) forensic("runChildPi empty", { model: opts.model, reason, outLen, elapsedSec: elapsed, imageFile: opts.imageFile });
-			resolve(text);
+			debug("runChildPi done", { model: opts.model, reason, timedOut, aborted, outLen, elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
+			forensic("runChildPi done", { model: opts.model, reason, timedOut, aborted, outLen, elapsedSec: elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none", imageFile: opts.imageFile });
+			if (!text) forensic("runChildPi empty", { model: opts.model, reason, timedOut, aborted, outLen, elapsedSec: elapsed, imageFile: opts.imageFile });
+			resolve({ text, timedOut, aborted, reason: timedOut ? "timeout" : aborted ? "abort" : reason });
 		};
 		proc.on("close", () => finish("close"));
 		proc.on("error", () => finish("error"));

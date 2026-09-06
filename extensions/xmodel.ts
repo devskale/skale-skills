@@ -1,5 +1,5 @@
 /**
- * xmodel (/xm) — instant model + thinking-mode switching.  v0.4.2
+ * xmodel (/xm) — instant model + thinking-mode switching.  v0.5.0
  *
  * One JSON dict drives the user (/xm, hotkey) and the agent (switch_model tool).
  * Auto-vision: when an image appears (read *.png, MCP screenshots, attached images),
@@ -72,6 +72,7 @@ import {
 	readImageFileBlock,
 	runChildPi,
 	textOf,
+	VLM_TIMEOUT_MS,
 	writeImageTmp,
 } from "./lib/xmodel-vision-utils";
 import {
@@ -90,7 +91,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.4.2";
+const VERSION = "0.5.0";
 
 interface OriginalState {
 	model: Model<Api> | undefined;
@@ -424,6 +425,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			case "compressor": return `${visionCfg.compressor ?? "active model"} · ${src("compressor")}`;
 			case "brief": return `${visionCfg.maxBriefChars} · ${src("maxBriefChars")}`;
 			case "keepImage": return `${visionCfg.keepImage ? "on" : "off"} · ${src("keepImage")}`;
+			case "thinking": return `${visionCfg.thinkingLevel ?? "default"} · ${src("thinkingLevel")}`;
 			default: return "";
 		}
 	}
@@ -438,6 +440,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			case "compressor": writeVisionField(cwd, scope, "compressor", value === "active model" ? undefined : value); break;
 			case "brief": writeVisionField(cwd, scope, "maxBriefChars", Number(value)); break;
 			case "keepImage": writeVisionField(cwd, scope, "keepImage", value === "on"); break;
+			case "thinking": writeVisionField(cwd, scope, "thinkingLevel", value === "default" ? undefined : value); break;
 		}
 		visionCfg = loadVisionConfig(cwd, trusted);
 		if (id === "mode") updateVisionStatus(ctx);
@@ -453,6 +456,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			`compressor: ${visionDisplay(cwd, trusted, "compressor")}`,
 			`brief:      ${visionDisplay(cwd, trusted, "brief")}`,
 			`keepImage:  ${visionDisplay(cwd, trusted, "keepImage")}`,
+			`thinking:   ${visionDisplay(cwd, trusted, "thinking")}`,
 		];
 		ctx.ui.notify(`xmodel vision\n${lines.join("\n")}`, "info");
 	}
@@ -566,6 +570,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					currentValue: visionCfg.keepImage ? "on" : "off",
 					values: ["off", "on"],
 				},
+				{
+					id: "thinking",
+					label: "Vision thinking",
+					description: `Thinking level for the vision sub-call + compressor. default = the child model's own default.\nEffective from: ${visionFieldSource(cwd, trusted, "thinkingLevel")}`,
+					currentValue: visionCfg.thinkingLevel ?? "default",
+					values: ["default", ...THINKING_LEVELS],
+				},
 			];
 
 			const byId: Record<string, SettingItem> = {};
@@ -612,7 +623,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.4.2 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /readimg <file> | /xm version | /xm off",
+		description: "xmodel v0.5.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /readimg <file> | /xm version | /xm off",
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -774,7 +785,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		parameters: Type.Object({
 			path: Type.String({ description: "Path to the image file to analyze (png, jpg, gif, webp, bmp)." }),
 		}),
-		async execute(_id, params, _signal, _onUpdate, ctx) {
+		async execute(_id, params, signal, _onUpdate, ctx) {
 			const raw = (params as any).path as string;
 			const filePath = raw.startsWith("/") ? raw : join(ctx.cwd, raw);
 			// Show the image FIRST, then feed it to the VLM. Previously the VLM ran
@@ -787,7 +798,15 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			} else {
 				_onUpdate?.({ content: [{ type: "text", text: `(xmodel: no image block for ${filePath})` }] });
 			}
-			const analysis = await analyzeImageFile(ctx, filePath);
+			const analysis = await analyzeImageFile(ctx, filePath, signal);
+			// Main model is vision-capable: return the image block inline so the main
+			// model sees it directly — no child-pi handoff, no slow sub-call.
+			if (analysis === "__VISION_CAPABLE__") {
+				return {
+					content: img ? [img] : [{ type: "text", text: `(xmodel: no image block for ${filePath})` }],
+					details: { path: filePath, vision: "main-model" },
+				};
+			}
 			return { content: [{ type: "text", text: `[xmodel vision]: ${analysis}` }], details: { path: filePath } };
 		},
 	});
@@ -825,7 +844,12 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				ctx.ui.notify(`xmodel: file not found: ${filePath}`, "error");
 				return;
 			}
-			const analysis = await analyzeImageFile(ctx, filePath);
+			// Main model already sees images — no handoff needed; just show it inline.
+			if (isVisionCapable(ctx.model)) {
+				ctx.ui.notify(`xmodel: current model (${fmt(ctx.model)}) is vision-capable — it sees images directly, no handoff. Use \`read\` to display it.`, "info");
+				return;
+			}
+			const analysis = await analyzeImageFile(ctx, filePath, ctx.signal);
 			ctx.ui.notify(`xmodel /readimg → ${analysis}`, "info");
 		},
 	});
@@ -915,7 +939,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 		// delegate: compress → VLM (own context) → replace image with text analysis
 		try {
-			return await delegateVision(ctx, event, images);
+			return await delegateVision(ctx, event, images, ctx.signal);
 		} catch (e) {
 			debug("delegateVision threw", { err: String(e) });
 			ctx.ui.notify(`xmodel: vision delegate failed (${String(e)}) — leaving image as-is`, "warning");
@@ -1101,19 +1125,24 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	/** Build a small task brief: the CURRENT main model writes a focused query for the VLM.
 	 *  Defaults to the active model (it understands the task best and is reliable);
 	 *  _vision.compressor overrides. Returns null if no model or it failed/timed out. */
-	async function buildBrief(ctx: ExtensionContext, cfg: VisionConfig): Promise<string | null> {
+	async function buildBrief(ctx: ExtensionContext, cfg: VisionConfig, signal?: AbortSignal): Promise<{ text: string; timedOut: boolean; aborted: boolean } | null> {
 		const compressor = cfg.compressor ?? (ctx.model ? `${(ctx.model as any).provider}/${(ctx.model as any).id}` : undefined);
 		if (!compressor) return null;
 		const raw = gatherRecentContext(ctx, cfg.maxBriefChars * 4);
 		debug("buildBrief", { compressor, rawLen: raw.length });
-		const brief = await runChildPi({
+		const res = await runChildPi({
 			model: compressor,
 			systemPrompt: VISION_BRIEF_SYS,
 			prompt: `Char budget: ${cfg.maxBriefChars}. Write the vision query for the conversation below.\n\n---\n${raw}\n---`,
 			timeoutMs: COMPRESSOR_TIMEOUT_MS,
+			signal,
+			thinkingLevel: cfg.thinkingLevel,
 		});
-		if (!brief) { debug("buildBrief failed/timeout → abort", { compressor }); return null; }
-		return brief.slice(0, cfg.maxBriefChars * 2);
+		if (!res.text) {
+			debug("buildBrief failed/timeout → abort", { compressor, timedOut: res.timedOut, aborted: res.aborted });
+			return { text: "", timedOut: res.timedOut, aborted: res.aborted };
+		}
+		return { text: res.text.slice(0, cfg.maxBriefChars * 2), timedOut: res.timedOut, aborted: res.aborted };
 	}
 
 	/** Forensic log — ALWAYS on (image-data debugging for MCP path). */
@@ -1202,7 +1231,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	 * compress → [brief + image] → VLM → analysis text. Returns replacement tool_result content.
 	 * The main model never switches; it only ever sees the VLM's text analysis.
 	 */
-	async function delegateVision(ctx: ExtensionContext, event: any, images: any[]): Promise<{ content: any[] } | undefined> {
+	async function delegateVision(ctx: ExtensionContext, event: any, images: any[], signal?: AbortSignal): Promise<{ content: any[] } | undefined> {
 		const vlm = resolveVlm(ctx);
 		if (!vlm) {
 			ctx.ui.notify("xmodel: image present but no vision model configured (set _vision.vlm)", "warning");
@@ -1211,16 +1240,28 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", `👁 vision delegate → ${vlm}`));
 		ctx.ui.notify(`xmodel: vision delegate → compressing context + ${vlm} …`, "info");
 
-		const brief = await buildBrief(ctx, visionCfg);
-		if (brief === null) {
-			const reason = !visionCfg.compressor ? "no _vision.compressor set" : "compressor timed out / failed";
+		const brief = await buildBrief(ctx, visionCfg, signal);
+		if (brief === null || !brief.text) {
+			const reason = !visionCfg.compressor
+				? "no _vision.compressor set"
+				: brief?.timedOut
+					? "compressor TIMED OUT"
+					: brief?.aborted
+						? "cancelled (Esc)"
+						: "compressor failed / returned nothing";
 			ctx.ui.setStatus("xmodel-vision", undefined);
-			ctx.ui.notify(`xmodel: vision delegate aborted (${reason}) — leaving image as-is`, "warning");
+			ctx.ui.notify(
+				brief?.timedOut
+					? `xmodel: vision delegate ABORTED — compressor timed out after ${COMPRESSOR_TIMEOUT_MS / 1000}s. Image left as-is.`
+					: `xmodel: vision delegate aborted (${reason}) — leaving image as-is`,
+				brief?.timedOut ? "error" : "warning",
+			);
 			return undefined;
 		}
-		debug("delegateVision", { vlm, compressor: visionCfg.compressor, briefLen: brief.length, images: images.length });
+		debug("delegateVision", { vlm, compressor: visionCfg.compressor, briefLen: brief.text.length, images: images.length });
 
 		const analyses: string[] = [];
+		let anyTimeout = false;
 		for (const img of images) {
 			let tmp: string | undefined;
 			try {
@@ -1233,16 +1274,26 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					continue;
 				}
 				let analysis = "";
+				let timedOut = false;
 				for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
-					analysis = await runChildPi({
+					const res = await runChildPi({
 						model: vlm,
 						systemPrompt: VISION_VLM_SYS,
-						prompt: `Task brief:\n${brief}\n\nAnalyze the attached image in service of this task and report concrete findings. If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+						prompt: `Task brief:\n${brief.text}\n\nAnalyze the attached image in service of this task and report concrete findings. If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
 						imageFile: tmp,
+						signal,
+						thinkingLevel: visionCfg.thinkingLevel,
 					});
+					analysis = res.text;
+					if (res.timedOut) { timedOut = true; anyTimeout = true; break; }
+					if (res.aborted) { break; }
 				}
 				if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
-				analyses.push(analysis || "(vision model returned no usable analysis — image may not have been received)");
+				analyses.push(
+					timedOut
+						? `(xmodel: vision model ${vlm} TIMED OUT after ${VLM_TIMEOUT_MS / 1000}s — image not analysed)`
+						: analysis || "(vision model returned no usable analysis — image may not have been received)",
+				);
 			} finally {
 				if (tmp) {
 					try { unlinkSync(tmp); } catch {}
@@ -1273,41 +1324,67 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			newContent.push({ type: "text", text: `[xmodel vision · ${vlm}]: ${analyses[idx++]}` });
 		}
 		ctx.ui.setStatus("xmodel-vision", undefined);
-		ctx.ui.notify(`xmodel: vision delegate done (${images.length} img → ${vlm})`, "info");
+		if (anyTimeout) {
+			ctx.ui.notify(`xmodel: vision delegate PARTIAL — one or more images timed out (${vlm})`, "error");
+		} else {
+			ctx.ui.notify(`xmodel: vision delegate done (${images.length} img → ${vlm})`, "info");
+		}
 		return { content: newContent };
 	}
 
 	/**
-	 * Analyze a single image file with the VLM and return the text analysis.
+	 * Analyze a single image file and return the text analysis.
 	 * Used by the explicit `read_image` tool and `/readimg` command — the opt-in
-	 * "understand" path. Runs the VLM in a child pi with the file attached, so it
-	 * works regardless of the main model's vision capability. Returns the analysis
-	 * text, or a fallback message on any failure.
+	 * "understand" path.
+	 *
+	 * When the CURRENT main model is vision-capable, it sees the image directly —
+	 * no handoff, no child-pi VLM. The image block is returned inline so the main
+	 * model analyses it itself. Only when the main model is NOT vision-capable do we
+	 * spawn a child VLM with the file attached.
+	 * Returns the analysis text, or a fallback message on any failure.
 	 */
-	async function analyzeImageFile(ctx: ExtensionContext, filePath: string): Promise<string> {
+	async function analyzeImageFile(ctx: ExtensionContext, filePath: string, signal?: AbortSignal): Promise<string> {
+		if (!existsSync(filePath)) return `(xmodel: file not found: ${filePath})`;
+		const buf = readFileSync(filePath);
+		if (!isValidImage(buf)) return `(xmodel: ${filePath} is not a valid image)`;
+
+		// #1 — main model sees images natively: no handoff. Return the image block so
+		// the caller embeds it inline; the main model analyses it directly.
+		if (isVisionCapable(ctx.model)) {
+			debug("analyzeImageFile: main model is vision-capable — no handoff", { filePath, model: fmt(ctx.model) });
+			return "__VISION_CAPABLE__";
+		}
+
 		const vlm = resolveVlm(ctx);
 		if (!vlm) {
 			ctx.ui.notify("xmodel: no vision model configured (set _vision.vlm)", "warning");
 			return "(xmodel: no vision model configured — set _vision.vlm to enable image understanding)";
 		}
-		if (!existsSync(filePath)) return `(xmodel: file not found: ${filePath})`;
-		const buf = readFileSync(filePath);
-		if (!isValidImage(buf)) return `(xmodel: ${filePath} is not a valid image)`;
 		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", `👁 ${vlm}`));
 		ctx.ui.notify(`xmodel: analyzing ${filePath} with ${vlm} …`, "info");
 		let analysis = "";
+		let timedOut = false;
 		try {
 			for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
-				analysis = await runChildPi({
+				const res = await runChildPi({
 					model: vlm,
 					systemPrompt: VISION_VLM_SYS,
 					prompt: `Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
 					imageFile: filePath,
+					signal,
+					thinkingLevel: visionCfg.thinkingLevel,
 				});
+				analysis = res.text;
+				if (res.timedOut) { timedOut = true; break; }
+				if (res.aborted) break;
 			}
 			if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
 		} finally {
 			ctx.ui.setStatus("xmodel-vision", undefined);
+		}
+		if (timedOut) {
+			ctx.ui.notify(`xmodel: vision model ${vlm} TIMED OUT after ${VLM_TIMEOUT_MS / 1000}s — could not analyse ${filePath}`, "error");
+			return `(xmodel: vision model ${vlm} TIMED OUT after ${VLM_TIMEOUT_MS / 1000}s — image not analysed)`;
 		}
 		return analysis || `(xmodel: vision model returned no usable analysis for ${filePath})`;
 	}
@@ -1321,7 +1398,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	async function humanVision(ctx: ExtensionContext, event: any, images: any[]): Promise<{ content: any[] } | undefined> {
 		if (ctx.mode !== "tui") {
 			ctx.ui.notify("xmodel: human vision mode requires interactive TUI — falling back to delegate", "warning");
-			return delegateVision(ctx, event, images);
+			return delegateVision(ctx, event, images, ctx.signal);
 		}
 		const img = images[0];
 		const promptText = (textOf(event.content).slice(0, 200) || "Describe this image").replace(/\n/g, " ");

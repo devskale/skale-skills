@@ -11,7 +11,7 @@ Lives at `~/.pi/agent/extensions/xmodel.ts` (symlinked into the skale-skills rep
 |---|---|
 | `/xm <name>` | Switch to preset `<name>` (sets model + thinking level) |
 | `/xm` | Picker — switch preset (or `(off)`) |
-| `/xm settings` | **Vision hub** — pi-style settings list for the vision pipeline (mode, vlm, compressor, brief) with global/project scope |
+| `/xm settings` | **Vision hub** — pi-style settings list for the vision pipeline (mode, vlm, compressor, brief, thinking) with global/project scope |
 | `/xm vision [mode] [global\|project]` | Show, or set, the vision mode (`delegate` \| `view` \| `switch` \| `human` \| `off`) |
 | `/readimg <file>` | **Understand an image** — run the VLM on a file and return the analysis. No args = help; `/readimg settings` = vision hub. |
 | `/xm edit [name]` | Add/edit a preset (provider, model, thinking, instructions) |
@@ -101,7 +101,8 @@ analysis. So it costs you nothing on the model side; you just also get to look a
     "vlm": "opencode/claude-sonnet-4-6",   // optional; auto-picks if unset
     "compressor": "zai/glm-5.2",           // optional; uses active model if unset
     "maxBriefChars": 1500,
-    "keepImage": true            // delegate mode: also show the image inline (see above)
+    "keepImage": true,            // delegate mode: also show the image inline (see above)
+    "thinkingLevel": "low"       // optional; vision sub-call + compressor thinking (off..xhigh). default = child model's own default
   }
 }
 ```
