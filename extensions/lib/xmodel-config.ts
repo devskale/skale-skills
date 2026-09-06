@@ -50,6 +50,10 @@ export interface VisionConfig {
 	 *  human can see it. The non-vision main model still only receives the text analysis —
 	 *  pi-ai's `downgradeUnsupportedImages` strips image parts it can't process at send time. */
 	keepImage?: boolean;
+	/** Optional thinking level for the vision sub-call (VLM) and compressor child-pi runs.
+	 *  off | minimal | low | medium | high | xhigh. Defaults to the child model's own default
+	 *  (no --thinking flag) when unset. */
+	thinkingLevel?: ThinkingLevel;
 }
 
 export function defaultVision(): VisionConfig {
