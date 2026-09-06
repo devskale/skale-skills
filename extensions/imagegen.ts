@@ -38,6 +38,21 @@ import { Container, Image, Spacer, Text, type Component } from "@earendil-works/
 import { Type } from "typebox";
 import { guessMime, isVisionCapable } from "./lib/image-utils";
 
+// ctx.sessionManager is typed as ReadonlySessionManager (read-only surface), but at
+// runtime it IS the full SessionManager — which exposes appendCustomMessageEntry for
+// writing inline custom entries. Cast to the write-capable subset to use it.
+interface WritableSessionManager {
+	appendCustomMessageEntry<T = unknown>(
+		customType: string,
+		content: string | Array<{ type: string; text?: string; data?: string; mimeType?: string }>,
+		display: boolean,
+		details?: T,
+	): string;
+}
+function writeEntry(ctx: ExtensionContext, ...args: Parameters<WritableSessionManager["appendCustomMessageEntry"]>) {
+	return (ctx.sessionManager as unknown as WritableSessionManager).appendCustomMessageEntry(...args);
+}
+
 // execFile (no shell) promisified — used for credgoo + chafa so the event loop
 // never blocks on a slow child process. Args are passed as arrays (no shell
 // interpolation), which also removes any filename-injection surface.
@@ -592,7 +607,7 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 interface GenerateOnceOpts {
 	provider: string;
 	modelId: string;
-	key: string;
+	key: string | null;
 	prompt: string;
 	size: string;
 	n: number;
@@ -738,10 +753,10 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		async execute(_toolCallId, params, _signal, onUpdate, ctx) {
 			const prompt = (params.prompt || "").trim();
 			if (!prompt) {
-				return { content: [{ type: "text" as const, text: "Error: prompt is required." }], isError: true };
+				return { content: [{ type: "text" as const, text: "Error: prompt is required." }], isError: true, details: { error: "prompt required" } };
 			}
 
-			onUpdate?.({ content: [{ type: "text", text: "Generating…" }] });
+			onUpdate?.({ content: [{ type: "text", text: "Generating…" }], details: undefined });
 			const res = await generateAndSave({
 				prompt,
 				model: params.model,
@@ -755,7 +770,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 				const creditNote = res.creditExhausted
 					? ` — ${res.suggested ? `model is out of credits; ${res.suggested}` : "model is out of credits; ask the user which model to switch to"}`
 					: "";
-				return { content: [{ type: "text" as const, text: `Error: ${res.error}${creditNote}` }], isError: true };
+				return { content: [{ type: "text" as const, text: `Error: ${res.error}${creditNote}` }], isError: true, details: { error: res.error } };
 			}
 
 			const { saved, provider, modelId, size, fellBack, fromModel } = res;
@@ -794,7 +809,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			const details = (
 				result as { details?: { provider?: string; model?: string; size?: string; paths?: string[]; fellBack?: boolean; fromModel?: string } }
 			).details;
-			if (result.isError || !details) {
+			if ((result as { isError?: boolean }).isError || !details) {
 				const txt = result.content?.[0] && "text" in result.content[0] ? result.content[0].text : "error";
 				return new Text(theme.fg("error", `✗ ${txt}`), 0, 0);
 			}
@@ -863,7 +878,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			"Current default model: " + effective,
 			"  (set via settings menu, or auto-healed to the last working model)",
 		].join("\n");
-		ctx.sessionManager.appendCustomMessageEntry(IMAGEGEN_HELP_MSG, [{ type: "text", text: lines }] as any, true, { lines });
+		writeEntry(ctx, IMAGEGEN_HELP_MSG, [{ type: "text", text: lines }] as any, true, { lines });
 	}
 
 	/** Interactive settings menu: pick default model/size/count from the live list. */
@@ -996,7 +1011,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 						if (retry.ok) {
 							const { saved, provider: p, modelId: m2, size: sz2 } = retry;
 							const lines = saved.map((s) => `  • ${s.webUrl ?? s.path}`).join("\n");
-							ctx.sessionManager.appendCustomMessageEntry(IMAGEGEN_MSG, [
+							writeEntry(ctx, IMAGEGEN_MSG, [
 								{ type: "text", text: `Generated ${saved.length} image${saved.length > 1 ? "s" : ""} via ${p}@${m2} (${sz2}):\n${lines}` },
 								...saved.map((s): ImageBlock => ({ type: "image", data: s.b64, mimeType: s.mime })),
 							] as any, true, {
@@ -1026,7 +1041,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			{ type: "text", text: summary },
 			...saved.map((s): ImageBlock => ({ type: "image", data: s.b64, mimeType: s.mime })),
 		];
-		ctx.sessionManager.appendCustomMessageEntry(IMAGEGEN_MSG, content as any, true, {
+		writeEntry(ctx, IMAGEGEN_MSG, content as any, true, {
 			provider,
 			model: modelId,
 			size: sz,

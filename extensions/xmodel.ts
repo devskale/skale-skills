@@ -119,7 +119,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	let lastFallbackAt = 0;
 	const FALLBACK_COOLDOWN_MS = 30_000;
 
-	const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
+	const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 	const NEW = "✚  New preset";
 	const KEEP = "—  keep current";
 
@@ -794,9 +794,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			// immediately via _onUpdate, then run the VLM and return the analysis.
 			const img = readImageFileBlock(filePath);
 			if (img) {
-				_onUpdate?.({ content: [img] });
+				_onUpdate?.({ content: [img], details: undefined });
 			} else {
-				_onUpdate?.({ content: [{ type: "text", text: `(xmodel: no image block for ${filePath})` }] });
+				_onUpdate?.({ content: [{ type: "text", text: `(xmodel: no image block for ${filePath})` }], details: undefined });
 			}
 			const analysis = await analyzeImageFile(ctx, filePath, signal);
 			// Main model is vision-capable: return the image block inline so the main
@@ -1175,11 +1175,10 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			}
 			// Open in browser (macOS `open`). Best-effort — don't fail if no opener.
 			const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-			if (opener === "start") {
-				execFile("cmd", ["/c", "start", "", url]).catch(() => {});
-			} else {
-				execFile(opener, [url]).catch(() => {});
-			}
+			// execFile returns a ChildProcess (no .catch()). Use the callback form to
+			// swallow open failures without crashing on the missing opener.
+			const args = opener === "start" ? ["/c", "start", "", url] : [url];
+			execFile(opener, args, () => {});
 			return url;
 		} catch (e) {
 			debug("throwayOpenImage failed", { err: String(e) });
