@@ -16,7 +16,7 @@ Ratings (which sites actually helped) live OUTSIDE this file, in
 | [rareui.com](https://rareui.com) | Rare animated React components, one file each, shadcn-CLI installable |
 | [ui.shadcn.com](https://ui.shadcn.com) | shadcn/ui — accessible React+Tailwind components, the default reference for shadcn stacks |
 | [reui.io/components](https://reui.io/components) | Tailwind/React component registry, shadcn-style (unverified) |
-| [opensourceui.in](https://opensourceui.in) | Free MIT copy-paste library of 170 production-ready React/Next.js components — TypeScript + Tailwind v4, live previews |
+| [opensourceui.in](https://opensourceui.in) | Free MIT copy-paste library — 200+ production-ready React/Next.js components across 30 categories (audio, notifications, widgets, tables, socials, pricing, forms, mockups…), TypeScript + Tailwind v4, live previews + copy-to-clipboard source |
 
 ## Craft, motion & taste
 
