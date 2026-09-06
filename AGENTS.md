@@ -176,6 +176,12 @@ bash tests/viewimg/test.sh
 
 Always run the relevant test after modifying a skill.
 
+**Extensions** — run the quick lint/typecheck gate after touching `extensions/*.ts`:
+
+```bash
+bash scripts/lint.sh     # tsc --noEmit + Biome lint (scoped to extensions/)
+```
+
 **Test cadence:** run **focused** tests during development (exercise only the command/section you changed — a standalone snippet or a single feature), and run the **full regression suite** before release (i.e. right before a version bump + ship). Don't loop the whole suite on every edit.
 
 ## Development Workflow

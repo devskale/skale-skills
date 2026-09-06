@@ -151,8 +151,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		const avail = (ctx.modelRegistry as any).getAvailable() as Array<{ provider: string; id: string }>;
 		const m = new Map<string, string[]>();
 		for (const x of avail ?? []) {
-			if (!m.has(x.provider)) m.set(x.provider, []);
-			m.get(x.provider)!.push(x.id);
+			const ids = m.get(x.provider) ?? [];
+			if (!m.has(x.provider)) m.set(x.provider, ids);
+			ids.push(x.id);
 		}
 		for (const ids of m.values()) ids.sort();
 		return m;
@@ -334,7 +335,6 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					draft.instructions ?? "",
 				);
 				draft.instructions = edited?.trim() ? edited.trim() : undefined;
-				continue;
 			}
 		}
 
@@ -1156,7 +1156,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	 * Upload an image file to throway and open the resulting URL in the browser.
 	 * Returns the URL, or null on failure. Zero-token (no VLM) — pure display.
 	 */
-	async function throwayOpenImage(ctx: ExtensionContext, filePath: string): Promise<string | null> {
+	async function throwayOpenImage(_ctx: ExtensionContext, filePath: string): Promise<string | null> {
 		const THROWAWAY = "https://lubu.skale.dev/throway";
 		try {
 			const name = basename(filePath);

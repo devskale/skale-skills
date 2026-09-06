@@ -66,7 +66,7 @@ const PROXY_BASE =
 // Default model per provider. pollinations@dreamshaper is the cheapest
 // pollinations model (~0.0001 pollen vs flux's 0.0020); tu@z-image-turbo is
 // TU's only model. Override with IMAGEGEN_MODEL (a full provider@modelid).
-const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "pollinations@dreamshaper";
+const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "tu@z-image-turbo";
 const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "512x512";
 const ASCII_COLS = 64;
 const ASCII_ROWS = 22;
@@ -161,7 +161,7 @@ function parseCost(error: string): number | undefined {
 	const m = /costs?\s+~?([0-9.]+)\s+pollen/i.exec(error);
 	if (!m) return undefined;
 	const c = parseFloat(m[1]);
-	return isFinite(c) ? c : undefined;
+	return Number.isFinite(c) ? c : undefined;
 }
 
 /**
@@ -521,6 +521,68 @@ function isCreditExhausted(error: string): boolean {
 }
 
 /**
+ * pollinations-free — direct fallback to pollinations' own public image API.
+ *
+ * The uniinfer relay bills pollinations behind its own "pollen" meter, and when
+ * the relay account's balance is 0 every pollinations image model 402s. But
+ * pollinations' own API (image.pollinations.ai) is free and needs NO key. When
+ * the relay is credit-exhausted for pollinations, we route around it to the
+ * direct endpoint instead of failing. Returns saved images (same ImageItem
+ * shape as the relay path) or an error.
+ */
+async function generatePollinationsFree(opts: GenerateOnceOpts): Promise<GenResult> {
+	const { modelId, prompt, size, n, seed, signal, cwd } = opts;
+	const [w, h] = size.split("x").map((s) => parseInt(s, 10));
+	const width = Number.isFinite(w) ? w : 512;
+	const height = Number.isFinite(h) ? h : 512;
+
+	// The direct API is one image per request; loop for n, each with a distinct
+	// seed so variants differ (seed ? seed+i : random).
+	try {
+		const { dir, webUrl } = outputDir(cwd);
+		fs.mkdirSync(dir, { recursive: true });
+		const ts = Date.now();
+		const saved: ImageItem[] = [];
+		for (let i = 0; i < n; i++) {
+			const s = seed != null ? seed + i : Math.floor(Math.random() * 1_000_000);
+			const params = new URLSearchParams({
+				width: String(width),
+				height: String(height),
+				model: modelId,
+				seed: String(s),
+				nologo: "true",
+			});
+			const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params}`;
+			const resp = await fetch(url, { signal });
+			if (!resp.ok) {
+				const detail = await resp.text().catch(() => "");
+				return { ok: false, error: `pollinations-free returned ${resp.status} ${resp.statusText}${detail ? ` — ${detail}` : ""}` };
+			}
+			const rawBuf = Buffer.from(await resp.arrayBuffer());
+			const mime = guessMime(rawBuf.toString("base64"));
+			const ext = mime === "image/jpeg" ? "jpg" : mime.split("/")[1] || "png";
+			const file = n === 1 ? `generated-${ts}.${ext}` : `generated-${ts}-${i}.${ext}`;
+			const abs = path.resolve(dir, file);
+			const { buf: writtenBuf, sidecar } = embedMetadata(rawBuf, mime, {
+				prompt,
+				model: `pollinations@${modelId}`,
+				size: `${width}x${height}`,
+				seed: s,
+				n: 1,
+			});
+			fs.writeFileSync(abs, writtenBuf);
+			if (sidecar) fs.writeFileSync(`${abs}.txt`, sidecar);
+			saved.push({ b64: rawBuf.toString("base64"), mime, path: abs, webUrl: webUrl ? `/uploads/${file}` : undefined });
+		}
+		if (!saved.length) return { ok: false, error: "no images returned" };
+		return { ok: true, saved, provider: "pollinations", modelId, size: `${width}x${height}` };
+	} catch (e) {
+		const msg = e instanceof Error ? e.message : String(e);
+		return { ok: false, error: `pollinations-free request failed — ${msg}` };
+	}
+}
+
+/**
  * Build a "switch model" suggestion from the provider's other image models.
  * Returns a short hint like "try pollinations@flux or pollinations@zimage".
  */
@@ -592,13 +654,71 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 		} else if (isModelUnavailable(attempt.error)) {
 			if (candidate === modelId) fellBack = true; // requested model is gone — probe onward
 		} else if (candidate === modelId) {
-			return attempt; // non-402, non-unavailable failure of the requested model: don't mask it
+			// Non-402, non-unavailable failure of the requested model: for
+			// pollinations, still try the free direct API before calling it
+			// terminal (the relay's pollinations tier is billed AND flaky — 402
+			// credit-exhausted or 502 upstream); for other providers it's terminal.
+			if (provider !== "pollinations") return attempt;
 		}
 		lastError = attempt.error;
+
+		// pollinations-free: pollinations' own public API is free and keyless,
+		// but the uniinfer relay bills it behind its own pollen meter (402 when
+		// the relay balance is 0) and its upstream can 502. When the relay
+		// fails for a pollinations model for ANY reason, route around the relay
+		// to the direct endpoint instead of giving up.
+		if (provider === "pollinations") {
+			const direct = await generatePollinationsFree({
+				provider,
+				modelId: candidate,
+				key: null,
+				prompt: opts.prompt,
+				size,
+				n,
+				seed: opts.seed,
+				signal: opts.signal,
+				cwd: opts.cwd,
+			});
+			if (direct.ok) {
+				rememberLastGood(provider, candidate);
+				if (fellBack) {
+					direct.fellBack = true;
+					direct.fromModel = modelId;
+				}
+				return direct;
+			}
+			lastError = direct.error;
+		}
 	}
 	// Terminal failure. If the requested model is out of credits (or every
 	// fallback was), return a structured error the caller can use to offer a
 	// switch to another model rather than a bare "generation failed".
+	//
+	// Emergency pollinations-free: if the primary provider is a relay provider
+	// (tu, unii, etc.) and ALL its candidates failed (credit-exhausted, 502, or
+	// outright down), fall back to pollinations' own free, keyless public API
+	// as a last resort so generation still succeeds even when the relay is
+	// completely unusable. This only fires after the provider's own fallback
+	// loop is exhausted.
+	if (provider !== "pollinations" && lastError) {
+		const direct = await generatePollinationsFree({
+			provider,
+			modelId,
+			key: null,
+			prompt: opts.prompt,
+			size,
+			n,
+			seed: opts.seed,
+			signal: opts.signal,
+			cwd: opts.cwd,
+		});
+		if (direct.ok) {
+			direct.fellBack = true;
+			direct.fromModel = model;
+			return direct;
+		}
+		lastError = direct.error;
+	}
 	const creditExhausted = lastError ? isCreditExhausted(lastError) : false;
 	const suggested = creditExhausted ? await suggestSwitch(provider, modelId) : "";
 	return { ok: false, error: lastError ?? "generation failed", creditExhausted, suggested };
@@ -1076,7 +1196,9 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 					c.addChild(new Spacer(1));
 				} else if (ln.startsWith("🖼")) {
 					c.addChild(new Text(theme.fg("accent", ln), 0, 0));
-				} else if (/^  \/|^  --|^  -m|^  -s|^  -n|^  --seed/.test(ln)) {
+				} else if ( // biome-ignore lint/complexity/noAdjacentSpacesInRegex: leading 2-space indent is meaningful
+					/^  \/|^  --|^  -m|^  -s|^  -n|^  --seed/.test(ln)
+				) {
 					c.addChild(new Text(theme.fg("muted", ln), 0, 0));
 				} else if (/^Current|^Settings|^Usage|^Flags/.test(ln)) {
 					c.addChild(new Text(theme.fg("success", ln), 0, 0));
