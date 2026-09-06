@@ -383,6 +383,32 @@ else
 fi
 ```
 
+### Linting & Typechecking (extensions)
+
+Run the repo's quick check on `extensions/*.ts` before shipping changes:
+
+```bash
+bash scripts/lint.sh            # typecheck + Biome lint
+bash scripts/lint.sh --fix      # + Biome safe auto-fixes
+bash scripts/lint.sh --type     # typecheck only
+bash scripts/lint.sh --lint     # Biome lint only
+# or: npm run lint / lint:fix / typecheck
+```
+
+- **Two gates:** `tsc --noEmit` (strict, resolves `@earendil-works/*` types) + Biome
+  lint (`biome check`, scoped to `extensions/`).
+- **Self-healing toolchain:** deps install into `~/.cache/skale-skills/lint/`
+  (NOT the repo) because pi's package update runs `git clean -fdx` and wipes any
+  in-repo `node_modules/`. Same pattern as `UV_PROJECT_ENVIRONMENT` for skills.
+- **Type symlinks:** `scripts/lint.sh` recreates the `node_modules/@earendil-works/*`
+  symlinks (→ the pi install) and a local `tsconfig.json` if missing. Both are
+  gitignored / generated, so never commit them.
+- **Biome config** (`biome.json`) is tuned: correctness rules (`noUnusedImports`,
+  `noUnusedFunctionParameters`, `noUnusedVariables`) are hard errors; noisy style
+  (`noExplicitAny`, `useTemplate`, `useOptionalChain`, import sorting) is off so
+  the check stays a fast correctness gate, not a reformatter.
+- **Exit code** is non-zero on any error — use it in CI or a pre-push hook.
+
 ### Error Detection (fetch-url lesson)
 
 When building content validation:

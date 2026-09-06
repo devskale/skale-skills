@@ -22,7 +22,7 @@
  *   XMODEL_NO_GEN=1    — skip image generation (use an existing XMODEL_TEST_IMG)
  */
 import { spawn } from "node:child_process";
-import { writeFileSync, existsSync, unlinkSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const COMPRESSOR = process.env.XMODEL_COMPRESSOR ?? "zai/glm-5.2";

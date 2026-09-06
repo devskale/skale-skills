@@ -4,6 +4,11 @@
   "keywords": [
     "pi-package"
   ],
+  "scripts": {
+    "lint": "bash scripts/lint.sh",
+    "lint:fix": "bash scripts/lint.sh --fix",
+    "typecheck": "bash scripts/lint.sh --type"
+  },
   "pi": {
     "extensions": [
       "./extensions/*.ts"

@@ -9,7 +9,7 @@ Pi extension with two entry points, both backed by one shared core (`generateAnd
 - **`/imagegen` command** (alias `/img`) — direct, no-LLM generation:
   ```
   /imagegen a red cube on white --model tu@z-image-turbo --size 512x512
-  /img a fox logo, flat vector            # alias; default model pollinations@dreamshaper
+  /img a fox logo, flat vector            # alias; default model tu@z-image-turbo
   /imagegen                               # no args → usage/help panel
   /imagegen settings                      # interactive menu: default model/size/count
   ```
@@ -126,7 +126,7 @@ pi.registerTool({
   name: "generate_image",
   parameters: Type.Object({
     prompt: Type.String(),
-    model:  Type.Optional(Type.String()),  // "pollinations@dreamshaper" (default)
+    model:  Type.Optional(Type.String()),  // "tu@z-image-turbo" (default)
     size:   Type.Optional(Type.String()),  // "512x512" (default)
     n:      Type.Optional(Type.Number()),  // 1–4
     seed:   Type.Optional(Type.Number()),
@@ -166,7 +166,7 @@ cat <file>.txt                 # sidecar (WebP/GIF/BMP)
 
 | Param | Default | Reason |
 |---|---|---|
-| `model` | `pollinations@dreamshaper` | ~0.0001 pollen → cheapest iteration (flux is 0.0020) |
+| `model` | `tu@z-image-turbo` | relay quality model — real model selection, high quality (pollinations free tier ignores `model` and is a last-resort fallback) |
 | `size` | `512x512` | compact, broadly supported (512–640px range keeps files small) |
 | output dir | `~/.cache/generated/` (or `./uploads/` if present in cwd for πui web URLs; `./generated/` elsewhere) | XDG-standard home (`$XDG_CACHE_HOME/generated`) for generated images; override with `IMAGEGEN_OUTPUT_DIR` |
 
@@ -201,9 +201,37 @@ On a **402 insufficient balance** or a **400 model-unavailable** (renamed/remove
 the extension falls back through the provider's other available models
 automatically instead of failing hard — and the winning model becomes the new
 remembered default, so the next call self-heals. The static `DEFAULT_MODEL`
-(`pollinations@dreamshaper`) is only the initial seed; it's overridden by
+(`tu@z-image-turbo`) is only the initial seed; it's overridden by
 learned state after the first success. Other failures (auth, network, timeout)
 of the requested model are surfaced as-is, not masked.
+
+### pollinations-free (direct API fallback)
+
+The uniinfer relay bills pollinations behind its own "pollen" meter. When the
+relay account's balance is 0, **every** pollinations image model 402s
+("Insufficient balance") — even though pollinations' own API is free and
+keyless. To keep `pollinations@*` usable without relay credits, the extension
+has a **pollinations-free** path: on a 402 for a pollinations model, it routes
+around the relay to pollinations' own public endpoint
+(`https://image.pollinations.ai/prompt/<prompt>?width=&height=&model=&seed=&nologo=true`)
+and generates directly — no key, no pollen balance required.
+
+- Trigger: provider is `pollinations` **and** the relay call failed (credit-exhausted
+  402, or any other relay/upstream error such as a 502). The point is to route
+  pollinations around the billed *and* flaky relay entirely.
+- **Emergency cross-provider fallback:** when the primary provider is a relay
+  provider (`tu`, `unii`, …) and **all** its candidates fail (relay down,
+  credit-exhausted, 502), pollinations-free also fires as a last resort so
+  generation still succeeds even with the relay completely unusable.
+- Behavior: the direct call reuses the same model id, size, n, and seed; `n>1`
+  loops with distinct seeds so variants differ. Images go through the same
+  save/metadata/ASCII pipeline, so they're indistinguishable from relay output.
+  (Note: the free tier ignores the `model` param and serves a single default
+  model — acceptable as an emergency fallback, not for quality work.)
+- Success is remembered as the provider's last-good default, so subsequent
+  calls self-heal straight to the direct path.
+- If the direct API also fails, its error is recorded and fallback continues
+  (or surfaces) normally.
 
 ---
 
