@@ -145,6 +145,26 @@ def read_first_line(path: Path) -> str:
     return ""
 
 
+def read_code_description(path: Path) -> str:
+    """First meaningful line from a source file's leading block comment.
+
+    Unlike :func:`read_first_line` (markdown), this skips the JSDoc opener
+    (``/**``) and star-prefixed blank lines so extensions don't index as ``/**``.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return ""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped in ("/**", "*/") or stripped == "*":
+            continue
+        desc = stripped.lstrip("* ").strip()
+        if desc and not desc.startswith("/*"):
+            return desc
+    return ""
+
+
 def truncate(text: str, length: int = 100) -> str:
     text = text.strip()
     if len(text) > length:
@@ -295,10 +315,10 @@ def scan_package_resources(project_dir: str) -> tuple[list[tuple], list[tuple], 
         if ext_dir.is_dir():
             for ext_entry in ext_dir.iterdir():
                 if ext_entry.is_file() and ext_entry.suffix == ".ts":
-                    desc = truncate(read_first_line(ext_entry))
+                    desc = truncate(read_code_description(ext_entry))
                     extensions.append((ext_entry.stem, desc, pkg_entry.name))
                 elif ext_entry.is_dir() and (ext_entry / "index.ts").is_file():
-                    desc = truncate(read_first_line(ext_entry / "index.ts"))
+                    desc = truncate(read_code_description(ext_entry / "index.ts"))
                     extensions.append((ext_entry.name, desc, pkg_entry.name))
 
         # Prompts
@@ -586,13 +606,25 @@ def render_index(
     lines.append("")
     if global_packages:
         for pkg in global_packages:
+            # Dict entries (git/local package sources) get a readable label
+            # instead of a raw Python dict repr.
+            if isinstance(pkg, dict):
+                src = pkg.get("source", "?")
+                parts = []
+                if pkg.get("skills"):
+                    parts.append(f"{len(pkg['skills'])} skills")
+                if pkg.get("extensions"):
+                    parts.append(f"{len(pkg['extensions'])} extensions")
+                label = f"{src} ({', '.join(parts)})" if parts else src
+            else:
+                label = str(pkg)
             # Enrich with notable card if available
             pkg_name_str = pkg_name(pkg)
             notable = next((n for n in notables if n.name == pkg_name_str), None)
             if notable:
-                lines.append(f"- `{pkg}` — {notable.description}")
+                lines.append(f"- `{label}` — {notable.description}")
             else:
-                lines.append(f"- `{pkg}`")
+                lines.append(f"- `{label}`")
     else:
         lines.append("_None._")
     lines.append("")
