@@ -56,7 +56,7 @@ date: 2026-06-05
 
 ### What Are Your ACTUAL Options? (Honest List, 2026)
 
-> ⚠️ **Current Chrome stable: v149** (June 2026). The Chrome 136+ restriction on `--remote-debugging-port` is **still in effect** — there's no workaround on the default profile. The old `chrome --remote-debugging-port=9222` against your daily Chrome **silently fails** (port never opens).
+> ⚠️ The Chrome 136+ restriction on `--remote-debugging-port` (in effect since March 2025) has no workaround on the default profile. The old `chrome --remote-debugging-port=9222` against your daily Chrome **silently fails** (port never opens). Verify your current Chrome version at `chrome://version`.
 
 Given the Chrome 136+ breaking change and the limitations of each tool, here are your **realistic** options for connecting to a browser that has your sessions:
 

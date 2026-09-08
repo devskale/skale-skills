@@ -7,14 +7,22 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 
 | Skill | Command | Tests | What |
 |-------|---------|-------|------|
-| fetch-url | `fetch-url "url"` | 49 | Web content extraction with smart fallback |
-| web-search | `web-search "query"` | 38 | Web search via SearXNG + Duck API |
-| youtube | `youtube "query"` | 32 | YouTube search via Invidious API with auto-fallback |
-| vtd | `vtd transcript --url '...'` | 43 | Video/audio/transcript downloader (yt-dlp) |
-| rodney | `rodney start/open/stop` | 32 | Headless Chrome automation |
-| viewimg | `viewimg img.jpg [--open]` | 10 | Show an image in the terminal (view-only, no VLM) |
-| visualize | `visualize open/share/validate` | 15 | Render any set of things as ONE self-contained HTML + share URL |
+| fetch-url | `fetch-url "url"` | ~49 | Web content extraction with smart fallback |
+| web-search | `web-search "query"` | ~38 | Web search via SearXNG + Duck API |
+| youtube | `youtube "query"` | ~38 | YouTube search via Invidious API with auto-fallback |
+| vtd | `vtd transcript --url '...'` | ~49 | Video/audio/transcript downloader (yt-dlp) |
+| rodney | `rodney start/open/stop` | ~37 | Headless Chrome automation |
+| surf | `surf open/click/read` (macOS) | ~36 | Drive your real, logged-in Chrome via AppleScript |
+| visualize | `visualize open/share/validate` | ~36 | Render any set of things as ONE self-contained HTML + share URL |
+| d2 | `d2 validate/render` | ~41 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
+| figure | `node build/build_figures.mjs` | ~7 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
+| peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
+| viewimg | `viewimg img.jpg [--open]` | ~16 | Show an image in the terminal (view-only, no VLM) |
 | improve-ux | — (knowledge skill) | — | Improve UI/UX grounded in curated reference sites, with a rating loop |
+
+Counts are approximate (`~`); suites include honest network-skip counters — a WARN
+does not count as a pass. `tests/` also has `imagegen` (tests `extensions/imagegen.ts`)
+and `gdocs` (live smoke of the external `gog` CLI).
 
 ## Installation (as a pi package)
 
@@ -40,21 +48,13 @@ Full install, activate, filter, project-scope, update, and conflict docs: **[doc
 → **Full guide: [docs/credgoo.md](docs/credgoo.md)** — setup, CLI reference, Python patterns, adding credentials to new skills
 → **Source:** [github.com/devskale/python-openutils](https://github.com/devskale/python-openutils) (`packages/credgoo/`)
 
-Quick reference:
-
 ```bash
-# First-time setup
-credgoo --setup
-
-# Get a key
-credgoo WEB_SEARCH_BEARER
-
-# Add to a new skill
-credgoo MY_NEW_SERVICE_KEY
+credgoo --setup                 # first-time setup
+credgoo WEB_SEARCH_BEARER       # get a key
+credgoo MY_NEW_SERVICE_KEY      # add to a new skill
 ```
 
 ```python
-# Standard pattern in Python
 from credgoo import get_api_key
 
 token = get_api_key("MY_SERVICE_KEY")
@@ -76,6 +76,7 @@ configure a DEBUG handler on the `credgoo` logger to see it.
 | [docs/installation.md](docs/installation.md) | Install the pi package, activate only what you use, and the loose-symlink conflict gotcha |
 | [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides |
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
+| [pi-architecture.md](pi-architecture.md) | How pi (the agent runtime) discovers packages, skills, extensions — background for this repo's layout |
 
 ### Best Practices Guides (from skaleshare)
 
@@ -97,73 +98,39 @@ Deep-dive authoring guides distilled from specs, research, and real-world skills
 | [chrome-dev.md](docs/browser-use/chrome-dev.md) | Chrome DevTools MCP setup |
 | [surf.md](docs/browser-use/surf.md) | Surf — drive your real Chrome via macOS AppleScript (vs rodney / chrome-devtools-mcp) |
 | [vcl-agent-browser.md](docs/browser-use/vcl-agent-browser.md) | Vercel agent-browser setup |
+| [which-browser-tool.md](docs/browser-use/which-browser-tool.md) | Decision flow: which browser tool for which job |
 
 ### Other Guides
 
 | Guide | What |
 |-------|------|
 | [guides/rodney-setup.md](guides/rodney-setup.md) | Rodney headless Chrome setup |
+| [guides/impeccable-setup.md](guides/impeccable-setup.md) | Impeccable setup notes |
 
-## Browser Automation — Chrome 136+ Breaking Changes
+## Browser Automation — Chrome 136+ breaking change (load-bearing rule)
 
-> ⚠️ **Current Chrome stable: v149** (June 2026). The Chrome 136+ restrictions are still in effect. **Do not assume `chrome --remote-debugging-port=9222` works** — it doesn't, on the default profile.
-
-### What is broken (since Chrome 136, March 2025)
-
-1. **`--remote-debugging-port=9222` is IGNORED on the default profile.**
-   - Chrome opens, but the debug port never listens. No error, no warning — just silent failure.
-   - Affects all `puppeteer.connect()`, `chromium.connectOverCDP()`, Puppeteer/Playwright MCP, agent-browser, etc.
-   - **Reason:** Google blocked it for security (info-stealers were stealing cookies via CDP).
-   - Source: [developer.chrome.com/blog/remote-debugging-port](https://developer.chrome.com/blog/remote-debugging-port)
-
-2. **`--user-data-dir=/some/path` is REQUIRED, but gives you a SEPARATE profile.**
-   - The flag works only when pointing to a non-default directory.
-   - That directory starts blank — none of your cookies, logins, or extensions.
-   - You can copy your real profile there, but see #3.
-
-3. **App-Bound Encryption (Chrome 136+) prevents decrypting copied profile data.**
-   - Cookies and passwords in the default profile are encrypted with a key tied to the OS user account + profile path.
-   - Chromium issue #394919677: *"app-bound will be changed to not decrypt data if a custom `--user-data-dir` is used."*
-   - **Result:** Copying `~/.../Google/Chrome/Default` to `/tmp/some-dir` does NOT give you working cookies.
-   - Source: [issues.chromium.org/issues/394919677](https://issues.chromium.org/issues/394919677)
-
-### What still works (in priority order)
-
-| Use case | Tool | How |
-|----------|------|-----|
-| **Reuse your real Chrome session (best)** | **Chrome DevTools MCP** | `--autoConnect` on Chrome 146+ stable. Toggle once in `chrome://inspect/#remote-debugging`. |
-| Reuse your Chrome cookies via Python (macOS/Linux) | **agentauth-py** | `pip install agentauth-py && agent-auth grab <domain>` — reverse-engineers App-Bound Encryption. |
-| Reuse real Chrome via MCP, no debug port | **Hangwin mcp-chrome** | Chrome extension + local bridge. |
-| Reuse real Chrome via MCP, with human-in-loop | **Playwright MCP Bridge Extension** | Microsoft's official extension, sideloaded. |
-| Just need a fresh isolated browser | **rodney** (our tool) | `rodney start && rodney open <url> && rodney stop`. Already in this repo. |
-| Need a stealth anti-detect browser | **CloakBrowser** (our testbed) | Stealth Chromium, own browser. |
-| Need an MCP for any browser | **Playwright MCP** | Cross-browser, no real-session reuse by default. |
-
-### Rules for any browser automation in this repo
-
-- **Never** write a doc, script, or guide that suggests `chrome --remote-debugging-port=9222` against the default profile — it doesn't work.
-- If you find a tutorial older than March 2025, **verify** before citing it.
-- For our own tools (rodney, CloakBrowser tests): they launch their own browser — Chrome 136+ doesn't affect them.
-- Full comparison + decision flows: [docs/browser-use/browser-tools-comparison.md](docs/browser-use/browser-tools-comparison.md)
+**Never** write a doc, script, or guide that suggests `chrome --remote-debugging-port=9222` against the
+default profile — since Chrome 136 (March 2025) the flag is silently ignored there, `--user-data-dir`
+gives you a blank separate profile, and App-Bound Encryption stops copied profiles from decrypting.
+If you find a tutorial older than March 2025, verify before citing it. What still works, decision flows,
+and tool comparisons: [docs/browser-use/browser-tools-comparison.md](docs/browser-use/browser-tools-comparison.md).
+Our own tools (rodney, surf, CloakBrowser tests) are unaffected — they launch or drive their own browser.
 
 ## External Skills
 
 Install from upstream, don't maintain locally:
 
 ```bash
-# Install
-openskills install <org>/<repo>  # openskills CLI
-npx @anthropic-ai/skills add <name>  # Anthropic skills
-
-# Browse and discover
-# https://skills.sh
+openskills install <org>/<repo>       # multi-agent skill installer
+npx @anthropic-ai/skills add <name>   # Anthropic skills
+# browse/discover: https://skills.sh
 ```
 
 See `RECOMMENDED-SKILLS.md` for full list of sources and install commands.
 
 ## Running Tests
 
-No global runner. Per-skill test suites:
+No global runner, no CI. Per-skill suites (`~` counts above):
 
 ```bash
 bash tests/fetch-url/test.sh
@@ -171,10 +138,18 @@ bash tests/web-search/test.sh
 bash tests/youtube/test.sh
 bash tests/video-transcript-downloader/test.sh
 bash tests/rodney/test.sh
+bash tests/surf/test.sh              # live checks skip off-macOS
 bash tests/viewimg/test.sh
+bash tests/visualize/test.sh
+bash tests/d2/test.sh
+bash tests/figure/test.sh
+bash tests/peep/test.sh
+bash tests/imagegen/test.sh          # extensions/imagegen.ts
+bash tests/gdocs/test.sh             # live smoke, external gog CLI
 ```
 
-Always run the relevant test after modifying a skill.
+Always run the relevant test after modifying a skill. Suites use PASS/FAIL/WARN
+counters — WARN means "network-dependent, skipped honestly", never a hidden pass.
 
 **Extensions** — run the quick lint/typecheck gate after touching `extensions/*.ts`:
 
@@ -226,12 +201,6 @@ Always-on hard rules:
 - Never modify code that tests observe — launcher flags (`--update`, `--selfcheck`), `.last-update`, env-var fallback order — to make a failing test pass. The test is the finding: report it.
 - A change to skill behavior (flag parsing, backend fallback, output format) MUST add an integration test: a real invocation of the command.
 - A correction that repeats in review goes into the Coding Guidelines; once stable and objectively checkable, automate it in `test.sh` and prune the prose.
-
-## API Docs
-
-Reverse-engineered public APIs at `api/`:
-
-- `api/ryanair/ryanair.md` — Ryanair fare search (free, no auth)
 
 ## Managing skills across agents
 

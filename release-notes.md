@@ -2,6 +2,31 @@
 
 Log of notable changes to skale-skills. Newest first.
 
+## 1.4.6 — 2026-09-08
+
+- **vtd:** the yt-dlp venv now lives outside the repo (`~/.cache/skale-skills/video-transcript-downloader`) — pi package updates run `git clean -fdx` and would wipe an in-repo `.venv`. Launcher exports `VTD_ENV_DIR`; `--update` uses `--ff-only` and refreshes yt-dlp.
+- **viewimg + visualize:** launchers gained `--update`/`--selfcheck`, `.last-update` stamp, and 7-day auto-update (parity with fetch-url/web-search).
+- **surf:** user-provided strings (URLs, keystrokes) are now escaped in AppleScript contexts via a new `as_str()` helper — same discipline as `js_str()` on the JS side.
+- **youtube:** launcher updates with `--ff-only`, auto-update also fires on a missing stamp, `parse_list_entries` correctly annotated as a generator.
+- **tests:** network-dependent blocks count as honest WARN/skip instead of PASS (fetch-url, web-search, youtube, vtd, imagegen); youtube's cache checks no longer hard-fail when discovery is down; viewimg generates its image fixture on the fly (committed `generated/*.jpg` went stale).
+- **lint.sh:** finds the installed pi package portably (`PI_PACKAGE` override → Homebrew → `npm root -g`); `@types/node` comes from the lint toolchain — the gate now works off-macOS.
+- **index-skills.py:** extensions no longer index as `/**`; git-package entries render readable labels. SKILL-INDEX.md regenerated.
+- **figure:** package.json aligned with the skill (v1.2.0, name `figure`).
+- **docs:** AGENTS.md lists all 12 skills + 13 test suites, phantom `api/` section removed, browser deep-dive condensed to a link; README badge/table, RECOMMENDED-SKILLS extensions, release-notes backfill (1.4.4/1.4.5); stale Chrome-version claims fixed (auto-connect needs 144+, per official docs).
+- **hygiene:** untracked `uv.lock` (fetch-url, web-search) and ignored-but-tracked `testbed/`, `.vscode/`; removed orphaned `test_rodney.sh`, stale `docs/*.d2` drafts; manual test script moved out of shipped `extensions/`; d2 SKILL.md no longer contradicts its bundled wrapper scripts.
+
+## 1.4.5 — 2026-09-06
+
+- **surf:** open reuses tabs by default (exact match + same-origin prefix tier); `--new` forces a fresh tab.
+
+## 1.4.4 — 2026-09-04
+
+- **imagegen:** linters for generated HTML/images + pollinations-free dynamic fallback.
+- **extensions:** cleared all pre-existing typecheck errors; lint gate green.
+- **xmodel:** vision uses a vision-capable main model directly, loud timeouts, ESC abort, parametrizable vision thinking.
+- **improve-ux:** SOTA baseline, numeric a11y/motion guidance, rating loop; refreshed reference catalog.
+- **CONVENTION.md:** coding guidelines distilled from the Codex repo learnings.
+
 ## 2026-08-12
 
 ### visualize
