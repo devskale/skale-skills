@@ -7,6 +7,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/youtube"
 
 PASS=0
 FAIL=0
+WARN=0
 
 assert() {
     if eval "$2"; then
@@ -96,15 +97,23 @@ if echo "$RESULT" | grep -q "Never Gonna Give You Up"; then
     PASS=$((PASS + 1))
 else
     echo "  WARN: no result (API down?)"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 assert "verbose shows instance" "echo '$RESULT' | grep -q 'Trying'"
 echo ""
 
 # ── 11. Instance cache ──────────────────────────────────────────────
 echo "[11] Instance cache..."
-assert "cache file exists" "[ -f .instance-cache.json ]"
-assert "cache has instances" "grep -q 'instances' .instance-cache.json"
+# The cache is written opportunistically (after instance discovery) — trigger
+# discovery if needed; absence is a skip, not a failure.
+[ -f .instance-cache.json ] || timeout 30 youtube --discover >/dev/null 2>&1 || true
+if [ -f .instance-cache.json ]; then
+    assert "cache file exists" "[ -f .instance-cache.json ]"
+    assert "cache has instances" "grep -q 'instances' .instance-cache.json"
+else
+    echo "  WARN: no instance cache (discovery unavailable?)"
+    WARN=$((WARN + 1))
+fi
 echo ""
 
 # ── 12. discover command ────────────────────────────────────────────
@@ -114,7 +123,7 @@ if echo "$DISC" | grep -q 'instance'; then
     PASS=$((PASS + 1))
 else
     echo "  WARN: discovery slow/down"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 echo ""
 
@@ -134,6 +143,7 @@ echo ""
 echo "=== Results ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
+echo "  Warned/skipped (network): $WARN"
 if [ $FAIL -gt 0 ]; then
     echo ""
     echo "❌ Some tests failed."
