@@ -24,7 +24,7 @@ import re
 import time
 import math
 import argparse
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Iterator, List, Optional, Dict, Any, Tuple
 
 # ── Instance management ───────────────────────────────────────────────────────
 
@@ -412,7 +412,7 @@ def write_list(
         f.write("\n".join(out).rstrip() + "\n")
 
 
-def parse_list_entries(text: str):
+def parse_list_entries(text: str) -> Iterator[Tuple[int, str, str, str]]:
     """Yield (lineno, raw, video_id, ucid) for every entry that carries a video URL."""
     for i, raw in enumerate(text.splitlines()):
         m = VIDEO_ID_RE.search(raw)

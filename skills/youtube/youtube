@@ -19,7 +19,7 @@ case "${1:-}" in
     --update|--self-update)
         cd "$SKILL_DIR"
         echo "Updating youtube..."
-        git pull 2>&1 || true
+        [ -d ".git" ] && git pull --ff-only 2>&1 || true
         uv sync --quiet 2>/dev/null
         date +%s > "$STAMP_FILE"
         echo "Updated."
@@ -46,13 +46,18 @@ case "${1:-}" in
         ;;
 esac
 
-# Auto-update after 7 days
-if [ -f "$STAMP_FILE" ]; then
-    last=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
-    now=$(date +%s)
-    age=$(( (now - last) / 86400 ))
-    if [ "$age" -gt 7 ]; then
-        (cd "$SKILL_DIR" && git pull 2>/dev/null && uv sync --quiet 2>/dev/null && date +%s > "$STAMP_FILE") &
+# Auto-update after 7 days (or when the stamp is missing — fresh git clone)
+if [ -d "$SKILL_DIR/.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then
+        needs_update=true
+    else
+        last=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        now=$(date +%s)
+        [ $(( (now - last) / 86400 )) -gt 7 ] && needs_update=true
+    fi
+    if $needs_update; then
+        (cd "$SKILL_DIR" && git pull --ff-only --quiet 2>/dev/null && uv sync --quiet 2>/dev/null && date +%s > "$STAMP_FILE") &
     fi
 fi
 
