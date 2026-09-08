@@ -6,7 +6,22 @@ cd "$(dirname "$0")/../.."
 
 SKILL=skills/viewimg
 SCRIPT="$SKILL/viewimg"
-IMG="generated/generated-1785185007488.jpg"
+# Generate the fixture on the fly — a committed generated/*.jpg went stale and
+# broke the suite on fresh clones.
+IMG="/tmp/viewimg-fixture.png"
+python3 -c '
+import struct, sys, zlib
+def chunk(t, d):
+    return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+w = h = 8
+raw = b"".join(b"\x00" + b"\xe0\x4a\x3c" * w for _ in range(h))
+open(sys.argv[1], "wb").write(
+    b"\x89PNG\r\n\x1a\n"
+    + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+    + chunk(b"IDAT", zlib.compress(raw))
+    + chunk(b"IEND", b""))
+' 2>/dev/null || printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' | base64 -d > "$IMG"
+[ -f "$IMG" ] || { echo "cannot create test fixture" >&2; exit 1; }
 PASS=0; FAIL=0
 
 ok()   { PASS=$((PASS+1)); }
@@ -33,6 +48,15 @@ check "no args → exit 2" 2 "$SCRIPT"
 check "missing file → exit 2" 2 "$SCRIPT" /nonexistent.jpg
 check "unknown flag → exit 2" 2 "$SCRIPT" --bogus
 check "--help → exit 0" 0 "$SCRIPT" --help
+
+# launcher flags (convention: --update/--selfcheck)
+check "--selfcheck → exit 0" 0 "$SCRIPT" --selfcheck
+grep -q "viewimg v" /tmp/viewimg.out && ok || bad "selfcheck shows version"
+grep -q "dir:" /tmp/viewimg.out && ok || bad "selfcheck shows dir"
+grep -q "chafa:" /tmp/viewimg.out && ok || bad "selfcheck shows chafa"
+check "--update → exit 0" 0 "$SCRIPT" --update
+grep -q "Updated" /tmp/viewimg.out && ok || bad "--update reports Updated"
+[ -f "$SKILL/.last-update" ] && ok || bad "stamp file created"
 
 # render (chafa present)
 if command -v chafa >/dev/null 2>&1; then
