@@ -18,6 +18,7 @@ fi
 
 if [ ! -L "$SYMLINK" ]; then
     ln -sf "$SKILL_DIR/visualize" "$SYMLINK"
+    date +%s > "$SKILL_DIR/.last-update"
     echo "  Created symlink: $SYMLINK → $SKILL_DIR/visualize"
 fi
 

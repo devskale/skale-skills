@@ -18,8 +18,25 @@ while [ -L "$SELF" ]; do
     [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
 done
 SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+AUTO_UPDATE_DAYS=7
 
 THROWAWAY="https://lubu.skale.dev/throway"
+
+# ── Auto-update check (non-blocking) ──
+if [ -d "$SKILL_DIR/.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then
+        needs_update=true
+    else
+        last_ts=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        now_ts=$(date +%s)
+        [ $(( (now_ts - last_ts) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
+    fi
+    if $needs_update; then
+        ( cd "$SKILL_DIR" && git pull --ff-only --quiet 2>/dev/null && date +%s > "$STAMP_FILE" ) &>/dev/null &
+    fi
+fi
 
 usage() {
     cat <<'EOF'
@@ -42,6 +59,25 @@ cmd="$1"; shift
 
 case "$cmd" in
     --help|-h) usage; exit 0 ;;
+
+    --update|--self-update)
+        echo "Updating visualize..."
+        cd "$SKILL_DIR"
+        [ -d ".git" ] && git pull --ff-only 2>&1 || true
+        date +%s > "$STAMP_FILE"
+        echo "✓ Updated $(date)"
+        exit 0
+        ;;
+    --selfcheck)
+        vversion() { grep -m1 '^version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -o '[0-9][0-9.]*' || echo "?"; }
+        last="never"
+        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || cat "$STAMP_FILE")
+        echo "visualize v$(vversion)"
+        echo "  dir:   $SKILL_DIR"
+        echo "  last:  $last"
+        echo "  curl:  $(command -v curl >/dev/null 2>&1 && echo yes || echo no)"
+        exit 0
+        ;;
 
     open)
         [ $# -eq 1 ] || { echo "visualize open: expected one file" >&2; exit 2; }
