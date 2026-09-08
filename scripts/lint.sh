@@ -17,7 +17,17 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CACHE="${LINT_CACHE:-$HOME/.cache/skale-skills/lint}"
 BIN="$CACHE/node_modules/.bin"
-PI="/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent"
+
+# Locate the installed pi package (for the @earendil-works/* type symlinks).
+# Override with PI_PACKAGE=/path/to/pi-coding-agent if auto-detection fails.
+PI="${PI_PACKAGE:-}"
+if [ -z "$PI" ]; then
+	for cand in \
+		"/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent" \
+		"$(npm root -g 2>/dev/null)/@earendil-works/pi-coding-agent"; do
+		if [ -n "$cand" ] && [ -d "$cand" ]; then PI="$cand"; break; fi
+	done
+fi
 
 MODE="${1:-all}"
 
@@ -26,17 +36,22 @@ ensure_toolchain() {
 	if [ ! -x "$BIN/biome" ] || [ ! -x "$BIN/tsc" ]; then
 		echo "→ installing lint toolchain (biome + typescript) into $CACHE …"
 		mkdir -p "$CACHE"
-		( cd "$CACHE" && npm init -y >/dev/null 2>&1 && npm install --no-save @biomejs/biome typescript@5.2 >/dev/null 2>&1 )
+		( cd "$CACHE" && npm init -y >/dev/null 2>&1 && npm install --no-save @biomejs/biome typescript@5.2 @types/node >/dev/null 2>&1 )
 	fi
 	# Ensure the pi type symlinks exist for tsc to resolve @earendil-works/*.
 	if [ ! -e "$REPO/node_modules/@earendil-works/pi-agent-core" ]; then
+		if [ -z "$PI" ] || [ ! -d "$PI" ]; then
+			echo "✖ cannot find the installed pi package (needed for @earendil-works types)." >&2
+			echo "  Set PI_PACKAGE=/path/to/pi-coding-agent and re-run." >&2
+			exit 1
+		fi
 		mkdir -p "$REPO/node_modules/@earendil-works" "$REPO/node_modules/@types"
 		ln -sfn "$PI/node_modules/@earendil-works/pi-ai"         "$REPO/node_modules/@earendil-works/pi-ai"
 		ln -sfn "$PI/node_modules/@earendil-works/pi-tui"        "$REPO/node_modules/@earendil-works/pi-tui"
 		ln -sfn "$PI/node_modules/typebox"                        "$REPO/node_modules/typebox"
 		ln -sfn "$PI/node_modules/@earendil-works/pi-agent-core" "$REPO/node_modules/@earendil-works/pi-agent-core"
 		ln -sfn "$PI"                                            "$REPO/node_modules/@earendil-works/pi-coding-agent"
-		ln -sfn /opt/homebrew/lib/node_modules/llama-parse-cli/node_modules/@types/node "$REPO/node_modules/@types/node"
+		ln -sfn "$CACHE/node_modules/@types/node"                "$REPO/node_modules/@types/node"
 	fi
 	# Local tsconfig (not committed) scoped to extensions.
 	if [ ! -f "$REPO/tsconfig.json" ]; then
