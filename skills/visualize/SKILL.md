@@ -183,6 +183,8 @@ Validate before delivering:
 ```bash
 visualize validate <file.html>   # self-contained: no external src/href
 visualize lint <file.html>       # style taste-gate: flag AI-generated tells
+visualize --selfcheck            # version, install dir, last update
+visualize --update               # pull the latest skill via git
 ```
 
 `validate` warns if you left an external `src`/`href` reference. `lint` is the **style

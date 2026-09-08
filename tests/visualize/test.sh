@@ -47,6 +47,14 @@ check "open missing file → exit 2" 2 "$SCRIPT" open /nonexistent.html
 check "share missing file → exit 2" 2 "$SCRIPT" share /nonexistent.html
 check "--help → exit 0" 0 "$SCRIPT" --help
 
+# launcher flags (convention: --update/--selfcheck)
+check "--selfcheck → exit 0" 0 "$SCRIPT" --selfcheck
+grep -q "visualize v" /tmp/visualize.out && ok || bad "selfcheck shows version"
+grep -q "dir:" /tmp/visualize.out && ok || bad "selfcheck shows dir"
+check "--update → exit 0" 0 "$SCRIPT" --update
+grep -q "Updated" /tmp/visualize.out && ok || bad "--update reports Updated"
+[ -f "$SKILL/.last-update" ] && ok || bad "stamp file created"
+
 # build a self-contained file and validate it
 TMP=$(mktemp -d)
 cat > "$TMP/good.html" <<'EOF'
