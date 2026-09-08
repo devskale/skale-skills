@@ -19,13 +19,18 @@ if ! command -v uv &> /dev/null; then
     fi
 fi
 
-# Create venv + install yt-dlp
-if [ ! -d ".venv" ]; then
-    echo "Creating virtual environment..."
-    uv venv
+# Create venv + install yt-dlp — venv lives OUTSIDE the repo
+# (pi package updates run `git clean -fdx` and would wipe an in-repo .venv).
+ENV_DIR="${VTD_ENV_DIR:-$HOME/.cache/skale-skills/video-transcript-downloader}"
+export VTD_ENV_DIR="$ENV_DIR"
+if [ ! -x "$ENV_DIR/bin/yt-dlp" ] && [ ! -x "$ENV_DIR/Scripts/yt-dlp.exe" ]; then
+    echo "Creating virtual environment in $ENV_DIR ..."
+    uv venv "$ENV_DIR"
 fi
 echo "Installing yt-dlp..."
-uv pip install yt-dlp
+PY="$ENV_DIR/bin/python"
+[ -x "$PY" ] || PY="$ENV_DIR/Scripts/python.exe"
+uv pip install --python "$PY" yt-dlp
 
 # Node dependencies
 if command -v pnpm &> /dev/null; then

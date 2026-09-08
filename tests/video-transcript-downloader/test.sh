@@ -7,6 +7,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/video-transcript-downloader"
 
 PASS=0
 FAIL=0
+WARN=0
 
 assert() {
     if eval "$2"; then
@@ -101,6 +102,7 @@ SELF=$(vtd --selfcheck 2>&1)
 assert "shows version" "echo '$SELF' | grep -q 'vtd v'"
 assert "shows node"    "echo '$SELF' | grep -q 'node:'"
 assert "shows venv"    "echo '$SELF' | grep -q 'venv:'"
+assert "venv outside repo" "echo '$SELF' | grep -q 'skale-skills/video-transcript-downloader'"
 echo ""
 
 # ── 10. Transcript (resilient) ──────────────────────────────────────
@@ -110,14 +112,16 @@ if echo "$RESULT" | grep -q "Never gonna give you up"; then
     PASS=$((PASS + 1))
 else
     echo "  WARN: no transcript (network?)"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 echo ""
 
 # ── 11. Dependencies ────────────────────────────────────────────────
 echo "[11] Dependencies..."
-assert "yt-dlp installed"   "[ -f .venv/bin/yt-dlp ] || command -v yt-dlp &>/dev/null"
+VTD_CACHE_VENV="$HOME/.cache/skale-skills/video-transcript-downloader"
+assert "yt-dlp installed"   "[ -x '$VTD_CACHE_VENV/bin/yt-dlp' ] || [ -x '$VTD_CACHE_VENV/Scripts/yt-dlp.exe' ] || [ -f .venv/bin/yt-dlp ] || command -v yt-dlp &>/dev/null"
 assert "node_modules exist" "[ -d node_modules/youtube-transcript-plus ]"
+assert "launcher exports VTD_ENV_DIR" "grep -q 'export VTD_ENV_DIR' vtd"
 echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────
@@ -125,6 +129,7 @@ echo ""
 echo "=== Results ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
+echo "  Warned/skipped (network): $WARN"
 if [ $FAIL -gt 0 ]; then
     echo ""
     echo "❌ Some tests failed."
