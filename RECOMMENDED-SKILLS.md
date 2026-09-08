@@ -40,7 +40,10 @@ We maintain a few extensions in [`extensions/`](extensions/):
 
 | Extension | What |
 |-----------|------|
+| **heartbeat** | Recurring reminder/heartbeat timer the agent can start/stop |
 | **statusline** | Custom pi footer with machine name branding + session stats |
+| **xmodel** | Model/thinking fast-switcher + opt-in vision pipeline (`read` stays display-only) |
+| **imagegen** | Text→image tool + `/imagegen` command with self-healing defaults and ASCII preview |
 
 ## Skill Managers
 

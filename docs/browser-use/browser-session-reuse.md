@@ -22,7 +22,7 @@ These connect to Chrome you already have open. Your tabs, your cookies, your log
 
 | # | Tool | Method | Install | MCP? | Chrome Web Store? |
 |---|------|--------|---------|:----:|:-----------------:|
-| 1 | **Chrome DevTools MCP** | Native Chrome toggle (`--autoConnect`, Chrome 146+) | `npx chrome-devtools-mcp@latest` | ✅ | N/A (built-in) |
+| 1 | **Chrome DevTools MCP** | Native Chrome toggle (`--autoConnect`, Chrome 144+) | `npx chrome-devtools-mcp@latest` | ✅ | N/A (built-in) |
 | 2 | **OpenChrome** (`openchrome-mcp`) | CDP direct to real Chrome, persistent profiles, parallel | `npx openchrome-mcp` | ✅ | N/A |
 | 3 | **Real Browser MCP** | Chrome extension + WebSocket MCP server | `npm i real-browser-mcp` + extension | ✅ | ✅ Yes |
 | 4 | **Nanobrowser** | Chrome extension, multi-agent planner→navigator→validator | Chrome Web Store | No (extension) | ✅ Yes |
@@ -87,10 +87,10 @@ For each tool, we test:
 }
 ```
 
-**Prerequisites:** Chrome 146+ stable. Enable once: `chrome://inspect/#remote-debugging` → toggle on.
+**Prerequisites:** Chrome 144+ stable (per the [official auto-connect docs](https://developer.chrome.com/docs/devtools/agents/use-cases/auto-connect)). Enable once: `chrome://inspect/#remote-debugging` → toggle on.
 
 **Pros:** Built into Chrome. Zero extension install. Sees everything.
-**Cons:** Headed only. Chrome 146+ required. No parallel sessions.
+**Cons:** Headed only. Chrome 144+ required. No parallel sessions.
 
 ### 2. OpenChrome ✅ SMOKE TESTED
 

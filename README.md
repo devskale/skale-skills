@@ -6,7 +6,7 @@
 
 [![built for pi](https://img.shields.io/badge/built_for-pi-7c3aed?style=flat-square)](https://pi.dev)
 [![agents](https://img.shields.io/badge/works_with-pi_·_Claude_Code_·_Codex_·_OpenCode-1f6feb?style=flat-square)](#selective--other-agents)
-[![skills](https://img.shields.io/badge/skills-8_·_extensions-4-success?style=flat-square)](#whats-included)
+[![skills](https://img.shields.io/badge/skills-12_·_extensions-4-success?style=flat-square)](#whats-included)
 [![platform](https://img.shields.io/badge/platform-macOS_·_Linux_·_Windows-lightgrey?style=flat-square)](#install)
 [![creds](https://img.shields.io/badge/credentials-credgoo-critical?style=flat-square)](#credentials--credgoo)
 
@@ -153,6 +153,9 @@ vtd transcript --url 'https://youtube.com/watch?v=…'
 | **[video-transcript-downloader](skills/video-transcript-downloader)** | Download video/audio/subtitles/transcripts (yt-dlp) |
 | **[d2](skills/d2)** | Diagrams-as-code with the D2 language |
 | **[viewimg](skills/viewimg)** | Show image(s) in the terminal (view-only, no VLM); `--open` opens all in one window |
+| **[visualize](skills/visualize)** | Render any set of things as ONE self-contained HTML — locally or via share URL |
+| **[peep](skills/peep)** | Read X/Twitter via the `peep` CLI (timelines, threads, search, bookmarks) |
+| **[improve-ux](skills/improve-ux)** | UI/UX improvements grounded in curated reference sites, with a rating loop |
 
 _Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, improve-skill, readme-write) moved to [`skills/deprecated/`](skills/deprecated/)._
 
@@ -192,7 +195,7 @@ Resolution order: **env var → credgoo → `.env`** (gitignored, last resort). 
 
 ### pi (native) — selective install
 
-Install the package once, then activate only the skills you use. **All 14 skills ship in the package** — every one is toggleable in `pi config` (or `pi config -l` for project scope), regardless of which are active. This example turns on only `web-search` and `fetch-url`; the rest are listed as comments — uncomment any to activate:
+Install the package once, then activate only the skills you use. **All 12 skills ship in the package** — every one is toggleable in `pi config` (or `pi config -l` for project scope), regardless of which are active. This example turns on only `web-search` and `fetch-url`; the rest are listed as comments — uncomment any to activate:
 
 ```jsonc
 // ~/.pi/agent/settings.json
