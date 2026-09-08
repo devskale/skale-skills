@@ -20,13 +20,15 @@ if errorlevel 1 (
     set "PATH=%USERPROFILE%\.local\bin;%USERPROFILE%\.cargo\bin;%PATH%"
 )
 
-:: Create venv + install yt-dlp
-if not exist "%SKILL_DIR%\.venv" (
-    echo Creating virtual environment...
-    uv venv
+:: Create venv + install yt-dlp — venv lives OUTSIDE the repo
+:: (pi package updates run `git clean -fdx` and would wipe an in-repo .venv).
+set "ENV_DIR=%USERPROFILE%\.cache\skale-skills\video-transcript-downloader"
+if not exist "%ENV_DIR%\Scripts\yt-dlp.exe" (
+    echo Creating virtual environment in %ENV_DIR% ...
+    uv venv "%ENV_DIR%"
 )
 echo Installing yt-dlp...
-uv pip install yt-dlp
+uv pip install --python "%ENV_DIR%\Scripts\python.exe" yt-dlp
 
 :: Node dependencies — avoid running npm/pnpm inside parenthesized blocks
 set "HAS_PM="
@@ -46,6 +48,7 @@ call %HAS_PM% install
 set "LAUNCHER=%BIN_DIR%\vtd.bat"
 > "%LAUNCHER%" (
     echo @echo off
+    echo set "VTD_ENV_DIR=%ENV_DIR%"
     echo cd /d "%SKILL_DIR%" ^&^& node scripts\vtd.js %%*
 )
 

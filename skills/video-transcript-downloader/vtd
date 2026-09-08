@@ -9,11 +9,31 @@ done
 SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 STAMP_FILE="$SKILL_DIR/.last-update"
 
+# ── Python venv for yt-dlp (kept OUTSIDE the repo) ──
+# pi's package update runs `git clean -fdx`, which deletes ANY untracked/
+# gitignored file inside the package — including an in-repo `.venv/`. Keep the
+# venv in the cache dir so updates never wipe it. scripts/vtd.js resolves the
+# yt-dlp binary from VTD_ENV_DIR. See docs/agent-skills-best-practices.md →
+# Python dependencies & pi package updates.
+ENV_DIR="${VTD_ENV_DIR:-$HOME/.cache/skale-skills/video-transcript-downloader}"
+export VTD_ENV_DIR="$ENV_DIR"
+
+install_ytdlp() {
+    command -v uv &>/dev/null || return 0
+    if [ ! -x "$ENV_DIR/bin/yt-dlp" ] && [ ! -x "$ENV_DIR/Scripts/yt-dlp.exe" ]; then
+        uv venv "$ENV_DIR" &>/dev/null || true
+    fi
+    local py="$ENV_DIR/bin/python"
+    [ -x "$py" ] || py="$ENV_DIR/Scripts/python.exe"
+    [ -x "$py" ] && uv pip install --python "$py" yt-dlp &>/dev/null || true
+}
+
 case "${1:-}" in
     --update|--self-update)
         cd "$SKILL_DIR"
         echo "Updating video-transcript-downloader..."
-        git pull 2>&1 || true
+        [ -d ".git" ] && git pull --ff-only 2>&1 || true
+        install_ytdlp
         date +%s > "$STAMP_FILE"
         echo "Updated."
         exit 0
@@ -23,23 +43,20 @@ case "${1:-}" in
         last=""
         [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || stat -f "%Sm" "$STAMP_FILE" 2>/dev/null || echo "never")
         has_node=$([ -d "$SKILL_DIR/node_modules" ] && echo "yes" || echo "no")
-        has_venv=$([ -d "$SKILL_DIR/.venv" ] && echo "yes" || echo "no")
+        has_venv=$([ -x "$ENV_DIR/bin/yt-dlp" ] || [ -x "$ENV_DIR/Scripts/yt-dlp.exe" ] || [ -d "$SKILL_DIR/.venv" ] && echo "yes" || echo "no")
         echo "vtd v${version}"
         echo "  dir:  $SKILL_DIR"
         echo "  last: ${last}"
         echo "  node: $has_node"
-        echo "  venv: $has_venv"
+        echo "  venv: $has_venv ($ENV_DIR)"
         exit 0
         ;;
     --install)
         cd "$SKILL_DIR"
         echo "Installing video-transcript-downloader..."
         mkdir -p "$HOME/.local/bin"
-        # Python venv for yt-dlp
-        if command -v uv &>/dev/null; then
-            uv venv 2>/dev/null || true
-            uv pip install yt-dlp 2>/dev/null || true
-        fi
+        # Python venv for yt-dlp (outside the repo)
+        install_ytdlp
         # Node deps
         if command -v pnpm &>/dev/null; then
             pnpm install 2>/dev/null
@@ -59,7 +76,7 @@ if [ -f "$STAMP_FILE" ]; then
     now=$(date +%s)
     age=$(( (now - last) / 86400 ))
     if [ "$age" -gt 7 ]; then
-        (cd "$SKILL_DIR" && git pull 2>/dev/null && date +%s > "$STAMP_FILE") &
+        (cd "$SKILL_DIR" && git pull --ff-only --quiet 2>/dev/null && install_ytdlp && date +%s > "$STAMP_FILE") &>/dev/null &
     fi
 fi
 

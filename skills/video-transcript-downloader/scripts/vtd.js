@@ -74,7 +74,14 @@ function which(cmd) {
 }
 
 function resolveBin(name, fallback) {
-  // Check for local .venv/bin/yt-dlp relative to this script
+  // Preferred: venv outside the repo (VTD_ENV_DIR, set by the launcher) —
+  // pi package updates run `git clean -fdx` and would wipe an in-repo .venv.
+  const envBin = process.env.VTD_ENV_DIR
+    ? path.join(process.env.VTD_ENV_DIR, process.platform === "win32" ? "Scripts" : "bin", name)
+    : null;
+  if (envBin && fs.existsSync(envBin)) return envBin;
+
+  // Legacy fallback: in-repo .venv from older installs
   const localBin = path.resolve(__dirname, "../.venv/bin", name);
   if (fs.existsSync(localBin)) return localBin;
 
