@@ -29,6 +29,14 @@ js_str() {
   printf '"%s"' "$s"
 }
 
+# AppleScript string literal — same discipline as js_str, for osascript -e
+# contexts that interpolate user-provided strings (URLs, keystrokes).
+as_str() {
+  local s="${1-}"
+  s="${s//\\/\\\\}"; s="${s//\"/\\\"}"
+  printf '"%s"' "$s"
+}
+
 _want_json() { for a in "$@"; do [ "$a" = "--json" ] && return 0; done; return 1; }
 
 # execute JS in the target tab; JS written to a temp file to avoid quoting hell. Raw (no error classification).

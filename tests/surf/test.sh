@@ -117,6 +117,20 @@ assert "help open mentions --new"   "surf help open 2>&1 | grep -q -- '--new'"
 assert "nav.sh has prefix tier"     "grep -q '_surf_find_tab_by_prefix' scripts/lib/nav.sh"
 echo ""
 
+# ── 11. AppleScript string escaping (as_str) ─────────────────────────
+echo "[11] as_str escaping..."
+assert "engine.sh defines as_str"   "grep -q '^as_str()' scripts/lib/engine.sh"
+assert "nav open uses as_str"       "grep -q 'to \$(as_str \"\$url\")' scripts/lib/nav.sh"
+assert "nav new-tab uses as_str"    "grep -q 'URL:\$(as_str \"\$u\")' scripts/lib/nav.sh"
+assert "interact uses as_str"       "grep -q 'keystroke \$(as_str \"\$ks\")' scripts/lib/interact.sh"
+AS_IN='say "hi"\ done'
+AS_EXPECTED='"say \"hi\"\\ done"'
+AS_OUT=$(bash -c 'source scripts/lib/engine.sh; as_str "$1"' _ "$AS_IN" 2>&1)
+if [ "$AS_OUT" = "$AS_EXPECTED" ]; then PASS=$((PASS+1)); else
+    FAIL=$((FAIL+1)); echo "  FAIL: as_str escapes quotes+backslash (got: $AS_OUT)"
+fi
+echo ""
+
 echo "==============================="
 echo "  PASS: $PASS   FAIL: $FAIL"
 echo "==============================="
