@@ -151,8 +151,8 @@ if command -v chafa &>/dev/null; then
         echo "  WARN: no image to ASCII-render (generation failed above)"
     fi
 else
-    FAIL=$((FAIL + 1))
-    echo "  FAIL: chafa not installed (brew install chafa)"
+    WARN=$((WARN + 1))
+    echo "  WARN: chafa not installed (brew install chafa) — skipping ASCII fallback check"
 fi
 echo ""
 

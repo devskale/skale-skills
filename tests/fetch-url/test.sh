@@ -9,6 +9,7 @@ SKILL_DIR="$(pwd)"
 
 PASS=0
 FAIL=0
+WARN=0
 
 assert() {
     if eval "$2"; then
@@ -64,7 +65,7 @@ if echo "$RESULT" | grep -q "skale-skills"; then
     PASS=$((PASS + 1))
 else
     echo "  WARN: no GitHub result (network?)"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 echo ""
 
@@ -75,7 +76,7 @@ if echo "$RESULT" | grep -q "Hacker News"; then
     PASS=$((PASS + 1))
 else
     echo "  WARN: no HN result (network?)"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 echo ""
 
@@ -86,7 +87,7 @@ if echo "$RESULT" | grep -qi "rust"; then
     PASS=$((PASS + 1))
 else
     echo "  WARN: no Wikipedia result (network?)"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 echo ""
 
@@ -199,6 +200,7 @@ echo ""
 echo "=== Results ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
+echo "  Warned/skipped (network): $WARN"
 if [ $FAIL -gt 0 ]; then
     echo ""
     echo "❌ Some tests failed."

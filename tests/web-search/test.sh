@@ -8,6 +8,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/web-search"
 
 PASS=0
 FAIL=0
+WARN=0
 
 assert() {
     if eval "$2"; then
@@ -61,7 +62,7 @@ if echo "$RESULT" | grep -q "Results for"; then
 else
     # Network flakiness — warn, don't fail
     echo "  WARN: no results (may be network issue)"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 echo ""
 
@@ -72,7 +73,7 @@ if echo "$JSON" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null
     PASS=$((PASS + 1))
 else
     echo "  WARN: JSON output invalid (may be network issue)"
-    PASS=$((PASS + 1))
+    WARN=$((WARN + 1))
 fi
 echo ""
 
@@ -133,6 +134,7 @@ echo ""
 echo "=== Results ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
+echo "  Warned/skipped (network): $WARN"
 if [ $FAIL -gt 0 ]; then
     echo ""
     echo "❌ Some tests failed."
