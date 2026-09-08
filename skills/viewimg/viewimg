@@ -14,6 +14,45 @@ while [ -L "$SELF" ]; do
     [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
 done
 SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+AUTO_UPDATE_DAYS=7
+
+vversion() { grep -m1 '^version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -o '[0-9][0-9.]*' || echo "?"; }
+
+case "${1:-}" in
+    --update|--self-update)
+        echo "Updating viewimg..."
+        cd "$SKILL_DIR"
+        [ -d ".git" ] && git pull --ff-only 2>&1 || true
+        date +%s > "$STAMP_FILE"
+        echo "✓ Updated $(date)"
+        exit 0
+        ;;
+    --selfcheck)
+        last="never"
+        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || cat "$STAMP_FILE")
+        echo "viewimg v$(vversion)"
+        echo "  dir:   $SKILL_DIR"
+        echo "  last:  $last"
+        echo "  chafa: $(command -v chafa >/dev/null 2>&1 && echo yes || echo no)"
+        exit 0
+        ;;
+esac
+
+# ── Auto-update check (non-blocking) ──
+if [ -d "$SKILL_DIR/.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then
+        needs_update=true
+    else
+        last_ts=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        now_ts=$(date +%s)
+        [ $(( (now_ts - last_ts) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
+    fi
+    if $needs_update; then
+        ( cd "$SKILL_DIR" && git pull --ff-only --quiet 2>/dev/null && date +%s > "$STAMP_FILE" ) &>/dev/null &
+    fi
+fi
 
 usage() {
     cat <<'EOF'

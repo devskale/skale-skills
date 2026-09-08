@@ -20,6 +20,8 @@ viewimg <image-file>... [--size WxH] [--open] [--no-color] [--help]
 | `--size WxH` | chafa block size (default `60x30`) |
 | `--open` | open **all** images together in **one** native window (uses `open -a Preview` on macOS) |
 | `--no-color` | plain ASCII fallback (no ANSI color) |
+| `--update` | pull the latest skill via git |
+| `--selfcheck` | version, install dir, last update, chafa availability |
 | `--help` | usage |
 
 ## Behavior
