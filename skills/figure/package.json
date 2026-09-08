@@ -1,9 +1,9 @@
 {
-  "name": "rag-eval-figures",
-  "version": "1.1.0",
+  "name": "figure",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
-  "description": "House-style figure toolchain: CC0 icon set + compositor that assembles specs into consistent SVG + PNG diagrams. PNG rasterization uses rsvg-convert (librsvg) — no Playwright/Chromium.",
+  "description": "House-style figure toolchain: CC0 icon set + compositor that assembles specs into consistent SVG + PNG diagrams. PNG rasterization uses rsvg-convert (librsvg) \u2014 no Playwright/Chromium.",
   "scripts": {
     "icons": "node assets/render_pngs.mjs assets",
     "figures": "node build/build_figures.mjs",
