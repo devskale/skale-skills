@@ -96,10 +96,10 @@ cmd_open() {
   # No reusable tab: navigate the target tab (current behavior).
   local tgt W T; tgt="$(get_target)"
   if [ "$tgt" = "front" ]; then
-    osascript -e "tell application \"$APP\" to set URL of active tab of front window to \"$url\"" >/dev/null && echo "ok: $url"
+    osascript -e "tell application \"$APP\" to set URL of active tab of front window to $(as_str "$url")" >/dev/null && echo "ok: $url"
   else
     W="$(echo "$tgt" | cut -d' ' -f1)"; T="$(echo "$tgt" | cut -d' ' -f2)"
-    osascript -e "tell application \"$APP\" to set URL of tab $T of window $W to \"$url\"" >/dev/null && echo "ok (w$W.t$T): $url"
+    osascript -e "tell application \"$APP\" to set URL of tab $T of window $W to $(as_str "$url")" >/dev/null && echo "ok (w$W.t$T): $url"
   fi
 }
 cmd_new()    {
@@ -118,7 +118,7 @@ tell application "$APP"
   end repeat
 end tell
 OSA
-  osascript -e "tell application \"$APP\" to tell front window to make new tab with properties {URL:\"$u\"}" >/dev/null && echo "new tab: $u"
+  osascript -e "tell application \"$APP\" to tell front window to make new tab with properties {URL:$(as_str "$u")}" >/dev/null && echo "new tab: $u"
 }
 cmd_reload() { local tgt W T; tgt="$(get_target)"
   if [ "$tgt" = "front" ]; then osascript -e "tell application \"$APP\" to reload active tab of front window" >/dev/null && echo "reloaded"

@@ -75,7 +75,7 @@ APPLESCRIPT
   if [ -n "$keycode" ]; then
     err=$(osascript -e "tell application \"System Events\" to key code $keycode$using" 2>&1 || true)
   else
-    err=$(osascript -e "tell application \"System Events\" to keystroke \"$ks\"$using" 2>&1 || true)
+    err=$(osascript -e "tell application \"System Events\" to keystroke $(as_str "$ks")$using" 2>&1 || true)
   fi
   if [ -n "$err" ]; then
     if echo "$err" | grep -qi "assistive access"; then
