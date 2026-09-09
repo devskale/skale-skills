@@ -77,6 +77,7 @@ configure a DEBUG handler on the `credgoo` logger to see it.
 | [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides |
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 | [pi-architecture.md](pi-architecture.md) | How pi (the agent runtime) discovers packages, skills, extensions — background for this repo's layout |
+| [docs/codex-learnings.md](docs/codex-learnings.md) | Grounding for the coding guidelines — what the Codex repo teaches about testing, boundaries & lint at scale |
 
 ### Best Practices Guides (from skaleshare)
 
@@ -163,6 +164,9 @@ bash scripts/lint.sh     # tsc --noEmit + Biome lint (scoped to extensions/)
 
 ### Best Practices (from CONVENTION.md)
 
+Full reference incl. launcher/install.sh templates, testing matrix, version alignment:
+[CONVENTION.md → Skill Best Practices](CONVENTION.md#skill-best-practices).
+
 Every skill must have:
 - `SKILL.md` — frontmatter (`name`, `description`, `version`) + short usage instructions
 - Launcher script — symlink resolution, `--update`/`--selfcheck`, auto-update after 7 days
@@ -194,7 +198,7 @@ Python dependencies & pi package updates](docs/agent-skills-best-practices.md).
 
 ## Coding
 
-Coding guidelines live in [CONVENTION.md → Coding Guidelines](CONVENTION.md) — read it when writing or reviewing skill code. Grounded in [Learnings from the Codex repo](https://johnjwang.com/post/2026/08/27/learnings-from-the-codex-repo/): as implementation gets cheaper, tests, boundaries, and lint matter more, not less.
+Coding guidelines live in [CONVENTION.md → Coding Guidelines](CONVENTION.md) — read it when writing or reviewing skill code. Grounded in [Learnings from the Codex repo](docs/codex-learnings.md): as implementation gets cheaper, tests, boundaries, and lint matter more, not less.
 
 Always-on hard rules:
 

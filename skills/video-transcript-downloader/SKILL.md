@@ -100,26 +100,43 @@ YouTube blocks age-gated content without authentication. The `youtube` skill mar
 
 ```bash
 # One-time: persist your browser profile
-vtd cookies set chrome "Profile 1"       # → ~/.config/vtd-skill/config.json
+vtd cookies set chrome "Profile 2"       # → ~/.config/vtd-skill/config.json
 
 # Then transcribe age-restricted videos (reads config automatically)
 vtd transcript --url 'https://...' --cookies
 vtd transcript --list rl-lectures --cookies     # batch mode
 
 # Or pass a browser spec inline (no config needed)
-vtd transcript --url 'https://...' --cookies 'chrome:Profile 1'
+vtd transcript --url 'https://...' --cookies 'chrome:Profile 2'
 
 # Disable cookies (override config)
 vtd transcript --url 'https://...' --cookies false
 ```
 
-Behind the scenes this injects `--cookies-from-browser` into every yt-dlp call (metadata + subtitles). Combine with `-- --remote-components ejs:github` when yt-dlp needs the JS challenge solver:
+### Profile selection (matters!)
+
+Not every signed-in Chrome profile passes the age gate — YouTube accepts the age verification on the account, not the browser install. Verified 2026-09: on a machine with 9 profiles, only one consistently passed. If `--cookies` fails with `Sign in to confirm your age`, try other profiles:
+
+```bash
+# Quick probe: which profile passes the age gate?
+for p in "Default" "Profile 1" "Profile 2" "Profile 5"; do
+  yt-dlp --cookies-from-browser "chrome:$p" --skip-download --write-auto-subs --sub-lang en \
+    -o "/tmp/probe_$p" 'https://www.youtube.com/watch?v=VIDEO_ID' 2>&1 | grep -q 'Sign in' \
+    && echo "$p: ✗ age gate" || echo "$p: ✓ works"
+done
+```
+
+### 429 on translated captions
+
+For non-English videos, **original-language captions download reliably; translated captions (`--lang en`/`de` on a Spanish-original video, etc.) frequently fail with HTTP 429**. This is YouTube-side rate limiting — PO-token providers don't help. Fix: request the video's original language (`vtd chapters --url …` won't show it; check `yt-dlp --list-subs`), or retry later.
+
+Behind the scenes `--cookies` injects `--cookies-from-browser` into every yt-dlp call (metadata + subtitles). Combine with `-- --remote-components ejs:github` when yt-dlp needs the JS challenge solver:
 
 ```bash
 vtd transcript --url 'https://...' --cookies -- --remote-components ejs:github
 ```
 
-> **Note:** `youtube-transcript-plus` (the preferred fast path) cannot use cookies, so age-restricted videos fall back to yt-dlp subtitles — which do carry them.
+> **Note:** `youtube-transcript-plus` (the preferred fast path) cannot use cookies, so age-restricted videos fall back to yt-dlp subtitles — which do carry them. Verified working end-to-end 2026-09.
 
 ## Troubleshooting
 

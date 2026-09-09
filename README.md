@@ -259,6 +259,7 @@ See [`RECOMMENDED-SKILLS.md`](RECOMMENDED-SKILLS.md) for the full list of source
 | Install & activate | [docs/installation.md](docs/installation.md) |
 | Dev loop (edit → ship → clean) | [docs/development.md](docs/development.md) |
 | Credentials (credgoo) | [docs/credgoo.md](docs/credgoo.md) |
+| Coding guidelines grounding (Codex learnings) | [docs/codex-learnings.md](docs/codex-learnings.md) |
 | Authoring best practices | [agent-skills](docs/agent-skills-best-practices.md) · [AGENTS.md](docs/agents-md-best-practices.md) · [pi-extensions](docs/pi-extensions-best-practices.md) |
 
 ### Repo layout

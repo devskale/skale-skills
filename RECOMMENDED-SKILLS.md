@@ -82,6 +82,7 @@ npx @anthropic-ai/skills add <name>
 | **oebb-scotty** | Austrian rail planner (ÖBB) | [skills.sh](https://skills.sh) (search) |
 | **peep** | X/Twitter — read, search, post, bookmarks, trending | [devskale/peep](https://github.com/devskale/peep) |
 | **impeccable** | Design skill: shape, critique, harden, polish frontend UI + anti-pattern detector. Cross-harness (pi, Claude, Codex, Cursor, …). Setup guide: [`guides/impeccable-setup.md`](guides/impeccable-setup.md) | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) · `npx impeccable install` |
+| **ponytail** | Ruleset that makes your AI coding agent write the **least code that works** — stdlib over custom, native over deps, one line over fifty (YAGNI ladder). “The lazy senior dev for your AI agent.” | [ponytail.dev](https://ponytail.dev) · [GitHub](https://github.com/DietrichGebert/ponytail) |
 
 ### Matt Pocock's Skills (`mattpocock/skills`) — recommended, install globally
 
