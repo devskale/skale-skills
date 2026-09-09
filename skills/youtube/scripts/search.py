@@ -28,15 +28,29 @@ from typing import Iterator, List, Optional, Dict, Any, Tuple
 
 # ── Instance management ───────────────────────────────────────────────────────
 
-DEFAULT_INSTANCES = [
+# Candidate pool of Invidious instances. The public ecosystem is dying — most
+# of these will be dead at any given time (live-probed 2026-09: 2 of 15 worked,
+# the official registry served 0/7). get_instances() therefore MERGES cache +
+# this pool and self-heals: dead hosts are evicted, working ones promoted.
+KNOWN_INSTANCES = [
+    "iv.catgirl.cloud",
     "invidious.materialio.us",
-    "yt.chocolatemoo53.com",
-    "yt.tarka.dev",
+    "iv.ggtyler.dev",
+    "invidious.jing.rocks",
+    "inv.tux.pizza",
+    "invidious.adminforge.de",
+    "invidious.privacyredirect.com",
+    "yt.artemislena.eu",
 ]
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".instance-cache.json")
 CACHE_TTL = 4 * 60 * 60
 UA = "youtube-skill/2.0"
+# Some instances 403 non-browser user agents — retry with a browser UA.
+BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0 Safari/537.36"
+)
 
 # ── Deep-mode tuning ──────────────────────────────────────────────────────────
 
@@ -130,8 +144,8 @@ def _to_int(val: Any) -> int:
 
 # ╔ Instance discovery (cached, self-healing) ══════════════════════════════════
 
-def _get_json(url: str, timeout: int = 15) -> Any:
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+def _get_json(url: str, timeout: int = 15, ua: Optional[str] = None) -> Any:
+    req = urllib.request.Request(url, headers={"User-Agent": ua or UA})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read().decode())
 
@@ -157,36 +171,88 @@ def save_cached_instances(instances: List[str]) -> None:
         pass
 
 
-def discover_instances() -> List[str]:
-    try:
-        data = _get_json("https://api.invidious.io/instances.json", timeout=10)
-    except Exception:
-        return []
-    working: List[str] = []
-    for name, info in data:
-        inst = info if isinstance(info, dict) else (info[0] if isinstance(info, list) else {})
-        uri = inst.get("uri", "")
-        if not uri.startswith("https://"):
-            continue
-        host = uri.replace("https://", "").rstrip("/")
+def _probe_instance(host: str, timeout: int = 6) -> bool:
+    """True if the host answers a search query. Retries with a browser UA
+    (some instances 403 non-browser agents)."""
+    for ua in (UA, BROWSER_UA):
         try:
-            result = _get_json(f"https://{host}/api/v1/search?q=test&type=video", timeout=6)
-            if isinstance(result, list) and result:
-                working.append(host)
+            data = _get_json(
+                f"https://{host}/api/v1/search?q=test&type=video", timeout=timeout, ua=ua
+            )
+            if isinstance(data, list) and data:
+                return True
         except Exception:
             continue
+    return False
+
+
+def discover_instances(limit: int = 6, timeout: int = 6) -> List[str]:
+    """Probe the official registry + the known pool IN PARALLEL (stdlib
+    ThreadPool — sequential probing of a dying ecosystem takes minutes).
+    Returns working hosts, known-verified ones first."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    candidates: List[str] = []
+    for h in KNOWN_INSTANCES:
+        if h not in candidates:
+            candidates.append(h)
+    try:
+        data = _get_json("https://api.invidious.io/instances.json", timeout=10)
+        for _name, info in data:
+            if isinstance(info, dict):
+                uri = info.get("uri", "")
+                if uri.startswith("https://"):
+                    host = uri.replace("https://", "").rstrip("/")
+                    if host not in candidates:
+                        candidates.append(host)
+    except Exception:
+        pass
+
+    working: List[str] = []
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        for host, ok in zip(
+            candidates, ex.map(lambda h: _probe_instance(h, timeout), candidates)
+        ):
+            if ok:
+                working.append(host)
+                if len(working) >= limit:
+                    break
     return working
 
 
 def get_instances() -> List[str]:
+    """Merge cached + known instances — a stale or dead cache must never
+    shadow the fallback pool. On cache-miss, probe for fresh instances
+    and cache the survivors."""
     cached = load_cached_instances()
+    merged: List[str] = []
+    for h in cached + KNOWN_INSTANCES:
+        if h not in merged:
+            merged.append(h)
     if cached:
-        return cached
+        return merged
     discovered = discover_instances()
     if discovered:
         save_cached_instances(discovered)
         return discovered
-    return DEFAULT_INSTANCES
+    return merged
+
+
+def promote_instance(host: str) -> None:
+    """Move a just-successful host to the front of the cache (write-through,
+    so the next call starts with a known-healthy instance)."""
+    cached = load_cached_instances()
+    if host in cached:
+        cached.remove(host)
+    save_cached_instances([host] + cached)
+
+
+def evict_instances(hosts: List[str]) -> None:
+    """Drop dead hosts from the cache so the next call re-probes fresh ones."""
+    cached = load_cached_instances()
+    kept = [h for h in cached if h not in hosts]
+    if kept != cached:
+        save_cached_instances(kept)
 
 
 # ╔ Channel preference store ════════════════════════════════════════════════════
@@ -267,13 +333,16 @@ def search_instance(
     if region:
         params["region"] = region
     url = f"https://{host}/api/v1/search?{urllib.parse.urlencode(params)}"
-    try:
-        data = _get_json(url)
-        if isinstance(data, list) and data:
-            valid = [v for v in data if v.get("title") or v.get("videoId")]
-            return valid[:num] if valid else None
-    except Exception:
-        return None
+    # First try with the skill UA; on failure retry with a browser UA
+    # (some instances 403 non-browser agents but serve the API fine).
+    for ua in (UA, BROWSER_UA):
+        try:
+            data = _get_json(url, ua=ua)
+            if isinstance(data, list) and data:
+                valid = [v for v in data if v.get("title") or v.get("videoId")]
+                return valid[:num] if valid else None
+        except Exception:
+            continue
     return None
 
 
@@ -512,7 +581,10 @@ def do_search(args) -> int:
 
     exclude_channels = [c.strip() for c in (args.exclude_channel or []) if c.strip()]
 
+    tried: List[str] = []
+    dead: List[str] = []
     for host in get_instances():
+        tried.append(host)
         if args.verbose:
             print(f"Trying {host}...", file=sys.stderr)
         if channel_ucid:
@@ -521,10 +593,12 @@ def do_search(args) -> int:
             result = search_instance(host, args.query, fetch_n, api_sort,
                                      duration=duration, features=features, region=region)
         if not result:
+            dead.append(host)
             continue
 
         if raw_mode:
             print_results(result, now)
+            promote_instance(host)
             return 0
 
         filtered = [v for v in result if passes_filters(
@@ -545,6 +619,7 @@ def do_search(args) -> int:
 
         if args.stdout:
             print_results([v for _, v in picks], now, show_score=args.verbose, scored=picks)
+            promote_instance(host)
             return 0
 
         # Auto-save list.
@@ -555,12 +630,18 @@ def do_search(args) -> int:
                 f"`{args.query}`" + (f" · channel:{channel_ucid}" if channel_ucid else "") + "_")
         write_list(path, args.query or slug, picks, candidates, now, meta)
         print(path)
+        promote_instance(host)
         # Preview: first ~6 lines so the agent/user sees what landed.
         with open(path, encoding="utf-8") as f:
             preview = [next(f, "") for _ in range(6)]
         sys.stderr.write("".join(preview).rstrip() + "\n")
         return 0
 
+    # Self-heal: hosts that never answered are dead — evict them from the
+    # cache so the next call re-probes. Hosts that answered but whose results
+    # were all filtered out stay cached (they're healthy; the filters were
+    # just strict for this query).
+    evict_instances(dead)
     print("Error: all instances failed or no results passed filters.", file=sys.stderr)
     return 1
 

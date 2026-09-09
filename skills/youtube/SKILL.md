@@ -87,11 +87,12 @@ youtube --discover         # refresh the Invidious instance cache
 - **Invidious `/videos/{id}` (related videos) is widely blocked** — so `expand --like` resolves the video's *channel* instead (more from creator). If that fails, use `--channel` or `--more`.
 - **Watch links are `youtube.com`** (not the Invidious host), so they're ready for `vtd transcript --url …`.
 - **Fewer picks than `--num`?** Filters are strict. Widen with `--fresh all`, `--any-length`, lower `--min-views`, or bigger `--pool`.
-- **"all instances failed"** → `youtube --discover`.
+- **"all instances failed"** → `youtube --discover` (parallel probe, rebuilds the cache). Most public instances die regularly — the self-heal (evict/promote/merge) usually recovers on its own.
+- **The long-term fix is a yt-dlp backend rewrite** — see [docs/youtube-rewrite-plan.md](../../docs/youtube-rewrite-plan.md).
 
 ## How it works
 
-1. Instance resolution: cache (`.instance-cache.json`, 4h TTL) → `api.invidious.io` → fallbacks
+1. Instance resolution, self-healing: cache → merged with the known-instance pool (a stale/dead cache never shadows fallbacks); on cache-miss, parallel probe (registry + pool, browser-UA retry) → survivors cached 4h. Healthy hosts get promoted to cache-front on success; dead ones evicted after a failed search.
 2. Search `/api/v1/search` (or `/channels/{ucid}/search` for `--channel`) with filters
 3. Deep mode: apply fav/block + filters → score (preset weights) → rank → split picks/candidates
 4. Write `./lists/<slug>.md`; print path + preview
