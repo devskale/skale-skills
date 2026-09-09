@@ -138,6 +138,22 @@ assert "dedup errors without a list" "youtube dedup 2>&1 | grep -qi 'no target'"
 rm -rf "$TMP"
 echo ""
 
+# ── 13. Unit tests (network-independent core logic) ──────────────
+echo "[13] Unit tests (scoring/filtering/list parsing)..."
+# cwd is skills/youtube (test.sh cd's there at the top); tests live two levels up.
+UNIT_PY="$(cd ../../tests/youtube && pwd)/test_unit.py"
+UNIT=$(python3 "$UNIT_PY" 2>&1) || true
+if echo "$UNIT" | grep -q '^OK'; then
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: unit tests"
+    echo "$UNIT" | tail -20
+    FAIL=$((FAIL + 1))
+fi
+assert "unit tests cover score_video" "grep -q 'def test_fav_boost' '$UNIT_PY'"
+assert "unit tests cover passes_filters" "grep -q 'def test_too_old' '$UNIT_PY'"
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
 echo "=== Results ==="

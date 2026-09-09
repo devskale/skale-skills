@@ -21,6 +21,66 @@ function debug(message) {
   }
 }
 
+// ── Cookie / browser-profile configuration ──────────────────────────
+// Persisted in ~/.config/vtd-skill/config.json so age-restricted (and
+// other auth-gated) YouTube videos become transcribable.
+//
+//   { "browser": "chrome", "profile": "Default" }
+//
+// The --cookies flag reads this and injects --cookies-from-browser into
+// every yt-dlp invocation. youtube-transcript-plus (the preferred
+// transcript path) can't use cookies, so age-restricted videos fall
+// back to yt-dlp subtitles — which *do* carry the cookies.
+
+const CONFIG_DIR = path.join(os.homedir(), ".config", "vtd-skill");
+const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
+    }
+  } catch {
+    debug(`could not read ${CONFIG_FILE}`);
+  }
+  return {};
+}
+
+function saveConfig(cfg) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2) + "\n", "utf8");
+}
+
+// Resolve the yt-dlp --cookies-from-browser argument.
+// Priority: explicit --cookies flag > config file > env var > none.
+//
+// Forms accepted:
+//   --cookies                 → read browser+profile from config/env
+//   --cookies false           → disable (override config)
+//   --cookies chrome          → browser only
+//   --cookies chrome:Profile 1 → browser + profile (inline)
+function cookieArgs(opts) {
+  // Explicit disable.
+  if (opts.cookies === false || opts.cookies === "false") return [];
+
+  // Inline spec: --cookies chrome:Profile 1
+  if (typeof opts.cookies === "string" && opts.cookies !== "true") {
+    debug(`cookies (inline): ${opts.cookies}`);
+    return ["--cookies-from-browser", opts.cookies];
+  }
+
+  // --cookies with no value (true): read from config/env.
+  const cfg = loadConfig();
+  const browser = cfg.browser || process.env.VTD_BROWSER;
+  const profile = cfg.profile || process.env.VTD_PROFILE;
+  if (browser) {
+    const spec = profile ? `${browser}:${profile}` : browser;
+    debug(`cookies (config): ${spec}`);
+    return ["--cookies-from-browser", spec];
+  }
+  return [];
+}
+
 function parseArgs(argv) {
   // Tiny no-deps parser.
   // - `--flag` => boolean
@@ -257,8 +317,8 @@ async function fetchYoutubeSegments(id, lang) {
   }));
 }
 
-async function fetchYtDlpSegments(url, lang, extra) {
-  const { tmpDir, subtitlePath } = await ytDlpSubtitlesToTemp({ url, lang, extra });
+async function fetchYtDlpSegments(url, lang, extra, cookieArgs = []) {
+  const { tmpDir, subtitlePath } = await ytDlpSubtitlesToTemp({ url, lang, extra, cookieArgs });
   try {
     const raw = fs.readFileSync(subtitlePath, "utf8");
     const segs = subtitlePath.endsWith(".srt") ? parseSrt(raw) : parseVtt(raw);
@@ -298,7 +358,7 @@ function buildTranscriptFilename({ uploadDate, title, id, uploader }) {
   return `${datePart}_${channelSlug}_${titleSlug}.md`;
 }
 
-async function getVideoMeta(url) {
+async function getVideoMeta(url, cookieArgs = [], extra = []) {
   const ytdlp = resolveBin("yt-dlp", "/opt/homebrew/bin/yt-dlp");
   if (!ytdlp)
     throw new Error(
@@ -307,6 +367,8 @@ async function getVideoMeta(url) {
   const args = [
     "--dump-json",
     "--no-download",
+    ...cookieArgs,
+    ...extra,
     url,
   ];
   const r = await run(ytdlp, args);
@@ -451,7 +513,7 @@ function parseVtt(text) {
   return segments;
 }
 
-async function ytDlpSubtitlesToTemp({ url, lang, ytdlpPath, extra }) {
+async function ytDlpSubtitlesToTemp({ url, lang, ytdlpPath, extra, cookieArgs = [] }) {
   const ytdlp = ytdlpPath || resolveBin("yt-dlp", "/opt/homebrew/bin/yt-dlp");
   if (!ytdlp)
     throw new Error(
@@ -470,6 +532,7 @@ async function ytDlpSubtitlesToTemp({ url, lang, ytdlpPath, extra }) {
     lang,
     "-o",
     outTemplate,
+    ...cookieArgs,
   );
   if (extra?.length) args.push(...extra);
   args.push(url);
@@ -505,13 +568,14 @@ async function downloadTranscript({
   meta,
   filename,
   silent,
+  cookieArgs = [],
 }) {
   if (!url) throw new Error("missing url");
 
   // Fetch metadata once: chapters drive sectioning, and meta drives filename + frontmatter.
   if (!meta) {
     try {
-      meta = await getVideoMeta(url);
+      meta = await getVideoMeta(url, cookieArgs, extra);
     } catch (e) {
       debug(`getVideoMeta failed: ${e.message}`);
       meta = { id: extractYouTubeId(url), title: null };
@@ -532,7 +596,7 @@ async function downloadTranscript({
     }
   }
   if (segments.length === 0) {
-    segments = await fetchYtDlpSegments(url, lang, extra);
+    segments = await fetchYtDlpSegments(url, lang, extra, cookieArgs);
   }
   if (segments.length === 0) throw new Error("empty transcript");
 
@@ -624,7 +688,7 @@ function findExistingTranscript(dir, videoId) {
   return hit.length ? path.join(dir, hit[0]) : null;
 }
 
-async function cmdTranscriptList({ list, lang, timestamps, keepBrackets, extra, force, limit, invokedPwd }) {
+async function cmdTranscriptList({ list, lang, timestamps, keepBrackets, extra, force, limit, invokedPwd, cookieArgs = [] }) {
   const listPath = resolveListPath(list, invokedPwd);
   if (!listPath) die(`list not found: ${list} (looked in ./lists/${list}.md)`);
   const picks = parseListSection(fs.readFileSync(listPath, "utf8"), "Picks");
@@ -665,6 +729,7 @@ async function cmdTranscriptList({ list, lang, timestamps, keepBrackets, extra, 
         transcriptDir: dir,
         filename: fname,
         silent: true,
+        cookieArgs,
       });
       done++;
       process.stderr.write(`  ✓ ${path.basename(saved)}\n`);
@@ -709,6 +774,7 @@ async function cmdSearch({
   extra,
   toFile,
   transcriptDir,
+  cookieArgs = [],
 }) {
   if (!query) die("missing query");
   let searchLimit = limit ? Number(limit) : 1;
@@ -768,6 +834,7 @@ async function cmdSearch({
         toFile: true, // Default to file for search results as per user intent
         transcriptDir,
         meta,
+        cookieArgs,
       });
     } catch (e) {
       console.error(`Failed to process ${url}: ${e.message}`);
@@ -775,11 +842,11 @@ async function cmdSearch({
   }
 }
 
-async function cmdChapters({ url }) {
+async function cmdChapters({ url, cookieArgs = [], extra = [] }) {
   if (!url) die("missing --url");
   let meta;
   try {
-    meta = await getVideoMeta(url);
+    meta = await getVideoMeta(url, cookieArgs, extra);
   } catch (e) {
     die(e.message);
   }
@@ -789,13 +856,14 @@ async function cmdChapters({ url }) {
   process.stdout.write(formatChapters(meta.chapters));
 }
 
-async function cmdSubs({ url, lang, outputDir, extra }) {
+async function cmdSubs({ url, lang, outputDir, extra, cookieArgs = [] }) {
   if (!url) die("missing --url");
 
   const { tmpDir, subtitlePath } = await ytDlpSubtitlesToTemp({
     url,
     lang,
     extra,
+    cookieArgs,
   });
 
   try {
@@ -809,7 +877,7 @@ async function cmdSubs({ url, lang, outputDir, extra }) {
   }
 }
 
-async function cmdDownload({ url, outputDir, extra }) {
+async function cmdDownload({ url, outputDir, extra, cookieArgs = [] }) {
   if (!url) die("missing --url");
   const ytdlp = resolveBin("yt-dlp", "/opt/homebrew/bin/yt-dlp");
   if (!ytdlp) die("missing yt-dlp; install `yt-dlp` and ensure it is on PATH");
@@ -829,6 +897,7 @@ async function cmdDownload({ url, outputDir, extra }) {
     "res,ext:mp4:m4a,tbr",
     "--print",
     "after_move:filepath",
+    ...cookieArgs,
   );
   if (extra?.length) args.push(...extra);
   args.push(url);
@@ -843,7 +912,7 @@ async function cmdDownload({ url, outputDir, extra }) {
   process.stdout.write(path.resolve(filePath) + "\n");
 }
 
-async function cmdAudio({ url, outputDir, extra }) {
+async function cmdAudio({ url, outputDir, extra, cookieArgs = [] }) {
   if (!url) die("missing --url");
   const ytdlp = resolveBin("yt-dlp", "/opt/homebrew/bin/yt-dlp");
   if (!ytdlp) die("missing yt-dlp; install `yt-dlp` and ensure it is on PATH");
@@ -868,6 +937,7 @@ async function cmdAudio({ url, outputDir, extra }) {
     "mp3",
     "--print",
     "after_move:filepath",
+    ...cookieArgs,
   );
   if (extra?.length) args.push(...extra);
   args.push(url);
@@ -882,13 +952,13 @@ async function cmdAudio({ url, outputDir, extra }) {
   process.stdout.write(path.resolve(filePath) + "\n");
 }
 
-async function cmdFormats({ url, extra }) {
+async function cmdFormats({ url, extra, cookieArgs = [] }) {
   if (!url) die("missing --url");
   const ytdlp = resolveBin("yt-dlp", "/opt/homebrew/bin/yt-dlp");
   if (!ytdlp) die("missing yt-dlp; install `yt-dlp` and ensure it is on PATH");
 
   // Print raw yt-dlp format table; user picks `--format <id>` for downloads.
-  const args = ["-F"];
+  const args = ["-F", ...cookieArgs];
   if (extra?.length) args.push(...extra);
   args.push(url);
 
@@ -901,14 +971,20 @@ function usage() {
   const rel = path.relative(process.cwd(), path.join(__dirname, "vtd.js"));
   return [
     "usage:",
-    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-file] [--transcript-dir .] [-- <yt-dlp extra…>]`,
-    `  ${rel} transcript --list <name|file> [--lang en] [--limit N] [--force]   # transcribe a youtube list's ## Picks`,
-    `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir .]`,
-    `  ${rel} download   --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
-    `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [-- <yt-dlp extra…>]`,
-    `  ${rel} subs       --url 'https://…' [--output-dir ~/Downloads] [--lang en] [-- <yt-dlp extra…>]`,
-    `  ${rel} formats    --url 'https://…' [-- <yt-dlp extra…>]`,
-    `  ${rel} chapters   --url 'https://…'                          # print video chapters`,
+    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-file] [--transcript-dir .] [--cookies] [-- <yt-dlp extra…>]`,
+    `  ${rel} transcript --list <name|file> [--lang en] [--limit N] [--force] [--cookies]   # transcribe a youtube list's ## Picks`,
+    `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir .] [--cookies]`,
+    `  ${rel} download   --url 'https://…' [--output-dir ~/Downloads] [--cookies] [-- <yt-dlp extra…>]`,
+    `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [--cookies] [-- <yt-dlp extra…>]`,
+    `  ${rel} subs       --url 'https://…' [--output-dir ~/Downloads] [--lang en] [--cookies] [-- <yt-dlp extra…>]`,
+    `  ${rel} formats    --url 'https://…' [--cookies] [-- <yt-dlp extra…>]`,
+    `  ${rel} chapters   --url 'https://…' [--cookies]`,
+    `  ${rel} cookies    set <browser> [profile]     # persist ~/.config/vtd-skill/config.json`,
+    `  ${rel} cookies    show                        # show current cookie config`,
+    "",
+    "  --cookies: read browser profile from config (~/.config/vtd-skill/config.json)",
+    "              or pass a browser spec directly: --cookies chrome:Profile 1",
+    "              use --cookies false to disable (overrides config)",
   ].join("\n");
 }
 
@@ -960,6 +1036,10 @@ async function main() {
 
   const limit = opts.limit;
 
+  // Resolve cookie args once: --cookies flag > config file > env > none.
+  // Injects --cookies-from-browser into yt-dlp calls for age-restricted videos.
+  const cookies = cookieArgs(opts);
+
   if (cmd === "transcript") {
     if (opts.list) {
       if (opts.list === true)
@@ -973,6 +1053,7 @@ async function main() {
         force: Boolean(opts.force),
         limit: opts.limit,
         invokedPwd,
+        cookieArgs: cookies,
       });
       return;
     }
@@ -984,6 +1065,7 @@ async function main() {
       extra,
       toFile,
       transcriptDir,
+      cookieArgs: cookies,
     });
     return;
   }
@@ -998,28 +1080,50 @@ async function main() {
       extra,
       toFile,
       transcriptDir,
+      cookieArgs: cookies,
     });
     return;
   }
   if (cmd === "download") {
-    await cmdDownload({ url, outputDir, extra });
+    await cmdDownload({ url, outputDir, extra, cookieArgs: cookies });
     return;
   }
   if (cmd === "audio") {
-    await cmdAudio({ url, outputDir, extra });
+    await cmdAudio({ url, outputDir, extra, cookieArgs: cookies });
     return;
   }
   if (cmd === "subs") {
-    await cmdSubs({ url, lang, outputDir, extra });
+    await cmdSubs({ url, lang, outputDir, extra, cookieArgs: cookies });
     return;
   }
   if (cmd === "formats") {
-    await cmdFormats({ url, extra });
+    await cmdFormats({ url, extra, cookieArgs: cookies });
     return;
   }
   if (cmd === "chapters") {
-    await cmdChapters({ url });
+    await cmdChapters({ url, cookieArgs: cookies, extra });
     return;
+  }
+  if (cmd === "cookies") {
+    const sub = positional[1];
+    if (sub === "show" || !sub) {
+      const cfg = loadConfig();
+      if (cfg.browser)
+        console.log(`browser: ${cfg.browser}${cfg.profile ? ` profile: ${cfg.profile}` : ""}`);
+      else
+        console.log("no cookie config set. Use: vtd cookies set <browser> [profile]");
+      return;
+    }
+    if (sub === "set") {
+      const browser = positional[2];
+      const profile = positional[3];
+      if (!browser) die("usage: vtd cookies set <browser> [profile]");
+      saveConfig({ browser, profile: profile || undefined });
+      console.log(`Saved cookie config: browser=${browser}${profile ? ` profile=${profile}` : ""}`);
+      console.log(`Config: ${CONFIG_FILE}`);
+      return;
+    }
+    die(`unknown cookies subcommand: ${sub}\nusage: vtd cookies [set <browser> [profile] | show]`);
   }
 
   die(`unknown command: ${cmd}\n\n${usage()}`);

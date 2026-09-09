@@ -83,7 +83,8 @@ youtube --discover         # refresh the Invidious instance cache
 ## Gotchas
 
 - **Invidious `date`/`duration` API filters are leaky** — deep mode re-checks age + duration client-side.
-- **`/videos/{id}` (related videos) is widely blocked** on Invidious — so `expand --like` resolves the video's *channel* instead (more from creator). If that fails, use `--channel` or `--more`.
+- **Age-restricted videos** are discovered (Invidious returns their metadata) but are **marked `🔒 age-restricted`** in the saved list — the public Invidious stream returns `403 Forbidden` for them (Google requires auth). Use `vtd transcript --url …` with `--cookies-from-browser` to transcribe a marked video.
+- **Invidious `/videos/{id}` (related videos) is widely blocked** — so `expand --like` resolves the video's *channel* instead (more from creator). If that fails, use `--channel` or `--more`.
 - **Watch links are `youtube.com`** (not the Invidious host), so they're ready for `vtd transcript --url …`.
 - **Fewer picks than `--num`?** Filters are strict. Widen with `--fresh all`, `--any-length`, lower `--min-views`, or bigger `--pool`.
 - **"all instances failed"** → `youtube --discover`.

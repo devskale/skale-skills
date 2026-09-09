@@ -91,7 +91,35 @@ vtd download --url 'https://...' -- --format 137+140       # specific format
 | `--transcript-dir` | `.` | Where to save transcripts |
 | `--output-dir` | `~/Downloads` | Where to save downloads |
 | `--limit` | 1 | Search results count |
+| `--cookies` | off | Use browser cookies for age-restricted videos |
 | `--` (separator) | | Pass extra args to yt-dlp |
+
+## Age-restricted videos
+
+YouTube blocks age-gated content without authentication. The `youtube` skill marks these with `🔒 age-restricted` in the list. To transcribe them, pass cookies from a signed-in browser:
+
+```bash
+# One-time: persist your browser profile
+vtd cookies set chrome "Profile 1"       # → ~/.config/vtd-skill/config.json
+
+# Then transcribe age-restricted videos (reads config automatically)
+vtd transcript --url 'https://...' --cookies
+vtd transcript --list rl-lectures --cookies     # batch mode
+
+# Or pass a browser spec inline (no config needed)
+vtd transcript --url 'https://...' --cookies 'chrome:Profile 1'
+
+# Disable cookies (override config)
+vtd transcript --url 'https://...' --cookies false
+```
+
+Behind the scenes this injects `--cookies-from-browser` into every yt-dlp call (metadata + subtitles). Combine with `-- --remote-components ejs:github` when yt-dlp needs the JS challenge solver:
+
+```bash
+vtd transcript --url 'https://...' --cookies -- --remote-components ejs:github
+```
+
+> **Note:** `youtube-transcript-plus` (the preferred fast path) cannot use cookies, so age-restricted videos fall back to yt-dlp subtitles — which do carry them.
 
 ## Troubleshooting
 
@@ -100,6 +128,7 @@ vtd download --url 'https://...' -- --format 137+140       # specific format
 | Missing yt-dlp | `bash install.sh` |
 | Missing ffmpeg | `brew install ffmpeg` |
 | No subtitles found | Try different `--lang` or check if video has captions |
+| Age-restricted video fails | Use `--cookies` (see above) |
 
 ## Notes
 
