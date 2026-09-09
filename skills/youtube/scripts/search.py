@@ -45,6 +45,9 @@ KNOWN_INSTANCES = [
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".instance-cache.json")
 CACHE_TTL = 4 * 60 * 60
+STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".instance-stats.json")
+STATS_KEEP_OK_DAYS = 45   # hosts with no success for this long are pruned
+STATS_RANK_DAYS = 30      # only hosts with success inside this window rank above the static pool
 UA = "youtube-skill/2.0"
 # Some instances 403 non-browser user agents — retry with a browser UA.
 BROWSER_UA = (
@@ -221,21 +224,26 @@ def discover_instances(limit: int = 6, timeout: int = 6) -> List[str]:
 
 
 def get_instances() -> List[str]:
-    """Merge cached + known instances — a stale or dead cache must never
-    shadow the fallback pool. On cache-miss, probe for fresh instances
-    and cache the survivors."""
+    """Probe order, most-likely-working first:
+    1. fresh cache (discovery survivors, promoted host in front)
+    2. hosts with recent real-world success from the health history
+    3. the static cold-start pool
+    A stale or dead cache must never shadow the fallbacks. On cache-miss,
+    probe for fresh instances and cache the survivors."""
     cached = load_cached_instances()
-    merged: List[str] = []
-    for h in cached + KNOWN_INSTANCES:
-        if h not in merged:
-            merged.append(h)
+    ranked: List[str] = []
+    for h in cached + _ranked_good_hosts() + KNOWN_INSTANCES:
+        if h not in ranked:
+            ranked.append(h)
     if cached:
-        return merged
+        return ranked
     discovered = discover_instances()
     if discovered:
         save_cached_instances(discovered)
-        return discovered
-    return merged
+        for h in discovered:
+            _record_stat(h, ok=True)
+        return discovered + [h for h in ranked if h not in discovered]
+    return ranked
 
 
 def promote_instance(host: str) -> None:
@@ -245,6 +253,7 @@ def promote_instance(host: str) -> None:
     if host in cached:
         cached.remove(host)
     save_cached_instances([host] + cached)
+    _record_stat(host, ok=True)
 
 
 def evict_instances(hosts: List[str]) -> None:
@@ -253,6 +262,63 @@ def evict_instances(hosts: List[str]) -> None:
     kept = [h for h in cached if h not in hosts]
     if kept != cached:
         save_cached_instances(kept)
+    for h in hosts:
+        _record_stat(h, ok=False)
+
+
+# ── Host health history (self-maintaining server list) ───────────────────
+# Every search records per-host success/failure with timestamps. The probe
+# order converges to "what actually works on this machine, most-recent-first"
+# — so the effective instance list stays current without manual edits.
+# KNOWN_INSTANCES above is only the cold-start seed.
+
+def load_stats() -> Dict[str, Dict[str, float]]:
+    try:
+        if os.path.exists(STATS_FILE):
+            with open(STATS_FILE, "r") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+    except (json.JSONDecodeError, OSError):
+        pass
+    return {}
+
+
+def save_stats(stats: Dict[str, Dict[str, float]]) -> None:
+    try:
+        with open(STATS_FILE, "w") as f:
+            json.dump(stats, f)
+    except OSError:
+        pass
+
+
+def _record_stat(host: str, ok: bool) -> None:
+    stats = load_stats()
+    s = stats.setdefault(host, {"ok": 0, "fail": 0})
+    s["ok" if ok else "fail"] = s.get("ok" if ok else "fail", 0) + 1
+    s["last_ok" if ok else "last_fail"] = time.time()
+    _prune_stats(stats)
+    save_stats(stats)
+
+
+def _prune_stats(stats: Dict[str, Dict[str, float]]) -> None:
+    """Forget hosts that haven't succeeded in a long time (rotted entries)."""
+    cutoff = time.time() - STATS_KEEP_OK_DAYS * 86400
+    for h in list(stats):
+        if stats[h].get("last_ok", 0) < cutoff:
+            del stats[h]
+
+
+def _ranked_good_hosts() -> List[str]:
+    """Hosts with a success inside STATS_RANK_DAYS, most recent first."""
+    cutoff = time.time() - STATS_RANK_DAYS * 86400
+    stats = load_stats()
+    good = [
+        (h, s.get("last_ok", 0))
+        for h, s in stats.items()
+        if s.get("last_ok", 0) >= cutoff
+    ]
+    return [h for h, _ in sorted(good, key=lambda x: x[1], reverse=True)]
 
 
 # ╔ Channel preference store ════════════════════════════════════════════════════
@@ -875,6 +941,8 @@ def main() -> int:
         discovered = discover_instances()
         if discovered:
             save_cached_instances(discovered)
+            for h in discovered:
+                _record_stat(h, ok=True)
             print(f"Discovered {len(discovered)} working instances:")
             for inst in discovered:
                 print(f"  {inst}")

@@ -92,7 +92,7 @@ youtube --discover         # refresh the Invidious instance cache
 
 ## How it works
 
-1. Instance resolution, self-healing: cache → merged with the known-instance pool (a stale/dead cache never shadows fallbacks); on cache-miss, parallel probe (registry + pool, browser-UA retry) → survivors cached 4h. Healthy hosts get promoted to cache-front on success; dead ones evicted after a failed search.
+1. Instance resolution, self-healing and **self-maintaining**: probe order is fresh cache → hosts with recent real-world success (health history in `.instance-stats.json`, recorded on every search) → cold-start pool. Dead hosts are evicted, healthy ones promoted; rotted entries (45d without success) are pruned automatically. On cache-miss, a parallel probe (registry + pool, browser-UA retry) refreshes the cache for 4h.
 2. Search `/api/v1/search` (or `/channels/{ucid}/search` for `--channel`) with filters
 3. Deep mode: apply fav/block + filters → score (preset weights) → rank → split picks/candidates
 4. Write `./lists/<slug>.md`; print path + preview

@@ -7,3 +7,4 @@ uv.lock
 node_modules/
 __pycache__/
 lists/
+.instance-stats.json
