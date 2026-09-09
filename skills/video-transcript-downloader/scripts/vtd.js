@@ -281,15 +281,15 @@ function assignChapterIndex(offsetMs, chapters) {
 
 // Build the output body from cleaned segments. Three mutually-exclusive modes:
 //   timestamps === true  -> "[MM:SS] text" lines
-//   chapters present     -> sectioned: "### MM:SS Title\n\ntext"
-//   otherwise            -> single paragraph
-function bodyFromCleaned(cleaned, { timestamps, chapters }) {
+//   sections === true && chapters -> sectioned: "### MM:SS Title\n\ntext"
+//   otherwise            -> single clean paragraph (no time markers)
+function bodyFromCleaned(cleaned, { timestamps, sections, chapters }) {
   if (timestamps) {
     return cleaned
       .map((s) => `[${formatTimestamp(s.offset / 1000)}] ${s.text}`)
       .join("\n");
   }
-  if (chapters && chapters.length > 0) {
+  if (sections && chapters && chapters.length > 0) {
     const buckets = chapters.map(() => []);
     for (const s of cleaned) {
       buckets[assignChapterIndex(s.offset, chapters)].push(s.text);
@@ -401,7 +401,16 @@ async function getVideoMeta(url, cookieArgs = [], extra = []) {
   };
 }
 
-async function saveTranscriptToFile({ text, url, transcriptDir, meta, filename }) {
+function formatDurationHMS(totalSeconds) {
+  const s = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+async function saveTranscriptToFile({ text, url, transcriptDir, meta, filename, sections }) {
   if (!meta) {
     try {
       meta = await getVideoMeta(url);
@@ -425,13 +434,14 @@ async function saveTranscriptToFile({ text, url, transcriptDir, meta, filename }
     `uploader: "${(meta.uploader || "").replace(/"/g, '\\"')}"`,
     `likes: ${meta.likeCount}`,
     `views: ${meta.viewCount}`,
-    `duration: ${meta.duration}`,
+    `duration: "${formatDurationHMS(meta.duration)}"`,
+    `duration_seconds: ${Number(meta.duration) || 0}`,
     ...(meta.tags?.length ? [`tags:`, ...meta.tags.map((t) => `  - ${t}`)] : []),
     "---",
     "",
   ].join("\n");
 
-  const chaptersSection = formatChapters(meta.chapters);
+  const chaptersSection = sections ? formatChapters(meta.chapters) : "";
   let body = "";
   if (chaptersSection) body += "\n" + chaptersSection + "\n";
   body += String(text || "").trimEnd() + "\n";
@@ -561,6 +571,7 @@ async function downloadTranscript({
   url,
   lang,
   timestamps,
+  sections,
   keepBrackets,
   extra,
   toFile,
@@ -603,9 +614,10 @@ async function downloadTranscript({
   const cleaned = cleanSegmentsWithOffset(segments, { keepBrackets });
   if (cleaned.length === 0) throw new Error("empty transcript after cleaning");
 
-  // Body format priority: --timestamps > chapters (sectioned) > single paragraph.
+  // Body format priority: --timestamps > --sections (chaptered) > single clean paragraph.
   const body = bodyFromCleaned(cleaned, {
     timestamps,
+    sections,
     chapters: meta.chapters,
   });
 
@@ -616,6 +628,7 @@ async function downloadTranscript({
       transcriptDir,
       meta,
       filename,
+      sections,
     });
     if (!silent)
       process.stdout.write(
@@ -688,7 +701,7 @@ function findExistingTranscript(dir, videoId) {
   return hit.length ? path.join(dir, hit[0]) : null;
 }
 
-async function cmdTranscriptList({ list, lang, timestamps, keepBrackets, extra, force, limit, invokedPwd, cookieArgs = [] }) {
+async function cmdTranscriptList({ list, lang, timestamps, sections, keepBrackets, extra, force, limit, invokedPwd, cookieArgs = [] }) {
   const listPath = resolveListPath(list, invokedPwd);
   if (!listPath) die(`list not found: ${list} (looked in ./lists/${list}.md)`);
   const picks = parseListSection(fs.readFileSync(listPath, "utf8"), "Picks");
@@ -723,6 +736,7 @@ async function cmdTranscriptList({ list, lang, timestamps, keepBrackets, extra, 
         url: p.url,
         lang,
         timestamps,
+        sections,
         keepBrackets,
         extra,
         toFile: true,
@@ -770,6 +784,7 @@ async function cmdSearch({
   limit,
   lang,
   timestamps,
+  sections,
   keepBrackets,
   extra,
   toFile,
@@ -829,6 +844,7 @@ async function cmdSearch({
         url,
         lang,
         timestamps,
+        sections,
         keepBrackets,
         extra,
         toFile: true, // Default to file for search results as per user intent
@@ -971,8 +987,8 @@ function usage() {
   const rel = path.relative(process.cwd(), path.join(__dirname, "vtd.js"));
   return [
     "usage:",
-    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--keep-brackets] [--no-file] [--transcript-dir .] [--cookies] [-- <yt-dlp extra…>]`,
-    `  ${rel} transcript --list <name|file> [--lang en] [--limit N] [--force] [--cookies]   # transcribe a youtube list's ## Picks`,
+    `  ${rel} transcript --url 'https://…' [--lang en] [--timestamps] [--sections] [--keep-brackets] [--no-file] [--transcript-dir .] [--cookies] [-- <yt-dlp extra…>]`,
+    `  ${rel} transcript --list <name|file> [--lang en] [--limit N] [--force] [--sections] [--cookies]   # transcribe a youtube list's ## Picks`,
     `  ${rel} search     'query' [--limit 3] [--lang en] [--timestamps] [--transcript-dir .] [--cookies]`,
     `  ${rel} download   --url 'https://…' [--output-dir ~/Downloads] [--cookies] [-- <yt-dlp extra…>]`,
     `  ${rel} audio      --url 'https://…' [--output-dir ~/Downloads] [--cookies] [-- <yt-dlp extra…>]`,
@@ -1002,6 +1018,7 @@ async function main() {
   const outputDir = opts["output-dir"] || path.join(os.homedir(), "Downloads");
 
   const timestamps = Boolean(opts.timestamps);
+  const sections = Boolean(opts.sections);
   const keepBrackets = Boolean(opts["keep-brackets"]);
   const extra = opts.extra || [];
   const invokedPwd = process.env.VTD_INVOKED_PWD || process.cwd();
@@ -1048,6 +1065,7 @@ async function main() {
         list: opts.list,
         lang,
         timestamps,
+        sections,
         keepBrackets,
         extra,
         force: Boolean(opts.force),
@@ -1061,6 +1079,7 @@ async function main() {
       url,
       lang,
       timestamps,
+      sections,
       keepBrackets,
       extra,
       toFile,
@@ -1076,6 +1095,7 @@ async function main() {
       limit,
       lang,
       timestamps,
+      sections,
       keepBrackets,
       extra,
       toFile,
