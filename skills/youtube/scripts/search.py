@@ -78,7 +78,7 @@ CHANNELS_FILE = os.path.expanduser("~/.config/youtube-skill/channels.md")
 LISTS_DIR = os.path.join(os.getcwd(), "lists")
 
 
-# ╔ Formatting helpers ════════════════════════════════════════════════════════
+# ╔ Formatting helpers ══════════════════════════════════════════════════
 
 def format_duration(seconds: Any) -> str:
     try:
@@ -145,7 +145,7 @@ def _to_int(val: Any) -> int:
         return 0
 
 
-# ╔ Instance discovery (cached, self-healing) ══════════════════════════════════
+# ╔ Instance discovery (cached, self-healing) ════════════════════════════
 
 def _get_json(url: str, timeout: int = 15, ua: Optional[str] = None) -> Any:
     req = urllib.request.Request(url, headers={"User-Agent": ua or UA})
@@ -321,7 +321,7 @@ def _ranked_good_hosts() -> List[str]:
     return [h for h, _ in sorted(good, key=lambda x: x[1], reverse=True)]
 
 
-# ╔ Channel preference store ════════════════════════════════════════════════════
+# ╔ Channel preference store ══════════════════════════════════════════════
 
 def load_channels() -> Dict[str, Dict[str, str]]:
     """Return {'fav': {ucid: name}, 'block': {ucid: name}}."""
@@ -380,7 +380,7 @@ def resolve_channel(name_or_id: str) -> Optional[Tuple[str, str]]:
     return None
 
 
-# ╔ Invidious search primitives ═════════════════════════════════════════════════
+# ╔ Invidious search primitives ═══════════════════════════════════════════
 
 def search_instance(
     host: str,
@@ -390,6 +390,7 @@ def search_instance(
     duration: Optional[str] = None,
     features: Optional[str] = None,
     region: Optional[str] = None,
+    errors: Optional[Dict[str, str]] = None,
 ) -> Optional[List[Dict[str, Any]]]:
     params: Dict[str, str] = {"q": query, "type": "video", "sort_by": api_sort}
     if duration:
@@ -401,14 +402,23 @@ def search_instance(
     url = f"https://{host}/api/v1/search?{urllib.parse.urlencode(params)}"
     # First try with the skill UA; on failure retry with a browser UA
     # (some instances 403 non-browser agents but serve the API fine).
+    last_err = ""
     for ua in (UA, BROWSER_UA):
         try:
-            data = _get_json(url, ua=ua)
+            data = _get_json(url, timeout=8, ua=ua)
             if isinstance(data, list) and data:
                 valid = [v for v in data if v.get("title") or v.get("videoId")]
-                return valid[:num] if valid else None
-        except Exception:
-            continue
+                if valid:
+                    return valid[:num]
+                last_err = "empty result list"
+            elif isinstance(data, list):
+                last_err = "empty result list"
+            else:
+                last_err = "unexpected response shape"
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {str(e)[:80]}"
+    if errors is not None:
+        errors[host] = last_err
     return None
 
 
@@ -443,7 +453,7 @@ def video_id_from_url(s: str) -> str:
     return m.group(1) if m else s.strip()
 
 
-# ╔ Deep-mode scoring + filtering ══════════════════════════════════════════════
+# ╔ Deep-mode scoring + filtering ════════════════════════════════════════
 
 def passes_filters(
     v: Dict[str, Any],
@@ -503,7 +513,7 @@ def score_video(
     return score
 
 
-# ╔ The list artifact (./lists/<slug>.md) ═══════════════════════════════════════
+# ╔ The list artifact (./lists/<slug>.md) ═════════════════════════════════
 
 VIDEO_ID_RE = re.compile(r"(?:youtube\.com/watch\?v=|youtu\.be/|/embed/)([A-Za-z0-9_-]{6,})")
 UCID_RE = re.compile(r"ucid:(UC[A-Za-z0-9_-]+)")
@@ -587,7 +597,7 @@ def resolve_list_path(name: Optional[str]) -> Optional[str]:
     return max(mds, key=os.path.getmtime) if mds else None
 
 
-# ╔ Stdout output (legacy / --stdout) ══════════════════════════════════════════
+# ╔ Stdout output (legacy / --stdout) ════════════════════════════════════
 
 def print_results(results: List[Dict[str, Any]], now: float, show_score: bool = False,
                   scored: Optional[List[Tuple[float, Dict[str, Any]]]] = None) -> None:
@@ -602,7 +612,38 @@ def print_results(results: List[Dict[str, Any]], now: float, show_score: bool = 
         )
 
 
-# ╔ Search + list building ══════════════════════════════════════════════════════
+# ╔ Search + list building ════════════════════════════════════════════
+
+def report_search_failure(
+    dead: List[str],
+    errors: Dict[str, str],
+    filtered_hosts: List[Tuple[str, int]],
+) -> None:
+    """Fail loud: name the dead hosts, name the filtered-away hosts, and give
+    the exact next command for each case. Exit code stays 1 (caller)."""
+    print("Error: youtube search failed.", file=sys.stderr)
+    if dead:
+        print(f"  {len(dead)} instance(s) never answered:", file=sys.stderr)
+        for h in dead:
+            reason = errors.get(h, "no response")
+            print(f"    ✗ {h} — {reason}", file=sys.stderr)
+    if filtered_hosts:
+        fetched = sum(n for _, n in filtered_hosts)
+        print(
+            f"  {len(filtered_hosts)} healthy instance(s) returned {fetched} videos, "
+            f"but 0 passed your filters:",
+            file=sys.stderr,
+        )
+        for h, n in filtered_hosts:
+            print(f"    ⚠ {h} — {n} fetched, 0 survived", file=sys.stderr)
+        print("  Widen the search, e.g.:", file=sys.stderr)
+        print("    --fresh all        (drop the 18-month age cap)", file=sys.stderr)
+        print("    --any-length       (include short videos)", file=sys.stderr)
+        print("    --min-views 100    (lower the view floor)", file=sys.stderr)
+        print("    --pool 50          (fetch a bigger candidate pool)", file=sys.stderr)
+    if dead:
+        print("  Replace the dead instances (re-probe the pool):", file=sys.stderr)
+        print("    youtube --discover", file=sys.stderr)
 
 def do_search(args) -> int:
     now = time.time()
@@ -649,6 +690,8 @@ def do_search(args) -> int:
 
     tried: List[str] = []
     dead: List[str] = []
+    errors: Dict[str, str] = {}
+    filtered_hosts: List[Tuple[str, int]] = []  # (host, fetched) — alive, filters killed all
     for host in get_instances():
         tried.append(host)
         if args.verbose:
@@ -657,9 +700,12 @@ def do_search(args) -> int:
             result = search_channel(host, channel_ucid, args.query, fetch_n)
         else:
             result = search_instance(host, args.query, fetch_n, api_sort,
-                                     duration=duration, features=features, region=region)
+                                     duration=duration, features=features, region=region,
+                                     errors=errors)
         if not result:
             dead.append(host)
+            if args.verbose and host in errors:
+                print(f"  ✗ {host}: {errors[host]}", file=sys.stderr)
             continue
 
         if raw_mode:
@@ -671,6 +717,8 @@ def do_search(args) -> int:
             v, now, args.min_views, parse_age_spec(args.fresh),
             0 if args.any_length else args.min_duration, args.max_duration, blocked, exclude_channels)]
         if not filtered:
+            # Host is healthy — the filters were the problem, not the instance.
+            filtered_hosts.append((host, len(result)))
             continue
 
         scored = [(score_video(v, rank, len(filtered), now, weights, favs), v)
@@ -708,11 +756,11 @@ def do_search(args) -> int:
     # were all filtered out stay cached (they're healthy; the filters were
     # just strict for this query).
     evict_instances(dead)
-    print("Error: all instances failed or no results passed filters.", file=sys.stderr)
+    report_search_failure(dead, errors, filtered_hosts)
     return 1
 
 
-# ╔ Subcommands ════════════════════════════════════════════════════════════════
+# ╔ Subcommands ══════════════════════════════════════════════════════════
 
 def cmd_expand(rest: List[str]) -> int:
     p = argparse.ArgumentParser(prog="youtube expand", description="Append candidates to a list")
@@ -893,7 +941,7 @@ def cmd_channel(rest: List[str]) -> int:
     return 0
 
 
-# ╔ Main / dispatch ═════════════════════════════════════════════════════════════
+# ╔ Main / dispatch ═══════════════════════════════════════════════════════
 
 SUBCOMMANDS = {
     "expand": cmd_expand,
