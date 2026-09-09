@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--autoConnect", "--channel=beta"]
+      "command": "chrome-autoallow",
+      "args": ["run", "--autoConnect", "--channel=beta"]
     }
   }
 }

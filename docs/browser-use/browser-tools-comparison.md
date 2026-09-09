@@ -171,14 +171,15 @@ chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--autoConnect"]
+      "command": "chrome-autoallow",
+      "args": ["run", "--autoConnect", "--channel=beta"]
     }
   }
 }
 ```
 
 - **`--autoConnect`** (Chrome 146+ stable): Attaches to your already-running Chrome automatically. No flags, no port config.
+- **`chrome-autoallow`** wrapper: auto-clicks Chrome's "Allow remote debugging?" consent dialog ([setup](chrome-dev.md#2-add-the-mcp-server-config)).
 - Sees **all your open tabs**, cookies, localStorage, extensions, logged-in sessions.
 - Does **not** launch a new browser or open a new window.
 - Requires **Chrome Beta** (or stable 146+ with `--autoConnect`).
@@ -572,8 +573,8 @@ sudo mkswap /swapfile && sudo swapon /swapfile
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--autoConnect", "--channel=beta"]
+      "command": "chrome-autoallow",
+      "args": ["run", "--autoConnect", "--channel=beta"]
     }
   }
 }
