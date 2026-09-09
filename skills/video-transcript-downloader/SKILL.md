@@ -31,11 +31,12 @@ Requires: `uv`, `node` (with pnpm/npm), `ffmpeg` (for audio extraction).
 
 ## Transcript
 
-Default: saves to `./YYYY-MM-DD_title.md` with YAML frontmatter (title, date, url, views, tags).
+Default: saves to `./YYYY-MM-DD_title.md` with YAML frontmatter (title, date, url, uploader, views, **duration**, tags). Body = clean prose — **no timestamps by default** (duration lives in the YAML).
 
 ```bash
 vtd transcript --url 'https://...'
-vtd transcript --url 'https://...' --timestamps         # with timestamps
+vtd transcript --url 'https://...' --timestamps         # with [MM:SS] per line
+vtd transcript --url 'https://...' --sections           # split by chapter (### MM:SS Title + TOC)
 vtd transcript --url 'https://...' --lang de             # language
 vtd transcript --url 'https://...' --no-file             # print to stdout
 vtd transcript --url 'https://...' --transcript-dir ./t/  # output directory
@@ -85,7 +86,8 @@ vtd download --url 'https://...' -- --format 137+140       # specific format
 |------|---------|-------------|
 | `--url` | required | Video URL |
 | `--lang` | en | Subtitle language |
-| `--timestamps` | off | Include timestamps |
+| `--timestamps` | off | Include `[MM:SS]` per line |
+| `--sections` | off | Split body by chapters (`### MM:SS Title` + TOC) |
 | `--keep-brackets` | off | Keep `[Music]` etc. |
 | `--no-file` | off | Print to stdout instead of saving |
 | `--transcript-dir` | `.` | Where to save transcripts |
@@ -151,7 +153,7 @@ vtd transcript --url 'https://...' --cookies -- --remote-components ejs:github
 
 - YouTube: fetches transcript via `youtube-transcriptPlus` first, falls back to yt-dlp subtitles
 - Non-YouTube: always uses yt-dlp subtitles
-- **Default output is sectioned by chapters**: if the video has chapter markers, the body is split into `### MM:SS Title` sections (one paragraph per chapter), with a `## Chapters` table of contents at the top. Videos without chapters fall back to a single clean paragraph.
+- **Default body is clean prose** — no timestamps, no chapter markers. Video duration lives in the YAML frontmatter (`duration: "18:40"` + `duration_seconds: 1120`). Opt into `--timestamps` (per-line `[MM:SS]`) or `--sections` (chapter split + TOC) when you need time anchors.
 - Transcript files include YAML frontmatter with video metadata
 - `--timestamps` overrides sectioning: emits `[MM:SS] text` lines with real per-segment times (use for precise quoting)
 - Use `vtd chapters --url ...` for quick stdout chapter lookup without downloading the transcript

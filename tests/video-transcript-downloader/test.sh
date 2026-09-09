@@ -68,6 +68,9 @@ assert "has download"    "grep -q 'cmdDownload' scripts/vtd.js"
 assert "has audio"       "grep -q 'cmdAudio' scripts/vtd.js"
 assert "has chapters"    "grep -q 'cmdChapters' scripts/vtd.js"
 assert "has formatChapters" "grep -q 'function formatChapters' scripts/vtd.js"
+assert "has --sections flag" "grep -q 'opts.sections' scripts/vtd.js"
+assert "default body has no timestamps (sections gated)" "grep -q 'sections ? formatChapters' scripts/vtd.js"
+assert "duration human-readable in yaml" "grep -q 'formatDurationHMS' scripts/vtd.js"
 echo ""
 
 # ── 6. .gitignore ────────────────────────────────────────────────────
@@ -93,6 +96,7 @@ assert "mentions download"   "grep -q 'download' /tmp/vtd_help.txt"
 assert "mentions audio"      "grep -q 'audio' /tmp/vtd_help.txt"
 assert "mentions search"     "grep -q 'search' /tmp/vtd_help.txt"
 assert "mentions chapters"   "grep -q 'chapters' /tmp/vtd_help.txt"
+assert "mentions --sections" "grep -q '\-\-sections' /tmp/vtd_help.txt"
 rm -f /tmp/vtd_help.txt
 echo ""
 
