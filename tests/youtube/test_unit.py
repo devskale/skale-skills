@@ -196,6 +196,60 @@ class TestListParsing(unittest.TestCase):
         self.assertEqual(entries[1][3], "")
 
 
+class TestInstanceSelfHeal(unittest.TestCase):
+    """Cache merge / promote / evict — network-free via a temp cache file."""
+
+    def setUp(self):
+        import tempfile
+        self._orig_cache = search.CACHE_FILE
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
+        self._tmp.close()
+        search.CACHE_FILE = self._tmp.name
+
+    def tearDown(self):
+        search.CACHE_FILE = self._orig_cache
+        os.unlink(self._tmp.name)
+
+    def test_cache_roundtrip_and_ttl(self):
+        search.save_cached_instances(["a.example", "b.example"])
+        self.assertEqual(search.load_cached_instances(), ["a.example", "b.example"])
+        # Simulate a stale cache (past TTL).
+        import json as _json
+        with open(search.CACHE_FILE) as f:
+            c = _json.load(f)
+        c["ts"] = 0
+        with open(search.CACHE_FILE, "w") as f:
+            _json.dump(c, f)
+        self.assertEqual(search.load_cached_instances(), [])
+
+    def test_get_instances_merges_cache_with_known(self):
+        # A stale-or-dead cache must never shadow the known pool.
+        search.save_cached_instances(["dead.example"])
+        merged = search.get_instances()
+        self.assertEqual(merged[0], "dead.example")  # cache first
+        for h in search.KNOWN_INSTANCES:
+            self.assertIn(h, merged)
+
+    def test_promote_moves_to_front(self):
+        search.save_cached_instances(["a.example", "b.example"])
+        search.promote_instance("b.example")
+        self.assertEqual(search.load_cached_instances(), ["b.example", "a.example"])
+        # Promoting an uncached host prepends it.
+        search.promote_instance("c.example")
+        self.assertEqual(search.load_cached_instances()[0], "c.example")
+
+    def test_evict_drops_dead_hosts(self):
+        search.save_cached_instances(["a.example", "b.example"])
+        search.evict_instances(["a.example"])
+        self.assertEqual(search.load_cached_instances(), ["b.example"])
+        # Evicting unknown hosts is a no-op.
+        search.evict_instances(["nope.example"])
+        self.assertEqual(search.load_cached_instances(), ["b.example"])
+
+    def test_probe_instance_rejects_dead_host(self):
+        self.assertFalse(search._probe_instance("nonexistent.invalid", timeout=2))
+
+
 class TestAgeRestriction(unittest.TestCase):
     def _video(self, **kw):
         base = {
