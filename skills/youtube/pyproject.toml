@@ -1,5 +1,5 @@
 [project]
 name = "youtube-skill"
-version = "2.0.0"
+version = "2.1.0"
 description = "Search YouTube for fresh, long, deep content; curate ranked lists — via Invidious, stdlib-only"
 requires-python = ">=3.9"
