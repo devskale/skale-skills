@@ -1,7 +1,9 @@
 # Convention
 
 This repo is the **source of truth** for all local skills, extensions, and prompts.
-Pi does NOT load these directories directly — they must be symlinked or installed to be active.
+They become active via the **pi package** (`pi install git:github.com/devskale/skale-skills`, see
+[docs/installation.md](docs/installation.md)) — for live-dev overrides use the session-only flags in
+[docs/development.md](docs/development.md).
 
 ## Directory Structure
 
@@ -22,15 +24,16 @@ skale-skills/
 
 1. Create `skills/<name>/SKILL.md` with frontmatter (`name`, `description`)
 2. Run `uv run index-skills.py` to update the index
-3. To activate: `ln -s $(pwd)/skills/<name> ~/.pi/agent/skills/<name>`
-4. To deactivate: `rm ~/.pi/agent/skills/<name>`
+3. Ship: commit + push + `pi update` — the package activates it
+4. Live-dev before shipping: `pi --skill skills/<name>/SKILL.md` (session-only, zero cleanup)
 
 ### Extensions
 
 1. Create `extensions/<name>.ts` (single file) or `extensions/<name>/index.ts`
 2. Run `uv run index-skills.py` to update the index
-3. To activate: `ln -s $(pwd)/extensions/<name>.ts ~/.pi/agent/extensions/<name>.ts`
-4. To deactivate: `rm ~/.pi/agent/extensions/<name>`
+3. Ship: commit + push + `pi update`
+4. Live-dev before shipping: `pi -ne -e ./extensions/<name>.ts`
+   (`-ne` first — extension tool-name collisions are a hard load error, see [docs/development.md](docs/development.md))
 
 **Shared helper modules** (imported by multiple extensions, no default factory)
 go in `extensions/lib/*.ts` — a subdir pi does **not** auto-discover as extensions
@@ -41,8 +44,7 @@ go in `extensions/lib/*.ts` — a subdir pi does **not** auto-discover as extens
 
 1. Create `prompts/<name>.md` with optional frontmatter (`description`)
 2. Run `uv run index-skills.py` to update the index
-3. To activate: `ln -s $(pwd)/prompts/<name>.md ~/.pi/agent/prompts/<name>.md`
-4. To deactivate: `rm ~/.pi/agent/prompts/<name>`
+3. Ship: commit + push + `pi update`
 
 ## Notable Packages
 
@@ -100,113 +102,30 @@ Status badges:
 - 📝 **notable** — provided by a project-local package (reference only, not active here)
 - ⚪ **available** — in this repo but not active anywhere
 
-## Skill Activation Methods (Pi)
+## Skill Activation
 
-Pi discovers skills from multiple locations. Pick the right method for the job:
+Activation is fully documented in [docs/installation.md](docs/installation.md)
+(package install, `pi config` filtering, the loose-file conflict) and
+[docs/development.md](docs/development.md) (live-dev overrides, setups A/B/C).
 
-### 1. Project-local (inline)
+Quick reference — what activates a resource:
 
-For skills tied to a single project — put them in the project's `.pi/skills/`:
+| Method | Scope | Where documented |
+|--------|-------|------------------|
+| **pi package** (this repo) | global, filtered via `pi config` | [docs/installation.md](docs/installation.md) |
+| Project-local `.pi/skills/` | project only, no config | pi docs |
+| Settings entries (`"skills": [...]`) | global or project | [docs/installation.md](docs/installation.md) |
+| Session-only flags (`pi --skill`, `pi -ne -e`) | one run, zero cleanup | [docs/development.md](docs/development.md) |
+| Loose symlink into `~/.pi/agent/` | legacy — conflicts with the package | [docs/installation.md](docs/installation.md) |
 
-```
-my-project/
-├── .pi/
-│   └── skills/
-│       └── deploy/
-│           └── SKILL.md    # Auto-discovered, only active inside my-project/
-```
-
-No config needed. Pi scans `.pi/skills/` automatically.
-
-### 2. Skillpacks (preferred for reusable, multi-skill bundles)
-
-For themed skill collections (e.g. `socializer`, `youtuber`, `data-analyst`),
-create a pack directory and register it in pi settings:
-
-```
-~/code/agents/packs/
-├── socializer/              # X/Twitter + Reddit + Mastodon skills
-│   ├── peep/SKILL.md
-│   ├── reddit/SKILL.md
-│   └── mastodon/SKILL.md
-├── youtuber/                # Video workflow skills
-│   ├── video-edit/SKILL.md
-│   ├── thumbnail/SKILL.md
-│   └── upload/SKILL.md
-└── data-analyst/            # Data pipeline skills
-    ├── csv-tools/SKILL.md
-    └── charts/SKILL.md
-```
-
-Activate globally in `~/.pi/agent/settings.json`:
-```json
-{
-  "skills": [
-    "~/code/agents/packs/socializer",
-    "~/code/agents/packs/youtuber"
-  ]
-}
-```
-
-Or per-project in `.pi/settings.json`:
-```json
-{
-  "skills": [
-    "~/code/agents/packs/data-analyst"
-  ]
-}
-```
-
-Pi discovers all `SKILL.md`-containing directories recursively within
-the registered path. One pack can contain many skills.
-
-### 3. Skills in standalone repos
-
-For tools with their own repo (like peep), put the skill inside the repo:
-
-```
-peep/                       # github.com/devskale/peep
-├── .pi/
-│   └── skills/
-│       └── peep/
-│           └── SKILL.md
-└── src/...
-```
-
-Activate via symlink (global) or settings entry (project-local):
-```bash
-# Global
-ln -s ~/code/agents/skills/peep/.pi/skills/peep ~/.pi/agent/skills/peep
-```
-```json
-// Project-local .pi/settings.json
-{ "skills": ["~/code/agents/skills/peep/.pi/skills/peep"] }
-```
-
-### 4. Global single skills
-
-For one-off global skills, symlink into `~/.pi/agent/skills/`:
-
-```bash
-ln -s ~/code/agents/skills/skale-skills/skills/web-search ~/.pi/agent/skills/web-search
-```
-
-### When to use which
-
-| Method | Best for | Scope | Config needed |
-|--------|----------|-------|---------------|
-| Project-local | Single-project skills | Project only | None |
-| **Skillpacks** | **Reusable themed bundles** | Global or project | settings.json |
-| Standalone repo | Tools with their own repo | Global or project | Symlink or settings |
-| Global symlink | One-off shared skills | Global | Symlink |
+---
 
 ## Rules
 
 - This repo is for **development only** — no project-local `.pi/skills/`, `.pi/extensions/`, `.pi/prompts/`
-- Source files live here, activation happens via symlinks to `~/.pi/agent/` or settings entries
+- Source files live here; activation happens via the **pi package** (`pi install` + `pi config`), not loose symlinks
 - Always run `uv run index-skills.py` after adding, removing, or renaming a resource
 - Notable packages are documented, not activated — they live in `.pi/settings.json` for reference
-- **Skillpacks are the preferred pattern** for reusable multi-skill bundles (`~/code/agents/packs/<name>/`)
 - For project-local skills, use `.pi/skills/` in the project — no config needed
 
 ---
@@ -340,12 +259,8 @@ cd "$SKILL_DIR"
 
 ### Credentials
 
-**Always use credgoo.** Never hardcode tokens.
-
-Resolution order in Python:
-1. Environment variable
-2. credgoo (`get_api_key` — never prints to stdout, so no suppression needed)
-3. `.env` file (last resort, gitignored)
+**Always use credgoo.** Never hardcode tokens. Full guide: [docs/credgoo.md](docs/credgoo.md);
+quick reference + resolution order in [AGENTS.md → Credentials](AGENTS.md#credentials--credgoo-first-class-citizen).
 
 Check related keys as fallback (e.g. `WEB_SEARCH_BEARER` if `FETCH_URL_BEARER` not set).
 
@@ -461,7 +376,7 @@ accept_encoding identity
 
 ### Coding Guidelines
 
-Distilled from [Learnings from the Codex repo](https://johnjwang.com/post/2026/08/27/learnings-from-the-codex-repo/) — how OpenAI's Codex repo scaled to 135 authors shipping ~900 commits/month alongside agents. Meta-lesson: as implementation gets cheaper, tests, boundaries, and lint get *more* important, not less.
+Distilled from [Learnings from the Codex repo](docs/codex-learnings.md) — how OpenAI's Codex repo scaled to 135 authors shipping ~900 commits/month alongside agents. Meta-lesson: as implementation gets cheaper, tests, boundaries, and lint get *more* important, not less. (Full write-up + original refs: [`docs/codex-learnings.md`](docs/codex-learnings.md); source article: https://johnjwang.com/post/2026/08/27/learnings-from-the-codex-repo/)
 
 **Rules ladder** — where a guideline goes:
 
