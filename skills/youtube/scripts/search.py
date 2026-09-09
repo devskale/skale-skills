@@ -73,7 +73,7 @@ def format_duration(seconds: Any) -> str:
         return f"{m}:{s:02d}"
     h, rem = divmod(seconds, 3600)
     m, s = divmod(rem, 60)
-    return f"{h}:{m}:{s:02d}"
+    return f"{h}:{m:02d}:{s:02d}"
 
 
 def format_views(count: Any) -> str:
@@ -374,6 +374,16 @@ VIDEO_ID_RE = re.compile(r"(?:youtube\.com/watch\?v=|youtu\.be/|/embed/)([A-Za-z
 UCID_RE = re.compile(r"ucid:(UC[A-Za-z0-9_-]+)")
 
 
+def _is_age_restricted(v: Dict[str, Any]) -> bool:
+    """Detect age-restricted videos across Invidious field variants."""
+    if v.get("isAgeLimited") or v.get("ageLimited"):
+        return True
+    flags = v.get("flags") or []
+    if isinstance(flags, list) and any("age" in str(f).lower() for f in flags):
+        return True
+    return False
+
+
 def entry_line(v: Dict[str, Any], now: float, score: Optional[float] = None) -> str:
     title = v.get("title", "Untitled")
     vid = v.get("videoId", "")
@@ -381,11 +391,12 @@ def entry_line(v: Dict[str, Any], now: float, score: Optional[float] = None) -> 
     ucid = v.get("authorId", "")
     score_str = f" ★{score:.2f}" if score is not None else ""
     ucid_str = f" ucid:{ucid}" if ucid else ""
+    age_str = " 🔒 age-restricted" if _is_age_restricted(v) else ""
     return (
         f"- [**{title}**](https://www.youtube.com/watch?v={vid}) — {author}"
         f" · {format_duration(v.get('lengthSeconds', 0))}"
         f" · {format_views(v.get('viewCount', 0))}"
-        f" · {format_age(v.get('published', 0), now)}{score_str}{ucid_str}"
+        f" · {format_age(v.get('published', 0), now)}{score_str}{ucid_str}{age_str}"
     )
 
 

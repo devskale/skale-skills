@@ -124,6 +124,17 @@ assert "node_modules exist" "[ -d node_modules/youtube-transcript-plus ]"
 assert "launcher exports VTD_ENV_DIR" "grep -q 'export VTD_ENV_DIR' vtd"
 echo ""
 
+# ── 12. Cookies / age-restricted support ─────────────────────────────
+echo "[12] Cookies / age-restricted support..."
+assert "has --cookies flag"        "grep -q 'cookies' scripts/vtd.js"
+assert "has cookies subcommand"    "grep -q 'cookies set' scripts/vtd.js"
+assert "has cookieArgs function"   "grep -q 'function cookieArgs' scripts/vtd.js"
+assert "has loadConfig"            "grep -q 'function loadConfig' scripts/vtd.js"
+assert "has saveConfig"            "grep -q 'function saveConfig' scripts/vtd.js"
+assert "getVideoMeta accepts cookies" "grep -q 'getVideoMeta(url, cookieArgs' scripts/vtd.js"
+assert "ytDlpSubtitlesToTemp uses cookies" "grep -q 'cookieArgs' scripts/vtd.js"
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
 echo "=== Results ==="
