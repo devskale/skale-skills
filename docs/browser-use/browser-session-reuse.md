@@ -80,14 +80,14 @@ For each tool, we test:
 {
   "mcpServers": {
     "chrome-devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--autoConnect"]
+      "command": "chrome-autoallow",
+      "args": ["run", "--autoConnect", "--channel=beta"]
     }
   }
 }
 ```
 
-**Prerequisites:** Chrome 144+ stable (per the [official auto-connect docs](https://developer.chrome.com/docs/devtools/agents/use-cases/auto-connect)). Enable once: `chrome://inspect/#remote-debugging` → toggle on.
+**Prerequisites:** Chrome 144+ (Beta or Stable — must match `--channel`). Enable once: `chrome://inspect/#remote-debugging` → toggle on. The `chrome-autoallow` wrapper ([setup](chrome-dev.md#2-add-the-mcp-server-config)) auto-clicks the "Allow remote debugging?" consent dialog; without it, click **Allow** manually on connect.
 
 **Pros:** Built into Chrome. Zero extension install. Sees everything.
 **Cons:** Headed only. Chrome 144+ required. No parallel sessions.
