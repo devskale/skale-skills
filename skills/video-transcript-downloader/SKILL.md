@@ -1,7 +1,7 @@
 ---
 name: video-transcript-downloader
-version: "1.2.0"
-description: "Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) from YouTube and any yt-dlp-supported site. Transcripts save to a file by default. Also transcribes a whole youtube-skill list's Picks in one go (--list), with resume + a manifest. Use when asked to download a video, rip audio, get subtitles, fetch a transcript, or transcribe a list of videos. Triggers on: download this video, get the transcript, rip audio, extract subtitles, save this clip, transcribe these, yt-dlp."
+version: "1.3.0"
+description: "Download videos, audio, subtitles, and clean paragraph-style transcripts (no timestamps by default; duration in YAML; --timestamps/--sections for time anchors) from YouTube and any yt-dlp-supported site. Browser-cookie auth (--cookies) unlocks age-restricted videos. Transcripts save to a file by default. Also transcribes a whole youtube-skill list's Picks in one go (--list), with resume + a manifest. Use when asked to download a video, rip audio, get subtitles, fetch a transcript, or transcribe a list of videos. Triggers on: download this video, get the transcript, rip audio, extract subtitles, save this clip, transcribe these, yt-dlp."
 ---
 
 # Video Transcript Downloader

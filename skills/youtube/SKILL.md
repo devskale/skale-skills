@@ -1,6 +1,6 @@
 ---
 name: youtube
-version: "2.0.0"
+version: "2.1.0"
 description: "Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later transcribe. Defaults to longform 20min+, last 18 months, 1K+ views, ranked by recency+views+duration+relevance. Saves a curated ./lists/<topic>.md you refine in natural language. Use when the user wants to find videos, build a watch/transcript list, or get recommendations. Triggers on: YouTube search, find videos, video list, find a podcast/lecture/deep dive."
 ---
 
