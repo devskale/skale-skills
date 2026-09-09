@@ -250,6 +250,63 @@ class TestInstanceSelfHeal(unittest.TestCase):
         self.assertFalse(search._probe_instance("nonexistent.invalid", timeout=2))
 
 
+class TestInstanceStats(unittest.TestCase):
+    """Self-maintaining server list: health history ranks + prunes."""
+
+    def setUp(self):
+        import tempfile
+        self._orig = (search.STATS_FILE, search.CACHE_FILE)
+        tmp1 = tempfile.NamedTemporaryFile(suffix=".json", delete=False); tmp1.close()
+        tmp2 = tempfile.NamedTemporaryFile(suffix=".json", delete=False); tmp2.close()
+        search.STATS_FILE, search.CACHE_FILE = tmp1.name, tmp2.name
+        self._tmps = (tmp1.name, tmp2.name)
+
+    def tearDown(self):
+        search.STATS_FILE, search.CACHE_FILE = self._orig
+        for p in self._tmps:
+            os.unlink(p)
+
+    def test_record_and_rank_by_recency(self):
+        search._record_stat("old.example", ok=True)
+        search._record_stat("new.example", ok=True)
+        # Backdate old.example's success so new.example ranks first.
+        stats = search.load_stats()
+        stats["old.example"]["last_ok"] -= 10 * 86400
+        search.save_stats(stats)
+        ranked = search._ranked_good_hosts()
+        self.assertEqual(ranked[0], "new.example")
+        self.assertIn("old.example", ranked)
+
+    def test_rank_drops_stale_successes(self):
+        search._record_stat("ancient.example", ok=True)
+        stats = search.load_stats()
+        stats["ancient.example"]["last_ok"] -= 40 * 86400  # > STATS_RANK_DAYS
+        search.save_stats(stats)
+        self.assertEqual(search._ranked_good_hosts(), [])
+
+    def test_prune_forgets_rotted_hosts(self):
+        search._record_stat("rotted.example", ok=True)
+        stats = search.load_stats()
+        stats["rotted.example"]["last_ok"] -= 60 * 86400  # > STATS_KEEP_OK_DAYS
+        search.save_stats(stats)
+        search._record_stat("fresh.example", ok=True)  # triggers prune
+        self.assertNotIn("rotted.example", search.load_stats())
+
+    def test_failures_recorded_then_forgotten(self):
+        search._record_stat("flaky.example", ok=False)
+        stats = search.load_stats()
+        # A host that never succeeded has no ranking value — pruned instantly.
+        self.assertNotIn("flaky.example", stats)
+
+    def test_get_instances_ranks_stats_above_static_pool(self):
+        # Warm cache → get_instances() skips the discovery path (no network).
+        search.save_cached_instances(["cached.example"])
+        search._record_stat("proven.example", ok=True)
+        order = search.get_instances()
+        self.assertLess(order.index("cached.example"), order.index("proven.example"))
+        self.assertLess(order.index("proven.example"), order.index("iv.catgirl.cloud"))
+
+
 class TestAgeRestriction(unittest.TestCase):
     def _video(self, **kw):
         base = {
