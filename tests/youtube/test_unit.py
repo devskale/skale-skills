@@ -307,6 +307,39 @@ class TestInstanceStats(unittest.TestCase):
         self.assertLess(order.index("proven.example"), order.index("iv.catgirl.cloud"))
 
 
+class TestFailLoud(unittest.TestCase):
+    """Failure reporting: names hosts + reasons, gives actionable next steps."""
+
+    def _capture(self, **kw):
+        import io
+        import contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            search.report_search_failure(**kw)
+        return buf.getvalue()
+
+    def test_report_names_dead_and_filtered(self):
+        out = self._capture(
+            dead=["dead.example"],
+            errors={"dead.example": "HTTPError: HTTP Error 403"},
+            filtered_hosts=[("alive.example", 12)],
+        )
+        self.assertIn("✗ dead.example — HTTPError: HTTP Error 403", out)
+        self.assertIn("⚠ alive.example — 12 fetched, 0 survived", out)
+        self.assertIn("--fresh all", out)
+        self.assertIn("youtube --discover", out)  # both failure classes present
+
+    def test_report_filtered_only_skips_discover_advice(self):
+        out = self._capture(dead=[], errors={}, filtered_hosts=[("alive.example", 7)])
+        self.assertIn("0 passed your filters", out)
+        self.assertNotIn("--discover", out)  # instances are healthy; widening is the fix
+
+    def test_report_dead_only_points_at_discover(self):
+        out = self._capture(dead=["a.example", "b.example"], errors={}, filtered_hosts=[])
+        self.assertIn("2 instance(s) never answered", out)
+        self.assertNotIn("0 passed your filters", out)  # no widening hint — nothing was filtered
+
+
 class TestAgeRestriction(unittest.TestCase):
     def _video(self, **kw):
         base = {
