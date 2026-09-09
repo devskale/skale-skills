@@ -201,14 +201,16 @@ class TestInstanceSelfHeal(unittest.TestCase):
 
     def setUp(self):
         import tempfile
-        self._orig_cache = search.CACHE_FILE
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False)
-        self._tmp.close()
-        search.CACHE_FILE = self._tmp.name
+        self._orig = (search.CACHE_FILE, search.STATS_FILE)
+        tmp1 = tempfile.NamedTemporaryFile(suffix=".json", delete=False); tmp1.close()
+        tmp2 = tempfile.NamedTemporaryFile(suffix=".json", delete=False); tmp2.close()
+        search.CACHE_FILE, search.STATS_FILE = tmp1.name, tmp2.name
+        self._tmps = (tmp1.name, tmp2.name)
 
     def tearDown(self):
-        search.CACHE_FILE = self._orig_cache
-        os.unlink(self._tmp.name)
+        search.CACHE_FILE, search.STATS_FILE = self._orig
+        for p in self._tmps:
+            os.unlink(p)
 
     def test_cache_roundtrip_and_ttl(self):
         search.save_cached_instances(["a.example", "b.example"])
