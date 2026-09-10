@@ -95,6 +95,16 @@ else
         fi
         check "live convert --method pdfplumber → exit 0" 0 \
             "$SCRIPT" "$FIXPDF" --method pdfplumber --out /tmp/pdf2md-out2.md
+
+        # robustness: network timeout → clean error, never a traceback
+        # (blackhole address + tiny timeout; PDF2MD_URL is a supported override)
+        PDF2MD_URL="http://10.255.255.1:9/" timeout 30 \
+            "$SCRIPT" "$FIXPDF" --timeout 2 >/tmp/pdf2md.out 2>&1
+        got=$?
+        [ "$got" -eq 1 ] && ok || bad "blackhole timeout exit (want 1, got $got)"
+        grep -q "Traceback" /tmp/pdf2md.out && bad "timeout leaked a traceback" || ok
+        grep -q "retry with a higher --timeout" /tmp/pdf2md.out && ok \
+            || bad "timeout message lacks retry hint"
     fi
 fi
 

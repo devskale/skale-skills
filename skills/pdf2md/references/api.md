@@ -10,7 +10,7 @@ Loaded on demand — SKILL.md keeps only the 90% path.
 | `--tier` | llamaparse tier: `fast` (default), `cost_effective`, `agentic`, `agentic_plus` — higher tiers cost more credits |
 | `--language` | OCR language hint, default `de` |
 | `--out FILE` | write markdown to FILE instead of stdout |
-| `--timeout SEC` | request timeout (default 180) |
+| `--timeout SEC` | request timeout (default: 180 s for pdfplumber, 600 s for llamaparse — OCR scales with page count) |
 | `-v, --verbose` | stats + converter fallback to stderr |
 | `--update` | update the skill now |
 | `--selfcheck` | Show version + last update |
@@ -18,6 +18,17 @@ Loaded on demand — SKILL.md keeps only the 90% path.
 ## Limits
 
 PDF ≤ 10MB and ≤ 500 pages. Scans need `llamaparse` — `pdfplumber` returns nothing for them (auto mode handles this).
+
+## Long documents
+
+Expected durations: text-layer PDFs convert in seconds; scans via llamaparse scale with page count — **expect minutes**, more on higher tiers. Large jobs are an agent-workflow concern, not a CLI one:
+
+- Always write to a file: `pdf2md big.pdf --out result.md -v` — megabyte stdout blobs help no one.
+- **Run it in the background** from the agent shell, then poll `result.md` / the process — don't block a tool call that harnesses kill after a few minutes.
+- Raise the budget explicitly if needed: `--timeout 900`.
+- Above the API cap (10 MB / 500 pages): split the PDF, convert per part, concatenate the Markdown in order (no client-side chunking in this skill by design).
+- 429/504: no automatic retries by design — 429 means quota, 504 means the server gave up; drop the tier (`--tier fast`), wait, or split.
+- With `-v` a heartbeat prints elapsed seconds to stderr every 30 s so a long wait is distinguishable from a hang.
 
 ## Errors
 
