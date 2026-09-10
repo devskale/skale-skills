@@ -9,6 +9,7 @@ import time
 import requests
 
 API_URL = os.environ.get("PDF2MD_URL", "https://amd.skale.dev/api/pdf/to_md")
+API_BASE = API_URL.rsplit("/pdf/", 1)[0]
 MAX_BYTES = 10 * 1024 * 1024
 AUTO_FALLBACK_CHARS = 20  # less than this from pdfplumber -> scan, go llamaparse
 DEFAULT_TIMEOUTS = {"pdfplumber": 180, "llamaparse": 600}  # OCR scales with pages
@@ -44,6 +45,47 @@ class ApiError(Exception):
         super().__init__(f"HTTP {status} {detail}".strip())
 
 
+def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int):
+    """Poll an async conversion job (202 answer) until done/failed.
+
+    The API forces async beyond ~40 pages; llamaparse processes at ~2s/page.
+    `timeout` is the total poll budget — results stay retrievable ~2h, so a
+    timeout exits with the manual poll command. If the result was transferred
+    to throway, download it so the caller still gets markdown.
+    """
+    job_id = queued["job_id"]
+    poll_url = f"{API_BASE}/pdf/jobs/{job_id}"
+    headers = {"Authorization": f"Bearer {bearer}"}
+    deadline = time.monotonic() + timeout
+    with heartbeat(f"polling job {job_id[:8]}…", verbose):
+        while True:
+            r = requests.get(poll_url, headers=headers, timeout=30)
+            if r.status_code == 401:
+                sys.exit("error: 401 authentication failed while polling. Check the token: credgoo FETCH_URL_BEARER")
+            if r.status_code >= 400:
+                sys.exit(f"error: job status HTTP {r.status_code}")
+            body = r.json()
+            status = body.get("status")
+            if status == "done":
+                break
+            if status in ("failed", "error"):
+                sys.exit(f"error: job failed: {body.get('error', 'unknown')}")
+            if time.monotonic() > deadline:
+                sys.exit(f"error: job {job_id} not done after {timeout}s — poll manually "
+                         f"(result kept ~2h):\n"
+                         f"  curl -s -H 'Authorization: Bearer <token>' {poll_url}")
+            time.sleep(3)
+    if body.get("markdown_url"):
+        if verbose:
+            print(f"pdf2md: shared via {body['markdown_url']} (4h TTL)", file=sys.stderr)
+        try:
+            body["markdown"] = requests.get(body["markdown_url"], timeout=60).text
+        except requests.exceptions.RequestException as e:
+            sys.exit(f"error: could not download shared result: {e}\n"
+                     f"  fetch {body['markdown_url']} manually before the 4h TTL expires")
+    return body.get("markdown", ""), body
+
+
 from contextlib import contextmanager
 
 
@@ -66,7 +108,8 @@ def heartbeat(label: str, enabled: bool, interval: int = 30):
         stop.set()
 
 
-def convert(path: str, method: str, tier: str, language: str, bearer: str, timeout: int):
+def convert(path: str, method: str, tier: str, language: str, bearer: str,
+            timeout: int, verbose: bool = False):
     with open(path, "rb") as fh:
         data = fh.read()
     if len(data) > MAX_BYTES:
@@ -97,6 +140,9 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str, timeo
         sys.exit("error: 503 llamaparse key not configured server-side")
     if resp.status_code == 504:
         sys.exit("error: 504 conversion timed out server-side")
+    if resp.status_code == 202:
+        # long document -> async job (forced beyond ~40 pages); poll until done
+        return wait_job(resp.json(), bearer, verbose, timeout)
     if resp.status_code >= 400:
         raise ApiError(resp.status_code, detail)
     result = resp.json()
@@ -107,7 +153,8 @@ def convert_or_exit(args, method: str, bearer: str, timeout: int):
     """convert() with a -v heartbeat and clean network-error exits."""
     try:
         with heartbeat(f"waiting for {method}", args.verbose):
-            return convert(args.pdf, method, args.tier, args.language, bearer, timeout)
+            return convert(args.pdf, method, args.tier, args.language, bearer,
+                           timeout, verbose=args.verbose)
     except requests.exceptions.Timeout:
         sys.exit(f"error: conversion took >{timeout}s — large documents can take "
                  f"minutes; retry with a higher --timeout")
@@ -174,12 +221,12 @@ def main():
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(markdown)
         print(f"✓ {args.out}  (pages={result.get('pages')}, chars={result.get('chars')}, "
-              f"converter={result.get('converter')})", file=sys.stderr)
+              f"converter={result.get('converter', result.get('status'))})", file=sys.stderr)
     else:
         sys.stdout.write(markdown)
         if args.verbose:
             print(f"\n--- pages={result.get('pages')} chars={result.get('chars')} "
-                  f"converter={result.get('converter')}", file=sys.stderr)
+                  f"converter={result.get('converter', result.get('status'))}", file=sys.stderr)
 
 
 if __name__ == "__main__":
