@@ -1,6 +1,6 @@
 [project]
 name = "pdf2md-skill"
-version = "1.0.0"
+version = "1.1.0"
 description = "Convert PDFs to Markdown via the skale pdf API (pdfplumber local, llamaparse for scans)"
 readme = "SKILL.md"
 requires-python = ">=3.9"

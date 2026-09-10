@@ -1,15 +1,17 @@
 # pdf2md.py - Convert PDFs to Markdown via the skale pdf API.
 # pdfplumber (local, text-layer) by default; llamaparse (cloud OCR) for scans.
 import argparse
-import json
 import os
 import sys
+import threading
+import time
 
 import requests
 
 API_URL = os.environ.get("PDF2MD_URL", "https://amd.skale.dev/api/pdf/to_md")
 MAX_BYTES = 10 * 1024 * 1024
 AUTO_FALLBACK_CHARS = 20  # less than this from pdfplumber -> scan, go llamaparse
+DEFAULT_TIMEOUTS = {"pdfplumber": 180, "llamaparse": 600}  # OCR scales with pages
 
 
 def resolve_bearer() -> str:
@@ -40,6 +42,28 @@ class ApiError(Exception):
         self.status = status
         self.detail = detail
         super().__init__(f"HTTP {status} {detail}".strip())
+
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def heartbeat(label: str, enabled: bool, interval: int = 30):
+    """-v only: print elapsed seconds to stderr every `interval` while blocked."""
+    stop = threading.Event()
+
+    def tick():
+        start = time.monotonic()
+        while not stop.wait(interval):
+            print(f"pdf2md: {label}… {int(time.monotonic() - start)}s elapsed",
+                  file=sys.stderr)
+
+    thread = threading.Thread(target=tick, daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
 
 
 def convert(path: str, method: str, tier: str, language: str, bearer: str, timeout: int):
@@ -79,6 +103,18 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str, timeo
     return result.get("markdown", ""), result
 
 
+def convert_or_exit(args, method: str, bearer: str, timeout: int):
+    """convert() with a -v heartbeat and clean network-error exits."""
+    try:
+        with heartbeat(f"waiting for {method}", args.verbose):
+            return convert(args.pdf, method, args.tier, args.language, bearer, timeout)
+    except requests.exceptions.Timeout:
+        sys.exit(f"error: conversion took >{timeout}s — large documents can take "
+                 f"minutes; retry with a higher --timeout")
+    except requests.exceptions.RequestException as e:
+        sys.exit(f"error: request failed: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="pdf2md",
@@ -99,7 +135,8 @@ def main():
                         help="llamaparse tier (default: fast)")
     parser.add_argument("--language", default="de", help="OCR language hint (default: de)")
     parser.add_argument("--out", metavar="FILE", help="write markdown to FILE instead of stdout")
-    parser.add_argument("--timeout", type=int, default=180, help="request timeout in seconds")
+    parser.add_argument("--timeout", type=int, default=None,
+                        help="request timeout in seconds (default: 180, 600 for llamaparse)")
     parser.add_argument("--verbose", "-v", action="store_true", help="stats to stderr")
     args = parser.parse_args()
 
@@ -112,10 +149,10 @@ def main():
         method = "pdfplumber"
         if args.verbose:
             print("pdf2md: auto -> pdfplumber", file=sys.stderr)
+    timeout = args.timeout or DEFAULT_TIMEOUTS[method]
 
     try:
-        markdown, result = convert(
-            args.pdf, method, args.tier, args.language, bearer, args.timeout)
+        markdown, result = convert_or_exit(args, method, bearer, timeout)
     except ApiError as e:
         # auto: a scan (422 no text) falls back to llamaparse below
         if not (args.method == "auto" and method == "pdfplumber" and e.status == 422):
@@ -127,7 +164,11 @@ def main():
             print(f"pdf2md: pdfplumber got {len(markdown.strip())} chars -> scan? falling back to llamaparse",
                   file=sys.stderr)
         method = "llamaparse"
-        markdown, result = convert(args.pdf, method, args.tier, args.language, bearer, args.timeout)
+        timeout = args.timeout or DEFAULT_TIMEOUTS[method]
+        try:
+            markdown, result = convert_or_exit(args, method, bearer, timeout)
+        except ApiError as e:
+            sys.exit(f"error: {e}")
 
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
