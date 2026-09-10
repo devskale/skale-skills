@@ -30,6 +30,19 @@ Expected durations: text-layer PDFs convert in seconds; scans via llamaparse sca
 - 429/504: no automatic retries by design — 429 means quota, 504 means the server gave up; drop the tier (`--tier fast`), wait, or split.
 - With `-v` a heartbeat prints elapsed seconds to stderr every 30 s so a long wait is distinguishable from a hang.
 
+## Async jobs (the API forces them for long documents)
+
+Beyond ~40 pages the API answers the POST with **202** instead of markdown: `{job_id, status: queued, poll, auto_async}`. pdf2md follows automatically — it polls `GET /pdf/jobs/{job_id}` every 3 s until `status: done` and extracts `markdown`. Same output file, same exit codes, no flags needed.
+
+- `--timeout` doubles as the **total poll budget** (default 600 s for llamaparse). 500-page scans run at ~2 s/page — raise it explicitly, e.g. `--timeout 1800`.
+- On budget exhaustion the error prints the job id and the manual poll command — **results stay retrievable for ~2 h** (`expires_in` in the job status).
+- With `-v` a `polling job …` heartbeat prints every 30 s so a long wait is distinguishable from a hang.
+- `status: failed` exits with the job's `error` field.
+
+## Transfer (throway)
+
+`transfer=throway` (server param, not exposed as a CLI flag): the result is uploaded to skale.dev/throway with a **4 h TTL** and only `markdown_url` is returned. pdf2md downloads it transparently and — at `-v` — tells you the shared link. The status line then shows `converter=done` (job answers carry no `converter` field).
+
 ## Errors
 
 | Status | Meaning |
