@@ -10,6 +10,7 @@ Loaded on demand — SKILL.md keeps only the 90% path.
 | `--tier` | llamaparse tier: `fast` (default), `cost_effective`, `agentic`, `agentic_plus` — higher tiers cost more credits |
 | `--language` | OCR language hint, default `de` |
 | `--out FILE` | write markdown to FILE instead of stdout |
+| `--no-wait` | llamaparse only: submit as async job and poll — the fix when sync conversion dies with **504** (typical for big scans) |
 | `--timeout SEC` | request timeout (default: 180 s for pdfplumber, 600 s for llamaparse — OCR scales with page count) |
 | `-v, --verbose` | stats + converter fallback to stderr |
 | `--update` | update the skill now |
@@ -27,7 +28,7 @@ Expected durations: text-layer PDFs convert in seconds; scans via llamaparse sca
 - **Run it in the background** from the agent shell, then poll `result.md` / the process — don't block a tool call that harnesses kill after a few minutes.
 - Raise the budget explicitly if needed: `--timeout 900`.
 - Above the API cap (10 MB / 500 pages): split the PDF, convert per part, concatenate the Markdown in order (no client-side chunking in this skill by design).
-- 429/504: no automatic retries by design — 429 means quota, 504 means the server gave up; drop the tier (`--tier fast`), wait, or split.
+- 429/504: no automatic retries by design — 429 means quota (wait), 504 on sync llamaparse means the server-side sync budget ran out: **retry with `--no-wait`** (async job, pdf2md polls). Verified on real lecture scans: 4×504 sync → 4× success async in 11–38 s.
 - With `-v` a heartbeat prints elapsed seconds to stderr every 30 s so a long wait is distinguishable from a hang.
 
 ## Async jobs (the API forces them for long documents)
