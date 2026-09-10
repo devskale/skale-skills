@@ -46,3 +46,5 @@ export PDF2MD_BEARER="..."
 ## Endpoint
 
 `POST https://amd.skale.dev/api/pdf/to_md` — see `https://amd.skale.dev/api/help` and `https://amd.skale.dev/api/openapi.json`.
+
+Backend source: **[devskale/web_apis](https://github.com/devskale/web_apis)**
