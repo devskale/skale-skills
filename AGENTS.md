@@ -18,6 +18,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | figure | `node build/build_figures.mjs` | ~7 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
 | viewimg | `viewimg img.jpg [--open]` | ~16 | Show an image in the terminal (view-only, no VLM) |
+| pdf2md | `pdf2md document.pdf` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
 | improve-ux | — (knowledge skill) | — | Improve UI/UX grounded in curated reference sites, with a rating loop |
 
 Counts are approximate (`~`); suites include honest network-skip counters — a WARN
@@ -141,6 +142,7 @@ bash tests/video-transcript-downloader/test.sh
 bash tests/rodney/test.sh
 bash tests/surf/test.sh              # live checks skip off-macOS
 bash tests/viewimg/test.sh
+bash tests/pdf2md/test.sh             # live conversion skips without token
 bash tests/visualize/test.sh
 bash tests/d2/test.sh
 bash tests/figure/test.sh
