@@ -41,8 +41,11 @@ function safeNotify(ctx: any, msg: string, level: "info" | "warning" | "error" |
 	try { ctx.ui?.notify(msg, level); } catch (e) { if (!isStaleCtxError(e)) throw e; }
 }
 
-// ESC toggles pause/resume while a heartbeat is active and pi is idle.
-// Wired lazily on the first heartbeat interaction (needs a ctx with a UI).
+// ESC: pause on the first press (side effect — the press still reaches pi),
+// stop on a slow second press (0.5–1.5s later, the only consumed press).
+// pi's native fast double-ESC (chat tree) is never consumed — see onEscape
+// in the core. Wired lazily on the first heartbeat interaction (needs a ctx
+// with a UI).
 let escWired = false;
 function wireEscape(pi: ExtensionAPI, ctx: any) {
 	if (escWired || typeof ctx?.ui?.onTerminalInput !== "function") return;

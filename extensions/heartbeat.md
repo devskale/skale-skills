@@ -36,11 +36,28 @@ Both share the same logic, so anything you can type, the agent can do too.
 
 Durations accept `s`, `m`, `h`, `d` (bare number = seconds).
 
-### ESC to pause
+### ESC: pause, then stop
 
-While a heartbeat is active **and** pi is idle, **ESC** toggles pause/resume.
-When pi is mid-turn, ESC keeps its native abort behavior; with no heartbeat
-active, ESC is untouched.
+While a heartbeat is active **and** pi is idle:
+
+| Press | Effect |
+|-------|--------|
+| lone **ESC** | **pause** — instant side effect; the press still passes through to pi |
+| **ESC … ESC** (0.5–1.5s apart) | **stop** — a deliberate *second* ESC that is *not* a double-ESC |
+| **ESC ESC** fast (<0.5s) | untouched — pi's native double-ESC still opens the **chat tree** |
+
+Design notes:
+
+- pi's native double-ESC (chat tree) needs *both* presses to reach the editor,
+  so the heartbeat **never consumes the first ESC** — the tree keeps working
+  even while a heartbeat runs.
+- Only the **stop press is consumed** — pi ignores a slow second ESC (its tree
+  window has expired), so it's unambiguously ours.
+- While paused you can edit message/interval (`/heartbeat message`,
+  `/heartbeat time`); **resume** via `/heartbeat resume` (ESC never resumes).
+- pi mid-turn: ESC keeps its native abort behavior; no heartbeat → untouched.
+- Edge: opening the chat tree while a heartbeat is *running* pauses it as a
+  side effect — visible in the status line, undone with `/heartbeat resume`.
 
 `--once` cannot be combined with `--limit`. A beat that comes due while pi is
 mid-turn is shifted (capped at 5 min), not consumed — it fires when pi is idle.

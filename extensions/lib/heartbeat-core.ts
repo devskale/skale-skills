@@ -90,6 +90,15 @@ let timerId: ReturnType<typeof setTimeout> | undefined;
 let statusTimerId: ReturnType<typeof setInterval> | undefined;
 let oneShotTimerId: ReturnType<typeof setTimeout> | undefined;
 
+// ── ESC gesture state (see onEscape) ─────────────────────────
+// Mirrors pi's native double-escape window: a second ESC within this gap is
+// pi's chat-tree gesture and is NEVER consumed.
+const ESC_DOUBLE_MS = 500;
+// Upper bound for the stop gesture. Beyond it a lone ESC while paused is
+// fresh navigation (native arming / tree), not a deliberate stop press.
+const ESC_STOP_MAX_MS = 1500;
+let lastEscAt = 0;
+
 /** Snapshot of state for tool `details` and reconstruction (no timers). */
 export type StateSnapshot = HBState;
 
@@ -112,6 +121,7 @@ function resetTimers() {
 	oneShotTimerId = undefined;
 	state.active = false;
 	state.paused = false;
+	lastEscAt = 0;
 }
 
 /** Full reset to defaults (used on lifecycle events). */
@@ -271,16 +281,46 @@ export function restoreFrom(saved: Record<string, unknown>, pi: HeartbeatHost): 
 }
 
 /**
- * ESC handling: toggle pause/resume when a heartbeat is active and pi is
- * idle. Everything else (no heartbeat, mid-turn) is NOT consumed so pi's
- * native escape behavior (abort) keeps working. Returns true when consumed.
+ * ESC handling — pause, then stop, without touching pi's native double-ESC.
+ *
+ * pi's native double-ESC (two ESCs <500ms apart, idle, empty editor) opens the
+ * chat tree and needs BOTH presses to reach the editor. To never interfere:
+ *
+ *   - ESC #1 is never consumed: pause happens as a side effect while the press
+ *     still flows through to pi (pi does nothing visible on a lone ESC).
+ *   - A fast second ESC (<=ESC_DOUBLE_MS) is passed through untouched, so the
+ *     native chat-tree gesture keeps working bit-for-bit.
+ *   - Only a SLOW second ESC (ESC_DOUBLE_MS..ESC_STOP_MAX_MS after the previous
+ *     press) while paused is consumed → stop. pi ignores that press (its tree
+ *     window has expired), so it is unambiguously ours.
+ *   - Mid-turn (busy) or no heartbeat: not consumed → native abort preserved.
+ *
+ * `now` is injectable for deterministic tests. Returns true only for the stop
+ * press (the single consumed keypress).
  */
-export function onEscape(pi: HeartbeatHost, ctx: HeartbeatCtx): boolean {
-	if (!state.active || state.busy) return false;
-	const action = state.paused ? "resume" : "pause";
-	const res = control(pi, ctx, { action });
-	safeNotify(ctx, res.text, res.level);
-	return true;
+export function onEscape(pi: HeartbeatHost, ctx: HeartbeatCtx, now: number = Date.now()): boolean {
+	const dt = now - lastEscAt;
+	lastEscAt = now;
+	if (!state.active || state.busy) return false; // native interrupt, untouched
+
+	// Fast burst → pi's native double-ESC (chat tree) territory: hands off.
+	if (dt <= ESC_DOUBLE_MS) return false;
+
+	if (!state.paused) {
+		// Settled lone ESC → pause as a side effect; pass through so pi's
+		// double-escape arming still sees the press.
+		const res = control(pi, ctx, { action: "pause" });
+		safeNotify(ctx, `${res.text} ESC again (slow) to stop · /heartbeat resume to continue.`, res.level);
+		return false;
+	}
+	if (dt <= ESC_STOP_MAX_MS) {
+		// Deliberate slow second ESC while paused → stop. Only consumed press.
+		const res = control(pi, ctx, { action: "stop" });
+		safeNotify(ctx, res.text, res.level);
+		return true;
+	}
+	// Paused + stale lone ESC → navigation: pass through.
+	return false;
 }
 
 // ── Centralized control (used by command AND tool) ────────────
@@ -300,6 +340,11 @@ export function control(pi: HeartbeatHost, ctx: HeartbeatCtx, o: ControlOpts): C
 				"  /heartbeat message <text>            change message live",
 				"  /heartbeat time <duration>           change interval live",
 				"  /heartbeat pause | resume | status | off",
+				"",
+				"ESC (active + idle)",
+				"  ESC         pause (press still reaches pi)",
+				"  ESC … ESC   stop — second press 0.5–1.5s later (not a fast double)",
+				"  ESC ESC fast stays pi's native chat-tree gesture",
 				"",
 				"WHILE BUSY",
 				"  A beat due while pi is mid-turn is SHIFTED by one interval (capped at 5 min),",
