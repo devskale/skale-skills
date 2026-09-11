@@ -5,6 +5,7 @@ import os
 import sys
 import threading
 import time
+from contextlib import contextmanager
 
 import requests
 
@@ -57,7 +58,8 @@ def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int):
     poll_url = f"{API_BASE}/pdf/jobs/{job_id}"
     headers = {"Authorization": f"Bearer {bearer}"}
     deadline = time.monotonic() + timeout
-    with heartbeat(f"polling job {job_id[:8]}…", verbose):
+    with heartbeat(f"polling job {job_id[:8]}…", verbose,
+                   hint="results are kept ~2h"):
         while True:
             r = requests.get(poll_url, headers=headers, timeout=30)
             if r.status_code == 401:
@@ -86,26 +88,33 @@ def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int):
     return body.get("markdown", ""), body
 
 
-from contextlib import contextmanager
-
-
 @contextmanager
-def heartbeat(label: str, enabled: bool, interval: int = 30):
-    """-v only: print elapsed seconds to stderr every `interval` while blocked."""
+def heartbeat(label: str, enabled: bool, interval: int = 30, hint: str = ""):
+    """While blocked, print a stderr heartbeat every `interval` s — only when enabled.
+
+    Prints the label immediately so a long wait is acknowledged from 0 s;
+    `hint` sets the expectation once (e.g. 'large scans take minutes').
+    """
     stop = threading.Event()
+    thread = None
 
     def tick():
         start = time.monotonic()
+        print(f"pdf2md: {label}" + (f" ({hint})" if hint else ""),
+              file=sys.stderr, flush=True)
         while not stop.wait(interval):
             print(f"pdf2md: {label}… {int(time.monotonic() - start)}s elapsed",
-                  file=sys.stderr)
+                  file=sys.stderr, flush=True)
 
-    thread = threading.Thread(target=tick, daemon=True)
-    thread.start()
     try:
+        if enabled:
+            thread = threading.Thread(target=tick, daemon=True)
+            thread.start()
         yield
     finally:
         stop.set()
+        if thread is not None:
+            thread.join(timeout=0.5)  # no garbled last line on exit
 
 
 def convert(path: str, method: str, tier: str, language: str, bearer: str,
@@ -162,7 +171,8 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
 def convert_or_exit(args, method: str, bearer: str, timeout: int):
     """convert() with a -v heartbeat and clean network-error exits."""
     try:
-        with heartbeat(f"waiting for {method}", args.verbose):
+        with heartbeat(f"waiting for {method}", args.verbose,
+                       hint="large scans take minutes"):
             return convert(args.pdf, method, args.tier, args.language, bearer,
                            timeout, verbose=args.verbose, no_wait=args.no_wait,
                            share=args.share)
