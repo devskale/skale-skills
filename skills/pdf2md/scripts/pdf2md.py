@@ -109,7 +109,8 @@ def heartbeat(label: str, enabled: bool, interval: int = 30):
 
 
 def convert(path: str, method: str, tier: str, language: str, bearer: str,
-            timeout: int, verbose: bool = False, no_wait: bool = False):
+            timeout: int, verbose: bool = False, no_wait: bool = False,
+            share: bool = False):
     with open(path, "rb") as fh:
         data = fh.read()
     if len(data) > MAX_BYTES:
@@ -120,6 +121,8 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
         params["language"] = language
         if no_wait:
             params["wait"] = "false"  # async job: dodges the server-side sync timeout
+    if share:
+        params["transfer"] = "throway"  # result as 4h link instead of inline text
     resp = requests.post(
         API_URL,
         headers={"Authorization": f"Bearer {bearer}"},
@@ -156,7 +159,8 @@ def convert_or_exit(args, method: str, bearer: str, timeout: int):
     try:
         with heartbeat(f"waiting for {method}", args.verbose):
             return convert(args.pdf, method, args.tier, args.language, bearer,
-                           timeout, verbose=args.verbose, no_wait=args.no_wait)
+                           timeout, verbose=args.verbose, no_wait=args.no_wait,
+                           share=args.share)
     except requests.exceptions.Timeout:
         sys.exit(f"error: conversion took >{timeout}s — large documents can take "
                  f"minutes; retry with a higher --timeout")
@@ -189,9 +193,13 @@ def main():
     parser.add_argument("--no-wait", action="store_true",
                         help="llamaparse only: submit as async job and poll — use this "
                         "when sync conversion dies with 504 (typical for big scans)")
+    parser.add_argument("--share", action="store_true",
+                        help="share the result via skale.dev/throway (4h TTL): prints "
+                        "the URL instead of the full text")
     parser.add_argument("--verbose", "-v", action="store_true", help="stats to stderr")
     args = parser.parse_args()
 
+    args.pdf = os.path.expanduser(args.pdf)
     if not os.path.isfile(args.pdf):
         sys.exit(f"error: file not found: {args.pdf}")
 
@@ -222,10 +230,15 @@ def main():
         except ApiError as e:
             sys.exit(f"error: {e}")
 
+    if args.share and result.get("markdown_url"):
+        print(result["markdown_url"])
+        return
+
     if args.out:
+        args.out = os.path.expanduser(args.out)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(markdown)
-        print(f"✓ {args.out}  (pages={result.get('pages')}, chars={result.get('chars')}, "
+        print(f"✓ {os.path.abspath(args.out)}  (pages={result.get('pages')}, chars={result.get('chars')}, "
               f"converter={result.get('converter', result.get('status'))})", file=sys.stderr)
     else:
         sys.stdout.write(markdown)

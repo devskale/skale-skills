@@ -36,7 +36,7 @@ if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
 
 > "%LAUNCHER%" (
     echo @echo off
-    echo cd /d "%SKILL_DIR%" ^&^& uv run scripts\pdf2md.py %%*
+    echo uv run --project "%SKILL_DIR%" "%SKILL_DIR%\scripts\pdf2md.py" %%*
 )
 echo   Created launcher: %LAUNCHER% -^> %SKILL_DIR%\scripts\pdf2md.py
 

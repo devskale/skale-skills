@@ -6,6 +6,7 @@
 # the document to LlamaCloud and costs credits — opt in: PDF2MD_TEST_SCAN=1.
 set -uo pipefail
 cd "$(dirname "$0")/../.."
+ROOT=$(pwd)
 
 SKILL=skills/pdf2md
 SCRIPT="$SKILL/pdf2md"
@@ -60,6 +61,13 @@ check "--help → exit 0" 0 "$SCRIPT" --help
 check "missing file → exit 1" 1 "$SCRIPT" /nonexistent.pdf
 check "unknown flag → exit 2" 2 "$SCRIPT" --bogus /nonexistent.pdf
 
+# path handling: relative paths + ~ expansion resolve against the caller's cwd
+( cd /tmp && "$ROOT/$SCRIPT" pdf2md-rel-missing.pdf >/tmp/pdf2md.out 2>&1 )
+[ $? -eq 1 ] && ok || bad "missing relative file → exit 1"
+"$SCRIPT" '~/pdf2md-nonexistent.pdf' >/tmp/pdf2md.out 2>&1
+[ $? -eq 1 ] && grep -q "$HOME/pdf2md-nonexistent.pdf" /tmp/pdf2md.out && ok \
+    || bad "~/ in arguments not expanded"
+
 # launcher flags (convention: --update/--selfcheck)
 check "--selfcheck → exit 0" 0 "$SCRIPT" --selfcheck
 grep -q "pdf2md v" /tmp/pdf2md.out && ok || bad "selfcheck shows version"
@@ -95,6 +103,13 @@ else
         fi
         check "live convert --method pdfplumber → exit 0" 0 \
             "$SCRIPT" "$FIXPDF" --method pdfplumber --out /tmp/pdf2md-out2.md
+
+        # relative in+out resolve against the caller's cwd, not the skill dir
+        TESTCWD=$(mktemp -d)
+        cp "$FIXPDF" "$TESTCWD/rel.pdf"
+        ( cd "$TESTCWD" && "$ROOT/$SCRIPT" rel.pdf --out rel-out.md ) >/tmp/pdf2md.out 2>&1
+        [ -s "$TESTCWD/rel-out.md" ] && ok || bad "relative paths don't resolve against caller cwd"
+        rm -rf "$TESTCWD"
 
         # robustness: network timeout → clean error, never a traceback
         # (blackhole address + tiny timeout; PDF2MD_URL is a supported override)
