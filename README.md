@@ -22,7 +22,13 @@ A [pi](https://pi.dev) package of **skills, extensions, and prompts** — creden
 pi install git:github.com/devskale/skale-skills
 ```
 
-**One command loads every skill, extension, and prompt into [pi](https://pi.dev).** Public backends work with zero credentials — install and go. To get a skill's global shell command, run its installer from the skill dir (e.g. `./skills/web-search/install.sh`).
+**One command loads every skill, extension, and prompt into [pi](https://pi.dev).** Public backends work with zero credentials — install and go. For the full setup (all global shell commands in `~/.local/bin`, zcode symlinks, pi package sync), run the repo installer:
+
+```bash
+./install.sh        # idempotent — safe to re-run (install.bat on Windows)
+```
+
+Per-skill commands still install standalone: `./skills/web-search/install.sh`.
 
 > Want to try without installing? `pi -e git:github.com/devskale/skale-skills`
 > On Claude Code, Codex, or OpenCode, or need just a few skills? → [Selective & other agents](#selective--other-agents)
