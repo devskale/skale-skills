@@ -140,11 +140,16 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
     if resp.status_code == 413:
         sys.exit("error: 413 too large (API limit: 10MB / 500 pages)")
     if resp.status_code == 429:
-        sys.exit("error: 429 rate limit or llamaparse quota exhausted")
+        sys.exit("error: 429 rate limit, llamaparse quota exhausted, or job queue full — retry later")
+    if resp.status_code == 502:
+        sys.exit("error: 502 llamaparse failure"
+                 + (" or throway transfer failed — retry without --share" if share else " — retry"))
     if resp.status_code == 503:
+        if share:
+            sys.exit("error: 503 throway transfer disabled server-side (or llamaparse key missing)")
         sys.exit("error: 503 llamaparse key not configured server-side")
     if resp.status_code == 504:
-        sys.exit("error: 504 conversion timed out server-side")
+        sys.exit("error: 504 job deadline exceeded server-side (default 20 min) — retry with --no-wait")
     if resp.status_code == 202:
         # long document -> async job (forced beyond ~40 pages); poll until done
         return wait_job(resp.json(), bearer, verbose, timeout)
