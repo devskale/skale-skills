@@ -45,6 +45,8 @@ grep -q "state.once" "$CORE" && ok || bad "state.once missing"
 grep -q "One-shot delivered" "$CORE" && ok || bad "one-shot finish message missing"
 grep -q "oneShotTimerId" "$CORE" && ok || bad "one-shot timer missing"
 grep -q "isStaleCtxError" "$CORE" && ok || bad "stale-ctx guard missing"
+grep -q "ESC_DOUBLE_MS" "$CORE" && ok || bad "esc double-ESC window guard missing"
+grep -q "ESC_STOP_MAX_MS" "$CORE" && ok || bad "esc stop window missing"
 grep -q "BUSY_STUCK_MS" "$CORE" && ok || bad "busy-stuck escape missing"
 
 # parser unit tests via node type stripping (node ≥ 22.6)
@@ -213,16 +215,43 @@ eq(core.control(m.host, m.ctx, { action: "status" }).state.message, "keep me", "
 eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "restore: active cleared");
 eq(m.host.entries.at(-1)[1].active, false, "restore: persists cleared flag (no repeat nag)");
 
-// 8. ESC: toggles pause when active+idle, passes through otherwise
+// 8. ESC: 1st press pauses (passed through), slow 2nd press stops (consumed);
+//    pi's native fast double-ESC (chat tree) is never touched
 m = mocks(); core.resetAll();
-eq(core.onEscape(m.host, m.ctx), false, "esc: no heartbeat → not consumed");
+eq(core.onEscape(m.host, m.ctx, 1000), false, "esc: no heartbeat → not consumed");
 core.control(m.host, m.ctx, { action: "start", duration: "1h" });
-eq(core.onEscape(m.host, m.ctx), true, "esc: consumed when active");
+eq(core.onEscape(m.host, m.ctx, 2000), false, "esc: 1st press passed through (pi still sees it)");
 eq(core.control(m.host, m.ctx, { action: "status" }).state.paused, true, "esc: paused");
-eq(core.onEscape(m.host, m.ctx), true, "esc: consumed when paused");
-eq(core.control(m.host, m.ctx, { action: "status" }).state.paused, false, "esc: resumed");
+eq(core.onEscape(m.host, m.ctx, 2200), false, "esc: fast double not consumed (chat tree preserved)");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, true, "esc: fast double changes nothing");
 core.setBusy(true);
-eq(core.onEscape(m.host, m.ctx), false, "esc: busy → not consumed (abort preserved)");
+eq(core.onEscape(m.host, m.ctx, 3000), false, "esc: busy → not consumed (abort preserved)");
+core.setBusy(false);
+eq(core.onEscape(m.host, m.ctx, 6000), false, "esc: stale lone ESC while paused passes through");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, true, "esc: still active after stale");
+eq(core.onEscape(m.host, m.ctx, 6800), true, "esc: slow second press consumed");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "esc: stopped");
+eq(core.onEscape(m.host, m.ctx, 7000), false, "esc: inactive → not consumed");
+
+// 8b. ESC boundaries + panic burst
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.onEscape(m.host, m.ctx, 2000);
+eq(core.onEscape(m.host, m.ctx, 2500), false, "esc: dt=500 still tree window → pass");
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.onEscape(m.host, m.ctx, 2000);
+eq(core.onEscape(m.host, m.ctx, 2501), true, "esc: dt=501 → stop");
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.onEscape(m.host, m.ctx, 2000);
+eq(core.onEscape(m.host, m.ctx, 3501), false, "esc: dt=1501 stale → pass");
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.onEscape(m.host, m.ctx, 2000);
+core.onEscape(m.host, m.ctx, 2200);
+eq(core.onEscape(m.host, m.ctx, 2400), false, "esc: panic triple passes");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, true, "esc: panic triple never stops");
 
 console.log(`CORE TESTS: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
