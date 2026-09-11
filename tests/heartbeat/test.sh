@@ -213,6 +213,17 @@ eq(core.control(m.host, m.ctx, { action: "status" }).state.message, "keep me", "
 eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "restore: active cleared");
 eq(m.host.entries.at(-1)[1].active, false, "restore: persists cleared flag (no repeat nag)");
 
+// 8. ESC: toggles pause when active+idle, passes through otherwise
+m = mocks(); core.resetAll();
+eq(core.onEscape(m.host, m.ctx), false, "esc: no heartbeat → not consumed");
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+eq(core.onEscape(m.host, m.ctx), true, "esc: consumed when active");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.paused, true, "esc: paused");
+eq(core.onEscape(m.host, m.ctx), true, "esc: consumed when paused");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.paused, false, "esc: resumed");
+core.setBusy(true);
+eq(core.onEscape(m.host, m.ctx), false, "esc: busy → not consumed (abort preserved)");
+
 console.log(`CORE TESTS: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
 EOF

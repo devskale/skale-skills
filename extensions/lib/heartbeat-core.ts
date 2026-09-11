@@ -270,6 +270,19 @@ export function restoreFrom(saved: Record<string, unknown>, pi: HeartbeatHost): 
 	return wasActive;
 }
 
+/**
+ * ESC handling: toggle pause/resume when a heartbeat is active and pi is
+ * idle. Everything else (no heartbeat, mid-turn) is NOT consumed so pi's
+ * native escape behavior (abort) keeps working. Returns true when consumed.
+ */
+export function onEscape(pi: HeartbeatHost, ctx: HeartbeatCtx): boolean {
+	if (!state.active || state.busy) return false;
+	const action = state.paused ? "resume" : "pause";
+	const res = control(pi, ctx, { action });
+	safeNotify(ctx, res.text, res.level);
+	return true;
+}
+
 // ── Centralized control (used by command AND tool) ────────────
 export function control(pi: HeartbeatHost, ctx: HeartbeatCtx, o: ControlOpts): ControlResult {
 	// ── help (bare /heartbeat with no args) ──────────────────
