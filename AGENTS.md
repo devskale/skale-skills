@@ -27,12 +27,21 @@ and `gdocs` (live smoke of the external `gog` CLI).
 
 ## Installation (as a pi package)
 
-This repo is a **pi package** — `package.json` declares a `pi` manifest (`./skills`, `./extensions/*.ts`, `./prompts`). Install it once, globally, then activate only what you use:
+This repo is a **pi package** — `package.json` declares a `pi` manifest (`./skills`, `./extensions/*.ts`, `./prompts`). One command sets everything up (all global skill commands in `~/.local/bin`, zcode symlinks, pi package sync — idempotent):
+
+```bash
+./install.sh                                        # full setup (or install.bat on Windows)
+pi config                                           # activate only the pi skills you use
+```
+
+Under the hood it runs every `skills/*/install.sh`; the pi package itself installs/updates via:
 
 ```bash
 pi install git:github.com/devskale/skale-skills   # install once, globally
 pi config                                          # activate only the skills you use
 ```
+
+Note: pi reads skills from its **package copy** at `~/.pi/agent/git/github.com/devskale/skale-skills/` (a full clone made by `pi install`) — not from a working checkout. Skill launchers auto-update that clone in the background every 7 days; `pi install` updates it on demand.
 
 Default activation: **`web-search` + `fetch-url`** skills (extensions: heartbeat, xmodel, statusline, imagegen).
 
