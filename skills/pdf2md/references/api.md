@@ -11,6 +11,7 @@ Loaded on demand — SKILL.md keeps only the 90% path.
 | `--language` | OCR language hint, default `de` |
 | `--out FILE` | write markdown to FILE instead of stdout |
 | `--no-wait` | llamaparse only: submit as async job and poll — the fix when sync conversion dies with **504** (typical for big scans) |
+| `--share` | result as throway link (4 h TTL) instead of full text — prints the URL |
 | `--timeout SEC` | request timeout (default: 180 s for pdfplumber, 600 s for llamaparse — OCR scales with page count) |
 | `-v, --verbose` | stats + converter fallback to stderr |
 | `--update` | update the skill now |
@@ -42,7 +43,7 @@ Beyond ~40 pages the API answers the POST with **202** instead of markdown: `{jo
 
 ## Transfer (throway)
 
-`transfer=throway` (server param, not exposed as a CLI flag): the result is uploaded to skale.dev/throway with a **4 h TTL** and only `markdown_url` is returned. pdf2md downloads it transparently and — at `-v` — tells you the shared link. The status line then shows `converter=done` (job answers carry no `converter` field).
+`transfer=throway` — CLI: **`--share`**. The result is uploaded to skale.dev/throway with a **4 h TTL** and only `markdown_url` is returned. With `--share` pdf2md prints just the URL; without it, pdf2md downloads the markdown transparently and — at `-v` — tells you the shared link. The status line then shows `converter=done` (job answers carry no `converter` field).
 
 ## Errors
 

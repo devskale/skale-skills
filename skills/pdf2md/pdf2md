@@ -61,4 +61,6 @@ if [ -d "$SKILL_DIR/.git" ]; then
 fi
 
 # ── Run ──
-cd "$SKILL_DIR" && exec uv run scripts/pdf2md.py "$@"
+# --project keeps the caller's cwd: relative input/output paths resolve
+# against the directory the user is in, not the skill dir
+exec uv run --project "$SKILL_DIR" "$SKILL_DIR/scripts/pdf2md.py" "$@"
