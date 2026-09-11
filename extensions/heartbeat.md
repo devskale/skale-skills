@@ -36,6 +36,12 @@ Both share the same logic, so anything you can type, the agent can do too.
 
 Durations accept `s`, `m`, `h`, `d` (bare number = seconds).
 
+### ESC to pause
+
+While a heartbeat is active **and** pi is idle, **ESC** toggles pause/resume.
+When pi is mid-turn, ESC keeps its native abort behavior; with no heartbeat
+active, ESC is untouched.
+
 `--once` cannot be combined with `--limit`. A beat that comes due while pi is
 mid-turn is shifted (capped at 5 min), not consumed — it fires when pi is idle.
 

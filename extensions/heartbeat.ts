@@ -30,6 +30,7 @@ import { parseCommand } from "./lib/heartbeat-parse";
 import {
 	control,
 	ENTRY_TYPE,
+	onEscape,
 	resetAll,
 	restoreFrom,
 	setBusy,
@@ -38,6 +39,20 @@ import {
 
 function safeNotify(ctx: any, msg: string, level: "info" | "warning" | "error" | "success") {
 	try { ctx.ui?.notify(msg, level); } catch (e) { if (!isStaleCtxError(e)) throw e; }
+}
+
+// ESC toggles pause/resume while a heartbeat is active and pi is idle.
+// Wired lazily on the first heartbeat interaction (needs a ctx with a UI).
+let escWired = false;
+function wireEscape(pi: ExtensionAPI, ctx: any) {
+	if (escWired || typeof ctx?.ui?.onTerminalInput !== "function") return;
+	try {
+		ctx.ui.onTerminalInput((data: string) => {
+			if (data !== "\x1b") return undefined; // only the bare ESC key
+			return onEscape(pi, ctx) ? { consume: true } : undefined;
+		});
+		escWired = true;
+	} catch { /* non-interactive context */ }
 }
 
 // ── Extension entry point ────────────────────────────────────
@@ -83,6 +98,7 @@ export default function (pi: ExtensionAPI) {
 			try {
 				const res = control(pi, ctx, opts);
 				safeNotify(ctx, res.text, res.level);
+				wireEscape(pi, ctx);
 			} catch (e) {
 				safeNotify(ctx, `Error: ${(e as Error).message}`, "error");
 			}
@@ -128,6 +144,7 @@ export default function (pi: ExtensionAPI) {
 			const res = control(pi, ctx, params as ControlOpts);
 			// Also surface result to the human via the status line / notify.
 			safeNotify(ctx, res.text, res.level);
+			wireEscape(pi, ctx);
 			return {
 				content: [{ type: "text", text: res.text }],
 				// Full state in details → correct on fork/branch (§6).
