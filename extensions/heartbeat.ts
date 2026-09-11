@@ -41,6 +41,7 @@ import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
+import { humanDuration, parseCommand, parseDuration } from "./lib/heartbeat-parse";
 
 const DEFAULT_MESSAGE = "Time to check in — what are you working on?";
 const STATUS_KEY = "heartbeat";
@@ -49,6 +50,9 @@ const ENTRY_TYPE = "heartbeat:config";
 // it is not consumed (count not bumped), so a long agent run just pushes the beat
 // out rather than stacking a burst of reminders. The shift is capped at 5 min max.
 const BUSY_SHIFT_MAX_MS = 300_000; // 5 min cap
+// If busy outlives this, the turn_end event was lost (crash/reload mid-turn):
+// treat pi as idle instead of shifting beats forever.
+const BUSY_STUCK_MS = 15 * 60_000; // 15 min
 
 // ── State (module-level; config persisted via appendEntry) ────
 interface HBState {
@@ -61,7 +65,9 @@ interface HBState {
   nextAt: number;
   count: number;
   paused: boolean;
+  once: boolean;    // one-shot: stop after the next delivery
   busy: boolean;    // true while pi is mid-turn (tracked via turn_start/turn_end)
+  busySince: number; // when busy began — escape hatch if turn_end is missed
 }
 
 const state: HBState = {
@@ -74,7 +80,9 @@ const state: HBState = {
   nextAt: 0,
   count: 0,
   paused: false,
+  once: false,
   busy: false,
+  busySince: 0,
 };
 
 let timerId: ReturnType<typeof setTimeout> | undefined;
@@ -110,7 +118,9 @@ function resetAll() {
   state.lastAt = 0;
   state.nextAt = 0;
   state.count = 0;
+  state.once = false;
   state.busy = false;
+  state.busySince = 0;
 }
 
 // ── Formatting helpers ────────────────────────────────────────
@@ -126,36 +136,6 @@ function statusLine(): string {
   return `⏰ ${rem}s [${"█".repeat(f)}${"░".repeat(10 - f)}] #${state.count}`;
 }
 
-/** Parse a human duration into ms. Units: s, m, h, d (bare = seconds). null if invalid. */
-function parseDuration(str: string): number | null {
-  const m = str.match(/^(\d+)\s*([smhd])?$/i);
-  if (!m) return null;
-  const num = parseInt(m[1], 10);
-  if (!Number.isFinite(num) || num <= 0) return null;
-  const unit = (m[2] ?? "s").toLowerCase();
-  const mult =
-    unit === "d" ? 86_400_000
-    : unit === "h" ? 3_600_000
-    : unit === "m" ? 60_000
-    : 1_000;
-  return num * mult;
-}
-
-/** Human-readable duration, e.g. 90s → "1m 30s", 90061s → "1d 1h". */
-function humanDuration(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  const parts: string[] = [];
-  if (d) parts.push(`${d}d`);
-  if (h) parts.push(`${h}h`);
-  if (m) parts.push(`${m}m`);
-  if (sec || parts.length === 0) parts.push(`${sec}s`);
-  return parts.join(" ");
-}
-
 // ── Timer scheduling (stale-ctx safe) ─────────────────────────
 /** Start the status-bar ticker. Assumes state is already set. Does NOT touch state.active. */
 function startStatusBar(ctx: any) {
@@ -164,9 +144,14 @@ function startStatusBar(ctx: any) {
     if (!state.active) {
       safeSetStatus(ctx, undefined);
       if (statusTimerId) clearInterval(statusTimerId);
+      statusTimerId = undefined;
       return;
     }
-    safeSetStatus(ctx, statusLine());
+    // ctx went stale (branch/switch) → stop ticking against a dead context
+    if (!safeSetStatus(ctx, statusLine())) {
+      if (statusTimerId) clearInterval(statusTimerId);
+      statusTimerId = undefined;
+    }
   }, 500);
 }
 
@@ -185,13 +170,16 @@ function scheduleNext(pi: ExtensionAPI, ctx: any) {
  */
 function onBeatDue(pi: ExtensionAPI, ctx: any) {
   if (!state.active || state.paused) return;
-  if (state.busy) {
+  if (state.busy && Date.now() - state.busySince < BUSY_STUCK_MS) {
     // Shift by one interval (capped at 5 min) — do NOT consume the beat.
     const shift = Math.min(state.intervalMs, BUSY_SHIFT_MAX_MS);
     state.nextAt = Date.now() + shift;
     timerId = setTimeout(() => onBeatDue(pi, ctx), shift);
     return;
   }
+  // busy longer than BUSY_STUCK_MS → turn_end was missed (crash/reload);
+  // treat as idle rather than shifting forever.
+  state.busy = false;
   fireReminder(pi, ctx);
 }
 
@@ -207,11 +195,14 @@ function fireReminder(pi: ExtensionAPI, ctx: any) {
     throw e;
   }
 
-  if (state.maxCount > 0 && state.count >= state.maxCount) {
+  const finished = state.once
+    || (state.maxCount > 0 && state.count >= state.maxCount);
+  if (finished) {
     const total = state.count;
+    const why = state.once ? "One-shot delivered." : `finished after ${total} reminder${total === 1 ? "" : "s"}.`;
     resetTimers();
     safeSetStatus(ctx, undefined);
-    safeNotify(ctx, `⏹ Heartbeat finished after ${total} reminder${total === 1 ? "" : "s"}.`, "success");
+    safeNotify(ctx, `⏹ Heartbeat ${why}`, "success");
     persist(pi);
     return;
   }
@@ -221,15 +212,16 @@ function fireReminder(pi: ExtensionAPI, ctx: any) {
 function scheduleOneShot(pi: ExtensionAPI, ctx: any, delayMs: number) {
   state.nextAt = Date.now() + delayMs;
   oneShotTimerId = setTimeout(() => {
-    if (!state.active) return;
+    if (!state.active || state.paused) return;
     // Same idle-only rule as recurring: shift while busy, fire when idle.
     onBeatDue(pi, ctx);
   }, delayMs);
 }
 
 // ── Safe ctx.ui wrappers (guard stale proxy + missing ui) ─────
-function safeSetStatus(ctx: any, value: string | undefined) {
-  try { ctx.ui.setStatus(STATUS_KEY, value); } catch (e) { if (!isStaleCtxError(e)) throw e; }
+/** Returns false when the context went stale (callers may stop their timers). */
+function safeSetStatus(ctx: any, value: string | undefined): boolean {
+  try { ctx.ui.setStatus(STATUS_KEY, value); return true; } catch (e) { if (!isStaleCtxError(e)) throw e; return false; }
 }
 function safeNotify(ctx: any, msg: string, level: "info" | "warning" | "error" | "success" = "info") {
   try { ctx.ui.notify(msg, level); } catch (e) { if (!isStaleCtxError(e)) throw e; }
@@ -244,6 +236,7 @@ function persist(pi: ExtensionAPI) {
       intervalMs: state.intervalMs,
       maxCount: state.maxCount,
       paused: state.paused,
+      once: state.once,
     });
   } catch { /* appendEntry best-effort */ }
 }
@@ -313,8 +306,10 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
     if (state.paused) return { text: "Heartbeat is already paused.", level: "info", state: snapshot() };
     if (timerId) clearTimeout(timerId);
     if (statusTimerId) clearInterval(statusTimerId);
+    if (oneShotTimerId) clearTimeout(oneShotTimerId);
     timerId = undefined;
     statusTimerId = undefined;
+    oneShotTimerId = undefined;
     state.paused = true;
     const rem = Math.max(0, Math.floor((state.nextAt - Date.now()) / 1000));
     safeSetStatus(ctx, statusLine());
@@ -326,9 +321,16 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
   if (o.action === "resume") {
     if (!state.active) return { text: "No heartbeat active.", level: "warning", state: snapshot() };
     if (!state.paused) return { text: "Heartbeat is not paused.", level: "info", state: snapshot() };
+    state.paused = false;
+    if (state.once) {
+      // One-shot: re-arm against the frozen nextAt deadline (was cleared on pause).
+      const remaining = Math.max(0, state.nextAt - Date.now());
+      scheduleOneShot(pi, ctx, remaining);
+      persist(pi);
+      return { text: `▶ One-shot resumed (${humanDuration(remaining)} until delivery).`, level: "success", state: snapshot() };
+    }
     const elapsed = Date.now() - state.lastAt;
     const remaining = Math.max(0, state.intervalMs - elapsed);
-    state.paused = false;
     state.lastAt = Date.now();
     state.nextAt = Date.now() + remaining;
     startStatusBar(ctx);
@@ -407,6 +409,7 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
   state.message = msg;
   state.intervalMs = intervalMs;
   state.maxCount = typeof o.maxCount === "number" && o.maxCount >= 0 ? o.maxCount : 0;
+  state.once = !!o.once;
   state.startedAt = Date.now();
   state.lastAt = Date.now();
   state.nextAt = Date.now() + intervalMs;
@@ -444,53 +447,14 @@ function control(pi: ExtensionAPI, ctx: any, o: ControlOpts): ControlResult {
 }
 
 // ── Raw-string parser for the slash command ──────────────────
-function parseCommand(raw: string): ControlOpts {
-  const first = raw.match(/^\s*(\S+)/)?.[1] ?? "";
-
-  if (first === "help" || first === "?") return { action: "help" };
-  if (first === "") return { action: "help" };   // bare /heartbeat -> help, not start
-
-  if (first === "status") return { action: "status" };
-  if (first === "off" || first === "stop") return { action: "stop" };
-  if (first === "pause") return { action: "pause" };
-  if (first === "resume") return { action: "resume" };
-
-  if (first === "message") {
-    const rest = raw.slice("message".length).trim();
-    return rest ? { action: "message", message: rest.replace(/^["']|["']$/g, "") } : { action: "message" };
-  }
-
-  if (first === "time") {
-    const rest = raw.slice("time".length).trim();
-    const dur = rest.match(/^(\S+)/)?.[1] ?? "";
-    return dur ? { action: "time", duration: dur } : { action: "time" };
-  }
-
-  // start: optional duration, optional "message", optional -f, optional --limit, optional --once
-  const opts: ControlOpts = { action: "start" };
-  const durTok = parseDuration(first);
-  if (durTok) opts.duration = first;
-
-  const quoteMatch = raw.match(/["'](.+?)["']/);
-  if (quoteMatch) opts.message = quoteMatch[1];
-
-  const fileMatch = raw.match(/(?:^|\s)-f\s+(\S+)/);
-  if (fileMatch) opts.file = fileMatch[1];
-  const linesMatch = raw.match(/--lines\s+(\d+)/);
-  if (linesMatch) opts.lines = parseInt(linesMatch[1], 10);
-
-  const limitMatch = raw.match(/--limit\s+(\d+)/);
-  if (limitMatch) opts.maxCount = parseInt(limitMatch[1], 10);
-
-  const onceMatch = raw.match(/--once/);
-  if (onceMatch) opts.once = true;
-
-  return opts;
-}
+// (moved to ./lib/heartbeat-parse.ts — pure functions, unit-tested
+//  by tests/heartbeat/test.sh without the pi runtime)
 
 // ── Extension entry point ────────────────────────────────────
 export default function (pi: ExtensionAPI) {
-  // Kill stale timers from any previous load of this module
+  // Fresh module state. Timers of a previous module instance live in a
+  // different scope and cannot be reached from here — pi loads extensions
+  // once per process, so this only matters for hot-reload setups.
   resetTimers();
 
   // Reconstruct config from session entries on each lifecycle event (§6, §19.3).
@@ -505,6 +469,7 @@ export default function (pi: ExtensionAPI) {
         if (typeof saved.intervalMs === "number" && saved.intervalMs > 0) state.intervalMs = saved.intervalMs;
         if (typeof saved.maxCount === "number") state.maxCount = saved.maxCount;
         if (typeof saved.paused === "boolean") state.paused = saved.paused;
+        if (typeof saved.once === "boolean") state.once = saved.once;
       }
     } catch { /* best-effort */ }
   };
@@ -518,8 +483,11 @@ export default function (pi: ExtensionAPI) {
   // turn_start → busy (pi is mid-turn: LLM response + tool calls). turn_end → idle.
   // A beat due while busy is SHIFTED by one interval (capped at 5 min, not consumed) and re-checked,
   // so long agent runs push the beat out instead of stacking a burst mid-work.
+  // Safety: if no turn_end arrives within BUSY_STUCK_MS (crash/reload ate the
+  // turn_end event), busy is treated as idle instead of shifting forever.
   pi.on("turn_start", (_e) => {
     state.busy = true;
+    state.busySince = Date.now();
   });
   pi.on("turn_end", (_e) => {
     state.busy = false;

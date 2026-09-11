@@ -25,13 +25,19 @@ Both share the same logic, so anything you can type, the agent can do too.
 /heartbeat 30s "msg"        → interval + custom message
 /heartbeat -f file.md       → start, message read from file (--lines N caps it)
 /heartbeat 30s --limit 20   → stop after 20 heartbeats (--limit 0 = forever, default)
+/heartbeat 10m --once       → one-shot: fire once after 10m, then stop
 /heartbeat message <text>   → change message live
 /heartbeat time <duration>  → change interval live (30s | 5m | 2h | 1d; bare = seconds)
+/heartbeat pause            → freeze the countdown (state kept)
+/heartbeat resume           → continue (one-shots keep their remaining delay)
 /heartbeat status           → show status
 /heartbeat off              → stop
 ```
 
 Durations accept `s`, `m`, `h`, `d` (bare number = seconds).
+
+`--once` cannot be combined with `--limit`. A beat that comes due while pi is
+mid-turn is shifted (capped at 5 min), not consumed — it fires when pi is idle.
 
 ### Status line
 

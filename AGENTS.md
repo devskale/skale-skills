@@ -157,6 +157,7 @@ bash tests/d2/test.sh
 bash tests/figure/test.sh
 bash tests/peep/test.sh
 bash tests/imagegen/test.sh          # extensions/imagegen.ts
+bash tests/heartbeat/test.sh         # extensions/heartbeat.ts
 bash tests/gdocs/test.sh             # live smoke, external gog CLI
 ```
 
