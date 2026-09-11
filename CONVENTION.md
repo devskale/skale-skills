@@ -271,6 +271,14 @@ Three places must agree:
 - `pyproject.toml` → `version = "2.6.0"`
 - Test: version alignment check
 
+### Version Bumping
+
+Default bump is **patch (+0.0.1)** — for every change, regardless of size
+(fix, feature, new skill). Minor (+0.1.0) or major only when the user asks
+explicitly. Same policy for the repo `package.json` version. Bump commits are
+separate `chore:` commits — stage `package.json` alone, never together with
+the change.
+
 ### Testing
 
 Every skill must have `tests/<skill-name>/test.sh`. Test categories:
