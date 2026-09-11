@@ -31,20 +31,21 @@ grep -q "^import\|^} from\|require(" "$LIB" && bad "heartbeat-parse.ts must stay
 # lint/typecheck gate (extensions/)
 if bash scripts/lint.sh >/tmp/hb-lint.log 2>&1; then ok; else bad "lint.sh failed ($(tail -1 /tmp/hb-lint.log))"; fi
 
-# registration surface
+# registration surface (wiring lives in heartbeat.ts)
 grep -q 'registerCommand("heartbeat"' "$EXT" && ok || bad "slash command not registered"
 grep -q "registerTool(heartbeatTool)" "$EXT" && ok || bad "agent tool not registered"
 grep -q "promptGuidelines" "$EXT" && ok || bad "promptGuidelines missing"
-grep -q "deliverAs: \"followUp\"" "$EXT" && ok || bad "reminders must use followUp delivery"
+grep -q "parseCommand" "$EXT" && ok || bad "command parser not wired"
 
-# once-semantics wired end to end
-grep -q "state.once" "$EXT" && ok || bad "state.once missing"
-grep -q "One-shot delivered" "$EXT" && ok || bad "one-shot finish message missing"
-grep -q "oneShotTimerId" "$EXT" && ok || bad "one-shot timer missing"
-
-# stale-ctx guards + busy escape
-grep -q "isStaleCtxError" "$EXT" && ok || bad "stale-ctx guard missing"
-grep -q "BUSY_STUCK_MS" "$EXT" && ok || bad "busy-stuck escape missing"
+# logic markers (live in the core lib since the wiring/core split)
+CORE=extensions/lib/heartbeat-core.ts
+[ -f "$CORE" ] && ok || bad "heartbeat-core.ts missing"
+grep -q 'deliverAs: "followUp"' "$CORE" && ok || bad "reminders must use followUp delivery"
+grep -q "state.once" "$CORE" && ok || bad "state.once missing"
+grep -q "One-shot delivered" "$CORE" && ok || bad "one-shot finish message missing"
+grep -q "oneShotTimerId" "$CORE" && ok || bad "one-shot timer missing"
+grep -q "isStaleCtxError" "$CORE" && ok || bad "stale-ctx guard missing"
+grep -q "BUSY_STUCK_MS" "$CORE" && ok || bad "busy-stuck escape missing"
 
 # parser unit tests via node type stripping (node ≥ 22.6)
 if command -v node >/dev/null 2>&1; then
@@ -122,6 +123,105 @@ EOF
   fi
 else
   warn "parser unit tests skipped (node not found)"
+fi
+
+# control-flow tests: override / once / pause-resume / busy-shift / stuck-busy
+# The core is compiled to CJS with the cached tsc and driven against a mocked
+# host + ctx — the same code pi runs, no pi process needed.
+TSC_BIN="$HOME/.cache/skale-skills/lint/node_modules/.bin/tsc"
+if [ ! -x "$TSC_BIN" ]; then
+    warn "control-flow tests skipped (cached tsc not found — run scripts/lint.sh once)"
+else
+    HBC=/tmp/hb-core; rm -rf "$HBC"; mkdir -p "$HBC"
+    ( cd extensions/lib && "$TSC_BIN" heartbeat-core.ts heartbeat-parse.ts session-state.ts \
+        --outDir "$HBC" --module commonjs --target es2022 --skipLibCheck --noResolve \
+        ) >/tmp/hb-tsc.log 2>&1
+    if [ ! -f "$HBC/heartbeat-core.js" ]; then
+        warn "control-flow tests skipped (tsc emit failed: $(tail -1 /tmp/hb-tsc.log))"
+    else
+        cat > "$HBC/run.js" <<'EOF'
+const core = require("./heartbeat-core.js");
+let pass = 0, fail = 0;
+const eq = (got, want, msg) => {
+    if (got === want) pass++;
+    else { fail++; console.log(`  FAIL: ${msg} (want ${JSON.stringify(want)}, got ${JSON.stringify(got)})`); }
+};
+const mocks = () => ({
+    host: { sent: [], entries: [], sendUserMessage(t) { this.sent.push(t); }, appendEntry(t, d) { this.entries.push([t, d]); } },
+    ctx: { hasUI: true, ui: { status: {}, lastNotify: null, setStatus(k, v) { this.status[k] = v; }, notify(m, l) { this.lastNotify = { m, l }; } } },
+});
+
+// 1. OVERRIDE: starting while active restarts with the new settings
+let m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h", message: "old" });
+const r2 = core.control(m.host, m.ctx, { action: "start", duration: "30s", message: "new" });
+eq(r2.state.message, "new", "override: message replaced");
+eq(r2.state.intervalMs, 30_000, "override: interval replaced");
+eq(r2.state.active, true, "override: still active");
+if (!r2.text.includes("Restarted")) { fail++; console.log("  FAIL: override text lacks 'Restarted'"); } else pass++;
+
+// 2. ONCE: fires exactly once, then stops
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h", once: true, message: "shot" });
+core.onBeatDue(m.host, m.ctx);
+eq(m.host.sent.length, 1, "once: exactly one delivery");
+eq(m.ctx.ui.lastNotify && m.ctx.ui.lastNotify.m.includes("One-shot delivered"), true, "once: finish notice");
+eq(m.host.entries.at(-1)[1].active, false, "once: persisted inactive");
+
+// 3. BUSY SHIFT: beat due mid-turn is shifted, not consumed
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.setBusy(true);
+core.onBeatDue(m.host, m.ctx);
+eq(m.host.sent.length, 0, "busy: no fire while busy");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, true, "busy: still active");
+core.setBusy(false);
+core.onBeatDue(m.host, m.ctx);
+eq(m.host.sent.length, 1, "busy: fires when idle again");
+
+// 4. STUCK BUSY: missing turn_end (busy older than 15 min) → treat as idle
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.setBusy(true, Date.now() - 16 * 60_000);
+core.onBeatDue(m.host, m.ctx);
+eq(m.host.sent.length, 1, "stuck busy: fires instead of shifting forever");
+
+// 5. PAUSE/RESUME one-shot: pause clears the timer, resume re-arms the deadline
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h", once: true });
+core.control(m.host, m.ctx, { action: "pause" });
+eq(core.control(m.host, m.ctx, { action: "status" }).state.paused, true, "pause: paused");
+core.control(m.host, m.ctx, { action: "resume" });
+const rs = core.control(m.host, m.ctx, { action: "status" });
+eq(rs.state.active, true, "resume: still active");
+eq(rs.state.once, true, "resume: still one-shot (not recurring)");
+eq(rs.state.paused, false, "resume: not paused");
+
+// 6. maxCount stop
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h", maxCount: 2 });
+core.onBeatDue(m.host, m.ctx);
+core.onBeatDue(m.host, m.ctx);
+eq(m.host.sent.length, 2, "maxCount: two deliveries");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "maxCount: stopped after limit");
+
+// 7. restoreFrom: lost heartbeat is reported once, config kept, active cleared
+m = mocks(); core.resetAll();
+const lost = core.restoreFrom({ active: true, message: "keep me", intervalMs: 30_000 }, m.host);
+eq(lost, true, "restore: reports lost active heartbeat");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.message, "keep me", "restore: config kept");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "restore: active cleared");
+eq(m.host.entries.at(-1)[1].active, false, "restore: persists cleared flag (no repeat nag)");
+
+console.log(`CORE TESTS: ${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);
+EOF
+        if node "$HBC/run.js" >/tmp/hb-core.log 2>&1; then
+            ok
+        else
+            bad "control-flow tests failed: $(grep -m1 'FAIL:' /tmp/hb-core.log)"
+        fi
+    fi
 fi
 
 # smoke: extension loads in pi is a live check — skipped here, covered by pi itself
