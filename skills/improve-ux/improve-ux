@@ -1,0 +1,287 @@
+#!/usr/bin/env bash
+# improve-ux — UX reference discovery + list integration.
+#
+#   improve-ux discover [--x] [-n N]   # web-search for new UX reference sites,
+#                                      # dedupe vs SITES.md + cache, print candidates
+#   improve-ux add <url> "<focus>" [--group G] [--file F] [--force]
+#                                      # verify + append a site to SITES.md
+#   improve-ux --selfcheck / --update / --help
+#
+# The knowledge workflow lives in SKILL.md; this launcher is the plumbing that
+# keeps the reference list fresh (discovery) and integrates new entries.
+set -uo pipefail
+
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+AUTO_UPDATE_DAYS=7
+
+SITES_FILE="$SKILL_DIR/references/SITES.md"
+QUERIES_FILE="$SKILL_DIR/references/discovery-queries.txt"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/skale-skills/improve-ux"
+DISCOVERED="$CACHE_DIR/discovered.txt"
+DEFAULT_QUERIES=(
+    "best UI component gallery sites"
+    "animated component libraries react tailwind"
+    "design system examples public"
+    "empty state design patterns gallery"
+    "ux inspiration sites curated"
+)
+
+# ── Auto-update check (non-blocking) ──
+if [ -d "$SKILL_DIR/.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then
+        needs_update=true
+    else
+        last_ts=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        now_ts=$(date +%s)
+        [ $(( (now_ts - last_ts) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
+    fi
+    if $needs_update; then
+        ( cd "$SKILL_DIR" && git pull --ff-only --quiet 2>/dev/null && date +%s > "$STAMP_FILE" ) &>/dev/null &
+    fi
+fi
+
+usage() {
+    cat <<'EOF'
+improve-ux — UX reference discovery + list integration.
+
+Usage:
+  improve-ux discover [--x] [-n N]   # search the web (web-search) for new UX
+                                     # reference sites; --x also searches X
+                                     # via peep. Prints candidate rows to
+                                     # curate into references/SITES.md.
+  improve-ux add <url> "<focus>" [--group <heading>] [--file <sites.md>] [--force]
+                                     # verify the URL, dedupe, append a row.
+                                     # --force skips the reachability check.
+  improve-ux --selfcheck             # version, dir, deps
+  improve-ux --update                # git pull the skill
+  improve-ux --help                  # this help
+
+The workflow (routing, grounding, verification, ledger) lives in SKILL.md.
+EOF
+}
+
+[ $# -ge 1 ] || { usage >&2; exit 2; }
+cmd="$1"; shift
+
+domain_of() { # domain_of <url> -> host
+    printf '%s' "$1" | sed -E 's#^[a-zA-Z]+://##; s#/.*##; s#:.*##'
+}
+
+check_url() { # check_url <url> -> prints http code (000 = unreachable)
+    local code
+    code="$(curl -sIL -o /dev/null -w '%{http_code}' --max-time 8 "$1" 2>/dev/null || true)"
+    case "$code" in
+        000|403|405) code="$(curl -sL -o /dev/null -w '%{http_code}' --max-time 8 "$1" 2>/dev/null || true)" ;;
+    esac
+    printf '%s' "${code:-000}"
+}
+
+case "$cmd" in
+    --help|-h) usage; exit 0 ;;
+
+    --update|--self-update)
+        echo "Updating improve-ux..."
+        cd "$SKILL_DIR"
+        [ -d ".git" ] && git pull --ff-only 2>&1 || true
+        date +%s > "$STAMP_FILE"
+        echo "✓ Updated $(date)"
+        exit 0
+        ;;
+    --selfcheck)
+        vversion() { grep -m1 '^version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -o '[0-9][0-9.]*' || echo "?"; }
+        last="never"
+        if [ -f "$STAMP_FILE" ]; then
+            ts="$(cat "$STAMP_FILE" 2>/dev/null)"
+            last="$ts"
+            case "$(date -r 0 '+%Y' 2>/dev/null)" in
+                1970) last=$(date -r "$ts" "+%Y-%m-%d %H:%M" 2>/dev/null) ;;
+                *)    last=$(date -d "@$ts" "+%Y-%m-%d %H:%M" 2>/dev/null) ;;
+            esac
+            [ -n "${last:-}" ] || last="$ts"
+        fi
+        echo "improve-ux v$(vversion)"
+        echo "  dir:         $SKILL_DIR"
+        echo "  last:        $last"
+        echo "  web-search:  $(command -v web-search >/dev/null 2>&1 && echo yes || echo NO — discover needs it)"
+        echo "  peep:        $(command -v peep >/dev/null 2>&1 && echo yes || echo no (--x optional))"
+        echo "  python3:     $(command -v python3 >/dev/null 2>&1 && echo yes || echo NO — discover needs it)"
+        echo "  curl:        $(command -v curl >/dev/null 2>&1 && echo yes || echo NO — add needs it)"
+        exit 0
+        ;;
+
+    discover)
+        use_x=false; n=5
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --x) use_x=true ;;
+                -n|--max) n="${2:-}"; shift ;;
+                *) echo "improve-ux discover: unknown flag: $1" >&2; exit 2 ;;
+            esac
+            shift
+        done
+        command -v web-search >/dev/null 2>&1 || { echo "improve-ux discover: 'web-search' not installed (sibling skill)" >&2; exit 1; }
+        command -v python3 >/dev/null 2>&1 || { echo "improve-ux discover: python3 required" >&2; exit 1; }
+        mkdir -p "$CACHE_DIR"; touch "$DISCOVERED"
+
+        # query list: references/discovery-queries.txt (if non-empty) overrides defaults
+        # (bash 3.2-safe: no mapfile on stock macOS)
+        queries=()
+        while IFS= read -r qline; do
+            [ -n "$qline" ] && queries+=("$qline")
+        done < <(grep -vE '^[[:space:]]*(#|$)' "$QUERIES_FILE" 2>/dev/null || true)
+        if [ "${#queries[@]}" -eq 0 ]; then
+            for q in "${DEFAULT_QUERIES[@]}"; do queries+=("$q"); done
+        fi
+        [ "${#queries[@]}" -gt 6 ] && queries=("${queries[@]:0:6}")   # cap per run
+
+        tmpd="$(mktemp -d)"
+        trap 'rm -rf "$tmpd"' EXIT
+        qi=0; ok=0
+        for q in "${queries[@]}"; do
+            qi=$((qi+1))
+            if web-search --json --max "$n" "$q" >"$tmpd/q$qi.json" 2>/dev/null && [ -s "$tmpd/q$qi.json" ]; then
+                printf '%s\n' "$q" >"$tmpd/q$qi.label"; ok=$((ok+1))
+            fi
+            if $use_x && command -v peep >/dev/null 2>&1; then
+                if peep search "$q" --json -n 10 >"$tmpd/x$qi.json" 2>/dev/null && [ -s "$tmpd/x$qi.json" ]; then
+                    printf 'X: %s\n' "$q" >"$tmpd/x$qi.label"
+                fi
+            fi
+        done
+        [ "$ok" -gt 0 ] || { echo "improve-ux discover: all $qi queries failed" >&2; exit 1; }
+
+        # parse + dedupe (vs SITES.md domains, discovery cache, this run) -> candidates.tsv
+        python3 - "$tmpd" "$SITES_FILE" "$DISCOVERED" <<'PYEOF' || { echo "improve-ux discover: parse failed" >&2; exit 1; }
+import json, re, glob, os, sys, datetime
+tmpd, sites_file, discovered = sys.argv[1], sys.argv[2], sys.argv[3]
+out_path = os.path.join(tmpd, 'candidates.tsv')
+
+listed = set()
+for m in re.finditer(r'\]\(\s*https?://([^/\s)]+)', open(sites_file, encoding='utf-8', errors='replace').read()):
+    listed.add(m.group(1).lower().strip())
+seen = {l.split()[0].lower() for l in open(discovered, encoding='utf-8', errors='replace') if l.split()}
+
+NOISE = ('x.com', 'twitter.com', 'google.com', 'dev.to', 'medium.com', 'reddit.com',
+         'youtube.com', 'npmjs.com', 'news.ycombinator.com', 'github.com', 'linkedin.com', 'substack.com')
+
+def rows_from_json(path):
+    try:
+        data = json.load(open(path, encoding='utf-8', errors='replace'))
+    except Exception:
+        return []
+    if isinstance(data, dict):
+        data = data.get('results') or data.get('tweets') or []
+    out = []
+    for r in data if isinstance(data, list) else []:
+        if not isinstance(r, dict):
+            continue
+        url = r.get('href') or r.get('url') or r.get('link') or ''
+        title = (r.get('title') or r.get('text') or '')[:90].replace('|', '/').strip()
+        if url.startswith('http'):
+            out.append((url, title))
+    return out
+
+def urls_from_text(path):
+    txt = open(path, encoding='utf-8', errors='replace').read()
+    return [(u, '') for u in dict.fromkeys(re.findall(r'https?://[^\s"\\\]}>)]+', txt))]
+
+def host(url):
+    return re.sub(r'^[a-zA-Z]+://', '', url).split('/')[0].split(':')[0].lower()
+
+candidates, emitted_hosts = [], set()
+for jf in sorted(glob.glob(os.path.join(tmpd, '*.json'))):
+    if os.path.basename(jf).startswith('q'):
+        rows = rows_from_json(jf)
+    else:  # x*.json — peep output, shape may vary; fall back to raw URL scan
+        rows = rows_from_json(jf) or urls_from_text(jf)
+    for url, title in rows:
+        h = host(url)
+        if not h or h in listed or h in seen or h in emitted_hosts:
+            continue
+        if any(h == d or h.endswith('.' + d) or d.endswith('.' + h) for d in NOISE):
+            continue
+        emitted_hosts.add(h)
+        candidates.append((url, title))
+
+today = datetime.date.today().isoformat()
+with open(out_path, 'w', encoding='utf-8') as f:
+    for url, title in candidates:
+        f.write(f"{url}\t{title}\t{today}\n")
+PYEOF
+
+        echo "## Discovered $(date +%F) — candidates for SITES.md"
+        echo
+        echo "Curate: pick sites that fill a gap, fetch once (fetch-url), write a one-line"
+        echo "focus, then: improve-ux add <url> \"<focus>\" --group <heading>"
+        echo
+        echo "| Site | Focus |"
+        echo "|------|-------|"
+        count=0
+        while IFS=$'\t' read -r url src day; do
+            [ -n "$url" ] || continue
+            dom="$(domain_of "$url")"
+            code="$(check_url "$url")"
+            case "$code" in
+                2*|3*) mark="reachable" ;;
+                *)     mark="unreachable ($code)" ;;
+            esac
+            echo "| [$dom]($url) | (discovered $day, $mark — unverified) |"
+            printf '%s %s\n' "$dom" "$day" >>"$DISCOVERED"
+            count=$((count+1))
+        done <"$tmpd/candidates.tsv"
+        echo
+        echo "($count new candidate(s); already-listed and noise domains skipped)"
+        exit 0
+        ;;
+
+    add)
+        url=""; focus=""; group="Systems & real-world patterns"; file="$SITES_FILE"; force=false
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --group) group="${2:-}"; shift ;;
+                --file)  file="${2:-}"; shift ;;
+                --force) force=true ;;
+                *) if [ -z "$url" ]; then url="$1"; elif [ -z "$focus" ]; then focus="$1"; else echo "improve-ux add: unexpected arg: $1" >&2; exit 2; fi ;;
+            esac
+            shift
+        done
+        [ -n "$url" ] && [ -n "$focus" ] || { echo "improve-ux add: expected <url> \"<focus>\"" >&2; exit 2; }
+        [[ "$url" =~ ^https?:// ]] || { echo "improve-ux add: url must start with http(s):// — $url" >&2; exit 2; }
+        [ -f "$file" ] || { echo "improve-ux add: sites file not found: $file" >&2; exit 2; }
+        dom="$(domain_of "$url")"
+        grep -qF "$dom" "$file" && { echo "improve-ux add: domain already listed: $dom" >&2; exit 1; }
+        if ! $force; then
+            command -v curl >/dev/null 2>&1 || { echo "improve-ux add: curl needed (or --force)" >&2; exit 1; }
+            code="$(check_url "$url")"
+            case "$code" in
+                2*|3*) : ;;
+                *) echo "improve-ux add: unreachable ($code): $url — use --force to add anyway" >&2; exit 1 ;;
+            esac
+        fi
+        row="| [$dom]($url) | $focus (added $(date +%F) — unverified) |"
+        if grep -qF "## $group" "$file"; then
+            awk -v heading="## $group" -v row="$row" '
+                $0 == heading { in_sec=1 }
+                in_sec && !inserted && /^\|[-| ]+\|$/ { print; print row; inserted=1; next }
+                { print }
+                END { if (in_sec && !inserted) print row }
+            ' "$file" >"$file.tmp" && mv "$file.tmp" "$file"
+        else
+            printf '\n## %s\n\n| Site | Focus |\n|------|-------|\n%s\n' "$group" "$row" >>"$file"
+        fi
+        echo "improve-ux: added $dom under '$group'"
+        echo "  next: fetch it once (fetch-url \"$url\"), confirm the focus text, and let it enter the rating loop (SITES.md → Ratings protocol)"
+        exit 0
+        ;;
+
+    *)
+        echo "improve-ux: unknown command: $cmd" >&2; usage >&2; exit 2 ;;
+esac

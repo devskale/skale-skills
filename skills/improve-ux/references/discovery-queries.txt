@@ -1,0 +1,12 @@
+# improve-ux discovery queries — one per line, '#' starts a comment.
+# `improve-ux discover` rotates through these; edit freely.
+best UI component gallery sites
+animated component libraries react tailwind
+design system examples public
+empty state design patterns gallery
+ux inspiration sites curated
+motion design ui patterns website
+shadcn ui component registry collection
+dashboard ui templates gallery
+landing page design inspiration
+accessibility focused component library
