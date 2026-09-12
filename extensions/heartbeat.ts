@@ -9,6 +9,7 @@
  * Slash commands (human):
  *   /heartbeat 30s                 start with 30s interval
  *   /heartbeat 5m "Focus on X"     interval + custom message
+ *   /heartbeat 30s 5x "msg"        interval + count shorthand (5 beats), + message
  *   /heartbeat -f file.md          message from file (--lines N caps it)
  *   /heartbeat 30s --limit 20      stop after 20 heartbeats (0 = forever)
  *   /heartbeat 30s --once          one-shot: fire once after 30s, then stop
@@ -100,7 +101,7 @@ export default function (pi: ExtensionAPI) {
 
 	// ── Human slash command: /heartbeat … ─────────────────────
 	pi.registerCommand("heartbeat", {
-		description: "Recurring reminder. /heartbeat 30s | \"msg\" | -f file.md | message <txt> | time <dur> | status | off",
+		description: "Recurring reminder. /heartbeat 30s | 30s 5x | \"msg\" | -f file.md | message <txt> | time <dur> | status | off",
 		handler: async (args: unknown, ctx: any) => {
 			const raw = typeof args === "string" ? args.trim() : "";
 			const opts = parseCommand(raw);
