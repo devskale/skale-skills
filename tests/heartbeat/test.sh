@@ -46,7 +46,9 @@ grep -q "One-shot delivered" "$CORE" && ok || bad "one-shot finish message missi
 grep -q "oneShotTimerId" "$CORE" && ok || bad "one-shot timer missing"
 grep -q "isStaleCtxError" "$CORE" && ok || bad "stale-ctx guard missing"
 grep -q "ESC_DOUBLE_MS" "$CORE" && ok || bad "esc double-ESC window guard missing"
-grep -q "ESC_STOP_MAX_MS" "$CORE" && ok || bad "esc stop window missing"
+grep -q "any non-double ESC → stop" "$CORE" && ok || bad "esc stop branch missing"
+grep -q "isEscapePress" "$CORE" && ok || bad "esc press matcher missing (kitty encoding)"
+grep -q '\[27(;1)?u' "$CORE" >/dev/null 2>&1 || grep -q '27(;1)?u' "$CORE" && ok || bad "kitty ESC sequence not matched in core"
 grep -q "BUSY_STUCK_MS" "$CORE" && ok || bad "busy-stuck escape missing"
 
 # parser unit tests via node type stripping (node ≥ 22.6)
@@ -227,8 +229,11 @@ eq(core.control(m.host, m.ctx, { action: "status" }).state.active, true, "esc: f
 core.setBusy(true);
 eq(core.onEscape(m.host, m.ctx, 3000), false, "esc: busy → not consumed (abort preserved)");
 core.setBusy(false);
-eq(core.onEscape(m.host, m.ctx, 6000), false, "esc: stale lone ESC while paused passes through");
-eq(core.control(m.host, m.ctx, { action: "status" }).state.active, true, "esc: still active after stale");
+eq(core.onEscape(m.host, m.ctx, 6000), true, "esc: second ESC while paused → stop (no upper bound)");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "esc: stopped after second ESC");
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.onEscape(m.host, m.ctx, 2000);
 eq(core.onEscape(m.host, m.ctx, 6800), true, "esc: slow second press consumed");
 eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "esc: stopped");
 eq(core.onEscape(m.host, m.ctx, 7000), false, "esc: inactive → not consumed");
@@ -245,13 +250,29 @@ eq(core.onEscape(m.host, m.ctx, 2501), true, "esc: dt=501 → stop");
 m = mocks(); core.resetAll();
 core.control(m.host, m.ctx, { action: "start", duration: "1h" });
 core.onEscape(m.host, m.ctx, 2000);
-eq(core.onEscape(m.host, m.ctx, 3501), false, "esc: dt=1501 stale → pass");
+eq(core.onEscape(m.host, m.ctx, 3501), true, "esc: dt=1501 while paused → stop (no upper bound)");
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h" });
+core.onEscape(m.host, m.ctx, 2000);
+eq(core.onEscape(m.host, m.ctx, 62000), true, "esc: very stale second ESC while paused → stop");
 m = mocks(); core.resetAll();
 core.control(m.host, m.ctx, { action: "start", duration: "1h" });
 core.onEscape(m.host, m.ctx, 2000);
 core.onEscape(m.host, m.ctx, 2200);
 eq(core.onEscape(m.host, m.ctx, 2400), false, "esc: panic triple passes");
 eq(core.control(m.host, m.ctx, { action: "status" }).state.active, true, "esc: panic triple never stops");
+
+// ESC KEY ENCODING (kitty vs legacy) — regression for the silent no-op where
+// only "\x1b" matched and kitty-protocol terminals never paused/stopped.
+eq(core.isEscapePress("\x1b"), true, "esc-enc: legacy press");
+eq(core.isEscapePress("\x1b[27u"), true, "esc-enc: kitty press");
+eq(core.isEscapePress("\x1b[27;1u"), true, "esc-enc: kitty press ;1");
+eq(core.isEscapePress("\x1b[27;1:3u"), false, "esc-enc: kitty release not a press");
+eq(core.isEscapePress("\x1b[27;;3u"), false, "esc-enc: release alt form");
+eq(core.isEscapePress("\x1b[A"), false, "esc-enc: arrow up is not ESC");
+eq(core.isEscapePress("\x1b[27;5u"), false, "esc-enc: ctrl+esc different gesture");
+eq(core.isEscapePress("a"), false, "esc-enc: plain key");
+eq(core.isEscapePress(""), false, "esc-enc: empty");
 
 console.log(`CORE TESTS: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
