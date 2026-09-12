@@ -112,6 +112,32 @@ assert.equal(start4.action, "start");
 assert.equal(start4.maxCount, 5);
 assert.equal(start4.duration, undefined);
 
+// positional count shorthand "5x" (anywhere; --limit wins over it)
+const c1 = parseCommand('10s 5x "5x intervall"');
+assert.equal(c1.action, "start");
+assert.equal(c1.duration, "10s");
+assert.equal(c1.maxCount, 5);
+assert.equal(c1.message, "5x intervall");
+const c2 = parseCommand("5x");
+assert.equal(c2.maxCount, 5, "bare 5x sets count");
+assert.equal(c2.duration, undefined);
+const c3 = parseCommand("10s 3X msg");
+assert.equal(c3.maxCount, 3, "uppercase X counts");
+const c4 = parseCommand("10s 5x --limit 7");
+assert.equal(c4.maxCount, 7, "--limit wins over 5x");
+const c5 = parseCommand('"5x intervall"');
+assert.equal(c5.maxCount, undefined, "x inside quotes is not a count token");
+assert.equal(c5.message, "5x intervall");
+const c6 = parseCommand("10s");
+assert.equal(c6.maxCount, undefined, "plain duration has no count");
+const c7 = parseCommand("10s 1x einmalig");
+assert.equal(c7.once, true, "1x is one-shot");
+assert.equal(c7.maxCount, undefined, "1x does not set maxCount");
+assert.equal(c7.duration, "10s");
+const c8 = parseCommand("1x --limit 5");
+assert.equal(c8.maxCount, 5, "--limit beats 1x shorthand");
+assert.equal(c8.once, undefined, "no once when --limit explicit");
+
 console.log("parser unit tests passed");
 EOF
     sed -i '' "s|./EXT_REL|$(pwd)/extensions|" /tmp/hb-parse.test.ts 2>/dev/null || sed -i "s|./EXT_REL|$(pwd)/extensions|" /tmp/hb-parse.test.ts

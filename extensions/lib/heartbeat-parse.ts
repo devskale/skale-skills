@@ -110,6 +110,17 @@ export function parseCommand(raw: string): ParsedCommand {
 
 	const limitMatch = raw.match(/--limit\s+(\d+)/);
 	if (limitMatch) opts.maxCount = parseInt(limitMatch[1], 10);
+	else {
+		// positional count shorthand: a bare "5x" token anywhere → maxCount 5
+		// (e.g. /heartbeat 10s 5x "msg"). "1x" is one-shot (fires once).
+		// Explicit --limit wins when both appear.
+		const countMatch = raw.match(/(?:^|\s)(\d+)[xX](?=\s|$)/);
+		if (countMatch) {
+			const n = parseInt(countMatch[1], 10);
+			if (n === 1) opts.once = true;
+			else opts.maxCount = n;
+		}
+	}
 
 	const onceMatch = raw.match(/--once/);
 	if (onceMatch) opts.once = true;
