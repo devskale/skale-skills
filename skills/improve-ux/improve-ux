@@ -107,11 +107,13 @@ case "$cmd" in
             esac
             [ -n "${last:-}" ] || last="$ts"
         fi
+        peep_stat="no (--x optional)"
+        command -v peep >/dev/null 2>&1 && peep_stat="yes"
         echo "improve-ux v$(vversion)"
         echo "  dir:         $SKILL_DIR"
         echo "  last:        $last"
-        echo "  web-search:  $(command -v web-search >/dev/null 2>&1 && echo yes || echo NO — discover needs it)"
-        echo "  peep:        $(command -v peep >/dev/null 2>&1 && echo yes || echo no (--x optional))"
+        echo "  web-search:  $(command -v web-search >/dev/null 2>&1 && echo yes || echo 'NO — discover needs it')"
+        echo "  peep:        $peep_stat"
         echo "  python3:     $(command -v python3 >/dev/null 2>&1 && echo yes || echo NO — discover needs it)"
         echo "  curl:        $(command -v curl >/dev/null 2>&1 && echo yes || echo NO — add needs it)"
         exit 0

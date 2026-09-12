@@ -62,6 +62,7 @@ check "--help → exit 0" 0 "$SCRIPT" --help
 check "--selfcheck → exit 0" 0 "$SCRIPT" --selfcheck
 grep -q "improve-ux v" /tmp/improve-ux.out && ok || bad "selfcheck shows version"
 grep -q "web-search:" /tmp/improve-ux.out && ok || bad "selfcheck shows web-search dep"
+grep -qi "syntax error" /tmp/improve-ux.out && bad "selfcheck emits bash syntax errors" || ok
 check "--update → exit 0" 0 "$SCRIPT" --update
 grep -q "Updated" /tmp/improve-ux.out && ok || bad "--update reports Updated"
 [ -f "$SKILL/.last-update" ] && ok || bad "stamp file created"
