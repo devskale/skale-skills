@@ -54,6 +54,7 @@ except ImportError:
 # =============================================================================
 
 DUCK_API_URL = os.environ.get("DUCK_API_URL", "https://amd.skale.dev/api/duck/search")
+DUCK_NEWS_URL = os.environ.get("DUCK_NEWS_URL", "https://amd.skale.dev/api/duck/news")
 
 # Public SearXNG instances (no auth required)
 PUBLIC_SEARXNG_INSTANCES = [
@@ -65,6 +66,24 @@ PUBLIC_SEARXNG_INSTANCES = [
 
 # Private instance (if configured)
 PRIVATE_SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
+
+# Ad-click redirect URLs (bing/yahoo engine byproducts since the 2026-09
+# ddgs/yahoo primary). Never organic results — strip them client-side.
+_AD_URL_MARKERS = (
+    "bing.com/aclick",
+    "bing.com/aclk",
+    "doubleclick.net",
+    "google.com/aclk",
+)
+
+
+def filter_ads(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Drop ad-click redirect rows (bing.com/aclick, doubleclick, ...)."""
+    return [
+        r for r in results
+        if not any(marker in (r.get("href") or r.get("url") or "").lower()
+                   for marker in _AD_URL_MARKERS)
+    ]
 
 
 # =============================================================================
@@ -132,8 +151,12 @@ def select_backend(args: argparse.Namespace) -> str:
 
     # Duck API only if token available
     if get_bearer_token():
-        # Images/news better on SearXNG
+        # News is served natively by the Duck API (/duck/news, dedicated
+        # news index with dates). Images/videos stay on SearXNG — the Duck
+        # API has no equivalent.
         if args.categories:
+            if args.categories.strip() == "news":
+                return "duck"
             return "searxng"
         return "duck"
 
@@ -157,6 +180,7 @@ def search_duck(
     region: str = "wt-wt",
     safesearch: str = "off",
     page: int = 1,
+    backend: Optional[str] = None,
     bearer: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Search using Duck API (requires token)."""
@@ -185,6 +209,9 @@ def search_duck(
         params["exclude"] = exclude
     if timelimit:
         params["timelimit"] = timelimit
+    if backend:
+        # ddgs engine override: comma list (yahoo,brave) or "auto"
+        params["backend"] = backend
 
     headers = {
         "Accept": "application/json",
@@ -199,11 +226,75 @@ def search_duck(
             # Server raises 404 for a genuinely empty result set —
             # that's "no results", not an error.
             return []
+        if resp.status_code == 502:
+            # All upstream backends failed or the box-wide ddgs queue is
+            # saturated — retrying immediately just deepens the queue.
+            return [{"error": "Search backend temporarily unavailable "
+                             "(all backends failed or queue saturated). "
+                             "Retry in a few seconds."}]
         resp.raise_for_status()
-        return resp.json().get("results", [])
+        return filter_ads(resp.json().get("results", []))
     except requests.RequestException as e:
         safe_msg = str(e).split("Authorization")[0].rstrip(": ,")
         return [{"error": f"Search failed: {safe_msg}"}]
+    except Exception as e:
+        return [{"error": f"Unexpected error: {e}"}]
+
+
+def search_duck_news(
+    topic: str,
+    max_results: int = 10,
+    timelimit: Optional[str] = None,
+    region: str = "wt-wt",
+    safesearch: str = "off",
+    page: Optional[int] = None,
+    backend: Optional[str] = None,
+    bearer: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Search news via the Duck API /duck/news endpoint (requires token).
+
+    Rows carry title/url/body/date/source. Server-side timelimit defaults
+    to "m" (past month) when unset.
+    """
+    if not requests:
+        raise RuntimeError("requests library required. Run: uv pip install requests")
+
+    if not bearer:
+        raise ValueError("Bearer token required. Set WEB_SEARCH_BEARER env var.")
+
+    params: Dict[str, Any] = {
+        "topic": topic,
+        "max_results": max_results,
+        "region": region,
+        "safesearch": safesearch,
+    }
+    if timelimit:
+        params["timelimit"] = timelimit
+    if page:
+        params["page"] = page
+    if backend:
+        params["backend"] = backend
+
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {bearer}",
+    }
+
+    try:
+        resp = requests.get(
+            DUCK_NEWS_URL, params=params, headers=headers, timeout=(5, 45),
+        )
+        if resp.status_code == 404:
+            return []
+        if resp.status_code == 502:
+            return [{"error": "News backend temporarily unavailable "
+                             "(all backends failed or queue saturated). "
+                             "Retry in a few seconds."}]
+        resp.raise_for_status()
+        return filter_ads(resp.json().get("results", []))
+    except requests.RequestException as e:
+        safe_msg = str(e).split("Authorization")[0].rstrip(": ,")
+        return [{"error": f"News search failed: {safe_msg}"}]
     except Exception as e:
         return [{"error": f"Unexpected error: {e}"}]
 
@@ -265,7 +356,7 @@ def search_searxng(
             with urllib.request.urlopen(req, timeout=15, context=ssl_ctx) as resp:
                 data = json.loads(resp.read().decode())
                 if "results" in data:
-                    data["results"] = data["results"][:max_results]
+                    data["results"] = filter_ads(data["results"])[:max_results]
                     data["_instance"] = instance
                 return data
         except Exception as exc:
@@ -300,9 +391,13 @@ def format_results(results: Union[List, Dict], backend: str, query: str, limit: 
         title = r.get("title", "No title")
         url = r.get("href") or r.get("url", "")
         snippet = r.get("body") or r.get("content", "") or ""
-        source = r.get("engine", "")
+        source = r.get("engine") or r.get("source") or ""
+        date = (r.get("date") or "").strip()
 
         lines.append(f"{i}. [**{title}**]({url})")
+        if date:
+            # News rows (Duck /duck/news) carry an ISO date — keep the date part
+            lines.append(f"   _{date[:10]}_")
         if snippet:
             if len(snippet) > 200:
                 snippet = snippet[:197] + "..."
@@ -363,6 +458,8 @@ Backends:
     # Backend selection
     parser.add_argument("--api", action="store_true", help="Force Duck API")
     parser.add_argument("--searxng", action="store_true", help="Force SearXNG")
+    parser.add_argument("--backend", help="Duck API ddgs engine override: comma "
+                        "list (yahoo,brave) or 'auto' (Duck backend only)")
 
     args = parser.parse_args()
 
@@ -390,18 +487,41 @@ Backends:
         if not duck_timelimit and args.time_range:
             duck_timelimit = args.time_range[0]  # day->d, week->w, month->m, year->y
 
-        results = search_duck(
-            query=args.query,
-            max_results=args.max,
-            site=args.site,
-            filetype=args.filetype,
-            inurl=args.inurl,
-            exclude=args.exclude,
-            exact=args.exact,
-            timelimit=duck_timelimit,
-            region=args.region,
-            bearer=bearer,
-        )
+        # /duck/news has a dedicated endpoint (news index with dates);
+        # text-search operators (site/filetype/inurl/exclude/exact) don't
+        # apply there.
+        if args.categories and args.categories.strip() == "news":
+            duck_only_flags = [f for f, v in (
+                ("--site", args.site), ("--filetype", args.filetype),
+                ("--inurl", args.inurl), ("--exclude", args.exclude),
+                ("--exact", args.exact),
+            ) if v]
+            if duck_only_flags:
+                print(f"Warning: {', '.join(duck_only_flags)} ignored "
+                      f"(not supported for news).", file=sys.stderr)
+            results = search_duck_news(
+                topic=args.query,
+                max_results=args.max,
+                timelimit=duck_timelimit,
+                region=args.region,
+                page=args.page if args.page > 1 else None,
+                backend=args.backend,
+                bearer=bearer,
+            )
+        else:
+            results = search_duck(
+                query=args.query,
+                max_results=args.max,
+                site=args.site,
+                filetype=args.filetype,
+                inurl=args.inurl,
+                exclude=args.exclude,
+                exact=args.exact,
+                timelimit=duck_timelimit,
+                region=args.region,
+                backend=args.backend,
+                bearer=bearer,
+            )
     else:
         creds = get_searxng_credentials()
         instance_url = creds["url"] if creds else None
