@@ -78,7 +78,7 @@ doesn't feel parachuted in.
 
 ```html
 <script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs";
   mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
 </script>
 <div style="background:#fff;border:1px solid var(--line);border-radius:.75rem;padding:1rem;margin:1rem 0;">

@@ -1,6 +1,6 @@
 ---
 name: visualize
-version: "1.1.0"
+version: "1.2.0"
 description: "Render any set of things as ONE self-contained HTML document and give the user a URL — and generate polished HTML reports. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), figures out the right structure, and builds a single portable HTML file — then opens it locally and optionally shares it to a short-lived URL via the throway store. Triggers on: visualize, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, give me a link to this, put it on a page."
 ---
 
@@ -25,52 +25,31 @@ nothing to host.
 ## When to recommend d2 / figure (not build inline)
 
 `visualize` builds its own simple diagrams inline (SVG arrows, optional Mermaid) — good
-for a small graph embedded in a page. But some visualization challenges are **better
-served by `d2` or `figure`**, and `visualize` should **say so and point the user there**
-rather than force a mediocre inline diagram. You can't auto-invoke them (manual-only), so
-you *recommend*; the user runs `/skill:d2` or `/skill:figure`.
+for a small graph embedded in a page. But some challenges are **better served by `d2`
+(auto-laid-out technical diagrams) or `figure` (hand-drawn presentation figures)**. Both
+are manual-only (`/skill:d2` / `/skill:figure`), so `visualize` **recommends and stops** —
+don't build a weak inline version. Decide **live per request**, re-reading the `d2`/`figure`
+descriptions (in the system-prompt catalog) each time:
 
-**Recommend `d2` when the challenge is a complex technical graph:**
+- **→ `d2`** — complex technical graphs: sequence / ER / class diagrams; dependency or
+  call graphs with many nodes and edges (elk auto-layout handles the density, inline SVG
+  tangles); diagrams that must be self-verifiable (d2 renders ASCII) or are the
+  deliverable (committed `.svg`/`.png`/`.pdf`), not just one element in a throwaway page.
+- **→ `figure`** — hand-drawn presentation figures: sketchy Excalidraw-style explainers,
+  polished figures for a slide / report / deck.
+- **→ inline** — the diagram is simple (a few nodes), *one element among many*, and the
+  user wants a quick shareable page. Don't bounce trivial graphs to d2/figure.
 
-- **Sequence / ER / class diagrams** — structured, many nodes, precise syntax.
-- **Dependency / call graphs** with many nodes and edges — d2's auto-layout (elk) handles
-  them; hand-drawn inline SVG gets tangled fast.
-- **A diagram that must be self-verifiable** — d2 renders to ASCII for structural
-  verification, and to a version-controllable `.svg`/`.png`/`.pdf`.
-- **The diagram is the deliverable** (to commit to the repo, embed in docs, export as
-  PNG/PDF), not just one element in a throwaway page.
+**Pattern-aware tripwire** (see [references/patterns.md](references/patterns.md)): a
+pattern that is *at heart a dense technical graph* — fan-in queue, trust boundary, long
+write-back loop — belongs in `d2` when the graph is the point, not one panel among many.
+A pattern whose value is the *editorial sketch* — stage framework as a deck figure,
+provenance trail — belongs in `figure`. If the real content exceeds the pattern's
+complexity budget, that's the signal to hand it off.
 
-**Recommend `figure` when the user wants a hand-drawn, presentation-quality figure:**
-
-- **Sketchy / Excalidraw-style explainer** — pipeline, workflow, architecture figure with
-  a specific editorial look.
-- **A polished figure for a slide / report / deliverable** — not an embedded page element.
-
-**When visualize should just build it inline:** the diagram is simple (a few nodes), it's
-*one element among many* in a page, and the user wants a quick shareable page — not a
-standalone diagram file. Then inline SVG or Mermaid is the right call; don't bounce the
-user to d2/figure for a trivial graph.
-
-**Pattern-aware (see patterns.md):** the semantic pattern you chose also points the way —
-a pattern that is *at heart a technical graph* belongs in `d2`; one whose value is the
-*editorial sketch* belongs in `figure`.
-
-- **→ `d2`:** a pattern whose content is a dense technical graph — **fan-in queue** with
-  many producers, **trust boundary** with many routed paths, **loop / flywheel** with a
-  long write-back — when the graph itself is the point, not one panel among many. d2's
-  auto-layout handles the density; inline SVG tangles.
-- **→ `figure`:** a pattern whose value is a hand-drawn, presentation-quality sketch — a
-  **stage framework** as a polished explainer, a **provenance / evidence trail** as an
-  editorial figure for a deck.
-- **→ inline:** the pattern is simple (a few nodes) and one element among many.
-
-**Use the pattern's complexity budget as the tripwire.** If the real content exceeds the
-pattern's budget (patterns.md), that's a signal to hand the diagram to `d2`/`figure`
-rather than force it into a page.
-
-**How to recommend:** end the page with a short note, e.g. *"This graph is complex — for a
+**How to recommend:** end the page with one line, e.g. *"This graph is complex — for a
 proper auto-laid-out diagram, run `/skill:d2`; for a hand-drawn figure, `/skill:figure`."*
-Keep it one line; don't over-recommend.
+Don't over-recommend.
 
 ## The shape of the job
 
@@ -106,30 +85,9 @@ system map, cards, a comparison. Prompt signals: "show me the repo", "compare th
 A report can *embed* a visualization (a chart/map inside a section), but the mode is set
 by the deliverable: a document → report; a display → visualize. Don't blur them.
 
-**Then decide live whether this is a `visualize`/`report` job at all.** Read the `d2` and
-`figure` skill descriptions (their `description` frontmatter is in the system-prompt
-catalog) and decide which tool owns the challenge:
-
-- If the core of the request is a **complex technical diagram** (sequence/ER/class,
-  dependency graph, self-verifiable or deliverable diagram) → **recommend `/skill:d2`** and
-  stop (don't build a weak inline version).
-- If the user wants a **hand-drawn presentation figure** → **recommend `/skill:figure`**.
-- Otherwise → build it yourself with `visualize` (cards, tree, system map, simple inline
-  diagrams, etc.).
-
-**Pattern-aware routing.** The semantic pattern (patterns.md) also hints at the right
-home. A pattern that is *at heart a technical graph* — dense fan-in, a trust boundary with
-many routed paths, a long write-back loop — is usually better as a `d2` deliverable than
-as an inline page element, *especially* when the graph is the point, not one panel among
-many. A pattern whose value is the *editorial sketch* (a hand-drawn pipeline, a
-presentation explainer) belongs in `figure`. Only carry a pattern into the page when it's
-simple (a few nodes) and one element among many. Use the pattern's complexity budget as
-the tripwire: if the real content exceeds it, that's a signal to hand the diagram to
-`d2`/`figure` rather than force it into a page.
-
-This is a **live decision per request**, not a rule — re-read the descriptions each time
-and weigh the specific challenge. See *When to recommend d2 / figure* above for the full
-decision boundary.
+**Then run the d2 / figure routing check** (*When to recommend d2 / figure* above):
+complex technical diagram → recommend `/skill:d2` and stop; hand-drawn presentation
+figure → recommend `/skill:figure`; otherwise build it here.
 
 **First decide whether a semantic pattern owns the challenge.** When behaviour, state,
 enforcement, or risk is load-bearing (work queues up, a boundary is crossed, a loop feeds
@@ -153,7 +111,8 @@ browser `page`, a `slide`, a `doc`/README, a `social` card, or `print`? `page` i
 default; the target changes canvas, density, and copy. Then:
 
 **MANDATORY: read a default template first.** Before writing any HTML, `read` at least
-one template from `templates/` (`cards.html`, `report.html`, `system-map.html`, `repo-tree.html`)
+one template from `templates/` (`cards.html`, `report.html`, `system-map.html`,
+`repo-tree.html`, `mermaid.html`)
 that matches the structure you chose. Start from its CSS + scaffold — do **not** hand-write
 HTML/CSS from scratch. This is what keeps every page on the clean neutral house style
 (no AI-generated accents). The templates are the proven starting point; compose from them,
@@ -181,13 +140,16 @@ Write the HTML to the OS temp dir so nothing lands in the repo:
 Validate before delivering:
 
 ```bash
-visualize validate <file.html>   # self-contained: no external src/href
+visualize validate <file.html>   # self-contained: no external references
 visualize lint <file.html>       # style taste-gate: flag AI-generated tells
 visualize --selfcheck            # version, install dir, last update
 visualize --update               # pull the latest skill via git
 ```
 
-`validate` warns if you left an external `src`/`href` reference. `lint` is the **style
+`validate` exits non-zero on external references (`src`/`href`, CSS `@import`/`url()`) —
+**known CDNs are allowed** (`cdn.tailwindcss.com`, `cdn.jsdelivr.net`): a CDN-backed page
+passes, but it's a runtime network dependency (content works offline, diagrams/styling
+degrade — see the CDN note above). `lint` is the **style
 taste-gate** — it flags the AI-slop tells from promptlib §0 (saturated accent on links,
 colored pill badges, colored numbered-circle badges, colored `.ok`/`.bad` values) and
 exits non-zero if any are found. Run both before sharing; fix the tells rather than
@@ -204,20 +166,13 @@ Always give the user the **URL**. Note the throway URL **expires after ~4 hours*
 **public** (anyone with the link can read it) — say so when sharing something sensitive.
 Keep the local file too: it's the durable copy.
 
-> **Bundle & dir capability (throway).** Throway supports more than single files:
-> - **Bundles** — upload multiple files (`index.html` + `.css` + `.js` + assets) under one
->   URL via multipart POST to `https://lubu.skale.dev/throway/`. Bundle root serves
->   `index.html` inline to browsers (zip to agents); files at `/<id>/<filename>`.
-> - **Dirs** — a **mutable, browseable folder**: create with `POST /?dir=1`, add files,
->   browse as an HTML listing page (or JSON for agents), download as zip, delete files.
->   Use `visualize share --dir <dir>` to publish a whole directory as a browseable throway
->   dir. Expires ~4h after the last add (max 24h).
->
-> **Not the default:** the default stays one self-contained HTML (simplest, no UA split).
-> Reach for a bundle when the visualization genuinely needs separate files (multi-page set,
-> heavy per-file assets); reach for a dir when you want a *browseable folder of items*.
-> MIME sniffing and relative-URL resolution are fixed on throway (verify when you depend
-> on them).
+> **Dir capability (throway).** Beyond single files, `visualize share --dir <dir>` publishes
+> a whole directory as a **mutable, browseable throway folder** — HTML listing for
+> browsers, JSON for agents, zip download; expires ~4h after the last add (max 24h). Use it
+> when you want a *browseable folder of items*; the default stays one self-contained HTML.
+> (Throway also supports multi-file bundles via raw multipart POST — read `/api` first; no
+> launcher command, and verify MIME sniffing / relative-URL resolution when you depend on
+> them.)
 
 ## Design principles
 
