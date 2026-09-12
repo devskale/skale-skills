@@ -24,8 +24,9 @@ web-search "LLM benchmarks 2024" --filetype pdf --timelimit y
 
 ### News & Current Events
 ```bash
-web-search "AI regulation" --timelimit d --max 20
-web-search "tech news" --time-range week --max 20
+web-search "AI regulation" --categories news --time-range day --max 20
+web-search "tech news" --categories news --time-range week   # dated results via /duck/news
+web-search "older coverage" --timelimit d --max 20           # text search, news-adjacent
 ```
 
 ### Troubleshooting Error Messages
@@ -68,13 +69,14 @@ The Duck API backend transforms flags into search operators:
 | `--exclude TERMS` | - | Comma-separated terms to exclude |
 | `--exact` | false | Exact phrase match (wrap in quotes) |
 | `--timelimit {d,w,m,y}` | - | Time filter: d=day, w=week, m=month, y=year |
+| `--backend LIST` | server: `yahoo` | ddgs engine override: comma list (`yahoo,brave`) or `auto` |
 | `--region CODE` | wt-wt | Language-region (us-en, de-de, etc.) |
 
 ### SearXNG Options (default, no credentials needed)
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--categories CAT` | general | Category: images, news, videos |
+| `--categories CAT` | general | Category: images, news, videos. `news` routes to the Duck API `/duck/news` when a token is set |
 | `--engines LIST` | all | Comma-separated engines (e.g., google,bing) |
 | `--time-range {day,week,month,year}` | - | Time filter (works on both backends, auto-mapped for Duck) |
 | `--language LANG` | en | Search language (e.g., en, de, ja). SearXNG backend only. |
@@ -87,13 +89,13 @@ The Duck API backend transforms flags into search operators:
 | `--api` | Force Duck API backend |
 | `--searxng` | Force SearXNG backend |
 
-Default backend selection: Duck API if `WEB_SEARCH_BEARER` is set (except for `--categories`), otherwise SearXNG.
+Default backend selection: Duck API if `WEB_SEARCH_BEARER` is set; `--categories images|videos` force SearXNG (no Duck equivalent). `--categories news` goes to the Duck `/duck/news` endpoint when a token is set, SearXNG otherwise.
 
 ## Backends
 
 | Backend | Credentials | Filters | Best For |
 |---------|-------------|---------|----------|
-| **Duck API** | `WEB_SEARCH_BEARER` required | `--site`, `--filetype`, `--exclude`, `--exact`, `--inurl`, `--timelimit` | General search, domain filtering, file types |
+| **Duck API** | `WEB_SEARCH_BEARER` required | `--site`, `--filetype`, `--exclude`, `--exact`, `--inurl`, `--timelimit`, `--backend` | General search, domain filtering, file types, dated news |
 | **SearXNG** | None (public instances) | `--categories`, `--engines`, `--time-range` | Images, news, videos, no-credential search |
 
 ## Region Codes
@@ -164,5 +166,16 @@ web-search "test" --searxng --engines google,bing
 | "All SearXNG instances failed" | Check network; use the shared private SearXNG via `credgoo searx` |
 | "No results found" | Simplify query, try different backend |
 | Filters ignored | Duck API filters (`--site`, `--filetype`, etc.) only work with Duck backend |
-| 404 on empty query | Provide a non-empty search query |
+| 404 on empty query | Provide a non-empty search query (validated client-side since v2.2.1) |
+| 502 backend unavailable | All upstream backends failed or the ddgs queue is saturated — wait a few seconds and retry; do not hammer |
+| Thin/sparse results from Duck | Try `--backend auto` (multi-engine) or `--backend brave,mojeek` |
 | Exit code 1 | Search error — backend failure, auth error, or all instances down |
+
+## Duck API backend chain (2026-09 server, v1.3.0)
+
+`/duck/search` and `/duck/news` run: **query cache** (12h TTL, 15min with `timelimit`) → **ddgs/yahoo on amd** → **private SearXNG via lubu** (circuit-breaker protected). Consequences:
+
+- Identical queries within the TTL return identical cached results — fast repeats.
+- `404` = genuinely no results; `502` = all backends failed or queue saturated (retry later).
+- `--backend` overrides the server-pinned `yahoo` engine per request (`auto` = multi-engine).
+- Ad-click redirects (`bing.com/aclick`, `doubleclick.net`, `google.com/aclk`) are filtered client-side.

@@ -1,7 +1,7 @@
 ---
 name: web-search
-version: "2.2.2"
-description: "Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credentials); an optional Duck API adds advanced filters (site, filetype, inurl, exact). Returns text, image, news, or video results. Use when the user wants to search the web, look something up, or find images/news/videos. Triggers on: web search, search for, google, look up, find online, image/news/video search."
+version: "2.3.0"
+description: "Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credentials); an optional Duck API adds advanced filters (site, filetype, inurl, exact), a dedicated news endpoint, and engine override. Returns text, image, news, or video results. Use when the user wants to search the web, look something up, or find images/news/videos. Triggers on: web search, search for, google, look up, find online, image/news/video search."
 ---
 
 # Web Search
@@ -74,6 +74,7 @@ web-search "query" --time-range day           # last 24h
 | `--language LANG` | Search language (default: en). SearXNG only. |
 | `--region CODE` | Region (us-en, de-de). Default: wt-wt. |
 | `--engines LIST` | Comma-separated engines (SearXNG only) |
+| `--backend LIST` | Duck API engine override: `yahoo,brave` or `auto` (Duck only) |
 | `--api` / `--searxng` | Force a backend |
 | `--update` | Update the skill now |
 | `--selfcheck` | Show version and last update |
@@ -89,6 +90,16 @@ web-search "query" --time-range day           # last 24h
 | `--exact` | Exact phrase match |
 
 > Duck-only filters (`--site`, `--filetype`, `--inurl`, `--exclude`, `--exact`) are silently ignored on SearXNG with a warning. Use `--api` to force the Duck backend.
+
+## News searches
+
+`--categories news` uses the Duck API's dedicated news endpoint when a token is available (dated results from a real news index) and falls back to SearXNG otherwise. Text-search filters (`--site` etc.) don't apply to news.
+
+## Backend behavior (Duck API)
+
+- Server chain: query cache (12h) → ddgs/yahoo → private SearXNG fallback — repeat queries are fast.
+- `404` from the API means *no results* (not an error); `502` means all backends failed or the queue is saturated — retry in a few seconds.
+- Ad-click redirect URLs (`bing.com/aclick`, `doubleclick.net`, ...) are filtered out client-side.
 
 ## Configure backends (optional)
 
@@ -119,6 +130,7 @@ uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#
 - `--time-range` values are **lowercase**: `day`, `week`, `month`, `year`
 - `-v, --verbose` output goes to **stderr** — safe to pipe stdout
 - Duck-only filters are ignored on SearXNG (warning printed). Use `--api` to force Duck.
+- `502 backend unavailable` → box is busy; wait a few seconds and retry, don't switch flags
 - Exit codes: `0` = success, `1` = search error
 
 ## Troubleshooting
