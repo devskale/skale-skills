@@ -94,10 +94,19 @@ let oneShotTimerId: ReturnType<typeof setTimeout> | undefined;
 // Mirrors pi's native double-escape window: a second ESC within this gap is
 // pi's chat-tree gesture and is NEVER consumed.
 const ESC_DOUBLE_MS = 500;
-// Upper bound for the stop gesture. Beyond it a lone ESC while paused is
-// fresh navigation (native arming / tree), not a deliberate stop press.
-const ESC_STOP_MAX_MS = 1500;
 let lastEscAt = 0;
+
+// A bare ESC key PRESS in any encoding: legacy "\x1b" or kitty keyboard
+// protocol "\x1b[27u" / "\x1b[27;1u". Release events ("\x1b[27;1:3u" — the
+// ":3" event field) and every other key are NOT escape presses. Empirically
+// verified via an onTerminalInput probe (pi 0.85.1): legacy matching alone
+// never fires on kitty-protocol terminals — ESC pause/stop silently no-ops.
+// Built via RegExp string so no control character appears in a regex literal
+// (biome: noControlCharactersInRegex).
+const ESC_PRESS_RE = new RegExp("^\\u001b(?:\\[27(;1)?u)?$");
+export function isEscapePress(data: string): boolean {
+	return data === "\x1b" || ESC_PRESS_RE.test(data);
+}
 
 /** Snapshot of state for tool `details` and reconstruction (no timers). */
 export type StateSnapshot = HBState;
@@ -290,9 +299,10 @@ export function restoreFrom(saved: Record<string, unknown>, pi: HeartbeatHost): 
  *     still flows through to pi (pi does nothing visible on a lone ESC).
  *   - A fast second ESC (<=ESC_DOUBLE_MS) is passed through untouched, so the
  *     native chat-tree gesture keeps working bit-for-bit.
- *   - Only a SLOW second ESC (ESC_DOUBLE_MS..ESC_STOP_MAX_MS after the previous
- *     press) while paused is consumed → stop. pi ignores that press (its tree
- *     window has expired), so it is unambiguously ours.
+ *   - While paused, ANY later ESC beyond the double-ESC window is consumed →
+ *     stop — no upper time limit. A lone ESC has no destructive native role
+ *     when idle, and “paused + ESC = stop” is the gesture users expect; the
+ *     old 0.5–1.5s stop window was too fiddly to hit deliberately.
  *   - Mid-turn (busy) or no heartbeat: not consumed → native abort preserved.
  *
  * `now` is injectable for deterministic tests. Returns true only for the stop
@@ -310,17 +320,13 @@ export function onEscape(pi: HeartbeatHost, ctx: HeartbeatCtx, now: number = Dat
 		// Settled lone ESC → pause as a side effect; pass through so pi's
 		// double-escape arming still sees the press.
 		const res = control(pi, ctx, { action: "pause" });
-		safeNotify(ctx, `${res.text} ESC again (slow) to stop · /heartbeat resume to continue.`, res.level);
+		safeNotify(ctx, `${res.text} ESC again to stop · /heartbeat resume to continue.`, res.level);
 		return false;
 	}
-	if (dt <= ESC_STOP_MAX_MS) {
-		// Deliberate slow second ESC while paused → stop. Only consumed press.
-		const res = control(pi, ctx, { action: "stop" });
-		safeNotify(ctx, res.text, res.level);
-		return true;
-	}
-	// Paused + stale lone ESC → navigation: pass through.
-	return false;
+	// Paused + any non-double ESC → stop. Only consumed press.
+	const res = control(pi, ctx, { action: "stop" });
+	safeNotify(ctx, res.text, res.level);
+	return true;
 }
 
 // ── Centralized control (used by command AND tool) ────────────

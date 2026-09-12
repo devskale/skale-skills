@@ -30,6 +30,7 @@ import { parseCommand } from "./lib/heartbeat-parse";
 import {
 	control,
 	ENTRY_TYPE,
+	isEscapePress,
 	onEscape,
 	resetAll,
 	restoreFrom,
@@ -46,12 +47,17 @@ function safeNotify(ctx: any, msg: string, level: "info" | "warning" | "error" |
 // pi's native fast double-ESC (chat tree) is never consumed — see onEscape
 // in the core. Wired lazily on the first heartbeat interaction (needs a ctx
 // with a UI).
+//
+// Key encoding: a bare ESC arrives as "\x1b" on legacy terminals, but as a
+// kitty-keyboard-protocol sequence "\x1b[27u" (press) / "\x1b[27;1:3u"
+// (release) on modern ones — the release event must NOT count as a press.
+// Matching lives in the core (isEscapePress), unit-tested there.
 let escWired = false;
 function wireEscape(pi: ExtensionAPI, ctx: any) {
 	if (escWired || typeof ctx?.ui?.onTerminalInput !== "function") return;
 	try {
 		ctx.ui.onTerminalInput((data: string) => {
-			if (data !== "\x1b") return undefined; // only the bare ESC key
+			if (!isEscapePress(data)) return undefined; // only the ESC key (press)
 			return onEscape(pi, ctx) ? { consume: true } : undefined;
 		});
 		escWired = true;
