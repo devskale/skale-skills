@@ -40,6 +40,12 @@ for t in cards repo-tree system-map report mermaid; do
 done
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
+# templates must pass their own gates (house style + self-contained)
+for t in cards repo-tree system-map report mermaid; do
+    check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
+    check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
+done
+
 # usage / errors
 check "no args → exit 2" 2 "$SCRIPT"
 check "unknown cmd → exit 2" 2 "$SCRIPT" bogus
@@ -70,6 +76,22 @@ EOF
 check "validate self-contained → exit 0" 0 "$SCRIPT" validate "$TMP/good.html"
 check "validate external ref → exit 1" 1 "$SCRIPT" validate "$TMP/bad.html"
 
+cat > "$TMP/cdn.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>@import url("https://cdn.tailwindcss.com");</style></head>
+<body><h1>CDN ok</h1></body></html>
+EOF
+cat > "$TMP/imports.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>@import url("https://fonts.example.com/css?family=x");
+body{background:url("https://example.com/bg.png")}</style></head>
+<body><h1>Import</h1></body></html>
+EOF
+check "validate allows known CDNs → exit 0" 0 "$SCRIPT" validate "$TMP/cdn.html"
+check "validate catches @import/url() → exit 1" 1 "$SCRIPT" validate "$TMP/imports.html"
+
 # lint — style taste-gate (AI-generated tells)
 cat > "$TMP/stylish.html" <<'EOF'
 <!doctype html><html><head><meta charset="utf-8"><title>t</title>
@@ -86,6 +108,19 @@ EOF
 check "lint clean page → exit 0" 0 "$SCRIPT" lint "$TMP/stylish.html"
 check "lint AI-slop page → exit 1" 1 "$SCRIPT" lint "$TMP/ai-slop.html"
 check "lint missing file → exit 2" 2 "$SCRIPT" lint /nonexistent.html
+
+cat > "$TMP/neutral.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>a{color:#1a1a1a}</style></head>
+<body><a href="#" style="color:#1a1a1a">ink</a><span style="color:#6b7280">muted</span></body></html>
+EOF
+cat > "$TMP/teal.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>a{color:#0f766e}</style></head>
+<body><a href="#">x</a></body></html>
+EOF
+check "lint neutral inline link → exit 0" 0 "$SCRIPT" lint "$TMP/neutral.html"
+check "lint saturated teal accent → exit 1" 1 "$SCRIPT" lint "$TMP/teal.html"
 
 # open (macOS `open` present) — just check it accepts a real file
 if command -v open >/dev/null 2>&1; then

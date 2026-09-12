@@ -5,6 +5,7 @@
 #   visualize share  <file.html>            # upload to throway, print the URL
 #   visualize share  --dir <dir>            # upload a whole dir as a browseable throway dir
 #   visualize validate <file.html>          # check it's self-contained (no external refs)
+#   visualize lint <file.html>              # style taste-gate: flag AI-generated tells
 #   visualize --help
 #
 # The skill itself (see SKILL.md) is what *understands* the request and builds the
@@ -22,6 +23,20 @@ STAMP_FILE="$SKILL_DIR/.last-update"
 AUTO_UPDATE_DAYS=7
 
 THROWAWAY="https://lubu.skale.dev/throway"
+
+# Percent-encode a query-param value (bash-only; keeps the RFC-3986 unreserved set,
+# assumes ASCII filenames — slugs are the norm).
+urlencode() {
+    local s="$1" out="" c i h
+    for (( i=0; i<${#s}; i++ )); do
+        c="${s:i:1}"
+        case "$c" in
+            [a-zA-Z0-9._~-]) out+="$c" ;;
+            *) printf -v h '%%%02X' "'$c"; out+="$h" ;;
+        esac
+    done
+    printf '%s' "$out"
+}
 
 # ── Auto-update check (non-blocking) ──
 if [ -d "$SKILL_DIR/.git" ]; then
@@ -71,7 +86,16 @@ case "$cmd" in
     --selfcheck)
         vversion() { grep -m1 '^version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -o '[0-9][0-9.]*' || echo "?"; }
         last="never"
-        [ -f "$STAMP_FILE" ] && last=$(date -r "$STAMP_FILE" "+%Y-%m-%d %H:%M" 2>/dev/null || cat "$STAMP_FILE")
+        if [ -f "$STAMP_FILE" ]; then
+            ts="$(cat "$STAMP_FILE" 2>/dev/null)"
+            last="$ts"
+            # BSD date: -r <epoch>; GNU date: -d @<epoch>. Probe which one we have.
+            case "$(date -r 0 '+%Y' 2>/dev/null)" in
+                1970) last=$(date -r "$ts" "+%Y-%m-%d %H:%M" 2>/dev/null) ;;
+                *)    last=$(date -d "@$ts" "+%Y-%m-%d %H:%M" 2>/dev/null) ;;
+            esac
+            [ -n "${last:-}" ] || last="$ts"
+        fi
         echo "visualize v$(vversion)"
         echo "  dir:   $SKILL_DIR"
         echo "  last:  $last"
@@ -104,13 +128,18 @@ case "$cmd" in
             resp="$(curl -sf -X POST "$THROWAWAY/?dir=1")" || { echo "visualize share --dir: create failed" >&2; exit 1; }
             dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
             [ -n "${dirurl:-}" ] || { echo "visualize share --dir: could not parse dir URL" >&2; exit 1; }
-            n=0
+            n=0; failed=0
             for f in "$d"/*; do
                 [ -f "$f" ] || continue
-                # POST each file to the dir URL itself (the /d/<id> path); the
-                # response's files[] carries the per-file public URLs.
-                curl -sf -X POST "$dirurl" -F "file=@$f" >/dev/null 2>&1 && n=$((n+1))
+                if curl -sf -X POST "$dirurl" -F "file=@$f" >/dev/null 2>&1; then
+                    n=$((n+1))
+                else
+                    failed=$((failed+1))
+                    echo "visualize share --dir: upload failed: $f" >&2
+                fi
             done
+            [ "$n" -gt 0 ] || { echo "visualize share --dir: no files uploaded" >&2; exit 1; }
+            [ "$failed" -eq 0 ] || echo "visualize: $failed file(s) failed to upload — dir is incomplete" >&2
             echo "$dirurl"
             echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
             exit 0
@@ -118,9 +147,10 @@ case "$cmd" in
         [ $# -eq 1 ] || { echo "visualize share: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize share: not a file: $f" >&2; exit 2; }
         name="$(basename "$f")"
+        enc="$(urlencode "$name")"
         # Read the /api contract first (per the service's own instructions), then upload.
         curl -sf "$THROWAWAY/api" >/dev/null 2>&1 || echo "visualize: (couldn't read throway contract; proceeding)" >&2
-        resp="$(curl -sf -X POST "$THROWAWAY/?name=$name" --data-binary @"$f")" \
+        resp="$(curl -sf -X POST "$THROWAWAY/?name=$enc" --data-binary @"$f")" \
             || { echo "visualize share: upload failed" >&2; exit 1; }
         # Extract the url field. Prefer python3 (json) for correctness.
         if command -v python3 >/dev/null 2>&1; then
@@ -137,7 +167,7 @@ case "$cmd" in
         f="$1"; [ -f "$f" ] || { echo "visualize lint: not a file: $f" >&2; exit 2; }
         if command -v python3 >/dev/null 2>&1; then
             python3 - "$f" <<'PYEOF'
-import sys, re, html
+import sys, re
 path = sys.argv[1]
 src = open(path, encoding='utf-8', errors='replace').read()
 
@@ -146,12 +176,18 @@ no_comments = re.sub(r'<!--.*?-->', '', src, flags=re.S)
 
 warns = []
 
+# Neutral ink/paper/muted palette — never counted as "saturated accent".
+NEUTRAL = {'0f172a','1a1a1a','fafaf9','f4f4f5','ffffff','e4e4e7','e5e5e5',
+           '6b7280','71717a','a1a1aa','e2e8f0','64748b','f8fafc','cbd5e1',
+           '94a3b8','475569','334155','1e293b'}
+
 def add(msg):
     warns.append(msg)
 
 # 1. Saturated accent on links/buttons/TOC (teal/blue/indigo link text)
-for m in re.finditer(r'(?:<a[^>]*style="[^"]*color\s*:\s*#[0-9a-fA-F]{6})', no_comments):
-    add('saturated accent on a link/button (inline color hex)')
+for m in re.finditer(r'<a[^>]*style="[^"]*color\s*:\s*#([0-9a-fA-F]{6})', no_comments):
+    if m.group(1).lower() not in NEUTRAL:
+        add('saturated accent on a link/button (inline color hex)')
 
 # 2. Colored pill badges: border-radius:999px (either order) + a non-neutral hex background
 for m in re.finditer(r'border-radius\s*:\s*99[0-9]px[^}]*?background\s*:\s*#[0-9a-fA-F]{6}|background\s*:\s*#[0-9a-fA-F]{6}[^}]*?border-radius\s*:\s*99[0-9]px', no_comments):
@@ -178,12 +214,12 @@ for m in re.finditer(r'<style[^>]*>(.*?)</style>', no_comments, flags=re.S):
     css = m.group(1)
     for cm in re.finditer(r'color\s*:\s*(#[0-9a-fA-F]{6})', css):
         hexv = cm.group(1).lower().lstrip('#')
-        if hexv in ('0f172a','1a1a1a','fafaf9','f4f4f5','ffffff','e4e4e7','e5e5e5','6b7280','71717a','a1a1aa','0f766e','e2e8f0','64748b','f8fafc','cbd5e1','94a3b8','475569','334155','1e293b'):
+        if hexv in NEUTRAL:
             continue
         add(f'saturated color used as text: #{hexv}')
 for m in re.finditer(r'style="[^"]*color\s*:\s*(#[0-9a-fA-F]{6})', no_comments):
     hexv = m.group(1).lower().lstrip('#')
-    if hexv in ('0f172a','1a1a1a','fafaf9','f4f4f5','ffffff','e4e4e7','e5e5e5','6b7280','71717a','a1a1aa','0f766e','e2e8f0','64748b','f8fafc','cbd5e1','94a3b8','475569','334155','1e293b'):
+    if hexv in NEUTRAL:
         continue
     add(f'saturated color used as text: #{hexv}')
 
@@ -211,9 +247,16 @@ PYEOF
     validate)
         [ $# -eq 1 ] || { echo "visualize validate: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize validate: not a file: $f" >&2; exit 2; }
-        # Self-contained = no http(s) references to external styles/scripts/images.
-        # (Ignoring the doctype/comment lines.) CDN references are the main offender.
-        bad="$(grep -oE '(src|href)=["'"'"']https?://[^"'"'"']+' "$f" | grep -vE 'cdn\.tailwindcss\.com|cdn\.jsdelivr\.net' || true)"
+        # Self-contained = no http(s) references to external styles/scripts/images/fonts:
+        # src/href attributes, CSS @import, and CSS url(). Known CDNs (tailwind, jsdelivr)
+        # are allowed as documented runtime-network dependencies.
+        bad="$(
+            {
+                grep -oE '(src|href)=["'"'"']https?://[^"'"'"']+' "$f" || true
+                grep -oiE '@import[[:space:]]+(url\()?[[:space:]]*["'"'"']?https?://[^)"'"'"';[:space:]]+' "$f" || true
+                grep -oiE 'url\([[:space:]]*["'"'"']?https?://[^)"'"'"']+\)' "$f" || true
+            } | grep -vE 'cdn\.tailwindcss\.com|cdn\.jsdelivr\.net' || true
+        )"
         if [ -n "$bad" ]; then
             echo "visualize validate: NOT self-contained — external references found:" >&2
             echo "$bad" | sed 's/^/  /' >&2

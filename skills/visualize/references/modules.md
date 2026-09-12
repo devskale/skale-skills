@@ -141,11 +141,11 @@ Prioritized recommendations.
 
 ### mermaid
 Graph-shaped content (flow, dependency, sequence). Uses Mermaid from CDN — **needs network**.
+Keep page layout in inline CSS (house tokens); Mermaid only renders the diagram block.
 
 ```html
-<script src="https://cdn.tailwindcss.com"></script>
 <script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs";
   mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
 </script>
 <div style="background:#fff;border:1px solid var(--line);border-radius:.75rem;padding:1rem;margin:1rem 0">

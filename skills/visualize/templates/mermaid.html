@@ -4,35 +4,53 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{{TITLE}} — visualization</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs";
   mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
 </script>
 <style>
-  /* Custom layer for things Tailwind doesn't cover cleanly */
-  .seam { stroke-dasharray: 4 4; }
-  .leak { stroke: #dc2626; }
-  .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
-  .mermaid-card { background:#fff; border:1px solid #e4e4e7; border-radius:.75rem; padding:1rem; }
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:64rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:2.5rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 .5rem;font-weight:600}
+h1{font-size:2rem;margin:0 0 .3rem;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:1.1rem;font-size:.78rem;color:var(--muted)}
+.legend .sw{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+.section{margin-top:2.75rem}
+.section h2{font-size:.95rem;margin:0 0 1rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.mermaid-card{background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:1.25rem;overflow-x:auto}
+/* diagram semantics (classDef helpers) — colour only where it carries meaning */
+.seam { stroke-dasharray: 4 4; }
+.leak { stroke: #dc2626; }
+.deep { fill: #0f172a; color: #f8fafc; }
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.card{background:#fff;border:1px solid var(--line);border-radius:.5rem;padding:1.25rem}
+.card h3{font-size:1.02rem;margin:0 0 .4rem;font-weight:600}
+.card p{color:var(--muted);font-size:.88rem;margin:0 0 .75rem}
+.card .cat{font-size:.75rem;color:var(--muted);letter-spacing:.02em}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.3rem;padding:.1rem .4rem;font-size:.8rem}
 </style>
 </head>
-<body class="bg-stone-50 text-slate-900 font-sans antialiased">
-<main class="max-w-5xl mx-auto px-6 py-12">
-  <header class="mb-10">
-    <p class="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-2">{{KICKER}}</p>
-    <h1 class="text-3xl font-bold tracking-tight text-slate-900">{{TITLE}}</h1>
-    <p class="text-slate-500 mt-1 max-w-2xl">{{INTENT}}</p>
-    <div class="flex gap-4 mt-4 text-xs text-slate-500 flex-wrap">
-      <span><span class="inline-block w-2.5 h-2.5 rounded-sm bg-slate-900 mr-1 align-middle"></span>{{LEGEND A}}</span>
-      <span><span class="inline-block w-2.5 h-2.5 rounded-sm bg-teal-600 mr-1 align-middle"></span>{{LEGEND B}}</span>
-      <span><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500 mr-1 align-middle"></span>{{LEGEND C}}</span>
+<body>
+<main>
+  <header>
+    <p class="kicker">{{KICKER}}</p>
+    <h1>{{TITLE}}</h1>
+    <p class="sub">{{INTENT}}</p>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--muted)"></span>{{LEGEND A}}</span>
+      <span><span class="sw" style="background:var(--soft)"></span>{{LEGEND B}}</span>
+      <span><span class="sw" style="background:#dc2626"></span>{{LEGEND C}}</span>
     </div>
   </header>
 
-  <!-- Section with a Mermaid diagram (graph-shaped content) -->
-  <section class="mb-12">
-    <h2 class="text-lg font-semibold text-slate-800 mb-4">{{SECTION}}</h2>
+  <!-- Section with a Mermaid diagram (graph-shaped content; needs network) -->
+  <section class="section">
+    <h2>{{SECTION}}</h2>
     <div class="mermaid-card">
       <pre class="mermaid">
         flowchart LR
@@ -43,32 +61,32 @@
     </div>
   </section>
 
-  <!-- Section with cards (the house card grid via Tailwind) -->
-  <section class="mb-12">
-    <h2 class="text-lg font-semibold text-slate-800 mb-4">{{SECTION}}</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <article class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-        <h3 class="font-semibold text-slate-800">{{ITEM}}</h3>
-        <p class="text-sm text-slate-500 mt-1">{{one-line}}</p>
-        <span class="inline-block mt-3 text-xs font-semibold uppercase tracking-wide text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">{{TAG}}</span>
+  <!-- Section with cards (house card grid) -->
+  <section class="section">
+    <h2>{{SECTION}}</h2>
+    <div class="grid">
+      <article class="card">
+        <h3>{{ITEM TITLE}}</h3>
+        <p>{{one-line description}}</p>
+        <div class="cat">{{CATEGORY}}</div>
       </article>
-      <article class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-        <h3 class="font-semibold text-slate-800">{{ITEM}}</h3>
-        <p class="text-sm text-slate-500 mt-1">{{one-line}}</p>
-        <span class="inline-block mt-3 text-xs font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">{{TAG}}</span>
+      <article class="card">
+        <h3>{{ITEM TITLE}}</h3>
+        <p>{{one-line description}}</p>
+        <div class="cat">{{CATEGORY}}</div>
       </article>
-      <article class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-        <h3 class="font-semibold text-slate-800">{{ITEM}}</h3>
-        <p class="text-sm text-slate-500 mt-1">{{one-line}}</p>
-        <span class="inline-block mt-3 text-xs font-semibold uppercase tracking-wide text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">{{TAG}}</span>
+      <article class="card">
+        <h3>{{ITEM TITLE}}</h3>
+        <p>{{one-line description}}</p>
+        <div class="cat">{{CATEGORY}}</div>
       </article>
     </div>
   </section>
 
-  <footer class="mt-12 pt-6 border-t border-slate-200 text-xs text-slate-400">
-    Built with the <code class="bg-white border border-slate-200 rounded px-1">visualize</code> skill · Tailwind + Mermaid · shared via
-    <code class="bg-white border border-slate-200 rounded px-1">lubu.skale.dev/throway</code> · expires ~4h
-  </footer>
+  <div class="footer">
+    Built with the <code>visualize</code> skill · Mermaid renders client-side (needs network) ·
+    shared via <code>lubu.skale.dev/throway</code> · expires ~4h
+  </div>
 </main>
 </body>
 </html>
