@@ -19,7 +19,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
 | viewimg | `viewimg img.jpg [--open]` | ~16 | Show an image in the terminal (view-only, no VLM) |
 | pdf2md | `pdf2md document.pdf` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
-| improve-ux | — (knowledge skill) | — | Improve UI/UX grounded in curated reference sites, with a rating loop |
+| improve-ux | `improve-ux discover/add` | ~50 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger, site discovery |
 
 Counts are approximate (`~`); suites include honest network-skip counters — a WARN
 does not count as a pass. `tests/` also has `imagegen` (tests `extensions/imagegen.ts`)
@@ -152,6 +152,7 @@ bash tests/rodney/test.sh
 bash tests/surf/test.sh              # live checks skip off-macOS
 bash tests/viewimg/test.sh
 bash tests/pdf2md/test.sh             # live conversion skips without token
+bash tests/improve-ux/test.sh         # structure, router, add; live discover WARNs offline
 bash tests/visualize/test.sh
 bash tests/d2/test.sh
 bash tests/figure/test.sh

@@ -1,8 +1,11 @@
 # Curated UI/UX reference sites
 
 The living list of example sites this skill grounds improvements in.
-Add new sites at the bottom. Verify a description with `fetch-url` on first use,
-then remove the `(unverified)` marker.
+Add new sites via `improve-ux add <url> "<focus>" --group <heading>` (verifies
+the URL, dedupes, appends). Bulk discovery: `improve-ux discover` — see
+[SKILL.md](../SKILL.md) → *Keep the list fresh*.
+Remove the `(unverified)` marker by fetching the site once (`fetch-url`) and
+confirming the description.
 
 Ratings (which sites actually helped) live OUTSIDE this file, in
 `~/.cache/skale-skills/improve-ux/ratings.json`.
@@ -46,3 +49,31 @@ Ratings (which sites actually helped) live OUTSIDE this file, in
 | Source | Focus |
 |--------|-------|
 | [github.com/jakubkrehel/skills](https://github.com/jakubkrehel/skills) | Collection of agent skills for building great interfaces — UI (border radius, optical alignment, hit areas, animation), typography, colors/palettes/contrast, accessibility, layout, product writing, plus interface-review, break (state stress-test) & variant skills |
+
+## Ratings protocol
+
+After each run, update `~/.cache/skale-skills/improve-ux/ratings.json`
+(create if missing):
+
+```json
+{
+  "sites": {
+    "emilkowal.ski": { "uses": 3, "helped": 3, "note": "best for motion decisions", "verified": true },
+    "ui.shadcn.com": { "uses": 2, "helped": 1, "note": "shadcn stacks only", "verified": true }
+  }
+}
+```
+
+- Per site used this run: `uses += 1`; `helped += 1` **only if it produced a
+  change you kept**. Set `verified: true` once you've fetched it and confirmed
+  the SITES.md description.
+- High `helped`-ratio sites get picked first next time.
+- If a site keeps failing to help, say so and suggest dropping it from this
+  file.
+
+## Adding sites
+
+When the user names a new site: `improve-ux add <url> "<one-line focus>"
+--group <heading>` (or append manually), then let it enter the normal rating
+loop. Manual additions: fetch once with `fetch-url` to verify it loads and
+matches the description before removing `(unverified)`.
