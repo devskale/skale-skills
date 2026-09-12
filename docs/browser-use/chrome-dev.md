@@ -143,6 +143,36 @@ Full comparison → [browser-tools-comparison.md](browser-tools-comparison.md)
 
 ## Troubleshooting
 
+### "Could not find DevToolsActivePort" (stale file or flag-launched Chrome)
+
+Agent-inflicted failure modes (2026-09-12 incident — recorded so it never repeats):
+
+1. **Stale `DevToolsActivePort`** — the file names a port/GUID of a *dead*
+   browser. The server reads it, fails the handshake, reports "not found".
+   Fix: `rm "$HOME/Library/Application Support/Google/Chrome Beta/DevToolsActivePort"`,
+   quit Chrome, relaunch **normally** (no flags) — the file reappears within
+   seconds because the `chrome://inspect` toggle persists.
+2. **Chrome launched with `--remote-debugging-port`** — the LEGACY
+   consent-dialog path, a *different* mechanism from `--autoConnect`. It does
+   not produce the file and can wedge the session. Never launch Chrome with
+   debug flags when the server config uses `--autoConnect`.
+
+Also: `open -a … --args` applies args **only on a cold start** (a running
+instance ignores them; a second same-bundle-id instance — e.g. a `/tmp`
+debug Chrome — steals the `open` events; kill leftovers first).
+
+### "Connection refused" — Direct CDP sessions bypass the autoallow watcher
+
+Any tool that attaches via the WS endpoint **itself** (puppeteer
+`browserWSEndpoint`, plain CDP clients, custom E2E harnesses) does NOT spawn
+the MCP server — so the lifecycle-bound `chrome-autoallow` watcher never
+arms. Chrome 154 prompts „Allow remote debugging?“ on every new connection;
+an unwatched dialog then blocks the attach (symptom: "auto-allow stopped
+working").
+
+→ Run `chrome-autoallow arm` before direct sessions (idempotent, self-stops
+on idle). Note `surf` never needs this — AppleScript route, no CDP, no dialog.
+
 ### "No Chrome instances found"
 
 - Chrome is not running → start it
