@@ -193,8 +193,12 @@ def search_duck(
 
     try:
         resp = requests.get(
-            DUCK_API_URL, params=params, headers=headers, timeout=(5, 15),
+            DUCK_API_URL, params=params, headers=headers, timeout=(5, 45),
         )
+        if resp.status_code == 404:
+            # Server raises 404 for a genuinely empty result set —
+            # that's "no results", not an error.
+            return []
         resp.raise_for_status()
         return resp.json().get("results", [])
     except requests.RequestException as e:
