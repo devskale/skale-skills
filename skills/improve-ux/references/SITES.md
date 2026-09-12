@@ -25,6 +25,10 @@ Ratings (which sites actually helped) live OUTSIDE this file, in
 
 | Site | Focus |
 |------|-------|
+| [lightswind.com](https://lightswind.com/components) | 100+ animated React components, Tailwind-based, blocks & templates (added 2026-09-12) |
+| [motion.dev](https://motion.dev/ui) | Animated marketing sections from the Motion makers — skinnable via shadcn tokens (added 2026-09-12) |
+| [www.hover.dev](https://www.hover.dev/) | Animated UI components & templates for React + TailwindCSS (added 2026-09-12) |
+| [animate-ui.com](https://animate-ui.com/) | Free animated React + Tailwind components (Framer Motion), copy-paste (added 2026-09-12) |
 | [transitions.dev](https://transitions.dev) | Transition/animation examples (unverified — user wrote "tranisions.dev") |
 | [emilkowal.ski/ui/you-dont-need-animations](https://emilkowal.ski/ui/you-dont-need-animations) | Emil Kowalski: when motion helps and when it hurts. **Read before adding ANY animation.** |
 
@@ -32,6 +36,8 @@ Ratings (which sites actually helped) live OUTSIDE this file, in
 
 | Site | Focus |
 |------|-------|
+| [designsystems.surf](https://designsystems.surf) | Design-system gallery + articles on what makes each system good (added 2026-09-12) |
+| [designsystemsrepo.com](https://designsystemsrepo.com/design-systems/) | Directory of 100+ real design systems (Zendesk Garden, Yelp, Gympass Yoga…) with screenshots (added 2026-09-12) |
 | [designsystemchecklist.com](https://designsystemchecklist.com) | Design-system audit checklist — great for structured reviews (unverified) |
 | [ui-skills.com](https://ui-skills.com) | UI craft/practice (unverified) |
 | [coss.com/ui](https://coss.com/ui) | UI reference (unverified) |
@@ -40,6 +46,7 @@ Ratings (which sites actually helped) live OUTSIDE this file, in
 
 | Site | Focus |
 |------|-------|
+| [carbondesignsystem.com](https://carbondesignsystem.com/patterns/empty-states-pattern/) | IBM Carbon empty-states pattern — anatomy, types, in-depth alternatives (added 2026-09-12) |
 | [m3.material.io](https://m3.material.io) | Material Design 3 — Google's open-source design system: tokens, components, motion, a11y |
 | [mobbin.com](https://mobbin.com) | Real-world UI patterns from 1000+ apps & 200 sites — great for screens/empty states |
 | [easings.net](https://easings.net) | Easing-function picker for natural motion curves |
