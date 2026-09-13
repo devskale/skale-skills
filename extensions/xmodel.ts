@@ -104,7 +104,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.3";
+const VERSION = "0.5.4";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -1440,8 +1440,8 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				const tmp = writeImageTmp({ type: "image", data: b.b64, mimeType: b.mime });
 				if (!tmp.valid) continue;
 				try {
-					const art = await chafaPreview(tmp.path);
-					if (art) arts.push(art);
+					const res = await chafaPreview(tmp.path);
+					if (res.ok) arts.push(res.art);
 				} finally {
 					try {
 						unlinkSync(tmp.path);

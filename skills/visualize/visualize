@@ -3,7 +3,7 @@
 #
 #   visualize open   <file.html>            # open an HTML file in the browser
 #   visualize share  <file.html>            # upload to throway, print the URL
-#   visualize share  --dir <dir>            # upload a whole dir as a browseable throway dir
+#   visualize share  --dir <dir>            # upload a dir (recursively; nested files flattened)
 #   visualize validate <file.html>          # check it's one file (local refs fail, popular CDNs ok)
 #   visualize lint <file.html>              # style taste-gate: flag decorative AI-tells
 #   visualize --help
@@ -60,7 +60,7 @@ visualize — render a set of things as ONE self-contained HTML document.
 Usage:
   visualize open <file.html>      # open the HTML in your browser (macOS / Linux / Windows)
   visualize share <file.html>     # upload to the throwaway store, print the URL
-  visualize share --dir <dir>     # upload a whole dir as a browseable throway dir
+  visualize share --dir <dir>     # upload a dir (recursively; nested files flattened)
   visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
   visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
   visualize --help                # this help
@@ -110,8 +110,12 @@ case "$cmd" in
             open "$f"
         elif command -v xdg-open >/dev/null 2>&1; then    # Linux
             xdg-open "$f"
-        elif command -v start >/dev/null 2>&1; then       # Windows (Git Bash)
-            start "$f"
+        elif command -v cmd.exe >/dev/null 2>&1; then     # Git Bash / WSL
+            # cmd's `start` is a builtin — command -v never finds it; go via cmd.exe.
+            wpath="$f"
+            command -v cygpath >/dev/null 2>&1 && wpath="$(cygpath -w "$f")"
+            command -v wslpath >/dev/null 2>&1 && wpath="$(wslpath -w "$f")"
+            cmd.exe /c start "" "$wpath"
         else
             echo "visualize open: no opener found; open manually: $f" >&2
             exit 1
@@ -128,16 +132,36 @@ case "$cmd" in
             resp="$(curl -sf -X POST "$THROWAWAY/?dir=1")" || { echo "visualize share --dir: create failed" >&2; exit 1; }
             dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
             [ -n "${dirurl:-}" ] || { echo "visualize share --dir: could not parse dir URL" >&2; exit 1; }
+            # Upload every file under $d recursively. throway dirs are flat (files are
+            # addressed as <key>/<name>), so nested files get their relative path folded
+            # into the filename (sub/dir/f.txt → sub-dir-f.txt); collisions get -2/-3
+            # suffixes before the extension. Bash 3.2-safe: no associative arrays.
+            seen=""
+            uniq_name() {
+                local name="$1" base ext cand i=2
+                base="${name%.*}"; ext="${name##*.}"
+                [ "$base" = "$name" ] && ext=""
+                cand="$name"
+                while printf '%s' "$seen" | grep -qxF "$cand"; do
+                    if [ -n "$ext" ]; then cand="$base-$i.$ext"; else cand="$base-$i"; fi
+                    i=$((i+1))
+                done
+                printf '%s' "$cand"
+            }
             n=0; failed=0
-            for f in "$d"/*; do
-                [ -f "$f" ] || continue
-                if curl -sf -X POST "$dirurl" -F "file=@$f" >/dev/null 2>&1; then
+            while IFS= read -r -d '' f; do
+                rel="${f#"$d"/}"
+                name="$rel"
+                [ "$name" = "$(basename "$rel")" ] || name="${rel//\//-}"
+                name="$(uniq_name "$name")"
+                seen="$seen$name"$'\n'
+                if curl -sf -X POST "$dirurl" -F "file=@$f;filename=$name" >/dev/null 2>&1; then
                     n=$((n+1))
                 else
                     failed=$((failed+1))
-                    echo "visualize share --dir: upload failed: $f" >&2
+                    echo "visualize share --dir: upload failed: $rel" >&2
                 fi
-            done
+            done < <(find "$d" -type f -print0)
             [ "$n" -gt 0 ] || { echo "visualize share --dir: no files uploaded" >&2; exit 1; }
             [ "$failed" -eq 0 ] || echo "visualize: $failed file(s) failed to upload — dir is incomplete" >&2
             echo "$dirurl"

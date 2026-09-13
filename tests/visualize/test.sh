@@ -33,6 +33,9 @@ echo "---------------"
 [ -f "$SKILL/references/patterns.md" ] && ok || bad "patterns.md missing"
 [ -f "$SKILL/references/output.md" ] && ok || bad "output.md missing"
 [ -f "$SKILL/references/html-patterns.md" ] && ok || bad "html-patterns.md missing"
+[ -f "$SKILL/references/routing.md" ] && ok || bad "routing.md missing"
+# SKILL.md convention: under 100 lines (routing depth lives in references/)
+[ "$(wc -l < "$SKILL/SKILL.md" | tr -d ' ')" -le 99 ] && ok || bad "SKILL.md over 99 lines"
 
 # templates
 for t in cards repo-tree system-map report mermaid; do
@@ -194,15 +197,18 @@ if command -v curl >/dev/null 2>&1; then
         else
             bad "share did not return a throway URL (got: $out)"
         fi
-        # share --dir — create a browseable throway dir from a folder
-        mkdir -p "$TMP/dir"
+        # share --dir — create a browseable throway dir from a folder, including a
+        # nested subdir (must be uploaded too — flattened, not silently dropped)
+        mkdir -p "$TMP/dir/sub"
         echo hi > "$TMP/dir/one.txt"
         echo there > "$TMP/dir/two.txt"
+        echo deep > "$TMP/dir/sub/three.md"
         out="$("$SCRIPT" share --dir "$TMP/dir" 2>/dev/null)"
-        if printf '%s' "$out" | grep -qE '^https://(lubu\.)?skale\.dev/throway/'; then
+        if printf '%s' "$out" | grep -qE '^https://(lubu\.)?skale\.dev/throway/' \
+            && printf '%s' "$out" | grep -q '(3 files'; then
             ok
         else
-            bad "share --dir did not return a throway dir URL (got: $out)"
+            bad "share --dir did not return a throway dir URL with all 3 files (got: $out)"
         fi
     else
         echo "  (skipping share test: throway unreachable)"

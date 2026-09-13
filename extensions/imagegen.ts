@@ -776,8 +776,8 @@ async function maybeAscii(saved: ImageItem[], model: unknown): Promise<string | 
 	const terminalCantRender = !canRenderInline();
 	const modelCantSee = !isVisionCapable(model);
 	if (!((await chafaAvailable()) && (terminalCantRender || modelCantSee))) return undefined;
-	const arts = await Promise.all(saved.map((s) => chafaPreview(s.path)));
-	return arts.map((art, i) => art || `(unable to render preview; see ${saved[i].path})`).join("\n\n");
+	const results = await Promise.all(saved.map((s) => chafaPreview(s.path)));
+	return results.map((r, i) => (r.ok ? r.art : `(unable to render preview; see ${saved[i].path})`)).join("\n\n");
 }
 
 /** Parse `/imagegen` arg string: flags + free-form prompt. */
