@@ -168,6 +168,20 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	check("d: no image blocks for model", !hasImage(res));
 }
 
+// ── (e) read_image {url} — download branch (fake curl fails deterministically) ─
+{
+	const tool = tools.find((t) => t.name === "read_image");
+	check("e: read_image tool registered", typeof tool?.execute === "function");
+	if (tool?.execute) {
+		const res = await tool.execute("t-e", { url: "https://example.com/pic.jpg" }, undefined, () => {}, makeCtx(NON_VISION));
+		const text = (res?.content ?? []).map((b) => b?.text ?? "").join(" ");
+		check("e: url branch returns clean download error (offline)", /download failed/i.test(text));
+		const resNone = await tool.execute("t-e2", {}, undefined, () => {}, makeCtx(NON_VISION));
+		const textNone = (resNone?.content ?? []).map((b) => b?.text ?? "").join(" ");
+		check("e: neither path nor url → clean error", /provide either/i.test(textNone));
+	}
+}
+
 // ── renderer sanity ─────────────────────────────────────────────────────────
 check("renderer registered for xmodel-view", typeof renderers["xmodel-view"] === "function");
 
