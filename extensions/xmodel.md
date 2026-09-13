@@ -58,23 +58,35 @@ main model can't see images, xmodel routes it through a vision pipeline. The mod
 
 ### Display vs. understand (`read` vs. `read_image` / `/readimg`)
 
-Three orthogonal axes for an image:
+`read` on an image routes through a three-way matrix (v0.5.1):
 
-- **`read`** = **local inline display** — shows the image to you but **never triggers the VLM**.
-  `generate_image` and `viewimg` (CLI) are the same axis. Always inline, independent of vision mode.
-- **`view`** (vision mode) = **shared display** — uploads the image to throway + opens it in a real
-  browser, gives a URL. Also never triggers the VLM. Orthogonal to `read`: `read` is local, `view` is shared.
-- **`read_image`** / **`/readimg`** = **understand** — runs the VLM and returns a text analysis.
+- **Default (kein Verständnis gefordert)** = **anzeigen im Terminal** — the pixels move into a
+  session display entry rendered inline for **you** (Kitty/iTerm2/Ghostty/WezTerm/Warp via the
+  pi-tui `Image` component); the model — even a vision-capable one — gets only a short handover
+  note, never the pixels. Zero tokens, zero VLM. In vision mode `view`, `read` routes to throway +
+  browser instead (shared display).
+- **Verstehen gefordert + Hauptmodell IST ein img-Modell** — pixels pass straight through to the
+  model (native understanding, no detour). Trigger: `read` with `understand: true`.
+- **Verstehen gefordert + Hauptmodell ist KEIN img-Modell** — **handover an ein img-Modell**:
+  you still see the image inline, the model receives a VLM text analysis instead of pixels
+  (the delegate pipeline: compress → VLM → text).
 
-Only analysis-oriented tools (screenshots, MCP captures) still auto-delegate.
+The agent decides "verstehen gefordert" from task context and re-calls `read` with
+`understand: true` (a protocol note in the system prompt teaches this; the handover note in
+every display-only result points there too). `read_image` / `/readimg` remain the explicit
+fallbacks — also for strict providers that strip extra `read` parameters.
+
+`generate_image` and `viewimg` (CLI) stay on the display axis; generated images still feed
+vision-capable models (they iterate on what they drew). Only analysis-oriented tools
+(screenshots, MCP captures) still auto-delegate.
 
 | Mode | Behaviour |
 |---|---|
 | `delegate` *(default)* | Compress recent context → one VLM sub-call → feed the text analysis back. The main model never switches and never blows its context window. |
-| `view` | **SHARED display** — upload the image to throway + open it in a real browser, give the URL. No VLM, zero tokens. Orthogonal to `read` (local inline display). Non-vision models only. |
+| `view` | **SHARED display** — upload the image to throway + open it in a real browser, give the URL. No VLM, zero tokens. `read` images route here in this mode (all models); other analysis tools, non-vision models only. |
 | `switch` | Legacy: flip the main model to a vision-capable model for the turn, then restore it at turn end. |
 | `human` | Ask **you** to describe the image. Shows the image in a TUI overlay with a 30s countdown (resets on keypress) and feeds your description back as the analysis. Always keeps the image inline. |
-| `off` | Do nothing — the image is left untouched (inline rendering if the terminal supports it). |
+| `off` | Do nothing for analysis tools — the image is left untouched. `read` still hands over display-only. |
 
 ### Seeing the image while delegating (`keepImage`)
 
@@ -102,7 +114,7 @@ analysis. So it costs you nothing on the model side; you just also get to look a
     "compressor": "zai/glm-5.2",           // optional; uses active model if unset
     "maxBriefChars": 1500,
     "keepImage": true,            // delegate mode: also show the image inline (see above)
-    "thinkingLevel": "low"       // optional; vision sub-call + compressor thinking (off..xhigh). default = child model's own default
+    "thinkingLevel": "off"       // vision sub-call + compressor thinking (off..xhigh). default = the child model's own default; "off" = fastest. Per-call override: read_image thinking param
   }
 }
 ```

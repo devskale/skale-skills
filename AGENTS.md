@@ -22,8 +22,9 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | improve-ux | `improve-ux discover/add` | ~50 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger, site discovery |
 
 Counts are approximate (`~`); suites include honest network-skip counters — a WARN
-does not count as a pass. `tests/` also has `imagegen` (tests `extensions/imagegen.ts`)
-and `gdocs` (live smoke of the external `gog` CLI).
+does not count as a pass. `tests/` also has `imagegen` (tests `extensions/imagegen.ts`),
+`xmodel` (routing-matrix mock test for `extensions/xmodel.ts` — read handover, understand
+param, view mode; no network needed), and `gdocs` (live smoke of the external `gog` CLI).
 
 ## Installation (as a pi package)
 
