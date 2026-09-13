@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
-# improve-ux — UX reference discovery + list integration.
+# improve-ux — UX reference discovery, list integration, ratings + findings ledger.
 #
 #   improve-ux discover [--x] [-n N]   # web-search for new UX reference sites,
 #                                      # dedupe vs SITES.md + cache, print candidates
 #   improve-ux add <url> "<focus>" [--group G] [--file F] [--force]
 #                                      # verify + append a site to SITES.md
+#   improve-ux rate <site> [--helped] [--verified] [--note "…"]
+#                                      # ratings loop: uses += 1 always, helped += 1
+#                                      # only when a change was KEPT (SITES.md protocol)
+#   improve-ux rate --top [N]          # list sites by helped-ratio (pick refs next run)
+#   improve-ux ledger init <name> [--stack "…"]
+#   improve-ux ledger add "<issue>" [--severity blocker|major|minor] [--topic T]
+#                                      #        [--fix "…"] [--citation C] [--status fixed]
+#                                      #        [--target slug] [--scope "…"]
+#                                      # findings ledger per target (ledger.md schema);
+#                                      # warns when a pass exceeds the ~7-changes cap
+#   improve-ux ledger show [target]    # open items = the next pass's starting point
 #   improve-ux --selfcheck / --update / --help
 #
 # The knowledge workflow lives in SKILL.md; this launcher is the plumbing that
@@ -50,7 +61,7 @@ fi
 
 usage() {
     cat <<'EOF'
-improve-ux — UX reference discovery + list integration.
+improve-ux — UX reference discovery, list integration, ratings + ledger.
 
 Usage:
   improve-ux discover [--x] [-n N]   # search the web (web-search) for new UX
@@ -60,11 +71,27 @@ Usage:
   improve-ux add <url> "<focus>" [--group <heading>] [--file <sites.md>] [--force]
                                      # verify the URL, dedupe, append a row.
                                      # --force skips the reachability check.
+  improve-ux rate <site> [--helped] [--verified] [--note "…"]
+                                     # ratings loop (SITES.md protocol): a use
+                                     # is recorded; --helped only when a change
+                                     # was kept. Data: ~/.cache/skale-skills/
+                                     # improve-ux/ratings.json
+  improve-ux rate --top [N]          # sites ranked by helped-ratio — the pick
+                                     # order for the next run's references.
+  improve-ux ledger init <name> [--stack "…"]
+                                     # create a findings ledger for a target.
+  improve-ux ledger add "<issue>" [--severity blocker|major|minor] [--topic T]
+                        [--fix "…"] [--citation C] [--status open|fixed]
+                        [--target <slug>] [--scope "…"]
+                                     # append a finding (F<n> monotonic); warns
+                                     # when the pass exceeds the ~7-changes cap.
+  improve-ux ledger show [<target>]  # print the ledger; open items first —
+                                     # defaults to the current project dir.
   improve-ux --selfcheck             # version, dir, deps
-  improve-ux --update                # git pull the skill
+  improve-ux --update | --self-update  # git pull the skill
   improve-ux --help                  # this help
 
-The workflow (routing, grounding, verification, ledger) lives in SKILL.md.
+The workflow (routing, grounding, verification) lives in SKILL.md.
 EOF
 }
 
@@ -282,6 +309,213 @@ PYEOF
         echo "improve-ux: added $dom under '$group'"
         echo "  next: fetch it once (fetch-url \"$url\"), confirm the focus text, and let it enter the rating loop (SITES.md → Ratings protocol)"
         exit 0
+        ;;
+
+    rate)
+        # improve-ux rate <site> [--helped] [--verified] [--note "…"] | rate --top [N]
+        site=""; helped=false; verified=false; note=""; top=0
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --top)      top="${2:-8}"; shift ;;
+                --helped)   helped=true ;;
+                --verified) verified=true ;;
+                --note)     note="${2:-}"; shift ;;
+                --*)        echo "improve-ux rate: unknown flag: $1" >&2; exit 2 ;;
+                *)          site="$1" ;;
+            esac
+            shift
+        done
+        command -v python3 >/dev/null 2>&1 || { echo "improve-ux rate: python3 required" >&2; exit 1; }
+        mkdir -p "$CACHE_DIR"
+        if [ "$top" -gt 0 ]; then
+            r_mode=top; r_dom=""; r_helped=0; r_verified=0; r_note=""
+        else
+            [ -n "$site" ] || { echo "improve-ux rate: expected <site> (or --top)" >&2; exit 2; }
+            r_mode=update
+            r_dom="$(domain_of "$site" | tr 'A-Z' 'a-z')"
+            if $helped; then r_helped=1; else r_helped=0; fi
+            if $verified; then r_verified=1; else r_verified=0; fi
+            r_note="$note"
+        fi
+        R_MODE="$r_mode" R_TOP="$top" R_DOMAIN="$r_dom" R_HELPED="$r_helped" \
+        R_VERIFIED="$r_verified" R_NOTE="$r_note" python3 - "$CACHE_DIR/ratings.json" <<'PYEOF'
+import json, os, sys
+path = sys.argv[1]
+data = {"sites": {}}
+if os.path.exists(path):
+    try:
+        data = json.load(open(path, encoding="utf-8"))
+    except Exception:
+        data = {"sites": {}}
+sites = data.setdefault("sites", {})
+if os.environ["R_MODE"] == "top":
+    n = int(os.environ.get("R_TOP") or 8)
+    def ratio(kv):
+        u = max(kv[1].get("uses", 1), 1)
+        return (-(kv[1].get("helped", 0) / u), -kv[1].get("helped", 0))
+    rows = sorted(sites.items(), key=ratio)
+    if not rows:
+        print("(no ratings yet — run `improve-ux rate <site> --helped` after a pass)")
+    else:
+        print("Sites by helped-ratio (helped/uses):")
+        for d, s in rows[:n]:
+            note = f"  — {s['note']}" if s.get("note") else ""
+            print(f"  {s.get('helped', 0)}/{s.get('uses', 0)}  {d}{note}")
+    sys.exit(0)
+domain = os.environ["R_DOMAIN"]
+helped = os.environ.get("R_HELPED") == "1"
+verified = os.environ.get("R_VERIFIED") == "1"
+note = os.environ.get("R_NOTE", "")
+e = sites.setdefault(domain, {"uses": 0, "helped": 0})
+e["uses"] += 1
+if helped:
+    e["helped"] += 1
+if verified:
+    e["verified"] = True
+if note:
+    e["note"] = note
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+    f.write("\n")
+tail = "" if helped else "  (no kept change — helped unchanged)"
+print(f"rated {domain}: uses={e['uses']} helped={e['helped']}{tail}")
+PYEOF
+        exit $?
+        ;;
+
+    ledger)
+        sub="${1:-}"; [ $# -gt 0 ] && shift
+        command -v python3 >/dev/null 2>&1 || { echo "improve-ux ledger: python3 required" >&2; exit 1; }
+        TARGETS_DIR="$CACHE_DIR/targets"
+        mkdir -p "$TARGETS_DIR"
+        slugify() { printf '%s' "$1" | tr 'A-Z' 'a-z' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'; }
+        name=""; stack=""; issue=""; severity="minor"; topic=""; fix=""; citation=""; status="open"; scope=""; target=""
+        case "$sub" in
+            init)
+                while [ $# -gt 0 ]; do
+                    case "$1" in
+                        --stack) stack="${2:-}"; shift ;;
+                        *) name="$1" ;;
+                    esac
+                    shift
+                done
+                [ -n "$name" ] || { echo 'improve-ux ledger init: expected <target-name> [--stack "…"]' >&2; exit 2; }
+                ;;
+            add)
+                while [ $# -gt 0 ]; do
+                    case "$1" in
+                        --target)   target="${2:-}"; shift ;;
+                        --severity) severity="${2:-}"; shift ;;
+                        --topic)    topic="${2:-}"; shift ;;
+                        --fix)      fix="${2:-}"; shift ;;
+                        --citation) citation="${2:-}"; shift ;;
+                        --status)   status="${2:-}"; shift ;;
+                        --scope)    scope="${2:-}"; shift ;;
+                        *) issue="$1" ;;
+                    esac
+                    shift
+                done
+                [ -n "$issue" ] || { echo 'improve-ux ledger add: expected "<issue>"' >&2; exit 2; }
+                case "$severity" in blocker|major|minor) : ;; *) echo "improve-ux ledger add: --severity must be blocker|major|minor" >&2; exit 2 ;; esac
+                case "$status" in open|fixed) : ;; *) echo "improve-ux ledger add: --status must be open|fixed" >&2; exit 2 ;; esac
+                ;;
+            show)
+                while [ $# -gt 0 ]; do
+                    case "$1" in
+                        *) name="$1" ;;
+                    esac
+                    shift
+                done
+                ;;
+            *) echo "improve-ux ledger: expected init|add|show" >&2; exit 2 ;;
+        esac
+        slug="$(slugify "${target:-${name:-$(basename "$PWD")}}")"
+        LFILE="$TARGETS_DIR/$slug.json"
+        # UX: without --target and without a project-dir ledger, fall back to the
+        # only existing ledger — single-target sessions stay frictionless.
+        if [ "$sub" = "add" ] && [ -z "$target" ] && [ ! -f "$LFILE" ]; then
+            set -- "$TARGETS_DIR"/*.json
+            if [ $# -eq 1 ] && [ -f "$1" ]; then
+                LFILE="$1"
+                slug="$(basename "$LFILE" .json)"
+            fi
+        fi
+        L_MODE="$sub" L_FILE="$LFILE" L_TARGET="$name" L_STACK="$stack" L_ISSUE="$issue" \
+        L_SEVERITY="$severity" L_TOPIC="$topic" L_FIX="$fix" L_CITATION="$citation" \
+        L_STATUS="$status" L_SCOPE="$scope" L_SLUG="$slug" python3 - <<'PYEOF'
+import datetime, json, os, sys
+mode, path = os.environ["L_MODE"], os.environ["L_FILE"]
+env = {k: os.environ.get("L_" + k.upper(), "") for k in ("target", "stack", "issue", "severity", "topic", "fix", "citation", "status", "scope", "slug")}
+
+def load():
+    if os.path.exists(path):
+        try:
+            return json.load(open(path, encoding="utf-8"))
+        except Exception as e:
+            print(f"improve-ux ledger: corrupt ledger ({e}): {path}", file=sys.stderr)
+            sys.exit(1)
+    return None
+
+def save(d):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(d, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+def cap_warn(pass_):
+    n = len(pass_.get("findings", []))
+    if n > 7:
+        print(f"⚠ pass '{pass_.get('scope', '?')}' has {n} findings — over the ~7 kept-changes cap; defer the rest (status stays open).", file=sys.stderr)
+
+if mode == "init":
+    if load() is not None:
+        print(f"improve-ux ledger: ledger exists: {path}", file=sys.stderr)
+        sys.exit(1)
+    save({"target": env["target"], "stack": env["stack"] or None, "passes": []})
+    print(f"ledger initialized: {env['target']} → {path}")
+    sys.exit(0)
+
+if mode == "add":
+    d = load()
+    if d is None:
+        d = {"target": env["target"] or env["slug"], "stack": None, "passes": []}
+        print(f"(auto-created ledger for target '{d["target"]}')")
+    ids = [f.get("id", "") for p in d.get("passes", []) for f in p.get("findings", [])]
+    nums = [int(i[1:]) for i in ids if str(i).startswith("F") and str(i)[1:].isdigit()]
+    n = (max(nums) if nums else 0) + 1
+    finding = {"id": f"F{n}", "severity": env["severity"] or "minor", "topic": env["topic"] or None,
+               "issue": env["issue"], "fix": env["fix"] or None, "citation": env["citation"] or None,
+               "status": env["status"] or "open"}
+    today = datetime.date.today().isoformat()
+    passes = d.setdefault("passes", [])
+    last = passes[-1] if passes else None
+    if last is None or last.get("date") != today or (env["scope"] and last.get("scope") != env["scope"]):
+        last = {"date": today, "scope": env["scope"] or "current pass", "findings": []}
+        passes.append(last)
+    last["findings"].append(finding)
+    save(d)
+    print(f"{finding['id']} [{finding['severity']}] {finding['status']}: {finding['issue']}")
+    cap_warn(last)
+    sys.exit(0)
+
+# show
+d = load()
+if d is None:
+    print(f"improve-ux ledger: no ledger for '{env['slug']}' (expected {path}) — start one: improve-ux ledger init <name>", file=sys.stderr)
+    sys.exit(1)
+print(f"Ledger: {d.get('target')}  (stack: {d.get('stack') or '—'})")
+open_total = 0
+for p in d.get("passes", []):
+    print(f"\n{p.get('date')} — {p.get('scope', '?')}")
+    for f in p.get("findings", []):
+        open_total += 0 if f.get("status") == "fixed" else 1
+        mark = "✔" if f.get("status") == "fixed" else "•"
+        fix = f" → {f['fix']}" if f.get("fix") else ""
+        cite = f" ({f['citation']})" if f.get("citation") else ""
+        print(f"  {mark} {f['id']} [{f.get('severity', '?')}] {f['issue']}{fix}{cite} [{f.get('status', '?')}]")
+    cap_warn(p)
+print(f"\n{open_total} open item(s) — the next pass starts there.")
+PYEOF
+        exit $?
         ;;
 
     *)

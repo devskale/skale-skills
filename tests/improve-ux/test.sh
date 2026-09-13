@@ -104,6 +104,53 @@ fi
 
 rm -rf "$TMP"
 
+# rate command (isolated cache — never touches the real ratings.json)
+TMPR=$(mktemp -d)
+check "rate: no args → exit 2" 2 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate
+check "rate: records use+helped" 0 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate ui.shadcn.com --helped --note "shadcn stacks"
+RATINGS="$TMPR/skale-skills/improve-ux/ratings.json"
+[ -f "$RATINGS" ] && ok || bad "rate: ratings.json created"
+grep -q '"uses": 1' "$RATINGS" && ok || bad "rate: uses=1"
+grep -q '"helped": 1' "$RATINGS" && ok || bad "rate: helped=1 (kept)"
+grep -q '"note": "shadcn stacks"' "$RATINGS" && ok || bad "rate: note stored"
+check "rate: second use without --helped" 0 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate ui.shadcn.com
+grep -q '"uses": 2' "$RATINGS" && ok || bad "rate: uses=2 after second call"
+grep -q '"helped": 1' "$RATINGS" && ok || bad "rate: helped stays 1 without --helped"
+check "rate: URL input normalized to domain" 0 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate "https://emilkowal.ski/sect" --helped
+grep -q '"emilkowal.ski"' "$RATINGS" && ok || bad "rate: domain normalization"
+check "rate: --top lists rated sites" 0 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate --top
+grep -q "ui.shadcn.com" /tmp/improve-ux.out && ok || bad "rate: --top prints site"
+check "rate: unknown flag → exit 2" 2 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate example.com --bogus
+rm -rf "$TMPR"
+
+# ledger command (isolated cache)
+TMPL=$(mktemp -d)
+LED="env XDG_CACHE_HOME=$TMPL $SCRIPT ledger"
+check "ledger: unknown sub → exit 2" 2 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger bogus
+check "ledger: init" 0 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger init "Demo target" --stack "React + Tailwind"
+LEDGER="$TMPL/skale-skills/improve-ux/targets/demo-target.json"
+[ -f "$LEDGER" ] && ok || bad "ledger: slugified file created"
+check "ledger: init twice → exit 1" 1 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger init "Demo target"
+check "ledger: add finding" 0 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger add "submit button 32×20px" --severity blocker --citation "WCAG 2.5.5" --fix "padded to 44×44" --status fixed
+grep -q '"id": "F1"' "$LEDGER" && ok || bad "ledger: F1 assigned"
+grep -q '"severity": "blocker"' "$LEDGER" && ok || bad "ledger: severity stored"
+grep -q '"status": "fixed"' "$LEDGER" && ok || bad "ledger: status stored"
+check "ledger: add second finding" 0 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger add "drawer 400ms linear" --topic motion
+grep -q '"id": "F2"' "$LEDGER" && ok || bad "ledger: F2 monotonic"
+grep -q '"status": "open"' "$LEDGER" && ok || bad "ledger: default status open"
+check "ledger: bad severity → exit 2" 2 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger add "x" --severity huge
+check "ledger: show prints findings" 0 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger show "Demo target"
+grep -q "F1" /tmp/improve-ux.out && grep -q "open item" /tmp/improve-ux.out && ok || bad "ledger: show lists findings + open count"
+check "ledger: show missing target → exit 1" 1 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger show "does-not-exist"
+# cap warning: push the current pass over the ~7-changes cap (F2..F10 → 10 findings)
+for i in 3 4 5 6 7 8 9 10; do
+    env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger add "filler finding $i" >/dev/null 2>&1
+done
+grep -q "~7 kept-changes cap" "$LEDGER" 2>/dev/null && bad "ledger: cap text must not be written into JSON" || ok
+env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger show "Demo target" >/tmp/improve-ux-cap.out 2>&1
+grep -q "~7 kept-changes cap" /tmp/improve-ux-cap.out && ok || bad "ledger: cap warning printed on show"
+rm -rf "$TMPL"
+
 echo "---------------"
 echo "PASS: $PASS  FAIL: $FAIL  WARN: $WARN"
 [ "$FAIL" -eq 0 ]
