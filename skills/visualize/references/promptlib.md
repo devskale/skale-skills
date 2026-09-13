@@ -232,8 +232,9 @@ makes the page feel intentional and trustworthy.
 - **Invented content** — placeholder names, fake stats, "Item 1" cards. Use the real thing.
 - **No hierarchy** — everything the same size/weight. Titles, sections, cards, muted text:
   each level visibly different.
-- **External deps for the core** — the layout must work from inline CSS alone. (Optional
-  Mermaid for complex graphs is fine; the page itself must not depend on it.)
+- **Local sibling files** — the HTML must be the only file (no `style.css`, `app.js`,
+  images next to it). Popular CDN packages (Mermaid, chart renderers) are fine; keep the
+  layout in inline CSS so the page still renders offline.
 - **Colored pill badges on every card** — the tell-tale AI-generated look. Small rounded
   `border-radius:999px` capsules with pastel backgrounds and uppercase text scream "LLM
   slop." **Never use them.** Categories go as plain muted text in the card footer, or as a

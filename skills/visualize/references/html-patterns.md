@@ -1,8 +1,9 @@
 # HTML patterns — one self-contained file
 
-Everything inline. The file must render as a standalone document with **no external
-network dependency for the core layout**. Inline CSS does all the layout and styling;
-only *optional* diagram enhancement may use a CDN (and should degrade gracefully).
+One file. Content and layout live inline in the HTML; popular packages (Mermaid,
+Tailwind, chart renderers) may load from a CDN at runtime. No local sibling files — the
+HTML is the only artifact, so content and layout must render from inline CSS alone, and
+CDN enhancement should degrade gracefully offline.
 
 ## Minimal scaffold
 
@@ -25,8 +26,8 @@ only *optional* diagram enhancement may use a CDN (and should degrade gracefully
       .card { background: #fff; border: 1px solid var(--line); border-radius: .75rem; padding: 1.25rem; }
       .card h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
       .card p { color: var(--muted); font-size: .9rem; margin: 0 0 .75rem; }
-      .badge { display: inline-block; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
-               padding: .2rem .55rem; border-radius: 999px; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+      .tag { display: inline-block; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+             padding: .2rem .55rem; border: 1px solid var(--line); border-radius: .35rem; color: var(--muted); }
       .muted { color: var(--muted); }
     </style>
   </head>
@@ -38,7 +39,7 @@ only *optional* diagram enhancement may use a CDN (and should degrade gracefully
         <article class="card">
           <h2>{{item title}}</h2>
           <p>{{item body}}</p>
-          <span class="badge">{{tag}}</span>
+          <span class="tag">{{tag}}</span>
         </article>
       </div>
     </main>
@@ -98,9 +99,10 @@ doesn't feel parachuted in.
 - **`text-transform: uppercase; letter-spacing`** for labels — schematic, not UI.
 - Keep the only scripts to Mermaid (if used). Otherwise the page is static.
 
-## Self-containment checklist
+## One-file checklist
 
-Before delivering, run `visualize validate <file.html>`. It flags any external
-`src`/`href` that isn't the Tailwind CDN. The rule: the page must render its content and
-layout with the file alone — no stylesheet, no script, no image, no font fetched from
-elsewhere.
+Before delivering, run `visualize validate <file.html>`. It flags local file references
+(`style.css`, `app.js`, images next to the HTML) and external dependencies that aren't
+popular CDNs (jsdelivr, unpkg, cdnjs, esm.sh, tailwind, Google Fonts, plot.ly). The rule:
+the HTML is the only file — content and layout render from inline CSS/JS alone; popular
+CDN packages are welcome.

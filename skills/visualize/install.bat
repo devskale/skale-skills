@@ -16,7 +16,7 @@ echo.
 echo Usage:
 echo   visualize open ^<file.html^>      open in browser
 echo   visualize share ^<file.html^>     upload to throway, print URL
-echo   visualize validate ^<file.html^>  check self-contained
+echo   visualize validate ^<file.html^>  check one-file (CDNs ok)
 echo.
 echo Requires: curl (for share).
 endlocal
