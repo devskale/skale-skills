@@ -12,18 +12,20 @@ says *"that's lovely."* Read this when building; don't read it to decide what to
 
 ## 0. The foundation: real content, one structure
 
-> **NON-NEGOTIABLE — the "AI-generated" tells. NEVER use these.** They instantly read as
-> "LLM slop":
-> - **Colored pill badges** on cards/items (small rounded `border-radius:999px` pastel capsules).
+> **NON-NEGOTIABLE — the decorative "AI-generated" tells. NEVER use these.** They instantly
+> read as "LLM slop":
+> - **Pastel pill capsules** on cards/items (small rounded `border-radius:999px` chips).
 > - **A saturated accent color on links/buttons/TOC** (e.g. teal/blue/indigo link text).
-> - **Colored `.ok`/`.bad`/pass-fail values** (green/red text in tables).
-> - **Colored numbered-circle badges** on section headings or flow steps.
+> - **Large colored numbered circles** (~20px+) on section headings or flow steps.
+> - **Color without a job.** Hue that encodes nothing — a rainbow of tags where the
+>   category doesn't matter, accent swashes, gradient banners. If you can't say what a
+>   color *means*, it's decoration — cut it.
 >
-> The house style is **neutral editorial**: muted ink on warm paper, hairline `--line`
-> borders, one `--ink` for emphasis, numbers as plain muted text, links as ink with a
-> hairline underline. If you're tempted to add any of the above, don't — use plain text
-> and quiet structure instead. This is the single biggest differentiator between a page
-> that looks hand-designed and one that screams "generated."
+> The base stays **neutral editorial**: muted ink on warm paper, hairline `--line`
+> borders, links as ink with a hairline underline. On top of that, **color works as
+> structure** (§1–2): category hues on small elements, severity colors when the color
+> IS the data, one accent hue on section numbers/kickers. That's the line: *decorative*
+> color screams "generated"; *structural* color reads as designed.
 
 Before any styling, nail these two:
 
@@ -56,6 +58,16 @@ without re-deciding colours each time.
   --accent: #10b981;   /* ONE focal accent — emerald, indigo, or similar */
   --accent-tint: rgba(16,185,129,.08); /* fill for accent-bordered boxes */
   --link:   #0f172a;   /* links as ink (hairline underline), not saturated */
+
+  /* structural colour — hues that carry information (see below) */
+  --cat-1:  #5e7a9b;   /* category hues, muted editorial family */
+  --cat-2:  #7c8f6f;
+  --cat-3:  #b8915a;
+  --cat-4:  #9c6b50;
+  --cat-5:  #6e6479;
+  --ok:     #15803d;   /* semantic severity — use only when it IS the data */
+  --warn:   #b45309;
+  --bad:    #b91c1c;
 }
 ```
 
@@ -63,8 +75,12 @@ Rules:
 - **One accent rule.** `accent` is reserved for the 1–2 things the reader should look at
   first (headings, key highlights, a tint). Everything else in neutrals. Two accents =
   noise. If you're tempted to colour a third thing, it isn't the focus — leave it neutral.
-- **Semantic roles, not hex.** Recipes and modules reference `accent`, `muted`, `soft`,
-  `link` — never raw values. Changing the skin means changing this block, not hunting hex
+- **Colour is structure, not decoration.** Structural colour lives on *small* elements:
+  category dots and swatches, 2–3px rules and left borders, small uppercase kickers,
+  status values. Never on body text, never as large fills. Every hue must encode
+  something (§2 below).
+- **Semantic roles, not hex.** Recipes and modules reference `accent`, `muted`, `cat-1`,
+  `ok` — never raw values. Changing the skin means changing this block, not hunting hex
   values through the page.
 - **Warm paper background** (`#fafaf9` stone-50) reads more editorial than pure white.
 - **System-ui font stack** — zero font downloads, looks native everywhere:
@@ -113,44 +129,46 @@ Fills sit at ~0.18 opacity; strokes use the full colour.
 The single highest-impact move for "a set of things." When items fall into categories,
 **colour-code the categories** and show a legend.
 
-- Give each category a distinct colour (see the palette below).
+- Give each category a distinct hue from the **`--cat-1..5` family** (muted, editorial —
+  not saturated dashboard tones).
 - Add a compact **legend** under the header so the colours read instantly.
-- **Keep category colours quiet — muted pastel tints or neutral fills.** Loud saturated
-  fills scream dashboard. And remember the **1-accent rule** (§1): `accent` is reserved
-  for the focal thing — category colours live in the *muted* family, never as a second
-  saturated hue.
-
-Categories are **plain text + a quiet tint**, not saturated pills. When the grouping is
-just a label (not a thing to focus on), plain muted text in the card footer reads cleaner
-than a badge at all. Reserve colour for categories the reader must distinguish at a
-*glance*.
+- Category colour sits on **small elements**: the legend dot, a card's category label, a
+  quiet left border. Categories are **plain text + a dot**, not saturated pills. When the
+  grouping is just a label (not a thing to distinguish at a glance), plain muted text in
+  the card footer reads cleaner than any badge.
 
 ```css
-/* quiet tinted tags — muted, not saturated */
-.tag { display:inline-block; font-size:.7rem; text-transform:uppercase;
-       letter-spacing:.05em; padding:.18rem .5rem; border-radius:.35rem;
-       border:1px solid var(--line); color:var(--muted); font-weight:600; }
-.tag.web     { background:var(--paper-2); }
-.tag.browser { background:var(--paper-2); }
-.tag.media   { background:var(--paper-2); }
-.tag.diagram { background:var(--paper-2); }
-.tag.proto   { background:var(--paper-2); }
+/* small structural swatches — square-ish, quiet, never pills */
+.dot { display:inline-block; width:.62rem; height:.62rem; border-radius:2px;
+       margin-right:.35rem; vertical-align:middle; }
 ```
 
 Legend (in the header):
 
 ```html
 <div class="legend">
-  <span><span class="dot" style="background:var(--muted)"></span>Web</span>
-  <span><span class="dot" style="background:var(--soft)"></span>Browser</span>
-  ...
+  <span><span class="dot" style="background:var(--cat-1)"></span>Web</span>
+  <span><span class="dot" style="background:var(--cat-2)"></span>Browser</span>
+  <span><span class="dot" style="background:var(--cat-3)"></span>Media</span>
 </div>
 ```
 
-> **When a category genuinely needs colour** (the reader must tell categories apart at a
-> glance, e.g. a system map's role tags), use the **series palette** from §1 — desaturated
-> editorial tones, not saturated accents. The 1-accent rule still holds: `accent` marks
-> the focus, the series palette marks the categories.
+### Where colour earns its place (structure, not decoration)
+
+- **Categories / groups** — `--cat-1..5` on dots, swatches, 2px left borders, small
+  uppercase labels. One hue = one category, applied consistently from legend to cards.
+- **Severity / status** — `--ok/--warn/--bad` when the colour IS the data: audit
+  findings, test results, priorities, verdicts. The value text takes the colour (or a
+  small dot precedes it) — that's information, not slop.
+- **Report sections** — the section number or kicker takes one category hue
+  (`--cat-1` throughout, or a hue per theme); optionally a thin 2px rule under the
+  heading in the same hue. Consistency reads as designed.
+- **Never** — saturated link/button text, pastel pill capsules, large numbered circles
+  (~20px+), saturated fills or gradients, colour that encodes nothing.
+
+> **Multi-series charts** use the series palette in §1 — desaturated editorial tones, not
+> saturated accents. The 1-accent rule still holds: `accent` marks the focus, the series
+> palette marks the categories.
 
 ---
 
@@ -269,8 +287,8 @@ The exact recipe that produced the skale-skills overview:
 1. **Subject:** read the repo; list the real skills/extensions with one-line descriptions.
 2. **Structure:** `overview-grid` of `cards`.
 3. **Identity:** emerald accent, stone paper, system-ui.
-4. **Grouping:** colour-coded tags (web/browser/media/diagram/proto/ext) + header legend —
-   quiet tinted tags (§2), not saturated pills.
+4. **Grouping:** colour-coded categories (web/browser/media/diagram/proto/ext) + header
+   legend — category dots (§2), not saturated pills.
 5. **Hierarchy:** big title → one-line sub → section headers → cards → muted prose.
 6. **Provenance footer** with the visualize/throway note.
 7. **Validate:** `visualize validate <file>` (self-contained) → `open` → `share`.
@@ -288,7 +306,7 @@ it lovely.
 2. **Structure:** `hierarchy` — nested indented rows with connector lines, not boxes.
 3. **Annotate every node:** name + one-line muted description + a colour-coded tag.
 4. **Colour-code by kind:** skill / extension / prompt / core / docs / test — with a
-   legend (quiet tinted tags from §2, not saturated badges).
+   legend of category dots (§2: `--cat-1..5` on small swatches, never saturated badges).
 5. **Icons per node** (📁 dir, 📄 file, plus a per-kind emoji) for quick scanning.
 6. **Collapse deep dirs** — show the top ~2 levels richly, and summarise deeper ones
    (e.g. `deprecated/ → retired skills`) rather than listing every file.

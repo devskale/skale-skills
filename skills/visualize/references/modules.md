@@ -10,7 +10,9 @@ composes cleanly.
 ```html
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport"
 content="width=device-width, initial-scale=1"><title>{{TITLE}}</title><style>
-:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5}
+:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5;
+      --cat-1:#5e7a9b;--cat-2:#7c8f6f;--cat-3:#b8915a;
+      --ok:#15803d;--warn:#b45309;--bad:#b91c1c}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
      background:var(--paper);color:var(--ink);line-height:1.5}
@@ -20,7 +22,12 @@ main{max-width:72rem;margin:0 auto;padding:3rem 1.5rem 4rem}
 </main></body></html>
 ```
 
-Neutral ink on warm paper, system-ui font. Every module below assumes this base. **No accent colour** — no `--accent`, no colored badges/swatches, no left bars. Emphasis via `--ink` and `--muted` only.
+Neutral ink on warm paper, system-ui font. Every module below assumes this base.
+**Colour is structure, not decoration:** category hues (`--cat-1..3`, add more as
+needed) sit on small elements — dots, swatches, 2px rules, small kickers; severity
+`--ok/--warn/--bad` only when the colour IS the data (findings, priorities, test
+results). Never decorative: pastel pill capsules, saturated link text, large numbered
+circles (~20px+), colour that encodes nothing.
 
 ---
 
@@ -39,12 +46,14 @@ Kicker + title + sub + optional meta. The top of every page.
 ```
 
 ### legend
-Color-coded category legend, under the header.
+Color-coded category legend, under the header. One hue per category, reused on the
+cards/rows themselves.
 
 ```html
 <div class="legend" style="display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:1.1rem;font-size:.78rem;color:var(--muted)">
-  <span><span style="display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle;background:#0369a1"></span>{{CAT A}}</span>
-  <span><span style="display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle;background:#b45309"></span>{{CAT B}}</span>
+  <span><span style="display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle;background:var(--cat-1)"></span>{{CAT A}}</span>
+  <span><span style="display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle;background:var(--cat-2)"></span>{{CAT B}}</span>
+  <span><span style="display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle;background:var(--cat-3)"></span>{{CAT C}}</span>
 </div>
 ```
 
@@ -121,21 +130,29 @@ Numbered section wrapper (for reports and multi-part pages).
 ```
 
 ### exec-summary
-Report findings box (plain bordered card — no left bar).
+Report findings box (plain bordered card). Findings can carry a **severity** — colored
+value text is structural here (the color IS the data).
 
 ```html
 <section style="background:#fff;border:1px solid var(--line);border-radius:.5rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem">
   <h2 style="margin-top:0;font-size:1.05rem">Executive summary</h2>
-  <ul><li style="margin-bottom:.5rem"><strong>{{Finding}}</strong> — {{one line}}.</li></ul>
+  <ul><li style="margin-bottom:.5rem"><strong>{{Finding}}</strong> — {{one line}}.
+      <span style="color:var(--bad);font-weight:600;font-size:.85em">{{critical}}</span></li>
+  <li style="margin-bottom:.5rem"><strong>{{Finding}}</strong> — {{one line}}.
+      <span style="color:var(--ok);font-weight:600;font-size:.85em">{{healthy}}</span></li></ul>
 </section>
 ```
 
 ### recommendations
-Prioritized recommendations.
+Prioritized recommendations. Priority gets its severity hue (`--bad` high, `--warn`
+medium, `--ok` low).
 
 ```html
 <ol>
-  <li style="margin-bottom:.6rem"><strong>{{Do X}}</strong> — {{because Y}}. (priority: {{high}})</li>
+  <li style="margin-bottom:.6rem"><strong>{{Do X}}</strong> — {{because Y}}.
+      (priority: <span style="color:var(--bad);font-weight:600">high</span>)</li>
+  <li style="margin-bottom:.6rem"><strong>{{Do Z}}</strong> — {{because W}}.
+      (priority: <span style="color:var(--warn);font-weight:600">medium</span>)</li>
 </ol>
 ```
 
@@ -180,7 +197,12 @@ Mix freely — a report can embed a `card-grid` or `mermaid` inside a `section`.
 ## Rules
 
 - **Every module is self-contained** — its CSS is inline, so stacking never breaks layout.
-- **Share the base + house style** — one muted ink + hairline `--line` + warm paper. Don't introduce a second palette.
-- **No AI-generated accents.** Never use colored pill badges on cards, colored `.ok`/`.bad` cell values, colored numbered-circle badges on headings, or a saturated accent on links/buttons — they read as "LLM slop." Numbers as plain muted text, links as ink with a hairline underline, neutral table values.
+- **Share the base + house style** — one muted ink + hairline `--line` + warm paper, plus
+  the structural tokens (`--cat-*`, `--ok/--warn/--bad`). Don't introduce a second palette.
+- **Colour is structure, not decoration.** Category hues on small elements (dots,
+  swatches, kickers, 2px rules); severity hues only when the colour IS the data. Never
+  use pastel pill capsules on cards, saturated accent on links/buttons, or large colored
+  numbered-circle badges (~20px+) — they read as "LLM slop." Links stay ink with a
+  hairline underline.
 - **Only include modules you use** — a simple page pulls 2–3, not a full template's unused CSS.
 - **Mermaid needs network** — use the inline modules by default; reach for `mermaid` only for graph-shaped content.

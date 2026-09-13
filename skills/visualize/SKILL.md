@@ -1,6 +1,6 @@
 ---
 name: visualize
-version: "1.2.0"
+version: "1.3.0"
 description: "Render any set of things as ONE self-contained HTML document and give the user a URL — and generate polished HTML reports. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), figures out the right structure, and builds a single portable HTML file — then opens it locally and optionally shares it to a short-lived URL via the throway store. Triggers on: visualize, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, give me a link to this, put it on a page."
 ---
 
@@ -114,9 +114,9 @@ default; the target changes canvas, density, and copy. Then:
 one template from `templates/` (`cards.html`, `report.html`, `system-map.html`,
 `repo-tree.html`, `mermaid.html`)
 that matches the structure you chose. Start from its CSS + scaffold — do **not** hand-write
-HTML/CSS from scratch. This is what keeps every page on the clean neutral house style
-(no AI-generated accents). The templates are the proven starting point; compose from them,
-never reinvent.
+HTML/CSS from scratch. This is what keeps every page on the house style: neutral
+editorial base, color only as structure (no decorative AI-generated accents). The
+templates are the proven starting point; compose from them, never reinvent.
 
 Then **compose from page modules**, don't rebuild from nothing. Read
 [references/modules.md](references/modules.md) — the catalog of reusable modules
@@ -150,10 +150,11 @@ visualize --update               # pull the latest skill via git
 **known CDNs are allowed** (`cdn.tailwindcss.com`, `cdn.jsdelivr.net`): a CDN-backed page
 passes, but it's a runtime network dependency (content works offline, diagrams/styling
 degrade — see the CDN note above). `lint` is the **style
-taste-gate** — it flags the AI-slop tells from promptlib §0 (saturated accent on links,
-colored pill badges, colored numbered-circle badges, colored `.ok`/`.bad` values) and
-exits non-zero if any are found. Run both before sharing; fix the tells rather than
-sharing a page that screams "generated".
+taste-gate** — it flags the *decorative* AI-slop tells from promptlib §0 (saturated
+accent on links/buttons, pastel pill capsules, large colored numbered circles ~20px+)
+and exits non-zero if any are found. **Structural color passes** — category dots,
+section accents, semantic `.ok`/`.warn`/`.bad` severity. Run both before sharing; fix
+the decorative tells rather than sharing a page that screams "generated".
 
 ### 3. Deliver — open it and give the URL
 
@@ -182,10 +183,12 @@ Keep the local file too: it's the durable copy.
   needs a paragraph to be understood, redraw it.
 - **Scannable** — generous whitespace, neutral ink on warm paper, clear hierarchy.
   Editorial, not corporate-dashboard.
-- **NO AI-generated accents.** Never use colored pill badges, colored `.ok`/`.bad` values,
-  saturated accent links, or colored numbered-circle badges — they scream "LLM slop."
-  See promptlib.md §0 for the full never-list. Numbers as plain muted text, links as ink
-  with a hairline underline.
+- **Color is structure, not decoration.** The base stays neutral editorial (ink on warm
+  paper, links as ink with a hairline underline). Color earns its place by *carrying
+  meaning*: category hues on small elements (dots, swatches, kickers, 2px rules),
+  `--ok/--warn/--bad` when severity IS the data (findings, priorities), one category
+  hue on section numbers/kickers. Never decorative: pastel pill capsules, saturated
+  accent links, large colored numbered circles. See promptlib.md §0–2.
 - **Honest about scope** — if the user named a subset, visualize exactly that; don't pad
   with everything else.
 

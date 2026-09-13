@@ -60,20 +60,31 @@ warrant it.
 
 ```css
 .report{max-width:56rem;margin:0 auto;padding:3rem 1.5rem 4rem}
-.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .4rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--cat-1);margin:0 0 .4rem}
 .meta{color:var(--muted);font-size:.85rem;margin-top:.5rem}
 .exec-summary{background:#fff;border:1px solid var(--line);border-radius:.5rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem}
 .exec-summary h2{margin-top:0}
 .findings li{margin-bottom:.5rem}
+.sev{font-weight:600;font-size:.85em}
+.sev.ok{color:var(--ok)}.sev.warn{color:var(--warn)}.sev.bad{color:var(--bad)}
 section h2{font-size:1.2rem;font-weight:650;margin:2.5rem 0 .75rem}
-section h2 .n{font-weight:650;color:var(--muted);margin-right:.5rem}
+section h2 .n{font-weight:650;color:var(--cat-1);margin-right:.5rem}
 .recs li{margin-bottom:.6rem}
 ```
 
-> **No AI-generated accents.** Do NOT use a colored accent on TOC links, colored
-> `.ok`/`.bad` cell values, or colored numbered-circle badges on section headings —
-> those read as "LLM slop." Use plain ink section numbers, neutral table values, and
-> a quiet muted TOC. One neutral `--ink` + hairline `--line` + warm paper is the house style.
+> **Colour is structure, not decoration.** The base stays neutral editorial (ink + warm
+> paper + hairlines, TOC/links as ink). On top of that, colour carries meaning: the
+> kicker and section numbers take one category hue (`--cat-1`); findings and
+> recommendation priorities get severity hues (`--ok/--warn/--bad`) — in a report, that
+> colour IS the data. What stays banned: pastel pill capsules, colored numbered-circle
+> badges (~20px+), saturated link/TOC text — the decorative tells.
+
+Findings/priorities in practice:
+
+```html
+<li><strong>Finding</strong> — one line. <span class="sev bad">critical</span></li>
+<li><strong>Do X</strong> — because Y. (priority: <span class="sev warn">medium</span>)</li>
+```
 
 ## Tone & content
 

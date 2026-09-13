@@ -109,6 +109,27 @@ check "lint clean page → exit 0" 0 "$SCRIPT" lint "$TMP/stylish.html"
 check "lint AI-slop page → exit 1" 1 "$SCRIPT" lint "$TMP/ai-slop.html"
 check "lint missing file → exit 2" 2 "$SCRIPT" lint /nonexistent.html
 
+# lint — structural color is ALLOWED (color as structure: category dots, section
+# accents, semantic .ok/.warn/.bad severity). Only decorative tells fail.
+cat > "$TMP/structural.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>.kicker{color:#5e7a9b}.ok{color:#15803d}.bad{color:#b91c1c}
+.dot{display:inline-block;width:.62rem;height:.62rem;border-radius:50%;background:#b8915a}
+a{color:#1a1a1a}</style></head>
+<body><span class="dot"></span><span class="kicker">CAT</span>
+<span class="ok">pass</span><span class="bad">fail</span>
+<span style="color:#b45309">warn</span><a href="#">x</a></body></html>
+EOF
+check "lint structural color (dots, severity, kicker) → exit 0" 0 "$SCRIPT" lint "$TMP/structural.html"
+
+# lint — but a LARGE colored circle badge (>=20px) stays a decorative tell.
+cat > "$TMP/circle.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>.n{display:inline-block;width:1.6rem;height:1.6rem;border-radius:50%;background:#5e7a9b;color:#fff;text-align:center;line-height:1.6rem}</style></head>
+<body><span class="n">1</span></body></html>
+EOF
+check "lint large colored circle badge → exit 1" 1 "$SCRIPT" lint "$TMP/circle.html"
+
 cat > "$TMP/neutral.html" <<'EOF'
 <!doctype html><html><head><meta charset="utf-8"><title>t</title>
 <style>a{color:#1a1a1a}</style></head>

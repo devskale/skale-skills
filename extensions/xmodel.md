@@ -72,9 +72,12 @@ main model can't see images, xmodel routes it through a vision pipeline. The mod
   (the delegate pipeline: compress → VLM → text).
 
 The agent decides "verstehen gefordert" from task context and re-calls `read` with
-`understand: true` (a protocol note in the system prompt teaches this; the handover note in
-every display-only result points there too). `read_image` / `/readimg` remain the explicit
-fallbacks — also for strict providers that strip extra `read` parameters.
+`understand: true` (brief built by the compressor sub-call) or `understand: '<what to
+examine>'` — the focus string goes straight to the vision model, skipping the compressor
+(fastest path). A protocol note in the system prompt teaches this; the handover note in
+every display-only result points there too. `read_image` / `/readimg` remain the explicit
+fallbacks — also for strict providers that strip extra `read` parameters — and `read_image`
+accepts `thinking` + `focus` params for deep, targeted analysis.
 
 `generate_image` and `viewimg` (CLI) stay on the display axis; generated images still feed
 vision-capable models (they iterate on what they drew). Only analysis-oriented tools

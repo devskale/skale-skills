@@ -100,7 +100,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.1";
+const VERSION = "0.5.2";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -818,6 +818,12 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 						"Per-call thinking override for the vision sub-call. Default = _vision.thinkingLevel (off = fastest). Use 'high' for deep understanding.",
 				}),
 			),
+			focus: Type.Optional(
+				Type.String({
+					description:
+						"Optional focus: what to examine in the image (task context). Passed straight to the vision model — no brief-building sub-call.",
+				}),
+			),
 		}),
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			const raw = (params as any).path as string;
@@ -837,7 +843,12 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				ctx,
 				filePath,
 				signal,
-				wantThink ? { thinkingLevel: wantThink as ThinkingLevel } : undefined,
+				{
+					...(wantThink ? { thinkingLevel: wantThink as ThinkingLevel } : {}),
+					...(typeof (params as any).focus === "string" && (params as any).focus.trim()
+						? { focus: (params as any).focus.trim() }
+						: {}),
+				},
 			);
 			// Main model is vision-capable: return the image block inline so the main
 			// model sees it directly — no child-pi handoff, no slow sub-call.
@@ -898,7 +909,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	/** System-prompt note teaching the read/understand protocol (v0.5.1). */
 	const READ_PROTOCOL =
 		"[xmodel image protocol] `read` on an image file is DISPLAY-ONLY: the user sees it inline, you do NOT receive the pixels. " +
-		"When — and only when — understanding the image's contents is required for the task (the user asks about it, or you must extract text / diagnose a chart), call `read` again with the extra parameter `understand: true`: the image gets analyzed by a vision model and you receive a text description. " +
+		"When — and only when — understanding the image's contents is required for the task (the user asks about it, or you must extract text / diagnose a chart), call `read` again with the extra parameter `understand: true`: the image gets analyzed by a vision model and you receive a text description. Pass understand:'<what to examine>' to hand the vision model a focused question directly (skips the brief-building sub-call, fastest). " +
 		"Never use understand:true just to view or show an image. If your provider rejects the extra parameter, use the read_image tool instead. For deep understanding (complex diagrams, dense screenshots) use read_image with thinking:'high'.";
 
 	pi.on("before_agent_start", async (event, ctx) => {
@@ -961,10 +972,14 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		// via `read_image` / `/readimg`. With _vision.mode="view", read routes to throway +
 		// browser instead (shared display). Orthogonal to the analysis pipeline below.
 		if (event.toolName === "read") {
-			// understand:true — the agent explicitly asked for analysis (task context).
+			// understand — the agent explicitly asked for analysis (task context).
 			// Extra params survive pi's TypeBox validation (no additionalProperties:false),
 			// so the model can send this even though it's not in the built-in schema.
-			const wantsUnderstand = (event.input as Record<string, unknown> | undefined)?.understand === true;
+			//   understand: true            → brief built by the compressor sub-call
+			//   understand: "<focus text>"  → focus passed straight to the VLM (no compressor — fastest)
+			const understandRaw = (event.input as Record<string, unknown> | undefined)?.understand;
+			const focus = typeof understandRaw === "string" && understandRaw.trim() ? understandRaw.trim() : undefined;
+			const wantsUnderstand = understandRaw === true || focus !== undefined;
 			if (wantsUnderstand && isVisionCapable(ctx.model)) {
 				return; // pixels pass to the model natively — it understands them itself
 			}
@@ -973,7 +988,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				let displayed = false;
 				if (!visionCfg.keepImage) displayed = writeViewEntry(ctx, images) > 0;
 				try {
-					const res = await delegateVision(ctx, event, images, ctx.signal);
+					const res = await delegateVision(ctx, event, images, ctx.signal, focus ? { focus } : undefined);
 					if (res) return res;
 				} catch (e) {
 					debug("read understand: delegate threw", { err: String(e) });
@@ -1409,7 +1424,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	 * compress → [brief + image] → VLM → analysis text. Returns replacement tool_result content.
 	 * The main model never switches; it only ever sees the VLM's text analysis.
 	 */
-	async function delegateVision(ctx: ExtensionContext, event: any, images: any[], signal?: AbortSignal): Promise<{ content: any[] } | undefined> {
+	async function delegateVision(
+		ctx: ExtensionContext,
+		event: any,
+		images: any[],
+		signal?: AbortSignal,
+		opts: { focus?: string } = {},
+	): Promise<{ content: any[] } | undefined> {
 		const vlm = resolveVlm(ctx);
 		if (!vlm) {
 			ctx.ui.notify("xmodel: image present but no vision model configured (set _vision.vlm)", "warning");
@@ -1418,7 +1439,11 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", `👁 vision delegate → ${vlm}`));
 		ctx.ui.notify(`xmodel: vision delegate → compressing context + ${vlm} …`, "info");
 
-		const brief = await buildBrief(ctx, visionCfg, signal);
+		// Focus handed in by the caller (read understand:"<focus>") — skip the compressor
+		// sub-call entirely; the agent already wrote the question.
+		const brief = opts.focus
+			? { text: opts.focus, timedOut: false, aborted: false }
+			: await buildBrief(ctx, visionCfg, signal);
 		if (brief === null || !brief.text) {
 			const reason = !visionCfg.compressor
 				? "no _vision.compressor set"
@@ -1525,9 +1550,10 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		ctx: ExtensionContext,
 		filePath: string,
 		signal?: AbortSignal,
-		opts?: { thinkingLevel?: ThinkingLevel },
+		opts?: { thinkingLevel?: ThinkingLevel; focus?: string },
 	): Promise<string> {
 		const thinkLevel = opts?.thinkingLevel ?? visionCfg.thinkingLevel;
+		const focusPrefix = opts?.focus ? `Focus: ${opts.focus}\n\n` : "";
 		if (!existsSync(filePath)) return `(xmodel: file not found: ${filePath})`;
 		const buf = readFileSync(filePath);
 		if (!isValidImage(buf)) return `(xmodel: ${filePath} is not a valid image)`;
@@ -1553,7 +1579,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				const res = await runChildPi({
 					model: vlm,
 					systemPrompt: VISION_VLM_SYS,
-					prompt: `Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+					prompt: `${focusPrefix}Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
 					imageFile: filePath,
 					signal,
 					thinkingLevel: thinkLevel,

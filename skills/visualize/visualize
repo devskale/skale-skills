@@ -5,7 +5,7 @@
 #   visualize share  <file.html>            # upload to throway, print the URL
 #   visualize share  --dir <dir>            # upload a whole dir as a browseable throway dir
 #   visualize validate <file.html>          # check it's self-contained (no external refs)
-#   visualize lint <file.html>              # style taste-gate: flag AI-generated tells
+#   visualize lint <file.html>              # style taste-gate: flag decorative AI-tells
 #   visualize --help
 #
 # The skill itself (see SKILL.md) is what *understands* the request and builds the
@@ -62,7 +62,7 @@ Usage:
   visualize share <file.html>     # upload to the throwaway store, print the URL
   visualize share --dir <dir>     # upload a whole dir as a browseable throway dir
   visualize validate <file.html>  # verify the HTML is self-contained (no external refs)
-  visualize lint <file.html>      # style taste-gate: flag AI-generated tells
+  visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
   visualize --help                # this help
 
 The agent builds the HTML (see SKILL.md). This launcher only opens, shares, validates, lints.
@@ -171,66 +171,72 @@ import sys, re
 path = sys.argv[1]
 src = open(path, encoding='utf-8', errors='replace').read()
 
-# strip comments so hrefs inside html comments don't count
-no_comments = re.sub(r'<!--.*?-->', '', src, flags=re.S)
+# strip comments so colors inside html/css comments don't count
+src = re.sub(r'<!--.*?-->', '', src, flags=re.S)
 
 warns = []
 
-# Neutral ink/paper/muted palette — never counted as "saturated accent".
+# Neutral ink/paper/muted palette — links/buttons must stay in this family.
 NEUTRAL = {'0f172a','1a1a1a','fafaf9','f4f4f5','ffffff','e4e4e7','e5e5e5',
            '6b7280','71717a','a1a1aa','e2e8f0','64748b','f8fafc','cbd5e1',
            '94a3b8','475569','334155','1e293b'}
+# Backgrounds that never read as "colored badge" (paper/line neutrals).
+BG_NEUTRAL = {'ffffff','fafaf9','f4f4f5','e4e4e7','e5e5e5'}
 
 def add(msg):
     warns.append(msg)
 
-# 1. Saturated accent on links/buttons/TOC (teal/blue/indigo link text)
-for m in re.finditer(r'<a[^>]*style="[^"]*color\s*:\s*#([0-9a-fA-F]{6})', no_comments):
-    if m.group(1).lower() not in NEUTRAL:
-        add('saturated accent on a link/button (inline color hex)')
+def bad_bg(decls):
+    m = re.search(r'(?:^|[;\s])background(?:-color)?\s*:\s*#([0-9a-fA-F]{6})\b', decls)
+    return m and m.group(1).lower() not in BG_NEUTRAL
 
-# 2. Colored pill badges: border-radius:999px (either order) + a non-neutral hex background
-for m in re.finditer(r'border-radius\s*:\s*99[0-9]px[^}]*?background\s*:\s*#[0-9a-fA-F]{6}|background\s*:\s*#[0-9a-fA-F]{6}[^}]*?border-radius\s*:\s*99[0-9]px', no_comments):
-    seg = m.group(0)
-    hb = re.search(r'background\s*:\s*(#[0-9a-fA-F]{6})', seg)
-    if hb and hb.group(1).lower() not in ('ffffff','fafaf9','f4f4f5','e4e4e7','e5e5e5'):
-        add('colored pill badge (border-radius:999px + non-neutral background)')
+# Parse <style> blocks into (selector, declarations) rules; inline style=""
+# attributes become rules keyed by their element tag.
+rules = []
+for m in re.finditer(r'<style[^>]*>(.*?)</style>', src, flags=re.S):
+    css = re.sub(r'/\*.*?\*/', '', m.group(1), flags=re.S)
+    for rm in re.finditer(r'([^{}]+)\{([^{}]*)\}', css):
+        rules.append((rm.group(1).strip(), rm.group(2)))
+for m in re.finditer(r'<([a-zA-Z][a-zA-Z0-9]*)[^>]*?\sstyle="([^"]*)"', src):
+    rules.append((m.group(1), m.group(2)))
 
-# 3. Colored numbered-circle badges on headings/steps
-for m in re.finditer(r'border-radius\s*:\s*50%[^}]*?background\s*:\s*#[0-9a-fA-F]{6}|background\s*:\s*#[0-9a-fA-F]{6}[^}]*?border-radius\s*:\s*50%', no_comments):
-    seg = m.group(0)
-    hb = re.search(r'background\s*:\s*(#[0-9a-fA-F]{6})', seg)
-    if hb and hb.group(1).lower() not in ('ffffff','fafaf9','f4f4f5','e4e4e7','e5e5e5'):
-        add('colored numbered-circle badge (border-radius:50% + non-neutral background)')
+LINK_SEL = re.compile(r'(?:^|[\s,>+~(])(?:a|button)(?=$|[\s,>+~:.{\[])')
 
-# 4. Colored .ok/.bad pass-fail values
-for m in re.finditer(r'class="[^"]*\b(?:ok|bad|pass|fail|success|danger|error)\b[^"]*"[^>]*style="[^"]*color\s*:\s*#[0-9a-fA-F]{6}', no_comments):
-    add('colored .ok/.bad/pass-fail value (inline color)')
+def rem_to_px(v):
+    m = re.match(r'([\d.]+)(px|rem)\b', v)
+    if not m:
+        return 0.0
+    return float(m.group(1)) * (16 if m.group(2) == 'rem' else 1)
 
-# 5. Saturated accent hex as text color (heuristic) — only inside CSS, not prose
-#    Restrict to <style> blocks and inline style="..." attributes so hex in body
-#    text (e.g. a page showing hex codes) isn't a false positive.
-for m in re.finditer(r'<style[^>]*>(.*?)</style>', no_comments, flags=re.S):
-    css = m.group(1)
-    for cm in re.finditer(r'color\s*:\s*(#[0-9a-fA-F]{6})', css):
-        hexv = cm.group(1).lower().lstrip('#')
-        if hexv in NEUTRAL:
-            continue
-        add(f'saturated color used as text: #{hexv}')
-for m in re.finditer(r'style="[^"]*color\s*:\s*(#[0-9a-fA-F]{6})', no_comments):
-    hexv = m.group(1).lower().lstrip('#')
-    if hexv in NEUTRAL:
-        continue
-    add(f'saturated color used as text: #{hexv}')
+for sel, decls in rules:
+    # 1. Decorative tell: saturated accent on links/buttons/TOC.
+    if LINK_SEL.search(sel):
+        cm = re.search(r'(?:^|[;\s])color\s*:\s*#([0-9a-fA-F]{6})\b', decls)
+        if cm and cm.group(1).lower() not in NEUTRAL:
+            add(f'saturated accent on a link/button (selector "{sel[:40]}")')
+    # 2. Decorative tell: pastel pill capsule (border-radius:999px + colored bg).
+    if re.search(r'border-radius\s*:\s*99[0-9]px', decls) and bad_bg(decls):
+        add(f'pastel pill capsule (border-radius:999px + colored background, "{sel[:40]}")')
+    # 3. Decorative tell: LARGE colored circle badge. Small category dots
+    #    (<~20px) are structural color and pass.
+    if re.search(r'border-radius\s*:\s*50%', decls) and bad_bg(decls):
+        sizes = [rem_to_px(v) for v in
+                 re.findall(r'(?:^|[;\s])(?:width|height)\s*:\s*([\d.]+(?:px|rem))', decls)]
+        if sizes and max(sizes) >= 20:
+            add(f'large colored circle badge (border-radius:50% + colored background + >=20px, "{sel[:40]}")')
+
+# Structural color (category hues on text/kickers, semantic .ok/.warn/.bad,
+# small dots, tinted grouping) is allowed — it carries meaning, so no check here.
 
 if warns:
-    print('visualize lint: style taste-gate — potential AI-generated tells:')
+    print('visualize lint: style taste-gate — decorative AI-tells found:')
     for w in dict.fromkeys(warns):
         print('  - ' + w)
-    print('Fix these before sharing (see promptlib.md §0).')
+    print('Fix before sharing. Structural color (category dots, section accents,')
+    print('semantic .ok/.warn/.bad) is fine — see promptlib.md §1–2.')
     sys.exit(1)
 else:
-    print('visualize lint: OK — no AI-generated tells found')
+    print('visualize lint: OK — no decorative AI-tells (structural color allowed)')
 PYEOF
         else
             # python3-less fallback: a few simple greps
