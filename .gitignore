@@ -59,8 +59,8 @@ bench_results/
 
 # Upstream skills (not maintained here)
 skills/browser-use/
-pi/
 pis/
+pi/
 
 # Local clone of external pi-package (install via npm: pi-mcp-adapter)
 pi-mcp-adapter/
@@ -69,3 +69,7 @@ pi-mcp-adapter/
 # The generic `build/` rule above (for compiled artifacts) would swallow it — un-ignore it.
 !skills/figure/build/
 temp/
+
+# Local pi source checkout (symlink to ~/code/clones/pi)
+# NOTE: no trailing slash — symlinks count as files for gitignore, `pi/` would NOT match
+pi

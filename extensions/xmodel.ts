@@ -10,6 +10,15 @@
  *   ask the user to describe the image, "off" to disable.)
  * Rate-limit fallback: on 429/503/529, auto-switches to a free variant
  * (explicit preset.fallback → `${name}-free` → any *free* preset).
+ * Read handover (v0.5.1): `read` on an image is ALWAYS display-only — pixels go to a
+ *   session display entry rendered inline for the user; the model (vision-capable or
+ *   not) gets only a routing note. Understanding stays explicit (read_image / /readimg),
+ *   driven by task context. With _vision.mode="view", read routes to throway + browser.
+ * Understand via param: the agent calls `read` with understand:true when the task needs
+ *   the image's contents — the user still sees it, and the model receives a VLM text
+ *   analysis instead of pixels (vision-capable main models get the pixels directly).
+ *   A protocol note is appended to the system prompt; read_image / /readimg stay as
+ *   explicit fallbacks (also for strict providers that strip extra parameters).
  *
  * Config files (merged; project overrides global):
  *   ~/.pi/agent/xmodel.json
@@ -91,7 +100,25 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
+
+/** customType for the read-handover display entry (rendered inline, never sent to the model). */
+const XMODEL_VIEW_MSG = "xmodel-view";
+
+// ctx.sessionManager is typed as ReadonlySessionManager (read-only surface), but at
+// runtime it IS the full SessionManager — which exposes appendCustomMessageEntry for
+// writing inline custom entries. Cast to the write-capable subset to use it.
+interface WritableSessionManager {
+	appendCustomMessageEntry<T = unknown>(
+		customType: string,
+		content: string | Array<{ type: string; text?: string; data?: string; mimeType?: string }>,
+		display: boolean,
+		details?: T,
+	): string;
+}
+function writeEntry(ctx: ExtensionContext, ...args: Parameters<WritableSessionManager["appendCustomMessageEntry"]>) {
+	return (ctx.sessionManager as unknown as WritableSessionManager).appendCustomMessageEntry(...args);
+}
 
 interface OriginalState {
 	model: Model<Api> | undefined;
@@ -514,7 +541,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 		await ctx.ui.custom((tui: any, theme: any, _kb: any, done: (r: undefined) => void) => {
 			const scopeValues = trusted ? ["global", "project"] : ["global"];
-			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). view: SHARED display — upload the image to throway + open it in a browser (no analysis, no tokens). Orthogonal to read (local inline). switch: flip main model to vision for the turn. human: ask YOU to describe the image in a TUI overlay. off: do nothing.";
+			const MODE_HELP = "delegate: compress → VLM sub-call → text (default). view: SHARED display — upload to throway + open in a browser; read images route here too (no analysis, no tokens). switch: flip main model to vision for the turn. human: ask YOU to describe the image in a TUI overlay. off: do nothing (read still hands over display-only).";
 			const BRIEF_HELP = "Char budget for the task brief sent to the VLM.";
 			const KEEP_HELP = "Keep the original image inline in the result (delegate mode only), alongside the VLM text analysis. The non-vision main model still only receives the analysis — pi-ai strips image parts it can't process.";
 			// NOTE: for `values`-cycle rows, currentValue MUST be a bare entry of `values`
@@ -623,7 +650,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 
 	// --- 1. Slash command (user): /xm ---
 	pi.registerCommand("xm", {
-		description: "xmodel v0.5.0 — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /readimg <file> | /xm version | /xm off",
+		description: `xmodel v${VERSION} — /xm [name] | /xm edit [name] | /xm rm [name] | /xm models [query] | /xm settings | /xm vision [mode] [global|project] | /readimg <file> | /xm version | /xm off`,
 		handler: async (args, ctx) => {
 			const raw = (args ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -774,19 +801,27 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		description:
 			"Analyze an image file with a vision model and return a text description of what's in it. " +
 			"Use when you need to UNDERSTAND an image (read text in it, diagnose a screenshot, interpret a chart/diagram). " +
-			"Unlike the plain `read` tool (which only displays the image for the user), this runs a VLM and gives you the content as text. " +
+			"Equivalent to calling `read` with understand:true — prefer that param; this tool is the explicit/fallback path (also when the provider strips extra read parameters). " +
+			"Pass thinking:'high' for deep understanding (complex diagrams, dense screenshots); default vision thinking is off for speed. " +
 			"Takes a path to an image file (png, jpg, gif, webp, bmp).",
 		promptSnippet: "Analyze an image file with a vision model to understand its contents",
 		promptGuidelines: [
-			"read_image is OPT-IN: call it ONLY when the user EXPLICITLY asks to understand/analyze an image's contents (extract text, diagnose a screenshot, interpret a chart). " +
+			"read_image is the UNDERSTAND path: prefer `read` with understand:true for the same effect; call this tool when understanding an image's contents is actually required for the task (extract text, diagnose a screenshot, interpret a chart) or when the provider strips the read param. " +
 				"NEVER call read_image autonomously right after a plain `read`/`viewimg` \u2014 those are display-only and fast, and running the VLM is slow and costs tokens. " +
-				"If the user just asks to read/view/show an image, use read/viewimg and do nothing more.",
+				"If the user just asks to read/view/show an image, use read/viewimg and do nothing more. Use thinking:'high' only when the user asks for deep/thorough image analysis.",
 		],
 		parameters: Type.Object({
 			path: Type.String({ description: "Path to the image file to analyze (png, jpg, gif, webp, bmp)." }),
+			thinking: Type.Optional(
+				StringEnum(["off", "low", "medium", "high"] as const, {
+					description:
+						"Per-call thinking override for the vision sub-call. Default = _vision.thinkingLevel (off = fastest). Use 'high' for deep understanding.",
+				}),
+			),
 		}),
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			const raw = (params as any).path as string;
+			const wantThink = (params as any).thinking as string | undefined;
 			const filePath = raw.startsWith("/") ? raw : join(ctx.cwd, raw);
 			// Show the image FIRST, then feed it to the VLM. Previously the VLM ran
 			// before the image was assembled, so the user didn't see the image until
@@ -798,7 +833,12 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			} else {
 				_onUpdate?.({ content: [{ type: "text", text: `(xmodel: no image block for ${filePath})` }], details: undefined });
 			}
-			const analysis = await analyzeImageFile(ctx, filePath, signal);
+			const analysis = await analyzeImageFile(
+				ctx,
+				filePath,
+				signal,
+				wantThink ? { thinkingLevel: wantThink as ThinkingLevel } : undefined,
+			);
 			// Main model is vision-capable: return the image block inline so the main
 			// model sees it directly — no child-pi handoff, no slow sub-call.
 			if (analysis === "__VISION_CAPABLE__") {
@@ -854,19 +894,44 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		},
 	});
 
-	// --- Optional system-prompt instructions for active preset ---
+	// --- Optional system-prompt instructions for active preset + read protocol ---
+	/** System-prompt note teaching the read/understand protocol (v0.5.1). */
+	const READ_PROTOCOL =
+		"[xmodel image protocol] `read` on an image file is DISPLAY-ONLY: the user sees it inline, you do NOT receive the pixels. " +
+		"When — and only when — understanding the image's contents is required for the task (the user asks about it, or you must extract text / diagnose a chart), call `read` again with the extra parameter `understand: true`: the image gets analyzed by a vision model and you receive a text description. " +
+		"Never use understand:true just to view or show an image. If your provider rejects the extra parameter, use the read_image tool instead. For deep understanding (complex diagrams, dense screenshots) use read_image with thinking:'high'.";
+
 	pi.on("before_agent_start", async (event, ctx) => {
 		// auto-vision (switch mode only): user attached images to this prompt
 		if (visionCfg.mode === "switch" && event.images && event.images.length > 0) await ensureVision(ctx, "before_agent_start");
+		let systemPrompt = `${event.systemPrompt}\n\n${READ_PROTOCOL}`;
 		if (activePreset?.instructions) {
-			return { systemPrompt: `${event.systemPrompt}\n\n${activePreset.instructions}` };
+			systemPrompt = `${systemPrompt}\n\n${activePreset.instructions}`;
 		}
+		return { systemPrompt };
 	});
 
 	// --- time MCP / tool calls so we can see real screenshot latency vs the 60s MCP cap ---
 	pi.on("tool_call", async (event: any) => {
 		callStart.set(event.toolCallId, Date.now());
 	});
+
+	// --- read handover: session-only display entry (pixels for the user, never the model) ---
+	pi.registerMessageRenderer(
+		XMODEL_VIEW_MSG,
+		(message, _opts, theme): Component | undefined => {
+			const d = (message as { details?: { count?: number; images?: Array<{ b64: string; mime: string }> } }).details;
+			const imgs = d?.images ?? [];
+			const count = d?.count ?? imgs.length;
+			const c = new Container();
+			c.addChild(new Text(theme.fg("dim", `🖼 view-only · ${count} image${count > 1 ? "s" : ""} (read handover)`), 0, 0));
+			for (const im of imgs) {
+				c.addChild(new Spacer(1));
+				c.addChild(new Image(im.b64, im.mime, { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }));
+			}
+			return c;
+		},
+	);
 
 	// --- vision on tool results containing an image (read *.png, MCP screenshots, …) ---
 	pi.on("tool_result", async (event, ctx) => {
@@ -890,13 +955,39 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			}
 		}
 		if (images.length === 0) return;
+		// READ HANDOVER: `read` on an image is ALWAYS display-only — the pixels move to a
+		// session display entry for the user; the model (even a vision-capable one) gets
+		// only a routing note. Understanding is the agent's explicit, context-driven call
+		// via `read_image` / `/readimg`. With _vision.mode="view", read routes to throway +
+		// browser instead (shared display). Orthogonal to the analysis pipeline below.
+		if (event.toolName === "read") {
+			// understand:true — the agent explicitly asked for analysis (task context).
+			// Extra params survive pi's TypeBox validation (no additionalProperties:false),
+			// so the model can send this even though it's not in the built-in schema.
+			const wantsUnderstand = (event.input as Record<string, unknown> | undefined)?.understand === true;
+			if (wantsUnderstand && isVisionCapable(ctx.model)) {
+				return; // pixels pass to the model natively — it understands them itself
+			}
+			if (wantsUnderstand) {
+				// non-vision main model: display for the user + delegate the analysis to the VLM
+				let displayed = false;
+				if (!visionCfg.keepImage) displayed = writeViewEntry(ctx, images) > 0;
+				try {
+					const res = await delegateVision(ctx, event, images, ctx.signal);
+					if (res) return res;
+				} catch (e) {
+					debug("read understand: delegate threw", { err: String(e) });
+				}
+				return readHandover(event, ctx, images, { alreadyDisplayed: displayed }); // delegate failed → display-only
+			}
+			if (visionCfg.mode === "view") return readView(event, ctx, images);
+			return readHandover(event, ctx, images);
+		}
 		if (isVisionCapable(ctx.model)) return; // main model sees images natively — nothing to do
-		// UNHOOKED: `read` and `generate_image` are DISPLAY tools — show the image inline
-		// but never fire the VLM on them. Understanding is opt-in via the explicit
-		// `read_image` tool / `/readimg` command. Only analysis-oriented tools (screenshots,
-		// MCP captures, etc.) still auto-delegate. `read` is LOCAL display — always inline,
-		// orthogonal to `view` mode (which is SHARED throway display).
-		if (event.toolName === "read" || event.toolName === "generate_image") {
+		// UNHOOKED: `generate_image` is a DISPLAY tool — show the image inline but never
+		// fire the VLM on it. Only analysis-oriented tools (screenshots, MCP captures,
+		// etc.) still auto-delegate.
+		if (event.toolName === "generate_image") {
 			return viewOnly(event, images);
 		}
 		const mode = visionCfg.mode;
@@ -1225,6 +1316,94 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		return { content: newContent };
 	}
 
+	/** Strip image blocks + pi's non-vision note from a tool result, keep clean text. */
+	function stripForModel(content: any[]): any[] {
+		const NO_VISION_NOTE = "[Current model does not support images. The image will be omitted from this request.]";
+		const out: any[] = [];
+		for (const b of content) {
+			if (!b || b.type === "image") continue;
+			if (b.type === "text" && typeof b.text === "string" && b.text.includes(NO_VISION_NOTE)) {
+				const text = b.text.replace(NO_VISION_NOTE, "").replace(/\n{2,}/g, "\n").trim();
+				if (text) out.push({ ...b, text });
+				continue;
+			}
+			out.push(b);
+		}
+		return out;
+	}
+
+	/** Handover for `read` (display-only, ALL models): image blocks move into a session
+	 *  display entry rendered inline for the user; the model-visible content keeps only
+	 *  clean text plus a routing note. */
+	function readHandover(
+		event: any,
+		ctx: ExtensionContext,
+		images: any[],
+		opts: { alreadyDisplayed?: boolean } = {},
+	): { content: any[] } {
+		const content = stripForModel(event.content);
+		const shown = opts.alreadyDisplayed ? images.length : writeViewEntry(ctx, images);
+		const n = images.length;
+		content.push({
+			type: "text",
+			text: shown
+				? `[xmodel handover · ${n} image${n > 1 ? "s" : ""} displayed to the user inline — view-only, you did NOT receive the pixels. If understanding this image is required for the task, call read again with understand:true (or use read_image).]`
+				: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} — image data invalid, nothing displayed. If understanding is required, call read_image.]`,
+		});
+		return { content };
+	}
+
+	/** `read` → view mode: shared display — upload every image to throway, open it in the
+	 *  browser, strip the pixels from the model-visible content. */
+	async function readView(event: any, ctx: ExtensionContext, images: any[]): Promise<{ content: any[] }> {
+		const content = stripForModel(event.content);
+		const urls: string[] = [];
+		for (const img of images) {
+			const tmp = writeImageTmp(img);
+			if (!tmp.valid) continue;
+			try {
+				const url = await throwayOpenImage(ctx, tmp.path);
+				if (url) urls.push(url);
+			} finally {
+				try {
+					unlinkSync(tmp.path);
+				} catch {}
+			}
+		}
+		content.push({
+			type: "text",
+			text: urls.length
+				? `[xmodel view · ${urls.length} image${urls.length > 1 ? "s" : ""} opened in the browser for the user (throway, expires ~4h): ${urls.join(" ")} — view-only, not analysed. If understanding is required, call read again with understand:true (or use read_image).]`
+				: "[xmodel view · could not upload to throway — image not displayed]",
+		});
+		return { content };
+	}
+
+	/** Write the session-only display entry that renders the images inline for the user.
+	 *  Returns how many valid images were written (0 = nothing displayed). */
+	function writeViewEntry(ctx: ExtensionContext, images: any[]): number {
+		const blocks: Array<{ b64: string; mime: string }> = [];
+		for (const im of images) {
+			if (!im?.data) continue;
+			try {
+				const raw = typeof im.data === "string" ? im.data : "";
+				const b64 = raw.startsWith("data:") ? (raw.split(",")[1] ?? "") : raw;
+				if (b64 && isValidImage(Buffer.from(b64, "base64"))) {
+					blocks.push({ b64, mime: im.mimeType ?? "image/png" });
+				}
+			} catch {}
+		}
+		if (!blocks.length) return 0;
+		writeEntry(
+			ctx,
+			XMODEL_VIEW_MSG,
+			blocks.map((b) => ({ type: "image", data: b.b64, mimeType: b.mime })),
+			true,
+			{ count: blocks.length, images: blocks },
+		);
+		return blocks.length;
+	}
+
 	/**
 	 * Delegate vision to a sub-model with a COMPRESSED context:
 	 * compress → [brief + image] → VLM → analysis text. Returns replacement tool_result content.
@@ -1342,7 +1521,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	 * spawn a child VLM with the file attached.
 	 * Returns the analysis text, or a fallback message on any failure.
 	 */
-	async function analyzeImageFile(ctx: ExtensionContext, filePath: string, signal?: AbortSignal): Promise<string> {
+	async function analyzeImageFile(
+		ctx: ExtensionContext,
+		filePath: string,
+		signal?: AbortSignal,
+		opts?: { thinkingLevel?: ThinkingLevel },
+	): Promise<string> {
+		const thinkLevel = opts?.thinkingLevel ?? visionCfg.thinkingLevel;
 		if (!existsSync(filePath)) return `(xmodel: file not found: ${filePath})`;
 		const buf = readFileSync(filePath);
 		if (!isValidImage(buf)) return `(xmodel: ${filePath} is not a valid image)`;
@@ -1371,7 +1556,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					prompt: `Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
 					imageFile: filePath,
 					signal,
-					thinkingLevel: visionCfg.thinkingLevel,
+					thinkingLevel: thinkLevel,
 				});
 				analysis = res.text;
 				if (res.timedOut) { timedOut = true; break; }
