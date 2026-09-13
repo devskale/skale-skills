@@ -77,7 +77,8 @@ examine>'` — the focus string goes straight to the vision model, skipping the 
 (fastest path). A protocol note in the system prompt teaches this; the handover note in
 every display-only result points there too. `read_image` / `/readimg` remain the explicit
 fallbacks — also for strict providers that strip extra `read` parameters — and `read_image`
-accepts `thinking` + `focus` params for deep, targeted analysis.
+accepts `url` (downloads to ~/.cache/webimg/ automatically), plus `thinking` + `focus`
+params for deep, targeted analysis.
 
 `generate_image` and `viewimg` (CLI) stay on the display axis; generated images still feed
 vision-capable models (they iterate on what they drew). Only analysis-oriented tools

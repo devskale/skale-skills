@@ -21,6 +21,8 @@
  *   explicit fallbacks (also for strict providers that strip extra parameters).
  * ASCII fallback (v0.5.3): terminals without kitty/iterm2 graphics get chafa
  *   block art rendered INTO the display entry — the user always sees the image.
+ * URL understanding (v0.5.5): read_image accepts url — downloaded to
+ *   ~/.cache/webimg/ and analyzed in one call (path OR url).
  *
  * Config files (merged; project overrides global):
  *   ~/.pi/agent/xmodel.json
@@ -48,7 +50,8 @@
  * (clamped to model capabilities automatically)
  */
 
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
+import { homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { join, basename } from "node:path";
 import { Type } from "typebox";
@@ -104,7 +107,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.4";
+const VERSION = "0.5.5";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -810,7 +813,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			"Use when you need to UNDERSTAND an image (read text in it, diagnose a screenshot, interpret a chart/diagram). " +
 			"Equivalent to calling `read` with understand:true — prefer that param; this tool is the explicit/fallback path (also when the provider strips extra read parameters). " +
 			"Pass thinking:'high' for deep understanding (complex diagrams, dense screenshots); default vision thinking is off for speed. " +
-			"Takes a path to an image file (png, jpg, gif, webp, bmp).",
+			"Takes a local path OR an image url (http(s) — downloaded to ~/.cache/webimg/ automatically).",
 		promptSnippet: "Analyze an image file with a vision model to understand its contents",
 		promptGuidelines: [
 			"read_image is the UNDERSTAND path: prefer `read` with understand:true for the same effect; call this tool when understanding an image's contents is actually required for the task (extract text, diagnose a screenshot, interpret a chart) or when the provider strips the read param. " +
@@ -818,7 +821,12 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				"If the user just asks to read/view/show an image, use read/viewimg and do nothing more. Use thinking:'high' only when the user asks for deep/thorough image analysis.",
 		],
 		parameters: Type.Object({
-			path: Type.String({ description: "Path to the image file to analyze (png, jpg, gif, webp, bmp)." }),
+			path: Type.Optional(Type.String({ description: "Path to a local image file (png, jpg, gif, webp, bmp). Provide path OR url." })),
+			url: Type.Optional(
+				Type.String({
+					description: "http(s) URL of an image — downloaded to ~/.cache/webimg/ and analyzed in one call. Provide path OR url.",
+				}),
+			),
 			thinking: Type.Optional(
 				StringEnum(["off", "low", "medium", "high"] as const, {
 					description:
@@ -833,9 +841,25 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			),
 		}),
 		async execute(_id, params, signal, _onUpdate, ctx) {
-			const raw = (params as any).path as string;
+			const rawPath = (params as any).path as string | undefined;
+			const rawUrl = (params as any).url as string | undefined;
 			const wantThink = (params as any).thinking as string | undefined;
-			const filePath = raw.startsWith("/") ? raw : join(ctx.cwd, raw);
+			if (!rawPath && !rawUrl) {
+				return { content: [{ type: "text" as const, text: "Error: provide either path (local file) or url (http(s) image URL)." }], isError: true, details: { error: "path or url required" } };
+			}
+			if (rawPath && rawUrl) {
+				return { content: [{ type: "text" as const, text: "Error: provide path OR url, not both." }], isError: true, details: { error: "path xor url" } };
+			}
+			let filePath: string;
+			if (rawUrl) {
+				const dl = await downloadImage(rawUrl);
+				if (!dl.ok) {
+					return { content: [{ type: "text" as const, text: `Error: ${dl.error}` }], isError: true, details: { error: dl.error } };
+				}
+				filePath = dl.path;
+			} else {
+				filePath = rawPath!.startsWith("/") ? rawPath! : join(ctx.cwd, rawPath!);
+			}
 			// Show the image FIRST, then feed it to the VLM. Previously the VLM ran
 			// before the image was assembled, so the user didn't see the image until
 			// the (slow) analysis had already finished. Build + stream the image block
@@ -917,7 +941,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	const READ_PROTOCOL =
 		"[xmodel image protocol] `read` on an image file is DISPLAY-ONLY: the user sees it inline, you do NOT receive the pixels. " +
 		"When — and only when — understanding the image's contents is required for the task (the user asks about it, or you must extract text / diagnose a chart), call `read` again with the extra parameter `understand: true`: the image gets analyzed by a vision model and you receive a text description. Pass understand:'<what to examine>' to hand the vision model a focused question directly (skips the brief-building sub-call, fastest). " +
-		"Never use understand:true just to view or show an image. If your provider rejects the extra parameter, use the read_image tool instead. For deep understanding (complex diagrams, dense screenshots) use read_image with thinking:'high'.";
+		"Never use understand:true just to view or show an image. If your provider rejects the extra parameter, use the read_image tool instead. For deep understanding (complex diagrams, dense screenshots) use read_image with thinking:'high'. Image URLs: read_image accepts url directly (downloads to ~/.cache/webimg/); for pure display, curl the URL to ~/.cache/webimg/ first, then read the file.";
 
 	pi.on("before_agent_start", async (event, ctx) => {
 		// auto-vision (switch mode only): user attached images to this prompt
@@ -1275,6 +1299,36 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		if (visionCfg.vlm) return visionCfg.vlm;
 		const m = pickVisionModel(ctx);
 		return m ? `${(m as any).provider}/${(m as any).id}` : undefined;
+	}
+
+	/** Download an image URL into ~/.cache/webimg/ and return the local path.
+	 *  curl via execFile (no shell, redirects followed); the bytes are validated
+	 *  as a real image before the path is handed on. */
+	async function downloadImage(url: string): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
+		if (!/^https?:\/\//i.test(url)) return { ok: false, error: `not an http(s) URL: ${url}` };
+		const dir = join(homedir(), ".cache", "webimg");
+		try {
+			mkdirSync(dir, { recursive: true });
+		} catch {}
+		const base = (url.split(/[?#]/)[0].split("/").pop() ?? "").replace(/[^A-Za-z0-9._-]/g, "").slice(-80);
+		const ext = /\.[A-Za-z0-9]{2,5}$/.test(base) ? "" : ".png";
+		const file = join(dir, base ? `${base}${ext}` : `img-${Date.now()}-${(Math.random() * 1e6) | 0}${ext}`);
+		try {
+			await new Promise<void>((resolve, reject) => {
+				execFile("curl", ["-sfL", "-m", "30", "-o", file, url], { timeout: 35_000 }, (err) =>
+					err ? reject(err) : resolve(),
+				);
+			});
+			if (!isValidImage(readFileSync(file))) {
+				try {
+					unlinkSync(file);
+				} catch {}
+				return { ok: false, error: `downloaded bytes are not a valid image: ${url}` };
+			}
+			return { ok: true, path: file };
+		} catch (e) {
+			return { ok: false, error: `download failed for ${url}: ${String(e)}` };
+		}
 	}
 
 	/**
