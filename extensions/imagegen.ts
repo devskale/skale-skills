@@ -37,6 +37,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { Container, Image, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { guessMime, isVisionCapable } from "./lib/image-utils";
+import { chafaAvailable, chafaPreview } from "./lib/chafa";
 
 // ctx.sessionManager is typed as ReadonlySessionManager (read-only surface), but at
 // runtime it IS the full SessionManager — which exposes appendCustomMessageEntry for
@@ -68,8 +69,6 @@ const PROXY_BASE =
 // TU's only model. Override with IMAGEGEN_MODEL (a full provider@modelid).
 const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "tu@z-image-turbo";
 const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "512x512";
-const ASCII_COLS = 64;
-const ASCII_ROWS = 22;
 
 /** customType for the direct-command result message (rendered inline). */
 const IMAGEGEN_MSG = "imagegen-result";
@@ -309,46 +308,8 @@ function canRenderInline(): boolean {
 	return true;
 }
 
-/** Whether chafa can run (cached). Probed by invoking it directly — no shell,
- *  no `command -v` — so it works even without a login shell on PATH. */
-let _chafaAvailable: Promise<boolean> | undefined;
-function chafaAvailable(): Promise<boolean> {
-	if (!_chafaAvailable) {
-		_chafaAvailable = execFileAsync("chafa", ["--version"], { encoding: "utf8", timeout: 3000 })
-			.then(() => true)
-			.catch(() => false);
-	}
-	return _chafaAvailable;
-}
-
-/** Render an image file to ANSI/ASCII text via chafa (async, no shell).
- *  `--format symbols` is mandatory — without it chafa auto-detects the Kitty
- *  protocol (TERM_PROGRAM=ghostty leaks through) and emits graphics escapes
- *  that a multiplexer strips. */
-async function chafaPreview(imgPath: string, cols = ASCII_COLS, rows = ASCII_ROWS): Promise<string> {
-	const size = ["--size", `${cols}x${rows}`];
-	// color half-blocks first; fall back to plain ASCII on any failure
-	try {
-		const { stdout } = await execFileAsync(
-			"chafa",
-			["--format", "symbols", "--symbols", "block-half", "--color-space", "rgb", "--colors", "240", "--work", "5", ...size, imgPath],
-			{ encoding: "utf8", timeout: 15000 },
-		);
-		const out = stdout.trim();
-		return out || "(chafa produced no output)";
-	} catch {
-		try {
-			const { stdout } = await execFileAsync(
-				"chafa",
-				["--format", "symbols", "--symbols", "ascii", "-c", "none", "--work", "5", ...size, imgPath],
-				{ encoding: "utf8", timeout: 15000 },
-			);
-			return stdout.trim();
-		} catch {
-			return `(unable to render preview; see ${imgPath})`;
-		}
-	}
-}
+// chafa rendering (chafaAvailable/chafaPreview) lives in ./lib/chafa — shared
+// with xmodel's read-handover ASCII fallback.
 
 // ── Image metadata (dependency-free prompt embedding) ────────────────────────
 // The generation prompt is baked into the saved file so it survives copies and
@@ -815,7 +776,8 @@ async function maybeAscii(saved: ImageItem[], model: unknown): Promise<string | 
 	const terminalCantRender = !canRenderInline();
 	const modelCantSee = !isVisionCapable(model);
 	if (!((await chafaAvailable()) && (terminalCantRender || modelCantSee))) return undefined;
-	return (await Promise.all(saved.map((s) => chafaPreview(s.path)))).join("\n\n");
+	const arts = await Promise.all(saved.map((s) => chafaPreview(s.path)));
+	return arts.map((art, i) => art || `(unable to render preview; see ${saved[i].path})`).join("\n\n");
 }
 
 /** Parse `/imagegen` arg string: flags + free-form prompt. */

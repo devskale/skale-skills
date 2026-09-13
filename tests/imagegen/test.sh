@@ -60,7 +60,8 @@ assert "no hardcoded model list"   "! grep -qE 'dreamshaper|z-image-turbo|flux' 
 assert "has ASCII fallback"       "grep -q 'canRenderInline' imagegen.ts"
 assert "detects tmux/screen mux"  "grep -q 'process.env.TMUX || process.env.SCREEN' imagegen.ts"
 assert "herdr NOT treated as mux" "! grep -q 'HERDR_PANE_ID' imagegen.ts"
-assert "chafa --format symbols"   "grep -q -- '--format symbols' imagegen.ts"
+assert "chafa --format symbols"   "grep -q -- '--format symbols' lib/chafa.ts"
+assert "imagegen uses shared chafa"  "grep -q 'lib/chafa' imagegen.ts"
 echo ""
 
 # === 2. pi loads the extension =======================================

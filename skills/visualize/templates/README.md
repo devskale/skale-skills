@@ -24,6 +24,7 @@ and adapts. Each is the proven "house style" — start from a template rather th
 ## Rules
 
 - **Always fill placeholders** (`{{...}}`) with real content — never ship placeholders.
-- **Keep it self-contained** unless using `mermaid.html` (which needs CDN by design).
+- **One file** — inline everything, or load popular packages from a CDN (`mermaid.html`
+  does by design). No local sibling files.
 - **Validate** before sharing: `visualize validate <file.html>`.
 - The provenance footer (how it was built + throway note) stays in every template.

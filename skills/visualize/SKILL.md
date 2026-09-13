@@ -1,6 +1,6 @@
 ---
 name: visualize
-version: "1.3.0"
+version: "1.4.0"
 description: "Render any set of things as ONE self-contained HTML document and give the user a URL — and generate polished HTML reports. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), figures out the right structure, and builds a single portable HTML file — then opens it locally and optionally shares it to a short-lived URL via the throway store. Triggers on: visualize, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, give me a link to this, put it on a page."
 ---
 
@@ -13,9 +13,9 @@ gives the user a URL. Two modes:
 - **Report** — generate a structured document (executive summary, sections with findings,
   recommendations). See [references/report.md](references/report.md).
 
-The whole point is **containment**: everything — styles, scripts,
-diagrams, data — lives inside a single `.html` file. Nothing external, nothing to build,
-nothing to host.
+The whole point is **one file**: styles, scripts, diagrams, data live inside a single
+`.html` — inline, or loaded from a popular CDN (Mermaid, Tailwind, …). No local sibling
+files, nothing to build, nothing to host; sharing is just the one file.
 
 > **Related skills.** `d2` (auto-laid-out technical diagrams) and `figure` (hand-drawn
 > presentation figures) are **manual-only** — invoke via `/skill:d2` / `/skill:figure`.
@@ -129,27 +129,28 @@ Write the HTML to the OS temp dir so nothing lands in the repo:
 
 - Resolve from `$TMPDIR`, falling back to `/tmp` (or `%TEMP%` on Windows).
 - Filename: `<slug>-<timestamp>.html`, e.g. `architecture-1699999999.html`.
-- **Self-contained only** — no external stylesheets, scripts, images, or fonts.
-  Inline everything with `<style>` and `<script>`. See
+- **One file** — no local sibling files (`style.css`, `app.js`, `img.png` next to the
+  HTML). Inline content and layout with `<style>`/`<script>`; see
   [references/html-patterns.md](references/html-patterns.md) for the scaffold and patterns.
-- If you use a CDN (Tailwind, Mermaid), that's a **runtime network dependency** — the file
-  still works offline for content, but diagrams/styling degrade. Prefer inline CSS for the
-  core so the document is truly portable. When a diagram genuinely needs Mermaid, use it,
-  but keep the layout itself in inline CSS.
+- **CDN is fine for popular packages** — Mermaid, Tailwind, chart/formula renderers via
+  jsdelivr, unpkg, cdnjs, esm.sh. Tradeoff: diagrams/styling need network when the file
+  is opened offline. Keep the page *layout* in inline CSS so content always renders;
+  use CDNs for heavy machinery, not for your content.
 
 Validate before delivering:
 
 ```bash
-visualize validate <file.html>   # self-contained: no external references
+visualize validate <file.html>   # one file: local refs fail, popular CDNs ok
 visualize lint <file.html>       # style taste-gate: flag AI-generated tells
 visualize --selfcheck            # version, install dir, last update
 visualize --update               # pull the latest skill via git
 ```
 
-`validate` exits non-zero on external references (`src`/`href`, CSS `@import`/`url()`) —
-**known CDNs are allowed** (`cdn.tailwindcss.com`, `cdn.jsdelivr.net`): a CDN-backed page
-passes, but it's a runtime network dependency (content works offline, diagrams/styling
-degrade — see the CDN note above). `lint` is the **style
+`validate` checks the page is **one file**: dependency references (`script`/`link`/
+`img`/`iframe`, CSS `@import`/`url()`, JS imports) must be inline or point at a popular
+public CDN (jsdelivr, unpkg, cdnjs, esm.sh, tailwind, Google Fonts, plot.ly). Plain
+`<a href>` links are navigation, not dependencies — they don't count. Local file
+references and unknown hosts exit non-zero. `lint` is the **style
 taste-gate** — it flags the *decorative* AI-slop tells from promptlib §0 (saturated
 accent on links/buttons, pastel pill capsules, large colored numbered circles ~20px+)
 and exits non-zero if any are found. **Structural color passes** — category dots,
@@ -207,7 +208,8 @@ To also get a global `visualize` shell command, run from this skill's directory:
 install.bat         # Windows, same directory
 ```
 
-Requires `curl` (for `share`). `python3` improves URL parsing but is optional.
+Requires `curl` (for `share`). `python3` powers `lint`/`validate` and URL parsing but is
+optional (grep fallbacks).
 
 ## References
 

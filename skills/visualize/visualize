@@ -4,7 +4,7 @@
 #   visualize open   <file.html>            # open an HTML file in the browser
 #   visualize share  <file.html>            # upload to throway, print the URL
 #   visualize share  --dir <dir>            # upload a whole dir as a browseable throway dir
-#   visualize validate <file.html>          # check it's self-contained (no external refs)
+#   visualize validate <file.html>          # check it's one file (local refs fail, popular CDNs ok)
 #   visualize lint <file.html>              # style taste-gate: flag decorative AI-tells
 #   visualize --help
 #
@@ -61,7 +61,7 @@ Usage:
   visualize open <file.html>      # open the HTML in your browser (macOS / Linux / Windows)
   visualize share <file.html>     # upload to the throwaway store, print the URL
   visualize share --dir <dir>     # upload a whole dir as a browseable throway dir
-  visualize validate <file.html>  # verify the HTML is self-contained (no external refs)
+  visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
   visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
   visualize --help                # this help
 
@@ -253,22 +253,89 @@ PYEOF
     validate)
         [ $# -eq 1 ] || { echo "visualize validate: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize validate: not a file: $f" >&2; exit 2; }
-        # Self-contained = no http(s) references to external styles/scripts/images/fonts:
-        # src/href attributes, CSS @import, and CSS url(). Known CDNs (tailwind, jsdelivr)
-        # are allowed as documented runtime-network dependencies.
-        bad="$(
-            {
-                grep -oE '(src|href)=["'"'"']https?://[^"'"'"']+' "$f" || true
-                grep -oiE '@import[[:space:]]+(url\()?[[:space:]]*["'"'"']?https?://[^)"'"'"';[:space:]]+' "$f" || true
-                grep -oiE 'url\([[:space:]]*["'"'"']?https?://[^)"'"'"']+\)' "$f" || true
-            } | grep -vE 'cdn\.tailwindcss\.com|cdn\.jsdelivr\.net' || true
-        )"
-        if [ -n "$bad" ]; then
-            echo "visualize validate: NOT self-contained — external references found:" >&2
-            echo "$bad" | sed 's/^/  /' >&2
-            exit 1
+        # One-file rule: the HTML is the only artifact. Dependencies (script/link/
+        # img/iframe, CSS @import/url(), JS imports) must be inline or point at a
+        # popular public CDN; plain <a href> is navigation and never counts.
+        if command -v python3 >/dev/null 2>&1; then
+            python3 - "$f" <<'PYEOF'
+import sys, re
+path = sys.argv[1]
+src = open(path, encoding='utf-8', errors='replace').read()
+
+KNOWN_CDNS = ('cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'unpkg.com',
+              'cdnjs.cloudflare.com', 'esm.sh', 'cdn.skypack.dev',
+              'fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.plot.ly')
+
+bad = []
+
+def is_known(url):
+    m = re.match(r'https?://([^/]+)', url)
+    if not m:
+        return False
+    host = m.group(1).lower()
+    return any(host == c or host.endswith('.' + c) for c in KNOWN_CDNS)
+
+def check(kind, ref):
+    ref = ref.strip()
+    if not ref or ref.startswith(('#', 'data:', 'blob:')):
+        return
+    if ref.startswith(('http://', 'https://')):
+        if not is_known(ref):
+            bad.append(f'unknown external {kind}: {ref}')
+    else:
+        bad.append(f'local file reference in {kind} (breaks the single file): {ref}')
+
+# 1. Dependency attributes — a plain <a href> is navigation, not a dependency.
+for m in re.finditer(r'<(?:script|img|source|iframe|audio|video|embed|track)\b[^>]*?\ssrc="([^"]*)"', src):
+    check('src', m.group(1))
+for m in re.finditer(r'<link\b[^>]*?\shref="([^"]*)"', src):
+    check('link href', m.group(1))
+
+# 2. CSS @import and url() — <style> blocks and inline style attrs included.
+#    SVG fragment refs (url(#id)) and data: URIs pass.
+for m in re.finditer(r'@import\s+(?:url\(\s*)?["\']?([^)"\';\s]+)', src):
+    check('css @import', m.group(1))
+for m in re.finditer(r'url\(\s*["\']?([^"\')]+)["\']?\s*\)', src):
+    check('css url()', m.group(1))
+
+# 3. JS module imports from URLs (the mermaid-via-CDN pattern).
+for m in re.finditer(r'\bimport\s*["\']([^"\']+)["\']', src):
+    check('js import', m.group(1))
+for m in re.finditer(r'\bimport\s+[^"\';]*?\bfrom\s*["\']([^"\']+)["\']', src):
+    check('js import', m.group(1))
+for m in re.finditer(r'\bimport\s*\(\s*["\']([^"\']+)["\']', src):
+    check('js import', m.group(1))
+
+if bad:
+    print('visualize validate: NOT a single file — dependency references found:')
+    for line in dict.fromkeys(bad):
+        print('  - ' + line)
+    print('Popular CDNs are fine (' + ', '.join(KNOWN_CDNS[:5]) + ', ...).')
+    print('Everything else: inline it or use a popular CDN; local sibling files always fail.')
+    sys.exit(1)
+else:
+    print(f'visualize validate: OK — one file ({len(src)} bytes; content inline, CDN deps allowed)')
+PYEOF
+        else
+            # python3-less fallback: basic grep for local + non-allowlisted deps
+            KNOWNS='https?://(cdn\.tailwindcss\.com|cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|esm\.sh|cdn\.skypack\.dev|fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.plot\.ly)'
+            bad="$(
+                {
+                    grep -oE '<(script|img|source|iframe|audio|video|embed|track|link)[^>]*\b(src|href)="[^"]+"' "$f" \
+                        | grep -vE '(src|href)="(https?://|data:|#)'
+                    grep -oE '<(script|img|source|iframe|audio|video|embed|track|link)[^>]*\b(src|href)="https?://[^"]+"' "$f" \
+                        | grep -vE "$KNOWNS"
+                    grep -oiE '@import[^;"]*' "$f" | grep -E 'https?://' | grep -vE "$KNOWNS"
+                    grep -oiE 'url\(["'"'"']?https?://[^)"'"'"']+' "$f" | grep -vE "$KNOWNS"
+                } | head -20
+            )"
+            if [ -n "$bad" ]; then
+                echo "visualize validate: NOT a single file — dependency references found:" >&2
+                echo "$bad" | sed 's/^/  /' >&2
+                exit 1
+            fi
+            echo "visualize validate: OK — one file (basic check — install python3 for the full gate)"
         fi
-        echo "visualize validate: OK — self-contained ($(wc -c < "$f" | tr -d ' ') bytes)"
         ;;
 
     *)

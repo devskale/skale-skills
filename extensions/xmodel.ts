@@ -19,6 +19,8 @@
  *   analysis instead of pixels (vision-capable main models get the pixels directly).
  *   A protocol note is appended to the system prompt; read_image / /readimg stay as
  *   explicit fallbacks (also for strict providers that strip extra parameters).
+ * ASCII fallback (v0.5.3): terminals without kitty/iterm2 graphics get chafa
+ *   block art rendered INTO the display entry — the user always sees the image.
  *
  * Config files (merged; project overrides global):
  *   ~/.pi/agent/xmodel.json
@@ -67,12 +69,14 @@ import {
 	Key,
 	matchesKey,
 	decodeKittyPrintable,
+	getCapabilities,
 	type Component,
 	type SettingItem,
 	type SelectItem,
 } from "@earendil-works/pi-tui";
 
 import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
+import { chafaAvailable, chafaPreview } from "./lib/chafa";
 import { isVisionCapable, isValidImage } from "./lib/image-utils";
 import {
 	debug,
@@ -100,7 +104,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.2";
+const VERSION = "0.5.3";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -119,6 +123,9 @@ interface WritableSessionManager {
 function writeEntry(ctx: ExtensionContext, ...args: Parameters<WritableSessionManager["appendCustomMessageEntry"]>) {
 	return (ctx.sessionManager as unknown as WritableSessionManager).appendCustomMessageEntry(...args);
 }
+
+// chafa rendering (chafaAvailable/chafaPreview) lives in ./lib/chafa — shared
+// with imagegen's ASCII preview.
 
 interface OriginalState {
 	model: Model<Api> | undefined;
@@ -928,17 +935,29 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	});
 
 	// --- read handover: session-only display entry (pixels for the user, never the model) ---
+	// Graphics terminal → real pixels; ASCII terminal → chafa block art (pre-computed
+	// into details.ascii at write time); neither → path hint.
 	pi.registerMessageRenderer(
 		XMODEL_VIEW_MSG,
 		(message, _opts, theme): Component | undefined => {
-			const d = (message as { details?: { count?: number; images?: Array<{ b64: string; mime: string }> } }).details;
+			const d = (message as { details?: { count?: number; images?: Array<{ b64: string; mime: string }>; ascii?: string[] } }).details;
 			const imgs = d?.images ?? [];
 			const count = d?.count ?? imgs.length;
 			const c = new Container();
 			c.addChild(new Text(theme.fg("dim", `🖼 view-only · ${count} image${count > 1 ? "s" : ""} (read handover)`), 0, 0));
-			for (const im of imgs) {
+			if (getCapabilities().images) {
+				for (const im of imgs) {
+					c.addChild(new Spacer(1));
+					c.addChild(new Image(im.b64, im.mime, { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }));
+				}
+			} else if (d?.ascii?.length) {
+				for (const art of d.ascii) {
+					c.addChild(new Spacer(1));
+					c.addChild(new Text(art, 0, 0));
+				}
+			} else {
 				c.addChild(new Spacer(1));
-				c.addChild(new Image(im.b64, im.mime, { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }));
+				c.addChild(new Text(theme.fg("muted", "(not renderable here — use viewimg <path> or viewimg <path> --open)"), 0, 0));
 			}
 			return c;
 		},
@@ -986,7 +1005,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			if (wantsUnderstand) {
 				// non-vision main model: display for the user + delegate the analysis to the VLM
 				let displayed = false;
-				if (!visionCfg.keepImage) displayed = writeViewEntry(ctx, images) > 0;
+				if (!visionCfg.keepImage) displayed = (await writeViewEntry(ctx, images)) > 0;
 				try {
 					const res = await delegateVision(ctx, event, images, ctx.signal, focus ? { focus } : undefined);
 					if (res) return res;
@@ -1350,14 +1369,14 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	/** Handover for `read` (display-only, ALL models): image blocks move into a session
 	 *  display entry rendered inline for the user; the model-visible content keeps only
 	 *  clean text plus a routing note. */
-	function readHandover(
+	async function readHandover(
 		event: any,
 		ctx: ExtensionContext,
 		images: any[],
 		opts: { alreadyDisplayed?: boolean } = {},
-	): { content: any[] } {
+	): Promise<{ content: any[] }> {
 		const content = stripForModel(event.content);
-		const shown = opts.alreadyDisplayed ? images.length : writeViewEntry(ctx, images);
+		const shown = opts.alreadyDisplayed ? images.length : await writeViewEntry(ctx, images);
 		const n = images.length;
 		content.push({
 			type: "text",
@@ -1395,8 +1414,10 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	}
 
 	/** Write the session-only display entry that renders the images inline for the user.
-	 *  Returns how many valid images were written (0 = nothing displayed). */
-	function writeViewEntry(ctx: ExtensionContext, images: any[]): number {
+	 *  ASCII terminals (no kitty/iterm2 graphics) additionally get chafa block art
+	 *  baked into details.ascii so the image stays VISIBLE. Returns the number of
+	 *  valid images written (0 = nothing displayed). */
+	async function writeViewEntry(ctx: ExtensionContext, images: any[]): Promise<number> {
 		const blocks: Array<{ b64: string; mime: string }> = [];
 		for (const im of images) {
 			if (!im?.data) continue;
@@ -1409,12 +1430,32 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			} catch {}
 		}
 		if (!blocks.length) return 0;
+		const details: { count: number; images: Array<{ b64: string; mime: string }>; ascii?: string[] } = {
+			count: blocks.length,
+			images: blocks,
+		};
+		if (!getCapabilities().images && (await chafaAvailable())) {
+			const arts: string[] = [];
+			for (const b of blocks) {
+				const tmp = writeImageTmp({ type: "image", data: b.b64, mimeType: b.mime });
+				if (!tmp.valid) continue;
+				try {
+					const art = await chafaPreview(tmp.path);
+					if (art) arts.push(art);
+				} finally {
+					try {
+						unlinkSync(tmp.path);
+					} catch {}
+				}
+			}
+			if (arts.length) details.ascii = arts;
+		}
 		writeEntry(
 			ctx,
 			XMODEL_VIEW_MSG,
 			blocks.map((b) => ({ type: "image", data: b.b64, mimeType: b.mime })),
 			true,
-			{ count: blocks.length, images: blocks },
+			details,
 		);
 		return blocks.length;
 	}

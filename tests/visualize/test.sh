@@ -92,6 +92,41 @@ EOF
 check "validate allows known CDNs → exit 0" 0 "$SCRIPT" validate "$TMP/cdn.html"
 check "validate catches @import/url() → exit 1" 1 "$SCRIPT" validate "$TMP/imports.html"
 
+# validate — one-file rule: plain <a href> links, SVG fragment refs and data: URIs
+# are fine; popular CDNs (including JS module imports) are fine.
+cat > "$TMP/links.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>.x{clip-path:url(#c)}body{background:url("data:image/svg+xml,%3Csvg/%3E")}</style></head>
+<body><svg><filter id="c"></filter></svg><a href="https://github.com/x">out</a><h1>ok</h1></body></html>
+EOF
+check "validate plain links + url(#frag) + data: → exit 0" 0 "$SCRIPT" validate "$TMP/links.html"
+
+cat > "$TMP/cdns.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<script src="https://unpkg.com/d3@7"></script>
+<link href="https://fonts.googleapis.com/css2?family=x" rel="stylesheet">
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs";
+</script></head>
+<body><h1>CDNs ok</h1></body></html>
+EOF
+check "validate popular CDNs + js module import → exit 0" 0 "$SCRIPT" validate "$TMP/cdns.html"
+
+# validate — local sibling files and unknown hosts break the single file.
+cat > "$TMP/localdep.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<script src="app.js"></script><link rel="stylesheet" href="style.css"></head>
+<body><img src="pic.png"><h1>local</h1></body></html>
+EOF
+check "validate local sibling files → exit 1" 1 "$SCRIPT" validate "$TMP/localdep.html"
+
+cat > "$TMP/unknownhost.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<script src="https://assets.random-host.example/x.js"></script></head>
+<body><h1>unknown</h1></body></html>
+EOF
+check "validate unknown external host → exit 1" 1 "$SCRIPT" validate "$TMP/unknownhost.html"
+
 # lint — style taste-gate (AI-generated tells)
 cat > "$TMP/stylish.html" <<'EOF'
 <!doctype html><html><head><meta charset="utf-8"><title>t</title>
