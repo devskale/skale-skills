@@ -1,7 +1,7 @@
 ---
 name: improve-ux
-description: Improve UI/UX of web interfaces by grounding every change in curated example sites and design references. Use when polishing a component, page, or design system - visual hierarchy, spacing, motion, empty states, accessibility, copy.
-version: 0.3.0
+description: Improve UI/UX of web interfaces by grounding every change in curated example sites and design references — with a ratings loop and findings ledger that make passes progressive (rate/ledger commands). Use when polishing a component, page, or design system - visual hierarchy, spacing, motion, empty states, accessibility, copy.
+version: 0.4.0
 ---
 
 # improve-ux
@@ -56,15 +56,25 @@ deferred items go to the ledger. Every change cites its source in one clause:
 `rodney`, plus axe-core for a11y. Not done until verified.
 
 ### 6. Record
-- **Sites:** update ratings (protocol in SITES.md) — `helped` only for changes kept.
-- **Target:** update the findings ledger — statuses, severities, deferred items
-  become the next pass's starting point.
+- **Sites:** `improve-ux rate <site> --helped` per site used — `--helped` only when a
+  change was kept (protocol: [references/SITES.md](references/SITES.md)).
+  `improve-ux rate --top` ranks by helped-ratio → pick order for the next run.
+- **Target:** `improve-ux ledger add "<issue>" --severity blocker|major|minor
+  --citation "WCAG 2.5.5" [--fix …] [--status fixed]` — ids F<n> stay monotonic;
+  `improve-ux ledger show` starts the next pass at the open items
+  ([references/ledger.md](references/ledger.md)). The command warns when a pass
+  exceeds the ~7-changes cap.
 
 ## Keep the list fresh (update feature)
 
 ```bash
 improve-ux discover [--x]     # web-search (and X via peep) for new UX reference sites
 improve-ux add <url> "<focus>" --group <heading>   # verify + append to SITES.md
+improve-ux rate <site> [--helped] [--note "…"]    # ratings loop (SITES.md protocol)
+improve-ux rate --top                             # sites by helped-ratio → pick order
+improve-ux ledger init <name> [--stack "…"]       # findings ledger per target
+improve-ux ledger add "<issue>" [--severity S] [--citation C] [--fix F] [--status fixed]
+improve-ux ledger show [target]                    # open items = next pass's start
 ```
 
 `discover` prints candidate rows (deduped against SITES.md and the discovery

@@ -19,7 +19,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
 | viewimg | `viewimg img.jpg [--open]` | ~16 | Show an image in the terminal (view-only, no VLM) |
 | pdf2md | `pdf2md document.pdf` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
-| improve-ux | `improve-ux discover/add` | ~50 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger, site discovery |
+| improve-ux | `improve-ux discover/add/rate/ledger` | ~50 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
 
 Counts are approximate (`~`); suites include honest network-skip counters — a WARN
 does not count as a pass. `tests/` also has `imagegen` (tests `extensions/imagegen.ts`),
