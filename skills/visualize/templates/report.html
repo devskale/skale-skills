@@ -5,19 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>{{TITLE}} — report</title>
 <style>
-:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5}
+:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5;
+      --cat-1:#5e7a9b;--ok:#15803d;--warn:#b45309;--bad:#b91c1c}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.6}
 .report{max-width:52rem;margin:0 auto;padding:3rem 1.5rem 4rem}
-.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .4rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--cat-1);margin:0 0 .4rem}
 h1{font-size:1.9rem;margin:0 0 .3rem;letter-spacing:-.02em;font-weight:650}
 .sub{color:var(--muted);margin:0}
 .meta{color:var(--muted);font-size:.85rem;margin-top:.6rem}
 .exec-summary{background:#fff;border:1px solid var(--line);border-radius:.5rem;padding:1.25rem 1.5rem;margin:1.5rem 0 2rem}
 .exec-summary h2{font-size:1.05rem;margin-top:0}
 .findings li{margin-bottom:.5rem}
+.sev{font-weight:600;font-size:.85em;white-space:nowrap}
+.sev.ok{color:var(--ok)}.sev.warn{color:var(--warn)}.sev.bad{color:var(--bad)}
 section h2{font-size:1.2rem;font-weight:650;margin:2.5rem 0 .75rem;scroll-margin-top:1rem}
-section h2 .n{font-weight:650;color:var(--muted);margin-right:.5rem}
+section h2 .n{font-weight:650;color:var(--cat-1);margin-right:.5rem}
 .recs li{margin-bottom:.6rem}
 .toc{background:#fff;border:1px solid var(--line);border-radius:.4rem;padding:1rem 1.5rem;margin:1.5rem 0}
 .toc ul{list-style:none;margin:0;padding:0}
@@ -52,9 +55,9 @@ th{background:#fff;font-weight:600}
 <section id="summary" class="exec-summary">
   <h2>Executive summary</h2>
   <ul class="findings">
-    <li><strong>{{Finding 1}}</strong> — {{one line}}.</li>
-    <li><strong>{{Finding 2}}</strong> — {{one line}}.</li>
-    <li><strong>{{Finding 3}}</strong> — {{one line}}.</li>
+    <li><strong>{{Finding 1}}</strong> — {{one line}}. <span class="sev bad">{{critical}}</span></li>
+    <li><strong>{{Finding 2}}</strong> — {{one line}}. <span class="sev warn">{{at risk}}</span></li>
+    <li><strong>{{Finding 3}}</strong> — {{one line}}. <span class="sev ok">{{healthy}}</span></li>
   </ul>
 </section>
 
@@ -67,8 +70,8 @@ th{background:#fff;font-weight:600}
 <section id="recs">
   <h2>Recommendations</h2>
   <ol class="recs">
-    <li><strong>{{Do X}}</strong> — {{because Y}}. (priority: {{high}})</li>
-    <li><strong>{{Do Z}}</strong> — {{because W}}. (priority: {{medium}})</li>
+    <li><strong>{{Do X}}</strong> — {{because Y}}. (priority: <span class="sev bad">high</span>)</li>
+    <li><strong>{{Do Z}}</strong> — {{because W}}. (priority: <span class="sev warn">medium</span>)</li>
   </ol>
 </section>
 

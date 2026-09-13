@@ -13,7 +13,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | vtd | `vtd transcript --url '...'` | ~49 | Video/audio/transcript downloader (yt-dlp) |
 | rodney | `rodney start/open/stop` | ~37 | Headless Chrome automation |
 | surf | `surf open/click/read` (macOS) | ~36 | Drive your real, logged-in Chrome via AppleScript |
-| visualize | `visualize open/share/validate` | ~36 | Render any set of things as ONE self-contained HTML + share URL |
+| visualize | `visualize open/share/validate` | ~52 | Render any set of things as ONE self-contained HTML + share URL |
 | d2 | `d2 validate/render` | ~41 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
 | figure | `node build/build_figures.mjs` | ~7 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |

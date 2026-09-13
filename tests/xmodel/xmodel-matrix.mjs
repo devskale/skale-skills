@@ -137,6 +137,13 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	check("b: pass-through (undefined)", res === undefined);
 }
 
+// ── (b2) understand:"<focus>" + VISION model → pass-through too ────────────
+{
+	const ctx = makeCtx(VISION);
+	const res = await fireToolResult(readEvent({ path: "img.png", understand: "check the wheels" }), ctx);
+	check("b2: focus string + vision model → pass-through", res === undefined);
+}
+
 // ── (c) understand:true + non-vision → no VLM configured → handover fallback
 {
 	const ctx = makeCtx(NON_VISION);
