@@ -199,6 +199,24 @@ echo ""
 echo ""
 echo "=== Results ==="
 echo "  Passed: $PASS"
+# ── 16. Noise Module Tests ───────────────────────────────────────────────
+echo "[16] Noise module..."
+
+# Run noise/ tests (absoluter Pfad)
+if python3 /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_noise.py > /dev/null 2>&1; then
+    NOISE_PASS=$(python3 /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_noise.py 2>&1 | grep -c '✓')
+    PASS=$((PASS + NOISE_PASS))
+    echo "  ✓ Noise module tests ($NOISE_PASS passed)"
+else
+    FAIL=$((FAIL + 1))
+    echo "  ❌ Noise module tests failed"
+    python3 /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_noise.py 2>&1 | head -20
+fi
+echo ""
+
+# ── Results ──────────────────────────────────────────────────────────────
+echo "=== Results ==="
+echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
 echo "  Warned/skipped (network): $WARN"
 if [ $FAIL -gt 0 ]; then
