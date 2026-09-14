@@ -22,6 +22,7 @@ The default auto-selects the best tool per site. Don't add flags you don't need.
 | `fetch-url "url" --tool auto --clean -v` | `fetch-url "url"` |
 
 - **Output is already cleaned** (empty lines collapsed). No `head`, no `2>&1`.
+- **No URL yet?** `web-search "query"` finds the page first — the two are a combo: search finds, fetch-url reads.
 - **`fetch-url: command not found`?** Install once (below) or use the full path `~/.local/bin/fetch-url "url"`. Don't prefix every call with `export PATH=`.
 - **Tool auto-selects per site** (Reddit→w3m, GitHub→jina, StackOverflow→markdown). Reach for `--tool` only when the default output is poor.
 - **JS/Cloudflare-protected site?** `fetch-url "url" --tool chrome` (or `--tool markdown --md-method browser`).

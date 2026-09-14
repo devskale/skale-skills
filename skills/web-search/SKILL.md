@@ -23,6 +23,7 @@ The default is the right call ~90% of the time. Don't add flags you don't need.
 | `web-search "q" --json \| head` | `web-search "q"` |
 
 - **Output is already concise** (10 results, markdown). No `head`, no `2>&1`.
+- **Need the full page, not just the snippet?** `fetch-url "<url>"` — the two are a combo: search finds, fetch-url reads.
 - **`web-search: command not found`?** Install once (below) or use the full path `~/.local/bin/web-search "q"`. Don't prefix every call with `export PATH=`.
 - **Want fewer/more results?** `--max 5` / `--max 20` — but the default 10 is usually right.
 - **Want images/news/video?** `--categories images` / `--categories news`.
