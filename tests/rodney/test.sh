@@ -29,6 +29,10 @@ assert "references/debugging.md"        "[ -f references/debugging.md ]"
 assert "references/dev-workflow.md"     "[ -f references/dev-workflow.md ]"
 assert "references/examples.md"         "[ -f references/examples.md ]"
 assert "references/network-interception.md" "[ -f references/network-interception.md ]"
+assert "scripts/rodney-cleanup.sh"     "[ -f scripts/rodney-cleanup.sh ]"
+assert "scripts/rodney-ps.sh"          "[ -f scripts/rodney-ps.sh ]"
+assert "scripts/README.md"              "[ -f scripts/README.md ]"
+assert "references/TROUBLESHOOTING.md" "[ -f references/TROUBLESHOOTING.md ]"
 echo ""
 
 # ── 2. SKILL.md frontmatter ───────────────────────────────────────────
@@ -46,6 +50,10 @@ assert "examples.md linked"    "grep -q 'references/examples.md' SKILL.md"
 assert "debugging.md linked"   "grep -q 'references/debugging.md' SKILL.md"
 assert "dev-workflow.md linked" "grep -q 'references/dev-workflow.md' SKILL.md"
 assert "network-interception.md linked" "grep -q 'references/network-interception.md' SKILL.md"
+assert "TROUBLESHOOTING.md linked"     "grep -q 'references/TROUBLESHOOTING.md' SKILL.md"
+assert "scripts/README.md linked"      "grep -q 'scripts/README.md' SKILL.md"
+assert "cleanup utility mentioned"     "grep -q 'rodney-cleanup' SKILL.md"
+assert "ps utility mentioned"          "grep -q 'rodney-ps' SKILL.md"
 echo ""
 
 # ── 4. Command available ─────────────────────────────────────────────
@@ -115,9 +123,19 @@ echo ""
 # ── 9. No stale Chrome processes ─────────────────────────────────────
 echo "[9] Cleanup check..."
 # rodney stop should have killed Chrome. Check no orphan.
+# NB: rodney uses Chromium with --remote-debugging-port=0, so match on the
+# .rodney user-data-dir, not "chrome.*remote-debugging".
 sleep 1
-ORPHANS=$(pgrep -f "chrome.*remote-debugging" 2>/dev/null | wc -l || echo 0)
-assert "no orphan Chrome" "[ $ORPHANS -eq 0 ]"
+ORPHANS=$(pgrep -f "user-data-dir=.*\\.rodney" 2>/dev/null | wc -l || echo 0)
+assert "no orphan Chromium" "[ $ORPHANS -eq 0 ]"
+echo ""
+
+# ── 10. Process utilities ────────────────────────────────────────────
+echo "[10] Process utilities..."
+assert "rodney-cleanup runs"        "scripts/rodney-cleanup.sh >/dev/null 2>&1"
+assert "rodney-cleanup --json valid" "scripts/rodney-cleanup.sh --json | grep -q '\"total_chrome_processes\"'"
+assert "rodney-ps runs"             "scripts/rodney-ps.sh >/dev/null 2>&1"
+assert "rodney-ps --json valid"     "scripts/rodney-ps.sh --json | grep -q '\"managed_pid\"'"
 echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────

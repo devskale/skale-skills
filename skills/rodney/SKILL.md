@@ -283,9 +283,45 @@ Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.
 - **`js` takes a single string argument** — pass the whole expression as ONE quoted argument, including newlines: `rodney js '1 +\n2'` works. What fails is passing multiple separate args (`rodney js '1' '2'` → SyntaxError, only the first is wrapped). For complex logic, use an IIFE: `rodney js "(function(){ var els = document.querySelectorAll('.item'); return els[0].innerText; })()"`
 - **Selectors are CSS only** — no XPath. Use `rodney js` for complex queries.
 - **`start` while already running is NOT a no-op** — it launches a *second* Chrome process (new PID, new debug URL) and overwrites `state.json`, orphaning the old Chrome (which keeps running). Check first with `rodney status`, or `rodney stop` before re-`start`. In scripts, guard with `rodney status || rodney start`.
+- **Clean up stale/orphan processes** with the bundled utilities (below).
 - **`open` auto-adds `http://`** — for `https://` URLs, include the scheme explicitly.
 - **Exit codes**: 0 = success, 1 = assertion failed, 2 = error (bad args, timeout, no browser).
 - **Heavy React apps** (booking sites, SPAs with autocomplete dropdowns) may timeout on `click`/`input`. Workaround: use the site's public API directly (most airlines, travel sites have one), or use `rodney js` to set values programmatically.
+
+## Process visibility & cleanup
+
+Rodney launches its own **headless Chromium** (downloaded via go-rod into
+`~/.cache/rod/browser/...`), identified by its `--user-data-dir=*.rodney` — not by
+"chrome" in the name. Two bundled utilities give you process visibility and zombie
+prevention (they live in `skills/rodney/scripts/`, symlinked as `rodney-ps` /
+`rodney-cleanup`):
+
+```bash
+rodney-ps --json           # managed vs orphan Chromium processes (machine-readable)
+rodney-cleanup --clean     # remove stale state + kill orphans + purge old /tmp dirs
+rodney-cleanup --json      # quick health check: is a browser running? how many orphans?
+```
+
+- **Check before `start`**: `rodney status || rodney start` avoids orphaning a live browser.
+- **`--clean` is non-interactive** and only ever touches rodney-owned processes
+  (`.rodney` user-data-dir) and `/tmp/chrome-*` dirs older than 24h — never your real Chrome.
+- Handles both **global** (`~/.rodney/`) and **local** (`./.rodney/`) sessions.
+
+## Retry patterns
+
+Rodney exit codes: `0` = success, `1` = assertion/check failed (retry candidate),
+`2` = error (bad args, timeout, no browser — **fix, don't retry**). For flaky
+timing/network steps, retry in a shell loop instead of re-inspecting each time:
+
+```bash
+for i in 1 2 3; do
+    rodney waitstable && rodney click "#submit" && break
+    sleep 2
+ done
+```
+
+Adapt strategy after 3+ same failures, escalate after 5+. Full decision matrix:
+**[references/TROUBLESHOOTING.md](references/TROUBLESHOOTING.md)**.
 
 ## References
 
@@ -295,3 +331,5 @@ Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.
 - **[references/debugging.md](references/debugging.md)** — Non-obvious debugging patterns: screenshot time-series, form validation checks, exit code chaining, and visible-mode debugging.
 - **[references/network-interception.md](references/network-interception.md)** — Network mocking and blocking (`mock`/`block`): patterns, flags, and use cases for error-state/offline/deterministic testing.
 - **[references/dev-workflow.md](references/dev-workflow.md)** — Dev loop: reload-assess-iterate, page inspection without screenshots, DOM structure, accessibility tree, layout queries.
+- **[references/TROUBLESHOOTING.md](references/TROUBLESHOOTING.md)** — Exit codes, failure scenarios, stall detection, retry-vs-adapt decision matrix, cost-optimized retry.
+- **[scripts/README.md](scripts/README.md)** — Process-management utilities (`rodney-ps` / `rodney-cleanup`): why the `.rodney` user-data-dir filter matters, install, modes.
