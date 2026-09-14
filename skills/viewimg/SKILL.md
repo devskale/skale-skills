@@ -1,13 +1,28 @@
 ---
 name: viewimg
-description: Display an image in the terminal (view-only, no VLM). Renders the image as colorful block art with chafa, or opens it in a native window with `open` on macOS. Use when you or the agent want to SHOW an image to the user without analyzing it.
+description: DEPRECATED — use `read img.jpg` or `read_image` instead. Display an image in the terminal (view-only, no VLM). Renders the image as colorful block art with chafa, or opens it in a native window with `open` on macOS.
 version: 0.1.0
 ---
 
-# viewimg — show an image (view-only)
+# viewimg — **DEPRECATED** — use `read img.jpg` instead
+
+> **⚠️ DEPRECATED:** This skill is superseded by `read img.jpg` (native pi image display) + `read_image`/`/readimg` (VLM analysis). See [docs/image-display-deprecation.md](../../docs/image-display-deprecation.md) for the full migration guide.
+>
+> `viewimg` will be removed in a future release. No further development.
 
 Display an image in the terminal. **View-only — never analyzes, never fires the VLM.**
 Understanding is a separate, explicit step (`read_image` / `/readimg`).
+
+## Migration
+
+| Old | New |
+|-----|-----|
+| `viewimg img.jpg` | `read img.jpg` |
+| `viewimg img.jpg --open` | `open -a Preview img.jpg` (macOS) |
+| `viewimg img.jpg --size 40x20` | `read img.jpg` (auto-sizes) |
+| `viewimg img1.jpg img2.jpg --open` | `open -a Preview img1.jpg img2.jpg` (macOS) |
+
+See [migration guide](../../docs/image-display-deprecation.md) for details.
 
 ## Usage
 
@@ -32,9 +47,13 @@ viewimg <image-file>... [--size WxH] [--open] [--no-color] [--help]
 
 ## Why view-only?
 
-`read` and `viewimg` only **display**. Understanding is opt-in: use `read_image` (tool)
+`read img.jpg` only **displays**. Understanding is opt-in: use `read_image` (tool)
 or `/readimg` (command) when you actually need the image's contents. This keeps display
 instant and never spends tokens on an unrequested VLM call.
+
+> `viewimg` was the original CLI for display-only image viewing. `read img.jpg` is now the
+> canonical path — pixel-perfect TUI rendering, no chafa dependency, zero-token VLM handoff.
+> See [docs/image-display-deprecation.md](../../docs/image-display-deprecation.md).
 
 ## Install
 
@@ -44,3 +63,6 @@ install.bat       # Windows
 ```
 
 Requires `chafa` (brew install chafa) for in-terminal rendering; `open` is built into macOS.
+
+> **No-op install:** since `read img.jpg` replaces this skill, running `install.sh` is
+> optional. Only needed if you want the legacy `viewimg` shell command for backward compat.

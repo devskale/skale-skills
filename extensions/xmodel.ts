@@ -817,8 +817,8 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		promptSnippet: "Analyze an image file with a vision model to understand its contents",
 		promptGuidelines: [
 			"read_image is the UNDERSTAND path: prefer `read` with understand:true for the same effect; call this tool when understanding an image's contents is actually required for the task (extract text, diagnose a screenshot, interpret a chart) or when the provider strips the read param. " +
-				"NEVER call read_image autonomously right after a plain `read`/`viewimg` \u2014 those are display-only and fast, and running the VLM is slow and costs tokens. " +
-				"If the user just asks to read/view/show an image, use read/viewimg and do nothing more. Use thinking:'high' only when the user asks for deep/thorough image analysis.",
+				"NEVER call read_image autonomously right after a plain `read` \u2014 it is display-only and fast, and running the VLM is slow and costs tokens. `viewimg` (deprecated) was the legacy CLI for display-only; use `read img.jpg` instead. " +
+				"If the user just asks to read/view/show an image, use `read img.jpg` and do nothing more. Use thinking:'high' only when the user asks for deep/thorough image analysis.",
 		],
 		parameters: Type.Object({
 			path: Type.Optional(Type.String({ description: "Path to a local image file (png, jpg, gif, webp, bmp). Provide path OR url." })),
@@ -981,7 +981,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				}
 			} else {
 				c.addChild(new Spacer(1));
-				c.addChild(new Text(theme.fg("muted", "(not renderable here — use viewimg <path> or viewimg <path> --open)"), 0, 0));
+				c.addChild(new Text(theme.fg("muted", "(not renderable here — use `read <path>` or `read <path>` with `open`/`chafa`)"), 0, 0));
 			}
 			return c;
 		},

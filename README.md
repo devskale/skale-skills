@@ -158,7 +158,7 @@ vtd transcript --url 'https://youtube.com/watch?v=…'
 | **[youtube](skills/youtube)** | YouTube search via Invidious with auto-fallback |
 | **[video-transcript-downloader](skills/video-transcript-downloader)** | Download video/audio/subtitles/transcripts (yt-dlp) |
 | **[d2](skills/d2)** | Diagrams-as-code with the D2 language |
-| **[viewimg](skills/viewimg)** | Show image(s) in the terminal (view-only, no VLM); `--open` opens all in one window |
+| ~~**[viewimg](skills/viewimg)**~~ | **DEPRECATED** — use `read img.jpg` (canonical) or `read_image`/`/readimg` for VLM analysis. [Migration guide](docs/image-display-deprecation.md) |
 | **[visualize](skills/visualize)** | Render any set of things as ONE self-contained HTML — locally or via share URL |
 | **[peep](skills/peep)** | Read X/Twitter via the `peep` CLI (timelines, threads, search, bookmarks) |
 | **[improve-ux](skills/improve-ux)** | UI/UX improvements grounded in curated reference sites, with a rating loop |

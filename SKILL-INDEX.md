@@ -19,13 +19,19 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 
 ## Global Packages
 
-- `git:github.com/devskale/skale-skills (15 skills)`
+- `npm:pi-mcp-adapter`
+- `npm:@ogulcancelik/pi-herdr`
+- `npm:@ff-labs/pi-fff`
+- `git:github.com/devskale/skale-skills (10 skills, 4 extensions)`
 
 ## Skills
 
 ### Active
 
-_None._
+| Status | Name | Description | Source |
+|--------|------|-------------|--------|
+| 🟢 global | **improve-ux** | Improve UI/UX of web interfaces by grounding every change in curated example sites and design ref... | `~/.pi/agent/skills/improve-ux` |
+| 🟢 global | **peep** | Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/repli... | `~/.pi/agent/skills/peep` |
 
 ### Available (not installed)
 
@@ -34,12 +40,11 @@ _None._
 | ⚪ available | **d2** | Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the ... |
 | ⚪ available | **fetch-url** | Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jin... |
 | ⚪ available | **figure** | Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec ... |
-| ⚪ available | **improve-ux** | Improve UI/UX of web interfaces by grounding every change in curated example sites and design ref... |
-| ⚪ available | **peep** | Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/repli... |
+| ⚪ available | **pdf2md** | Convert PDFs to clean Markdown via the skale pdf API — pdfplumber (local, free) for text-layer PD... |
 | ⚪ available | **rodney** | Drive a persistent headless Chrome from the CLI for web scraping, screenshots, form filling, PDF ... |
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
-| ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (sectioned by chapters) ... |
-| ⚪ available | **viewimg** | Display an image in the terminal (view-only, no VLM). Renders the image as colorful block art wit... |
+| ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (no timestamps by defaul... |
+| ⚪ available | **viewimg** | DEPRECATED — use `read img.jpg` or `read_image` instead. Display an image in the terminal (view-o... |
 | ⚪ available | **visualize** | Render any set of things as ONE self-contained HTML document and give the user a URL — and genera... |
 | ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
 | ⚪ available | **youtube** | Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later tra... |
