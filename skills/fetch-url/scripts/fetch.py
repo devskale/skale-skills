@@ -17,6 +17,10 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+from noise import NoiseDetector
+
+_DETECTOR = NoiseDetector()
+
 # Optional dependencies with graceful fallback
 requests = None
 try:
@@ -383,22 +387,11 @@ def _html_to_text(html: str) -> str:
     if typo3:
         html = typo3.group(1)
     else:
-        # No TYPO3 markers — strip nav/header/footer for cleaner output
-        for tag in ['header', 'nav', 'footer']:
-            html = re.sub(rf'<{tag}[^>]*>.*?</{tag}>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        # No TYPO3 markers — strip noise tags (nav, header, footer, aside, ...)
+        html = _DETECTOR.clean(html)
 
     # Remove HTML comments
     html = re.sub(r'<!--.*?-->', '', html, flags=re.DOTALL)
-
-    # Remove cookie consent, banner, GDPR overlays (aggressive multi-line removal)
-    for kw in ['cookie', 'consent', 'cookiebot', 'gdpr', 'popup', 'overlay',
-                'iab', 'cc-window', 'onetrust', 'cmp']:
-        html = re.sub(rf'<[^>]*{kw}[^>]*>.*?(?:</div>|</section>|</aside>)', '', html,
-                       flags=re.DOTALL | re.IGNORECASE)
-
-    # Remove script, style, svg, noscript tags
-    for tag in ['script', 'style', 'svg', 'noscript']:
-        html = re.sub(rf'<{tag}[^>]*>.*?</{tag}>', '', html, flags=re.DOTALL | re.IGNORECASE)
 
     # Convert block-level tags to newlines, inline tags to spaces
     html = re.sub(r'<br\s*/?>', '\n', html, flags=re.IGNORECASE)
