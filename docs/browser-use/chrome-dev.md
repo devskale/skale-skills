@@ -143,9 +143,21 @@ Full comparison → [browser-tools-comparison.md](browser-tools-comparison.md)
 
 ## Troubleshooting
 
-### "Could not find DevToolsActivePort" (stale file or flag-launched Chrome)
+### "Could not find DevToolsActivePort" — diagnose FIRST, the error can lie
 
-Agent-inflicted failure modes (2026-09-12 incident — recorded so it never repeats):
+Probe before any restart (2026-09-14 — this ladder settles it):
+
+```bash
+lsof -nP -iTCP:9222 -sTCP:LISTEN             # Chrome listening? if NOT → failure modes below
+curl -s http://localhost:9222/json/version   # MUST be localhost — 127.0.0.1 sends the wrong
+                                             # Host header (DNS-rebinding protection) → always empty
+#   empty body (Content-Length:0) = consent dialog PENDING (Chrome restarted, dialog un-answered)
+#                                    → chrome-autoallow arm → reconnect. THE COMMON CASE.
+#                                      No restart, no rm needed.
+#   JSON with "Browser"            = gate open → just reconnect the MCP server.
+```
+
+Agent-inflicted failure modes (2026-09-12 incident — recorded so it never repeats; only for the "nothing listens" case):
 
 1. **Stale `DevToolsActivePort`** — the file names a port/GUID of a *dead*
    browser. The server reads it, fails the handshake, reports "not found".
@@ -156,6 +168,11 @@ Agent-inflicted failure modes (2026-09-12 incident — recorded so it never repe
    consent-dialog path, a *different* mechanism from `--autoConnect`. It does
    not produce the file and can wedge the session. Never launch Chrome with
    debug flags when the server config uses `--autoConnect`.
+
+Note: `chrome-autoallow status` can print a **dead pid** as „armed“ (the
+watcher self-stopped long ago) — don't trust it, just `arm` again (idempotent,
+self-stops after 10 min idle / 6 h deadline). Arm **before** every attach
+attempt, also for MCP-server connects after a Chrome restart.
 
 Also: `open -a … --args` applies args **only on a cold start** (a running
 instance ignores them; a second same-bundle-id instance — e.g. a `/tmp`
