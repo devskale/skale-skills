@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# viewimg test suite
+# viewimg test suite — DEPRECATED
+# viewimg is superseded by `read img.jpg` (native pi image display).
+# This suite runs for backward-compat only — the skill is frozen.
+#
 #   bash tests/viewimg/test.sh
 set -uo pipefail
 cd "$(dirname "$0")/../.."

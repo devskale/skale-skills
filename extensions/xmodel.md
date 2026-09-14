@@ -80,9 +80,9 @@ fallbacks — also for strict providers that strip extra `read` parameters — a
 accepts `url` (downloads to ~/.cache/webimg/ automatically), plus `thinking` + `focus`
 params for deep, targeted analysis.
 
-`generate_image` and `viewimg` (CLI) stay on the display axis; generated images still feed
-vision-capable models (they iterate on what they drew). Only analysis-oriented tools
-(screenshots, MCP captures) still auto-delegate.
+`generate_image` and `viewimg` (CLI, **deprecated** — use `read img.jpg` instead) stay on the
+display axis; generated images still feed vision-capable models (they iterate on what they drew).
+Only analysis-oriented tools (screenshots, MCP captures) still auto-delegate.
 
 | Mode | Behaviour |
 |---|---|

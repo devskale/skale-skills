@@ -17,7 +17,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | d2 | `d2 validate/render` | ~41 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
 | figure | `node build/build_figures.mjs` | ~7 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
-| viewimg | `viewimg img.jpg [--open]` | ~16 | Show an image in the terminal (view-only, no VLM) |
+| ~~viewimg~~ | ~~`viewimg img.jpg [--open]`~~ | ~~~16~~ | **DEPRECATED** — use `read img.jpg` instead. [Migration guide](docs/image-display-deprecation.md) |
 | pdf2md | `pdf2md document.pdf` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
 | improve-ux | `improve-ux discover/add/rate/ledger` | ~50 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
 
@@ -46,9 +46,10 @@ Note: pi reads skills from its **package copy** at `~/.pi/agent/git/github.com/d
 
 Default activation: **`web-search` + `fetch-url`** skills (extensions: heartbeat, xmodel, statusline, imagegen).
 
-> **View vs. understand images:** `read` and the `viewimg` skill are **display-only** — they show an
-> image inline / in the terminal but **never fire the VLM**. Understanding is **opt-in**: the `read_image`
+> **View vs. understand images:** `read img.jpg` is **display-only** (canonical, native pi image display) — it shows an
+> image inline / in the terminal but **never fires the VLM**. Understanding is **opt-in**: the `read_image`
 > tool or `/readimg` command runs the vision model. `xmodel` is still active and powers this separation.
+> `viewimg` (deprecated) was the legacy CLI; use `read img.jpg` instead. [Migration guide](docs/image-display-deprecation.md).
 
 Full install, activate, filter, project-scope, update, and conflict docs: **[docs/installation.md](docs/installation.md)**.
 
@@ -151,7 +152,7 @@ bash tests/youtube/test.sh
 bash tests/video-transcript-downloader/test.sh
 bash tests/rodney/test.sh
 bash tests/surf/test.sh              # live checks skip off-macOS
-bash tests/viewimg/test.sh
+bash tests/viewimg/test.sh           # DEPRECATED — skill is frozen, tests for backward-compat only
 bash tests/pdf2md/test.sh             # live conversion skips without token
 bash tests/improve-ux/test.sh         # structure, router, add; live discover WARNs offline
 bash tests/visualize/test.sh
