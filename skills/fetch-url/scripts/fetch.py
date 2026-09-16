@@ -17,9 +17,10 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from noise import NoiseDetector
+from noise import NoiseDetector, TextNoiseCleaner
 
 _DETECTOR = NoiseDetector()
+_TEXT_CLEANER = TextNoiseCleaner()
 
 # Optional dependencies with graceful fallback
 requests = None
@@ -61,6 +62,7 @@ STRONG_ERROR_PATTERNS = [
     r"just a moment",
     r"checking your browser",
     r"please enable javascript",
+    r"enable javascript and cookies",  # Cookie-Wall (z.B. w3.org via w3m)
     r"security verification",
     r"ray id:",
     r"you don.t have permission",
@@ -714,7 +716,10 @@ Examples:
             verbose=args.verbose
         )
         if do_clean:
-            content = clean_output(content)
+            # Noise-Strip VOR dem Empty-Line-Squeeze: strukturelles Rauschen
+            # (Nav-Listen, Consent-Banner, References-URL-Listen) entfernen.
+            # --no-clean liefert den rohen Output komplett unangetastet.
+            content = clean_output(_TEXT_CLEANER.clean(content))
         print(content)
     except (ValueError, RuntimeError) as e:
         print(f"Error: {e}", file=sys.stderr)

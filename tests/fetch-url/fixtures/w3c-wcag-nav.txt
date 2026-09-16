@@ -1,0 +1,72 @@
+[1]Skip to content
+
+   [2]WCAG 2.1 Understanding Docs
+
+   Informative explanations, not required to meet WCAG
+   [3]About WCAG Understanding Docs
+
+     * [4]All Understanding Docs
+     * [5]Guideline: Distinguishable
+     * [6]Next SC: Audio Control
+
+   Page Contents
+     * [7]In Brief
+     * [8]Success Criterion
+     * [9]Intent
+     * [10]Benefits
+     * [11]Examples
+     * [12]Related Resources
+     * [13]Techniques
+
+Understanding [14]SC 1.4.1 Use of Color (Level A)
+
+In Brief
+
+   Goal
+          Color is not the only way of distinguishing information.
+
+   What to do
+          Use information in addition to color, such as shape or text, to
+          convey meaning.
+          convey meaning.
+
+   Why it's important
+          Not everyone sees colors or sees them the same way.
+
+Success Criterion (SC)
+
+   Color is not used as the only visual means of conveying information,
+   indicating an action, prompting a response, or distinguishing a visual
+   element.
+
+   Note
+
+   This success criterion addresses color perception specifically. Other
+   forms of perception are covered in [15]Guideline 1.3 including
+   programmatic access to color and other visual presentation coding.
+
+Intent
+
+   The intent of this success criterion is to ensure that all sighted
+   users can access information that is conveyed by color differences,
+   that is, by the use of color where each color has a meaning assigned to
+   it. If the information is conveyed through color differences in an
+   image (or other non-text format), the color may not be seen by users
+   with color deficiencies. In this case, providing the information
+   conveyed with color through another visual means ensures users who
+   cannot see color can still perceive the information.
+
+   Color is an important asset in the design of web content, enhancing its
+   aesthetic appeal, its usability, and its accessibility. However, some
+   users have difficulty perceiving color. People with partial sight often
+References
+
+   1. https://www.w3.org/WAI/standards-guidelines/wcag/
+   2. https://www.w3.org/WAI/standards-guidelines/wcag/principles/
+   3. https://www.w3.org/TR/WCAG21/#distinguishable
+   4. https://www.w3.org/WAI/WCAG21/Understanding/understanding.html
+   5. https://www.w3.org/WAI/WCAG21/quickref/#use-of-color
+
+   Hidden links:
+   7. https://www.w3.org/
+   8. https://www.w3.org/WAI/
