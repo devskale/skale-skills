@@ -179,6 +179,7 @@ echo ""
 # ── 14. SKILL.md ──────────────────────────────────────────────────────
 echo "[14] SKILL.md..."
 assert "name: fetch-url"    "grep -q '^name: fetch-url' SKILL.md"
+assert "SKILL.md under 100 lines" "[ \"$(wc -l < SKILL.md | tr -d ' ')\" -le 99 ]"
 assert "description"        "grep -q '^description:' SKILL.md"
 assert "version 2.6"        "grep -q 'version.*\"2\.' SKILL.md"
 assert "--update"           "grep -q '\-\-update' SKILL.md"
@@ -190,7 +191,7 @@ echo ""
 
 # ── 15. Version alignment ─────────────────────────────────────────────
 echo "[15] Version alignment..."
-TOML_V=$(grep '^version' pyproject.toml | head -1 | grep -o '[0-9][0-9.]*' | sed 's/\.0$//')
+TOML_V=$(grep '^version' pyproject.toml | head -1 | grep -o '[0-9][0-9.]*')
 SKILL_V=$(grep 'version' SKILL.md | head -1 | grep -o '[0-9][0-9.]*')
 assert "pyproject ($TOML_V) and SKILL.md ($SKILL_V) match" "[ '$TOML_V' = '$SKILL_V' ]"
 echo ""
@@ -211,6 +212,50 @@ else
     FAIL=$((FAIL + 1))
     echo "  ❌ Noise module tests failed"
     python3 /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_noise.py 2>&1 | head -20
+fi
+echo ""
+
+# ── 17. Text Noise Cleaner Tests (Nav/Cookie-Rauschen, Issue
+#      fetch-url-nav-cookie-noise) ─────────────────────────────────────
+echo "[17] Text noise cleaner (nav/consent)..."
+
+TEXTCLEAN="/Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_textclean.py"
+if python3 "$TEXTCLEAN" > /dev/null 2>&1; then
+    TC_PASS=$(python3 "$TEXTCLEAN" 2>&1 | grep -c '✓')
+    PASS=$((PASS + TC_PASS))
+    echo "  ✓ Text noise cleaner tests ($TC_PASS passed)"
+else
+    FAIL=$((FAIL + 1))
+    echo "  ❌ Text noise cleaner tests failed"
+    python3 "$TEXTCLEAN" 2>&1 | head -20
+fi
+
+# Fixtures vorhanden (Live-Fälle 2026-09-14, gekürzt)
+assert "fixture claude-docs-nav"  "[ -f /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/fixtures/claude-docs-nav.txt ]"
+assert "fixture w3c-wcag-nav"     "[ -f /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/fixtures/w3c-wcag-nav.txt ]"
+
+# Cookie-Wall als Strong-Error-Pattern (w3.org via w3m/markdown)
+COOKIEWALL=$(python3 -c "
+import sys; sys.path.insert(0, 'scripts')
+from fetch import is_valid_content
+print('reject' if not is_valid_content('Refresh (360 sec)\nEnable JavaScript and cookies to continue') else 'pass')
+") || true
+assert "cookie wall rejected" "[ '$COOKIEWALL' = 'reject' ]"
+echo ""
+
+# ── 18. Live-Smoke: Nav-Rauschen im w3m-Fallback ──────────────────────
+echo "[18] Live: nav-noise stripped (w3m)..."
+RESULT=$(python3 scripts/fetch.py "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices" --tool w3m 2>&1) || true
+if [ -n "$RESULT" ]; then
+    if echo "$RESULT" | head -5 | grep -q 'alternate'; then
+        FAIL=$((FAIL + 1))
+        echo "  FAIL: Nav-Soup am Output-Anfang"
+    else
+        PASS=$((PASS + 1))
+    fi
+else
+    echo "  WARN: kein w3m-Resultat (network?)"
+    WARN=$((WARN + 1))
 fi
 echo ""
 

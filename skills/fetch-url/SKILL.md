@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-version: "2.7.2"
+version: "2.8.0"
 description: "Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jina, markdown, chrome) with smart fallback. Use when the user wants to read an article, docs, or scrape text from a page. Triggers on: fetch this URL, read this page, extract the text, scrape this site, get the article content. Works on Reddit, StackOverflow, GitHub, docs sites, and more."
 ---
 
@@ -23,33 +23,16 @@ The default auto-selects the best tool per site. Don't add flags you don't need.
 
 - **Output is already cleaned** (empty lines collapsed). No `head`, no `2>&1`.
 - **No URL yet?** `web-search "query"` finds the page first — the two are a combo: search finds, fetch-url reads.
-- **`fetch-url: command not found`?** Install once (below) or use the full path `~/.local/bin/fetch-url "url"`. Don't prefix every call with `export PATH=`.
 - **Tool auto-selects per site** (Reddit→w3m, GitHub→jina, StackOverflow→markdown). Reach for `--tool` only when the default output is poor.
 - **JS/Cloudflare-protected site?** `fetch-url "url" --tool chrome` (or `--tool markdown --md-method browser`).
 
-## Install
-
-This skill ships in the **skale-skills** pi package — install the repo once:
+## Install & update
 
 ```bash
-pi install git:github.com/devskale/skale-skills
+pi install git:github.com/devskale/skale-skills   # the pi package (loads the skill)
+./install.sh                                      # run once from this dir → global `fetch-url` command (uv auto-installed)
+fetch-url --update / --selfcheck                  # manual update / version+date (auto-updates every 7d)
 ```
-
-That loads the skill into pi. To also get a global `fetch-url` shell command, run the installer from **this skill's own directory** (next to `SKILL.md`):
-
-```bash
-./install.sh        # → creates ~/.local/bin/fetch-url (uv auto-installed)
-install.bat         # Windows, same directory
-```
-
-## Update
-
-```bash
-fetch-url --update                       # Manual update (git pull + uv sync)
-fetch-url --selfcheck                    # Show version + last update date
-```
-
-Auto-updates in background every 7 days.
 
 ## Usage
 
@@ -67,7 +50,7 @@ fetch-url "URL" -v                        # Verbose (shows tool + redirects)
 |--------|-------------|
 | `--tool NAME` | w3m, lynx, jina, markdown, chrome, chawan, api |
 | `-v, --verbose` | Show tool selection and redirects |
-| `--no-clean` | Keep empty lines |
+| `--no-clean` | Keep empty lines AND skip noise stripping (raw output) |
 | `--update` | Update the skill now |
 | `--selfcheck` | Show version and last update |
 
@@ -86,34 +69,20 @@ Priority: free local tools first (w3m, lynx), then free APIs (jina, markdown), t
 
 ## Site-Specific Behavior
 
-| Site | Strategy |
-|------|----------|
-| Reddit | Auto-redirects to old.reddit.com, uses w3m |
-| HN | w3m (clean output) |
-| Wikipedia | jina (cleanest), lynx/w3m fallback |
-| GitHub | jina (clean markdown) |
-| StackOverflow | markdown (bypasses blocks) |
-| Medium | jina |
-| Cloudflare sites | Chrome headless |
+Auto-selects per site (Reddit → old.reddit + w3m, GitHub → jina, StackOverflow → markdown, Cloudflare/JS → chrome). Full per-site rankings: [references/sites.md](references/sites.md) — **read when** a site returns poor output.
 
 ## Configure (optional)
 
 ```bash
-# Credgoo for the 'api' tool (retrieve shared team token)
-credgoo FETCH_URL_BEARER
-
-# No 'credgoo' command? Install it once:
-uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
-
-# Optional browsers for better fallback
-brew install w3m lynx chawan
+credgoo FETCH_URL_BEARER            # for the 'api' tool (no credgoo? uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo")
+brew install w3m lynx chawan       # optional local browsers for better fallback
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| `fetch-url: command not found` | Add `~/.local/bin` to PATH |
+| `fetch-url: command not found` | Run `./install.sh` once (creates the `fetch-url` command on PATH), then call `fetch-url "url"` — never the full path and never `export PATH=`. |
 | gunzip error on GitHub | Use `--tool jina` |
 | Empty result | Try `--tool jina` or `--tool chrome` |
 | Dependency error | `fetch-url --update` |

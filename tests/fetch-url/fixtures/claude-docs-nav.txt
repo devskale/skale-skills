@@ -1,0 +1,140 @@
+#[1]alternate [2]alternate [3]alternate [4]alternate [5]alternate
+   [6]alternate [7]alternate [8]alternate [9]alternate [10]alternate
+   [11]alternate [12]alternate [13]alternate
+
+Cookie settings
+
+   We use cookies to deliver and improve our services, analyze site usage,
+   and if you agree, to customize or personalize your experience and
+   market our services to you. You can read our Cookie Policy [14]here.
+   (BUTTON) CustomizeCustomize Cookie Settings (BUTTON) RejectReject All
+   Cookies (BUTTON) AcceptAccept All Cookies
+
+   [15]
+   Claude Platform Docs
+
+     * [16]Messages
+     * [17]Managed Agents
+     * [18]Admin
+     * (BUTTON) Resources
+          + [19]Best practices
+          + [20]Models & pricing
+          + [21]CLI, SDKs, and libraries
+          + [22]Claude API skill
+          + [23]Release notes
+
+   [24]API reference
+   (BUTTON)  (BUTTON) English
+   [25]Console[26]Log in
+   (BUTTON) 
+
+   (BUTTON) SearchCtrlK
+   First steps
+   [27]Intro to Claude[28]Get your API key[29]Quickstart[30]Authentication
+   Building with Claude
+   [31]Features overview[32]Using the Messages API[33]Stop reasons and
+   fallback[34]Refusals and fallback[35]Fallback credit
+   Skills
+   [85]Overview[86]Quickstart[87]Best practices[88]Skills for
+   enterprise[89]Skills in the API
+   Claude on cloud platforms
+   [93]Amazon Bedrock (Opus 4.7 and later)[94]Amazon Bedrock (Opus 4.6 and
+   earlier)[95]Claude Platform on AWS[96]Google Cloud[97]Microsoft Foundry
+   [98]Console
+
+   (BUTTON) Copy page
+   (BUTTON) 
+
+   Learn how to write effective Skills that Claude can discover and use
+   successfully.
+
+   Good Skills are concise, well-structured, and tested with real usage.
+   This guide provides practical authoring decisions to help you write
+   Skills that Claude can discover and use effectively.
+
+   For conceptual background on how Skills work, see the [100]Skills
+   overview.
+
+Core principles (BUTTON) 
+
+Concise is key (BUTTON) 
+
+   The [101]context window is a public good. Your Skill shares the context
+   window with everything else Claude needs to know, including:
+     * The system prompt
+     * Conversation history
+     * Other Skills' metadata
+     * Your actual request
+
+   Not every token in your Skill has an immediate cost. At startup, only
+   the metadata (name and description) from all Skills is pre-loaded.
+   Claude reads SKILL.md only when the Skill becomes relevant, and reads
+   additional files only as needed. However, being concise in SKILL.md still
+   matters: once Claude loads it, every token competes with conversation
+   history and other context.
+
+   Default assumption: Claude is already very smart
+
+   Only add context Claude doesn't already have. Challenge each piece of
+   information:
+     * "Does Claude really need this explanation?"
+     * "Can I assume Claude knows this?"
+     * "Does this paragraph justify its token cost?"
+
+Set appropriate degrees of freedom (BUTTON) 
+
+   Match the level of specificity to the task's fragility and variability.
+
+   High freedom (text-based instructions):
+
+   Use when:
+     * Multiple approaches are valid
+     * Decisions depend on context
+     * Heuristics guide the approach
+
+   Medium freedom (pseudocode or scripts with parameters):
+
+   Use when:
+     * A preferred pattern exists
+     * Some variation is acceptable
+     * Configuration affects the approach
+
+   Learn
+
+     * [189]Blog
+     * [190]Courses
+     * [191]Use cases
+     * [192]Connectors
+     * [193]Customer stories
+     * [194]Engineering at Anthropic
+     * [195]Events
+
+   Help and security
+
+     * [199]Availability
+     * [200]Status
+     * [201]Support
+     * [202]Discord
+
+   Terms and policies
+
+     * [203]Privacy policy
+     * [204]Responsible disclosure policy
+     * [205]Terms of service: Commercial
+     * [206]Terms of service: Consumer
+     * [207]Usage policy
+
+   (BUTTON) Ask Docs
+
+References
+
+   Visible links:
+   1. https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+   2. https://platform.claude.com/docs/de/agents-and-tools/agent-skills/best-practices
+   3. https://platform.claude.com/docs/es/agents-and-tools/agent-skills/best-practices
+   4. https://status.claude.com/
+   5. https://support.claude.com/
+
+   Hidden links:
+   7. https://x.com/claudeai
+   8. https://www.linkedin.com/showcase/claude
