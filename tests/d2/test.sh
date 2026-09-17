@@ -26,6 +26,7 @@ echo ""
 # ── 1. File structure ─────────────────────────────────────────────────
 echo "[1] File structure..."
 assert "SKILL.md"             "[ -f SKILL.md ]"
+assert "SKILL.md under 100 lines" "[ \"$(wc -l < SKILL.md | tr -d ' ')\" -le 99 ]"
 assert "references/syntax.md" "[ -f references/syntax.md ]"
 assert "WORKLOG.md"           "[ -f WORKLOG.md ]"
 echo ""
