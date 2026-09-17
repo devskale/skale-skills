@@ -7,19 +7,19 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 
 | Skill | Command | Tests | What |
 |-------|---------|-------|------|
-| fetch-url | `fetch-url "url"` | ~49 | Web content extraction with smart fallback |
+| fetch-url | `fetch-url "url"` | ~89 | Web content extraction with smart fallback |
 | web-search | `web-search "query"` | ~38 | Web search via SearXNG + Duck API |
 | youtube | `youtube "query"` | ~38 | YouTube search via Invidious API with auto-fallback |
 | vtd | `vtd transcript --url '...'` | ~49 | Video/audio/transcript downloader (yt-dlp) |
 | rodney | `rodney start/open/stop` | ~37 | Headless Chrome automation |
 | surf | `surf open/click/read` (macOS) | ~36 | Drive your real, logged-in Chrome via AppleScript |
-| visualize | `visualize open/share/validate` | ~58 | Render any set of things as ONE self-contained HTML + share URL |
-| d2 | `d2 validate/render` | ~41 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
-| figure | `node build/build_figures.mjs` | ~7 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
+| visualize | `visualize open/share/validate` | ~124 | Render any set of things as ONE self-contained HTML + share URL |
+| d2 | `d2 validate/render` | ~46 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
+| figure | `node build/build_figures.mjs` | ~20 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
-| ~~viewimg~~ | ~~`viewimg img.jpg [--open]`~~ | ~~~16~~ | **DEPRECATED** — use `read img.jpg` instead. [Migration guide](docs/image-display-deprecation.md) |
+| ~~viewimg~~ | ~~`viewimg img.jpg [--open]`~~ | ~~~16~~ | **DEPRECATED** — use `read img.jpg` instead. Archived to `skills/deprecated/viewimg/`. [Migration guide](docs/image-display-deprecation.md) |
 | pdf2md | `pdf2md document.pdf` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
-| improve-ux | `improve-ux discover/add/rate/ledger` | ~50 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
+| improve-ux | `improve-ux discover/add/rate/ledger` | ~96 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
 
 Counts are approximate (`~`); suites include honest network-skip counters — a WARN
 does not count as a pass. `tests/` also has `imagegen` (tests `extensions/imagegen.ts`),
@@ -152,7 +152,7 @@ bash tests/youtube/test.sh
 bash tests/video-transcript-downloader/test.sh
 bash tests/rodney/test.sh
 bash tests/surf/test.sh              # live checks skip off-macOS
-bash tests/viewimg/test.sh           # DEPRECATED — skill is frozen, tests for backward-compat only
+bash tests/deprecated/viewimg/test.sh  # DEPRECATED — archived, tests for backward-compat only
 bash tests/pdf2md/test.sh             # live conversion skips without token
 bash tests/improve-ux/test.sh         # structure, router, add; live discover WARNs offline
 bash tests/visualize/test.sh
@@ -161,6 +161,7 @@ bash tests/figure/test.sh
 bash tests/peep/test.sh
 bash tests/imagegen/test.sh          # extensions/imagegen.ts
 bash tests/heartbeat/test.sh         # extensions/heartbeat.ts
+bash tests/skill-filter/test.sh      # scripts/skill-filter.sh (settings filter helper)
 bash tests/gdocs/test.sh             # live smoke, external gog CLI
 ```
 
@@ -220,6 +221,48 @@ Always-on hard rules:
 - Never modify code that tests observe — launcher flags (`--update`, `--selfcheck`), `.last-update`, env-var fallback order — to make a failing test pass. The test is the finding: report it.
 - A change to skill behavior (flag parsing, backend fallback, output format) MUST add an integration test: a real invocation of the command.
 - A correction that repeats in review goes into the Coding Guidelines; once stable and objectively checkable, automate it in `test.sh` and prune the prose.
+
+## Learning ambition (capture → docs → tests)
+
+This repo is a **living workshop**, not a finished product. Every session that surfaces a reusable lesson — a convention, a gotcha, a better pattern — should leave a trace. The pipeline, in order:
+
+1. **Capture** — when a lesson appears (a bug we hit, a convention we invented, a trap we stepped in), record it where it belongs: `AGENTS.md` for load-bearing rules the agent must follow, `docs/` for deep-dive guides, `CONVENTION.md` for coding guidelines.
+2. **Bake into docs** — turn the one-off fix into a documented convention so the next agent doesn't rediscover it. Prefer a short load-bearing rule over a long explanation.
+3. **Automate** — once a rule is stable and objectively checkable, encode it in a `test.sh` (or `scripts/lint.sh` for extensions) and prune the prose. The test is the enforcement; the doc becomes the pointer.
+4. **Prune** — when a skill or pattern is superseded, archive it (see Deprecation below) rather than leaving it to rot in place.
+
+**Guiding principle:** every real-world hit is an asset. If it cost us time or taught us something, it should outlive the session as a rule, a doc, or a test — not vanish with the conversation.
+
+## Deprecation & Archiving
+
+When a skill is superseded (like `viewimg` → `read img.jpg`), **archive** it rather than deleting or leaving it live. This keeps history for archaeology while taking it out of the active package and settings.
+
+Convention:
+
+- **Move** `skills/<name>/` → `skills/deprecated/<name>/`. The exclusion ships with the package: `package.json`'s `pi.skills` manifest is `["./skills", "!./skills/deprecated/**"]` — the **`!` glob-exclude** keeps the whole archive out at the **manifest level**, so every user of the package gets it without touching their own settings. This is the SOTA approach (matches `narumiruna/pi-extensions`, which simply omits `deprecated/` from its manifest).
+- **Keep the settings filter as a redundant safety net**: `!skills/deprecated/**` in the package's `skills` list in `~/.pi/agent/settings.json`. pi discovers `SKILL.md` **recursively**, so directory depth alone does **not** hide a skill — the filter (manifest *and* settings) is what actually keeps archived skills out. Use the **`!` glob-exclude** form, not `-`: force-exclude (`-`) does exact path matching and silently ignores the `**` glob. If you remove *both* the manifest entry and the settings entry, every archived skill comes back.
+- **Move** `tests/<name>/` → `tests/deprecated/<name>/` alongside it (keeps the backward-compat suite with the code).
+- **Add a row** to `skills/deprecated/README.md` (Skill | Was | Replaced by).
+- **Fix the `~/.local/bin/<cmd>` symlink** — it points into the old path and silently breaks otherwise.
+- **Regenerate** `SKILL-INDEX.md` (`uv run index-skills.py`).
+- **Update references** in `AGENTS.md` and any docs; point the migration guide at the new path.
+
+**Helper script:** `scripts/skill-filter.sh` manages the settings/mcp filters so you don't hand-edit JSON and don't hit the `-` vs `!` trap. It edits `~/.pi/agent/settings.json` (the per-user filter) — for the **package-author** manifest exclusion in `package.json`, edit `pi.skills` directly (or run `./install.sh` after a change) since that ships with the package:
+
+```bash
+scripts/skill-filter.sh list                          # show package filters + MCP servers
+scripts/skill-filter.sh disable skill deprecated      # → !skills/deprecated/**  (whole tree)
+scripts/skill-filter.sh disable skill viewimg         # → -skills/deprecated/viewimg/SKILL.md
+scripts/skill-filter.sh enable  skill viewimg         # → +skills/deprecated/viewimg/SKILL.md
+scripts/skill-filter.sh disable extension imagegen    # → -extensions/imagegen.ts
+scripts/skill-filter.sh disable mcp chrome-devtools   # remove from ~/.config/mcp/mcp.json
+```
+
+It writes the correct `!` glob for tree excludes and `-`/`+` exact paths for single resources (matching what `pi config` generates), and never touches the real settings/mcp files in its test suite (`tests/skill-filter/` runs against temp copies).
+
+**Path-depth gotcha (load-bearing):** test scripts reach the repo root with `cd "$(dirname "$0")/../.."`. Moving a test **one level deeper** (e.g. `tests/viewimg/` → `tests/deprecated/viewimg/`) silently lands it in `tests/` instead of the root and **every check fails with exit 127**. When you move a test deeper, bump the `../` depth to match. Always re-run the moved suite before committing.
+
+A superseded skill's `SKILL.md` keeps its deprecation banner and migration table; the launcher stays functional for backward-compat but is frozen (no further development).
 
 ## Managing skills across agents
 
