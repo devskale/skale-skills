@@ -1,6 +1,6 @@
 ---
-version: "1.0.0"
-date: 2026-06-09
+version: "1.1.0"
+date: 2026-09-14
 status: draft
 author: skale
 purpose: >
@@ -219,6 +219,33 @@ Writing rules:
   - Prefer short sections and bullets over paragraphs
   - Do not state the obvious -- the agent already knows what a PDF is,
     how HTTP works, or what a database migration does
+
+Size budget -- keeping SKILL.md short (house rules, enforced)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The open standard's ceiling is 500 lines / 5000 tokens (above). This repo runs
+a stricter budget because every loaded token competes with the conversation --
+the context window is a public good ([REF-18]):
+
+  - Hard limit: < 100 lines, enforced by a line-count check in the skill's
+    test.sh (as visualize does):
+      [ "$(wc -l < SKILL.md | tr -d ' ')" -le 99 ] && ok || bad "SKILL.md over 99 lines"
+  - SKILL.md is the routing layer, not the knowledge base: what/when
+    (description), how to start (one command), the 2-3 most load-bearing
+    gotchas, links to references/. Everything else is progressive disclosure.
+  - Assume the model is smart: write only what it cannot know (verified CLI
+    traps, house conventions, exact commands). Every paragraph must justify
+    its token cost -- if deleting it changes nothing, delete it.
+  - Gotchas > 5 -> references/gotchas.md; keep the top 2-3 inline as
+    one-liners and link the rest. Same for recipes, long tables, worked
+    examples.
+  - Bullets over prose; one worked example, not three. A single runnable
+    command beats three paragraphs of explanation.
+  - When over budget, move -- don't delete: details -> references/, examples
+    -> assets/, each linked with a when-to-read hint ("Read when starting X").
+  - Calibration: match specificity to fragility (high freedom for judgment
+    tasks, exact commands for fragile sequences) -- see section 12 and
+    [REF-18]'s degrees-of-freedom guidance.
 
 
 6. Content Philosophy: What to Include vs Omit
@@ -450,6 +477,9 @@ Gotchas section
     WHERE deleted_at IS NULL.
   - The user ID is user_id in the database, uid in the auth service,
     and accountId in the billing API. All three refer to the same value.
+
+  Recurring repo-level gotchas (e.g. bare command vs full path) live in
+  the [Gotcha Index](#gotcha-index) — don't duplicate them per-skill.
 
 Templates for output format
   Agents pattern-match well against concrete structures. Provide a
@@ -940,6 +970,16 @@ Sanity checks after cleanup
   pi -p "ok" 2>&1 | grep -i conflict    # empty = clean startup
 
 
+## Gotcha Index
+
+Load-bearing, recurring gotchas worth centralizing (not an exhaustive list — keep it short):
+
+| # | Gotcha | Where |
+|---|--------|-------|
+| 1 | Use the bare command (`web-search "q"`), never the full path (`~/.local/bin/web-search "q"`) — it's on PATH; listing the full path makes the agent use it inconsistently. | [§11 Gotchas](#11-instruction-patterns-that-work) |
+| 2 | pi filter: `-` force-exclude matches exact paths only (ignores `**`); use `!` glob-exclude for tree excludes. | `AGENTS.md` Deprecation |
+| 3 | Test-script depth gotcha: moving a test one level deeper silently lands it in `tests/` (exit 127) — bump `../` count. | `AGENTS.md` Deprecation |
+
 20. References
 --------------
 
@@ -1054,6 +1094,14 @@ Sanity checks after cleanup
 [REF-20]  VS Code -- Use Agent Skills in VS Code
   https://code.visualstudio.com/docs/copilot/customization/agent-skills
   Project-specific coding standards. Language/framework conventions.
+
+[REF-21]  Anthropic -- Skill authoring best practices (Claude Platform Docs)
+  https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+  Official authoring guidance, checked 2026-09-14: context window as a
+  public good; conciseness (50- vs 150-token example); assume-the-model-is-
+  smart (every paragraph must justify its token cost); degrees of freedom
+  (high/medium/low, matched to task fragility); frontmatter limits (name
+  <= 64 chars, description <= 1024); test across models (Haiku/Sonnet/Opus).
   Code review guidelines. Rule scoping by file pattern.
 
 [REF-21]  Microsoft -- agent-skills (GitHub)
