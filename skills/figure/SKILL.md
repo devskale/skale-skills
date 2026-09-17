@@ -1,73 +1,58 @@
 ---
 name: figure
-version: "1.2.0"
+version: "1.2.1"
 description: "Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec — sketchy Excalidraw-style nodes, pastel fills, dashed arrows, numbered step badges, semantic colour coding. Bundles a Node compositor that assembles CC0 icons + the Patrick Hand font into matching SVG + PNG. Same spec → identical figure every time. Use when the user wants to draw, create, or render an architecture diagram, pipeline figure, workflow diagram, or any .fig.mjs. Triggers: draw a diagram, architecture figure, pipeline figure, render a figure, .fig.mjs, make a diagram."
 metadata:
   author: skale-dev
-  version: "1.2.0"
 disable-model-invocation: true
 ---
 
 # figure — hand-drawn architecture figures from a spec
 
-> **Manual only.** This skill is hidden from the model's auto-invocation — invoke it
-> explicitly with `/skill:figure`. The agent won't reach for it on its own.
+> **Manual only** — invoke explicitly with `/skill:figure`; the agent won't reach for it
+> on its own.
 
-A figure toolchain: write a small spec (nodes + edges + badges), get a consistent
-hand-drawn SVG **and** PNG assembled from a CC0 icon set + the Patrick Hand font. Same
-spec → identical figure every time; a palette change in the library re-styles every figure
-on rebuild.
+Write a small spec (nodes + edges + badges) → a consistent hand-drawn SVG **and** PNG,
+assembled from CC0 icons + the Patrick Hand font. Same spec → identical figure every
+time; a palette change in the library re-styles every figure on rebuild.
 
-> For auto-laid-out technical diagrams (sequence, ER, class, many types) use the **`d2`**
-> skill; `figure` is for hand-drawn, presentation-quality explainer figures where you place
-> every node yourself.
+> **Ecosystem:** auto-laid-out technical diagrams (sequence/ER/class, many nodes) → the
+> **`d2`** skill · shareable page/report (cards, timelines, one HTML + URL) → the
+> **`visualize`** skill · `figure` = hand-drawn, durable presentation figures where you
+> place every node yourself.
 
-> **Provenance:** this skill is adapted from the `figure/` toolchain in
-> [skale-dev/rag-eval](https://github.com/skale-dev/rag-eval/tree/main/figure) (commit
-> `d9fd6424`, 2026-07-28). The compositor (`build/`), icons + font (`assets/`), and house
-> style (`styleguide/`) are vendored from upstream and released CC0/OFL — see
-> `LICENSING.md`. Thesis-specific example diagrams (`diagrams/metrics/`, `diagrams/dataset/`)
-> were trimmed on import; `diagrams/architectures/` + `diagrams/scope/` are kept as general
-> examples. The upstream `styleguide/reference/*.jpeg` (third-party copyright, Daily Dose of
-> DS) were **not** copied — see `styleguide/reference/NOTICE.md`.
+> **Provenance:** vendored from the [`figure/` toolchain](https://github.com/skale-dev/rag-eval/tree/main/figure)
+> in skale-dev/rag-eval (commit `d9fd6424`, 2026-07-28). Compositor, icons, font, house
+> style are CC0/OFL — see `LICENSING.md`; third-party reference images were **not**
+> copied (`styleguide/reference/NOTICE.md`).
 
-## Quick start — the build loop
+## Quick start
 
 ```bash
 cd skills/figure
-brew install librsvg                # provides rsvg-convert (PNG step); SVG is pure Node
-
-# write a spec, then build it -> .svg + .png land in ~/.cache/generated/<name>/
-node build/build_figures.mjs diagrams/my-fig.fig.mjs
-node build/build_figures.mjs                       # build every *.fig.mjs under diagrams/
+node build/build_figures.mjs diagrams/my-fig.fig.mjs   # -> ~/.cache/generated/<name>/{*.svg,*.png}
+node build/build_figures.mjs                           # build every *.fig.mjs under diagrams/
 ```
 
-**Output dir**: XDG-standard — `$XDG_CACHE_HOME/generated` (default `~/.cache/generated/`),
-override with `FIGURE_OUT_DIR`. Each figure lands in `~/.cache/generated/<name>/<name>.svg` + `.png`.
+- **Output:** `$XDG_CACHE_HOME/generated` (default `~/.cache/generated/`); override with `FIGURE_OUT_DIR`.
+- **Needs:** Node ≥18. PNG uses `rsvg-convert` (`brew install librsvg`) — no
+  Playwright/Chromium; if missing, the build emits SVG and skips PNG with a warning.
+- **Always-on lint:** every build prints geometry checks to stderr — out-of-bounds
+  nodes/labels, text collisions, node overlaps (warnings, non-blocking) and a hard
+  exit 1 when an edge's `from`/`to` isn't a declared node. Standalone:
+  `node build/review_figure.mjs diagrams/x.fig.mjs`.
 
-**Self-verification (always-on lint).** Every build prints a geometry lint to **stderr**:
-out-of-bounds nodes/labels, text collisions, node-box overlaps, and aspect-ratio bloat
-(warnings — non-blocking; the figure still renders), plus a hard error (exit 1) when an
-edge's `from`/`to` isn't a declared node. Read it to catch placement mistakes without
-opening the image. Lint a spec standalone: `node build/review_figure.mjs diagrams/x.fig.mjs`.
+## Authoring
 
-**No browser needed.** PNG rasterization uses the lightweight `rsvg-convert` (librsvg) —
-no Playwright, no Chromium download. If `rsvg-convert` is missing, the build still emits
-the SVG and skips the PNG with a warning.
-
-## Authoring a figure
-
-Each diagram gets its own folder under a topic group in `diagrams/` (e.g.
-`diagrams/architectures/rewoo-agent/`). Create `<name>.fig.mjs` with a default-exported
-spec. Coordinates are absolute; `(x,y)` is a node's top-left; author on a loose grid. See
-`build/README.md` for the full node/edge field reference and
-`diagrams/architectures/rewoo-agent/rewoo-agent.fig.mjs` for a worked example.
+Each figure gets a folder under a topic group in `diagrams/` (e.g.
+`diagrams/architectures/rewoo-agent/`) containing `<name>.fig.mjs`, a default-exported
+spec. Coordinates are absolute; `(x,y)` is a node's top-left; author on a loose grid.
+Full node/edge field reference: `build/README.md`. Worked example:
+`diagrams/architectures/rewoo-agent/rewoo-agent.fig.mjs`.
 
 ```js
 export default {
-  name: 'my-figure',
-  title: 'My Pipeline',
-  width: 1200, height: 760,
+  name: 'my-figure', title: 'My Pipeline', width: 1200, height: 760,
   nodes: [
     { id: 'q',   x: 60,  y: 110, icon: 'doc-envelope',      color: 'tan',   label: 'Query' },
     { id: 'agt', x: 300, y: 110, icon: 'llm-agent-brain',   agent: true,    label: 'Decide' },
@@ -80,44 +65,31 @@ export default {
 };
 ```
 
-## What's in here
+## House style (short version)
+
+- **Golden rule:** every diagram is a *hand-drawn sketch*, not a corporate flowchart.
+- **One font everywhere:** Patrick Hand (OFL) — font stacks end in `cursive`, never `sans-serif`.
+- **Dashed arrows** are the default connector; thin dark-grey stroke, simple arrowhead.
+- **Numbered step badges** (cream `#FDF0D0`, dashed orange border) on every transition,
+  in execution order — the compositor snaps them to clear whitespace.
+- **Semantic colour** (agent = red, LLM = amber, success = green, web = blue …):
+  palette table in `styleguide/STYLE.md` §7.
+
+Full style: `styleguide/STYLE.md` · licensing policy (non-negotiable, no vendor logos,
+no CC-BY): `LICENSING.md`.
+
+## Layout
 
 | Path | What |
 |------|------|
-| `build/` | The compositor — `compose.mjs` (library), `raster.mjs` (SVG→PNG), `build_figures.mjs` (CLI). See `build/README.md`. |
-| `assets/` | Reusable CC0 icons (`icons/`), images (`images/`), and the house font **Patrick Hand** (`fonts/`, OFL). Reuse before redrawing. See `assets/README.md`. |
-| `styleguide/` | The house style — `STYLE.md` (the look: sketchy strokes, palette, badges, semantic colours), `reference/NOTICE.md`. |
-| `diagrams/` | Figure specs (`*.fig.mjs`) + built `.svg`/`.png`. Kept examples: `architectures/` (react/rewoo/traditional RAG), `scope/` (scope-map). |
-| `_scratch/` | **Local one-off figures** (gitignored) — throwaway/experimental specs that shouldn't be committed. |
-| `LICENSING.md` | **Read this.** Everything published must be usable without attribution (self-made / CC0 / OFL). No vendor logos, no CC-BY. |
-| `package.json` | Zero runtime deps — PNG rasterization uses the system `rsvg-convert` (librsvg). |
+| `build/` | compositor — `compose.mjs` (library), `raster.mjs` (SVG→PNG), `build_figures.mjs` (CLI); see `build/README.md` |
+| `assets/` | CC0 icons, images, house font — **reuse before redrawing**; see `assets/README.md` |
+| `styleguide/` | house style (`STYLE.md`) + reference NOTICE |
+| `diagrams/` | specs + built output — kept examples: `architectures/` (react/rewoo/traditional RAG), `scope/` |
+| `_scratch/` | **gitignored** local one-off figures — don't commit |
 
-## House style (the short version)
+## Install
 
-- **Golden rule:** every diagram is a *hand-drawn sketch*, not a corporate flowchart.
-- **One font everywhere:** `Patrick Hand` (OFL) — titles, labels, badges. No sans, ever;
-  SVG/CSS font stacks must end in `cursive`, not `sans-serif`.
-- **Dashed arrows** are the default connector; thin dark-grey stroke, simple arrowhead.
-- **Numbered step badges** (cream fill `#FDF0D0`, dashed orange border) on every
-  transition, in execution order. The compositor snaps them to clear whitespace
-  automatically.
-- **Semantic colour** (agent = red, LLM = amber, success = green, web = blue …) — see the
-  table in `styleguide/STYLE.md` §7.
-
-Full style spec: **`styleguide/STYLE.md`**. Licensing policy: **`LICENSING.md`**.
-
-## Install / activate
-
-This is a pi skill in the `skale-skills` package. Install the package once, globally:
-
-```bash
-pi install git:github.com/devskale/skale-skills
-```
-
-Then enable the `figure` skill via `pi config` (space = toggle). Or symlink it standalone:
-
-```bash
-ln -s "$(pwd)/skills/figure" ~/.pi/agent/skills/figure
-```
-
-Requires Node ≥18 and `rsvg-convert` (macOS: `brew install librsvg`; Linux: `apt install librsvg2-bin` / `dnf install librsvg2-tools`).
+Ships in the `skale-skills` pi package: `pi install git:github.com/devskale/skale-skills`,
+then enable `figure` via `pi config`. Standalone symlink:
+`ln -s "$(pwd)/skills/figure" ~/.pi/agent/skills/figure`.

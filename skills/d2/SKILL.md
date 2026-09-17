@@ -1,6 +1,6 @@
 ---
 name: d2
-version: "1.4.0"
+version: "1.4.1"
 description: "Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the `d2` CLI directly, plus a few thin bundled wrappers (`scripts/d2v`, `d2png`, `d2fresh`). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
 license: MIT
 disable-model-invocation: true
@@ -8,21 +8,20 @@ disable-model-invocation: true
 
 # D2 — Diagrams as Code
 
-> **Manual only.** This skill is hidden from the model's auto-invocation — invoke it
-> explicitly with `/skill:d2`. The agent won't reach for it on its own.
+> **Manual only** — invoke explicitly with `/skill:d2`; the agent won't reach for it on its own.
 
-D2 turns text into diagrams. **Knowledge skill** at heart — the agent drives the `d2` CLI directly; `scripts/` only adds thin wrappers. Requires the `d2` binary: `brew install d2`.
+D2 turns text into diagrams. **Knowledge skill** — the agent drives the `d2` CLI directly; `scripts/` only adds thin wrappers. Requires `brew install d2`.
 
-> For hand-drawn, presentation-quality figures (sketchy Excalidraw look, manual layout)
-> use the **`figure`** skill; `d2` is for auto-laid-out technical diagrams (sequence, ER,
-> class, many types) with ASCII self-verification.
+> **Ecosystem:** hand-drawn presentation figures (sketchy look, manual layout) → **`figure`** ·
+> shareable page/report (one HTML + URL) → **`visualize`** · `d2` = auto-laid-out technical
+> diagrams (sequence, ER, class, many types) with ASCII self-verification.
 
 ## Install
 
 ```bash
 openskills install devskale/skale-skills/skills/d2   # → pi, claude, opencode, …
 ```
-Or clone + add to pi config (`~/.pi/agent/settings.json`): `"skills": ["~/code/skale-skills/skills/d2"]`.
+Or clone + add to pi config: `"skills": ["~/code/skale-skills/skills/d2"]` in `~/.pi/agent/settings.json`.
 
 ## Quick Start — the render loop
 
@@ -36,18 +35,10 @@ d2 diagram.d2 diagram.txt            # ASCII preview — verify structure (the a
 d2 diagram.d2                        # → diagram.svg (self-contained default)
 ```
 
-## Output dir
-
-Save **rendered** diagrams (`.svg`/`.png`/`.pdf`) to `$XDG_CACHE_HOME/generated/` (default
-`~/.cache/generated/`) by default — the XDG-standard home for regenerable output, matching the
-`figure` skill and `imagegen`. Keep the `.d2` source in the repo/project (editable,
-version-controllable); the rendered output is a build artifact. Override per-run with an
-explicit path when the user wants output elsewhere (e.g. in-repo for a deliverable).
-
-```bash
-d2 diagram.d2 ~/.cache/generated/diagram.svg
-bash scripts/d2png diagram.d2 ~/.cache/generated/diagram.png
-```
+**Output dir:** rendered output (`.svg`/`.png`/`.pdf`) → `$XDG_CACHE_HOME/generated/`
+(default `~/.cache/generated/`), override with an explicit path for deliverables. Keep
+the `.d2` source in the repo (editable, version-controllable) — rendered output is a
+build artifact.
 
 ## Core Syntax
 
@@ -61,39 +52,17 @@ db: { shape: cylinder; style.multiple: true }
 queue: { shape: queue }
 user: { shape: person }
 
-worker: {                     # containers + dot notation (nesting)
-  redis: { shape: queue }
-}
-worker -> worker.redis: enqueue
-
 vars: { d2-config: {          # per-file config → reproducible without CLI flags
   layout-engine: elk
   theme-id: 300               # `d2 themes` to list
 } }
 ```
 
-## Gotchas
+## Gotchas (top 3 — full list: [references/gotchas.md](references/gotchas.md))
 
-- **Default layout is `dagre`; prefer `elk` for delivery.** dagre is a Sugiyama-style layoutor built for *directed acyclic* graphs — weak on cycles, bidirectional/undirected edges, and dense fan-in/fan-out (more crossings, poorer spacing as graphs grow). **ELK** (Eclipse Layout Kernel) routes and spaces dense graphs better. Set `layout-engine: elk` in `vars.d2-config`. (`tala` is paid and usually absent.)
-- **The ASCII/text export ignores `--layout` and `vars.d2-config.layout-engine`.** Verified: `--layout dagre` vs `elk` (and the `vars` setting) produce **byte-identical `.txt`**. So ASCII self-verification works with any engine, **but it will not reflect the layout of your delivered SVG/PNG** — what you read in `.txt` is the exporter's fixed layout, not your configured one. Verify *structure* in ASCII; trust the SVG by construction.
-- **Vertical (default ELK) is agent-verifiable; `direction: right` is not.** A wide horizontal diagram terminal-wraps into noise in ASCII, so you can't self-verify it. Build and verify vertical; switch to horizontal only as a final delivery choice.
-- **SVG is the sane default — zero dependencies, self-contained** (`--bundle=true` by default). **PNG via `scripts/d2png` uses `rsvg-convert` (librsvg)** — a lightweight native rasterizer, NO Playwright/FFMPEG download. (d2's built-in PNG export would trigger a ~141 MiB Playwright + FFMPEG download on first run — avoid it; use `d2png` instead.) Deliver SVG unless the user needs raster.
-- **No native HTML export.** Formats: svg, png, pdf, pptx, gif, txt. For an HTML deliverable, embed the SVG with `--no-xml-tag` (drops `<?xml?>` so it embeds) and `--salt <name>` (unique IDs when embedding multiple SVGs).
-- **`d2 validate` is permissive — it does NOT catch unknown shapes or invalid style keywords.** Verified: `shape: note`, `style.dashed`, and `style.stroke-dasharray` all pass `d2 validate` but fail at `d2` (render/compile) with `unknown shape "note"` / `invalid style keyword: "dashed"`. So the validate-then-render loop must actually **render** to catch these — `validate` only checks grammar. To self-verify shape/style correctness without opening an SVG, render to `.txt` (ASCII) — a failed compile errors out identically there.
-- **Shape/style keyword cheatsheet (verified on d2 0.7.1):** `shape: note` → FAIL (use `shape: document` or `shape: callout` for a legend); `shape: stored-data` / `stored_data` → FAIL (use `shape: cylinder`); `shape: component` → FAIL (no such shape — use the default rectangle / `shape: square`; a C4 "component" is just a box); `style.dashed` → FAIL on nodes AND edges; `style.stroke-dasharray: 4 4` → FAIL. To dash a border/edge use `style.stroke-dash: 4` (works on both). `d2 fmt x.d2 --check` lints without writing; `d2 fmt x.d2` formats in place; `fmt --check` is idempotent after `fmt`.
-- **`|` (pipe) inside `|md ... |` block strings PREMATURELY TERMINATES the block**, even inside backtick code spans. Verified: `label: |md ... `ja|nein|teilweise` ... |` compiled to "unexpected text after md block string" at the first interior `|`. The `|` is the block delimiter; d2 does not see it as content. **Avoid `|` in `|md` content** — use `/`, `,`, or `or` for alternations/sets.
-- **`layers`, `scenarios`, `steps` are reserved BOARD keywords** (multi-board diagrams) — do NOT use them as node IDs. Verified: a node `layers: { ... }` makes every edge touching it fail with `edge with board keyword alone doesn't make sense`, and the board-keyword context cascades into misleading errors like `fill must be style.fill` inside the block. Rename (e.g. `design`, `phases`).
-- **Chain edge labels apply to EVERY edge, not the last.** Verified: `a -> b -> c: label` labels both `a→b` and `b→c`. Use separate statements (`a -> b` then `b -> c: label`) for per-edge labels.
-- **Label syntax:** keys with spaces need no quotes (`cell tower:` works), but `label:` strings with special chars do. Multi-line labels use `\n`. Use `name: { label: "Displayed Text" }` to decouple the identifier from shown text. **Two verified traps:** (1) `\n` works in **node** labels but **NOT in connection/edge labels** — `a -> b: "x\ny"` fails with *"unexpected text after unquoted string"*; keep edge labels single-line (or move the detail into a node). (2) **Literal `{` / `}` in a label parse as a map** — `models: "/v1/models/{alias}"` fails with *"unexpected text after map"* (the `{alias}` is read as a nested map). Reword braces in labels: `{alias}` → `:alias` or `(alias)`.
-- **Don't reference icons that aren't installed** — `icon: great-icon:apple` hard-fails the compile if the set is missing. Omit icons unless certain.
-- **A node that only receives edges gets pushed to the end of the layout.** A shared sink (e.g. an LLM cloud that everything calls but calls nothing) lands at the bottom/right, not "to the side". Don't fight the layout trying to pin it mid-flow.
-- **Cross-cutting fan-in tangles the layout.** If many nodes connect to one sink (every step → one LLM cloud), long edges route across the whole graph → noisy ASCII, busy SVG. Mitigations (in order): (a) draw one representative edge + state "all X → sink" in a legend; (b) drop the sink and note it; (c) draw all edges only when the *fan-in itself* is the point.
-- **Side branches blow out the viewBox width.** Verified: a 3-node vertical chain (projekt → sync → audit) rendered at 1809×1049; adding two side-branch nodes (a `note` + a `workflow` node, both pointing at the middle node) pushed it to 2435×1000 — ELK spreads side branches left/right, and the long labels on them inflate width, which compresses all text in the final view. **Fix: bake side-branch content into the main-chain nodes** (e.g. fold the invariant into the sync node's label) and drop the side branches. Keep the graph a single chain when possible; branch only when the branch is a genuinely parallel path.
-- **Check the SVG dimensions to catch width bloat early.** `grep -o 'width="[0-9]*" height="[0-9]*"' x.svg` (or the `viewBox=`) — a wide:height ratio > ~2.2 means the diagram will render compressed/squished in a normal viewport. Refactor (trim labels, drop side branches, switch `direction`) before delivering.
-- **`direction: right` + wall-of-text nodes = an unreadable strip.** Verified: a layered architecture diagram (7 containers, each with a 3–6-line multi-line label) rendered at **7140×1436** — text microscopic in any normal viewport. `direction: right` lays the chain out horizontally, and every multi-line node widens the row, so width compounds down the chain. **Fix: `direction: down` + one-line node labels** (move the detail into the surrounding prose/`.md`). Same diagram dropped to **1559×1830** (readable, balanced portrait). Rule of thumb: a diagram is an overview, not a wall of text — keep node labels ≤2 short lines; if you're tempted to write more, it belongs in the doc next to the diagram.
-- **A container's `{ … }` holds child shapes, not prose.** `proxy_app: "proxy_app.py" { "FastAPI app + main()" }` does NOT label the container — the body must be `key: value` children (`models_router: "models.py"; …`). For a multi-line *label* with no children, put the whole text in the quoted label: `proxy_app: "proxy_app.py\nFastAPI app + main()"` (no braces).
-- **Over-labeling — annotate selectively, group the rest.** Descriptions on every node (inline `\n` or a `callout` per block) bloat the view and read as noise; a family of similar nodes (e.g. 5–7 fetch tools) should become ONE container with a single summary label. See recipes.md → *Authoring tips* for the full guidance + fix.
-- **Small retry loops render fine; long write-back cycles do not.** A short `assess → retry → assess` lays out cleanly; a write-back to an early data node (`flow → data.json → flow`) creates a long-distance cycle that tangles. Prefer a distinct downstream node (e.g. `final verdict`) over writing back upstream.
+- **Prefer `elk` over the default `dagre`** for delivery — set `layout-engine: elk` in `vars.d2-config`.
+- **`d2 validate` is permissive** (grammar only) — unknown shapes/styles only fail at render; verify by rendering to `.txt`.
+- **Check the viewBox ratio** (`width/height > ~2.2` = squished) before delivering; side branches and wall-of-text labels blow the width.
 
 ## Output Formats
 
@@ -111,9 +80,6 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 |---|---|
 | `--target 'layers.x.*'` | render one board / multi-board (`layers`/`scenarios`/`steps`); `--target=''` = root only |
 | `--scale 0.5` | halve / double the output size |
-| `--pad 40` | padding (px) around the diagram |
-| `--center` | center the SVG in the viewport |
-| `--watch` | live-reload on edit (human authoring; `--browser 0` skips opening a browser) |
 
 ## Workflow: Code → Architecture Diagram
 
@@ -125,8 +91,9 @@ vars: { d2-config: {          # per-file config → reproducible without CLI fla
 
 ## References
 
-- [references/syntax.md](references/syntax.md) — shapes, styles, special objects, composition. **Read when** you need a specific shape/style keyword or container/nesting syntax.
-- [references/recipes.md](references/recipes.md) — architecture-pattern cookbook (layered, request-flow, microservices, pub/sub, C4 container, deployment). **Read when** starting a new architecture diagram.
+- [references/gotchas.md](references/gotchas.md) — **verified CLI traps. Read when a render fails or looks wrong.**
+- [references/syntax.md](references/syntax.md) — shapes, styles, containers/nesting, composition. **Read when** you need a specific keyword.
+- [references/recipes.md](references/recipes.md) — architecture-pattern cookbook (layered, request-flow, microservices, pub/sub, C4, deployment). **Read when** starting a new architecture diagram.
 - [references/diagram-types.md](references/diagram-types.md) — sequence, ER/sql_table, class diagrams. **Read when** drawing one of those types.
-- [references/delivery.md](references/delivery.md) — delivery polish (interactive links/tooltips, icons, layers/multi-board, themes, sketch). **Read when** finalizing a diagram for delivery.
+- [references/delivery.md](references/delivery.md) — delivery polish (links/tooltips, icons, multi-board, themes, sketch). **Read when** finalizing for delivery.
 - CLI: `d2 --help`, `d2 layout`, `d2 themes`. Tour: https://d2lang.com/tour/intro/

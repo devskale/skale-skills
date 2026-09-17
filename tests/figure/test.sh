@@ -22,6 +22,10 @@ assert() {
 echo "=== Testing figure skill ==="
 echo ""
 
+# ── 0. SKILL.md conventions ─────────────────────────────────────────────
+assert "SKILL.md under 100 lines" "[ \"$(wc -l < SKILL.md | tr -d ' ')\" -le 99 ]"
+echo ""
+
 # ── 1. layout() unit tests ──────────────────────────────────────────────
 echo "[1] layout() unit tests (node:test)..."
 assert "layout unit tests pass" "node --test build/layout.test.mjs >/tmp/fig-layout-test.log 2>&1"
@@ -29,7 +33,7 @@ echo ""
 
 # ── 2. every example spec lints clean (bounds + collisions) ─────────────
 echo "[2] review_figure on example specs..."
-for spec in diagrams/examples/*/*.fig.mjs; do
+for spec in diagrams/examples/*/*.fig.mjs diagrams/architectures/*/*.fig.mjs diagrams/scope/*/*.fig.mjs diagrams/agentic-rag.fig.mjs; do
     name="$(basename "$(dirname "$spec")")"
     assert "review clean: $name" "node build/review_figure.mjs '$spec' >/tmp/fig-review-$name.log 2>&1"
 done
@@ -37,7 +41,7 @@ echo ""
 
 # ── 3. composeSVG emits a valid SVG for every example ───────────────────
 echo "[3] composeSVG emits well-formed SVG..."
-for spec in diagrams/examples/*/*.fig.mjs; do
+for spec in diagrams/examples/*/*.fig.mjs diagrams/architectures/*/*.fig.mjs diagrams/scope/*/*.fig.mjs diagrams/agentic-rag.fig.mjs; do
     name="$(basename "$(dirname "$spec")")"
     assert "composes to <svg>: $name" "node --input-type=module -e \"
         import { composeSVG } from './build/compose.mjs';
