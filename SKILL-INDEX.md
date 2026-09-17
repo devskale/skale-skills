@@ -22,7 +22,7 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 - `npm:pi-mcp-adapter`
 - `npm:@ogulcancelik/pi-herdr`
 - `npm:@ff-labs/pi-fff`
-- `git:github.com/devskale/skale-skills (10 skills, 4 extensions)`
+- `git:github.com/devskale/skale-skills (11 skills, 4 extensions)`
 
 ## Skills
 
@@ -44,7 +44,6 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | ⚪ available | **rodney** | Drive a persistent headless Chrome from the CLI for web scraping, screenshots, form filling, PDF ... |
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
 | ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (no timestamps by defaul... |
-| ⚪ available | **viewimg** | DEPRECATED — use `read img.jpg` or `read_image` instead. Display an image in the terminal (view-o... |
 | ⚪ available | **visualize** | Render any set of things as ONE self-contained HTML document and give the user a URL — and genera... |
 | ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
 | ⚪ available | **youtube** | Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later tra... |

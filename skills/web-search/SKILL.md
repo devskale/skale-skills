@@ -24,7 +24,7 @@ The default is the right call ~90% of the time. Don't add flags you don't need.
 
 - **Output is already concise** (10 results, markdown). No `head`, no `2>&1`.
 - **Need the full page, not just the snippet?** `fetch-url "<url>"` — the two are a combo: search finds, fetch-url reads.
-- **`web-search: command not found`?** Install once (below) or use the full path `~/.local/bin/web-search "q"`. Don't prefix every call with `export PATH=`.
+- **`web-search: command not found`?** Run `./install.sh` once (creates `~/.local/bin/web-search`, which is on PATH). Then always call `web-search "q"` — never the full path, never `export PATH=`.
 - **Want fewer/more results?** `--max 5` / `--max 20` — but the default 10 is usually right.
 - **Want images/news/video?** `--categories images` / `--categories news`.
 
@@ -138,7 +138,7 @@ uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#
 
 | Problem | Fix |
 |---------|-----|
-| `web-search: command not found` | Run `./install.sh` once, or call `~/.local/bin/web-search "q"`. Don't prefix calls with `export PATH=`. |
+| `web-search: command not found` | Run `./install.sh` once (creates the `web-search` command on PATH), then call `web-search "q"` — never the full path and never `export PATH=`. |
 | `uv: command not found` | Run `install.sh` again — it auto-installs uv |
 | Dependency errors | `web-search --update` |
 | All SearXNG instances fail | Configure a private instance via `credgoo searx` |

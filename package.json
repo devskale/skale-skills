@@ -14,7 +14,8 @@
       "./extensions/*.ts"
     ],
     "skills": [
-      "./skills"
+      "./skills",
+      "!./skills/deprecated/**"
     ],
     "prompts": [
       "./prompts"

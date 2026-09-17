@@ -6,7 +6,7 @@ version: 0.1.0
 
 # viewimg — **DEPRECATED** — use `read img.jpg` instead
 
-> **⚠️ DEPRECATED:** This skill is superseded by `read img.jpg` (native pi image display) + `read_image`/`/readimg` (VLM analysis). See [docs/image-display-deprecation.md](../../docs/image-display-deprecation.md) for the full migration guide.
+> **⚠️ DEPRECATED:** This skill is superseded by `read img.jpg` (native pi image display) + `read_image`/`/readimg` (VLM analysis). See [docs/image-display-deprecation.md](../../../docs/image-display-deprecation.md) for the full migration guide.
 >
 > `viewimg` will be removed in a future release. No further development.
 
@@ -22,7 +22,7 @@ Understanding is a separate, explicit step (`read_image` / `/readimg`).
 | `viewimg img.jpg --size 40x20` | `read img.jpg` (auto-sizes) |
 | `viewimg img1.jpg img2.jpg --open` | `open -a Preview img1.jpg img2.jpg` (macOS) |
 
-See [migration guide](../../docs/image-display-deprecation.md) for details.
+See [migration guide](../../../docs/image-display-deprecation.md) for details.
 
 ## Usage
 
@@ -53,7 +53,7 @@ instant and never spends tokens on an unrequested VLM call.
 
 > `viewimg` was the original CLI for display-only image viewing. `read img.jpg` is now the
 > canonical path — pixel-perfect TUI rendering, no chafa dependency, zero-token VLM handoff.
-> See [docs/image-display-deprecation.md](../../docs/image-display-deprecation.md).
+> See [docs/image-display-deprecation.md](../../../docs/image-display-deprecation.md).
 
 ## Install
 
