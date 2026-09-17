@@ -170,7 +170,18 @@ metadata:
 ---
 ```
 
-**Body** — keep it under 100 lines. Use `fetch-url "url"` not `cd ~/.pi/.../ && uv run scripts/...`.
+**Body** — keep it under 100 lines (**enforced**: add a line-count check to the skill's `test.sh`).
+Use `fetch-url "url"` not `cd ~/.pi/.../ && uv run scripts/...`.
+
+**Keeping it short** — full curated list: [docs/agent-skills-best-practices.md](docs/agent-skills-best-practices.md) §5 "Size budget":
+
+- SKILL.md is the **routing layer**, not the knowledge base — what/when, one start
+  command, the 2–3 most load-bearing gotchas, links to `references/`.
+- **Assume the model is smart** — write only what it can't know; every paragraph must
+  justify its token cost.
+- **Gotchas > 5** → `references/gotchas.md` (top 2–3 stay inline); details move to
+  `references/`, examples to `assets/` — move, don't delete.
+- Bullets over prose; one worked example, not three.
 
 ```markdown
 # Skill Name
