@@ -73,3 +73,6 @@ temp/
 # Local pi source checkout (symlink to ~/code/clones/pi)
 # NOTE: no trailing slash — symlinks count as files for gitignore, `pi/` would NOT match
 pi
+
+# machine-local kanban board (symlink → ~/code/handoffs/)
+.handoff

@@ -40,6 +40,7 @@ done
 # frontmatter
 head -6 "$SKILL/SKILL.md" | grep -q '^name: improve-ux' && ok || bad "frontmatter name"
 head -6 "$SKILL/SKILL.md" | grep -q '^version:' && ok || bad "frontmatter version"
+[ "$(wc -l < "$SKILL/SKILL.md" | tr -d ' ')" -le 99 ] && ok || bad "SKILL.md over 99 lines"
 
 # body size (convention: under 100 lines)
 lines=$(wc -l < "$SKILL/SKILL.md" | tr -d ' ')
