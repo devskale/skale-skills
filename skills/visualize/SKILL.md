@@ -1,6 +1,6 @@
 ---
 name: visualize
-version: "1.5.0"
+version: "1.6.0"
 description: "Render any set of things as ONE self-contained HTML document and give the user a URL — and generate polished HTML reports. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), figures out the right structure, and builds a single portable HTML file — then opens it locally and optionally shares it to a short-lived URL via the throway store. Triggers on: visualize, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, give me a link to this, put it on a page."
 ---
 
@@ -39,15 +39,14 @@ fallbacks); then the structure: `overview-grid`, `cards`, `before-after`, `list`
 **Set the output target first** — `page` (default), `slide`, `doc`, `social`, `print`;
 target changes canvas, density, and copy: [references/output.md](references/output.md).
 
-**MANDATORY: read a template first.** Before writing any HTML, `read` at least one
-template from `templates/` (`cards.html`, `report.html`, `system-map.html`,
-`repo-tree.html`, `mermaid.html`) matching the structure. Start from its CSS + scaffold —
-never hand-write HTML/CSS from scratch; that's what keeps pages in the house style.
-
-Then **compose from page modules** — [references/modules.md](references/modules.md):
-`header`, `legend`, `card-grid`, `tree`, `flow`, `table`, `section`, `exec-summary`,
-`recommendations`, `mermaid`, `footer`. When building, read
-[references/promptlib.md](references/promptlib.md) — the design moves that make a page *lovely*.
+**Instantiate, don't hand-roll.** Read the closest template (`cards`, `report`,
+`system-map`, `repo-tree`, `mermaid`, `timeline`, `before-after`, `cheatsheet`,
+`barchart` — all in `templates/`) for the scaffold — or compose from
+page modules ([references/modules.md](references/modules.md)): copy the **shared base**
+once (all module CSS lives there), then write **short class-based HTML** per module
+(`header`, `legend`, `card-grid`, `tree`, `flow`, `table`, `section`, `exec-summary`,
+`recommendations`, `mermaid`, `footer`). Never inline-duplicate styles per element.
+When building, read [references/promptlib.md](references/promptlib.md) — the design moves that make a page *lovely*.
 
 Write to the OS temp dir (`$TMPDIR` → `/tmp`, `%TEMP%` on Windows), filename
 `<slug>-<timestamp>.html`:
