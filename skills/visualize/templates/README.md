@@ -11,13 +11,17 @@ and adapts. Each is the proven "house style" — start from a template rather th
 | [`repo-tree.html`](repo-tree.html) | Inline CSS, editorial | Annotated repo / folder tree | Nested rows + connector lines, muted kind text |
 | [`system-map.html`](system-map.html) | Inline CSS, editorial | Multi-repo / multi-service platform | Multi-panel: topology, pipeline, fleet |
 | [`report.html`](report.html) | Inline CSS, editorial | A structured document | Kicker, exec summary, numbered sections, recommendations, TOC |
-| [`mermaid.html`](mermaid.html) | **Tailwind + Mermaid (CDN)** | Graph-shaped content, polished Pocock-style | Loads Tailwind + Mermaid from CDN — needs network; use for complex graphs |
+| [`mermaid.html`](mermaid.html) | **Mermaid (CDN)** | Graph-shaped content, polished Pocock-style | Loads Mermaid from CDN — needs network; use for complex graphs |
+| [`timeline.html`](timeline.html) | Inline CSS, editorial | Sequence: roadmap, changelog, phases, history | Vertical spine + type dots (legend hue) + `now` marker |
+| [`before-after.html`](before-after.html) | Inline CSS, editorial | Migration, refactor, "what would change" | Two-column −/+ delta + paired trace with first-divergence marker |
+| [`cheatsheet.html`](cheatsheet.html) | Inline CSS, monospace commands | Dense CLI / tool reference | Command chips + one-line descriptions, topic groups with hue dots |
+| [`barchart.html`](barchart.html) | Inline CSS, **zero JS** | Data comparison | Pure CSS bars — width ∝ value, one accent bar, values as text |
 
 ## Two style families
 
 - **Inline-CSS templates** (`cards`, `repo-tree`, `system-map`, `report`) — zero external
   deps, work fully offline, truly self-contained. Use these by default.
-- **Mermaid template** (`mermaid.html`) — Tailwind + Mermaid from CDN. Use when the content
+- **Mermaid template** (`mermaid.html`) — Mermaid via CDN. Use when the content
   is genuinely graph-shaped (flow, dependency, sequence) and the polish is worth the network
   dependency. Adapted from the Pocock `improve-codebase-architecture` HTML-report scaffold.
 

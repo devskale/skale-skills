@@ -18,12 +18,13 @@ h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
 .panel h2{font-size:1.05rem;margin:0 0 1rem;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:.5rem}
 .panel h2 .n{font-weight:650;color:var(--muted);margin-right:.5rem}
 .meta{background:#fff;border:1px solid var(--line);border-radius:.9rem;padding:1.4rem}
-.metaname{font-weight:700;display:flex;align-items:center;gap:.5rem;margin-bottom:1rem}
+.metaname{font-weight:700;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;overflow-wrap:anywhere;margin-bottom:1rem}
 .metatag{font-size:.7rem;background:var(--paper-2);color:var(--muted);border:1px solid var(--line);padding:.15rem .5rem;border-radius:.35rem;text-transform:uppercase}
+.tag{font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:.35rem;padding:.12rem .45rem;flex:none}
 .subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.9rem}
 .subrepo{background:var(--paper);border:1px solid var(--line);border-radius:.6rem;padding:.9rem}
-.sr-name{font-weight:600;font-size:.95rem;display:flex;justify-content:space-between;align-items:center}
-.sr-desc{color:var(--muted);font-size:.8rem;margin:.3rem 0 .6rem}
+.sr-name{font-weight:600;font-size:.95rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.2rem .5rem;min-width:0;overflow-wrap:anywhere}
+.sr-desc{color:var(--muted);font-size:.8rem;margin:.3rem 0 .6rem;overflow-wrap:anywhere}
 .sr-meta{font-size:.72rem;color:var(--muted);display:flex;gap:.4rem;flex-wrap:wrap}
 .sr-meta span{background:#fff;border:1px solid var(--line);border-radius:999px;padding:.1rem .45rem}
 .flow{display:flex;align-items:stretch;gap:.4rem;flex-wrap:wrap}
@@ -33,7 +34,7 @@ h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
 .arrow{align-self:center;color:var(--muted);font-size:1.1rem}
 .servers{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.9rem}
 .server{background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:.9rem}
-.sv-name{font-weight:600}.sv-role{color:var(--muted);font-size:.8rem;margin:.2rem 0 .5rem}.sv-meta{font-size:.72rem;color:var(--muted)}
+.sv-name{font-weight:600;overflow-wrap:anywhere}.sv-role{color:var(--muted);font-size:.8rem;margin:.2rem 0 .5rem}.sv-meta{font-size:.72rem;color:var(--muted);overflow-wrap:anywhere}
 .deploy{width:100%;border-collapse:collapse;font-size:.85rem;background:#fff;border:1px solid var(--line);border-radius:.6rem;overflow:hidden}
 .deploy th,.deploy td{padding:.6rem .8rem;text-align:left;border-bottom:1px solid var(--line)}
 .deploy th{background:var(--paper);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:var(--muted)}
@@ -52,8 +53,8 @@ h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em}
 <section class="panel"><h2><span class="n">1</span>Repo topology</h2><div class="meta">
 <div class="metaname">📦 {{PLATFORM}} <span class="metatag">metarepo</span></div>
 <div class="subgrid">
-<div class="subrepo"><div class="sr-name">{{REPO}} <span class="tag a">{{KIND}}</span></div><div class="sr-desc">{{role}}</div><div class="sr-meta"><span>{{deploy}}</span><span>{{target}}</span></div></div>
-<div class="subrepo"><div class="sr-name">{{REPO}} <span class="tag b">{{KIND}}</span></div><div class="sr-desc">{{role}}</div><div class="sr-meta"><span>{{deploy}}</span></div></div>
+<div class="subrepo"><div class="sr-name">{{REPO}} <span class="tag">{{KIND}}</span></div><div class="sr-desc">{{role}}</div><div class="sr-meta"><span>{{deploy}}</span><span>{{target}}</span></div></div>
+<div class="subrepo"><div class="sr-name">{{REPO}} <span class="tag">{{KIND}}</span></div><div class="sr-desc">{{role}}</div><div class="sr-meta"><span>{{deploy}}</span></div></div>
 </div></div></section>
 
 <section class="panel"><h2><span class="n">2</span>Pipeline</h2><div class="flow">

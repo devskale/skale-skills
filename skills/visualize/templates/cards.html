@@ -11,10 +11,10 @@
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
 main{max-width:72rem;margin:0 auto;padding:3rem 1.5rem 4rem}
 header{margin-bottom:2.5rem}
-h1{font-size:1.9rem;margin:0 0 .3rem;letter-spacing:-.02em;font-weight:650}
+h1{font-size:2rem;margin:0 0 .3rem;letter-spacing:-.02em;font-weight:650}
 .sub{color:var(--muted);margin:0;max-width:52rem}
 .legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:1.1rem;font-size:.8rem;color:var(--muted)}
-.legend .dot{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.35rem;vertical-align:middle}
+.dot{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.35rem;vertical-align:middle}
 .section{margin-top:2.75rem}
 .section h2{font-size:.95rem;margin:0 0 1rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
@@ -44,18 +44,19 @@ h1{font-size:1.9rem;margin:0 0 .3rem;letter-spacing:-.02em;font-weight:650}
       <article class="card">
         <h3>{{ITEM TITLE}}</h3>
         <p>{{one-line description}}</p>
-        <div class="cat">{{CATEGORY}}</div>
+        <div class="cat"><span class="dot" style="background:var(--cat-1)"></span>{{CATEGORY}}</div>
       </article>
       <article class="card">
         <h3>{{ITEM TITLE}}</h3>
         <p>{{one-line description}}</p>
-        <div class="cat">{{CATEGORY}}</div>
+        <div class="cat"><span class="dot" style="background:var(--cat-2)"></span>{{CATEGORY}}</div>
       </article>
       <article class="card">
         <h3>{{ITEM TITLE}}</h3>
         <p>{{one-line description}}</p>
-        <div class="cat">{{CATEGORY}}</div>
+        <div class="cat"><span class="dot" style="background:var(--cat-3)"></span>{{CATEGORY}}</div>
       </article>
+      <!-- one article.card per item — the dot reuses the legend hue for that category -->
     </div>
   </section>
 

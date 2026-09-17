@@ -37,6 +37,34 @@ echo "---------------"
 # SKILL.md convention: under 100 lines (routing depth lives in references/)
 [ "$(wc -l < "$SKILL/SKILL.md" | tr -d ' ')" -le 99 ] && ok || bad "SKILL.md over 99 lines"
 
+# modules.md — class-based catalog (instantiate blocks, don't hand-roll inline CSS)
+grep -q 'class="card"' "$SKILL/references/modules.md" && ok || bad "modules.md card pattern is class-based"
+grep -q -e '--ink:#1a1a1a' "$SKILL/references/modules.md" && ok || bad "modules.md base carries the canonical ink token"
+grep -q 'style="background:#fff;border:1px solid var(--line);border-radius:.75rem' "$SKILL/references/modules.md" \
+    && bad "modules.md still inline-duplicates card CSS" || ok
+for m in header legend card-grid tree flow table section exec-summary recommendations mermaid footer; do
+    grep -q "^### $m$" "$SKILL/references/modules.md" && ok || bad "modules.md missing module docs: $m"
+done
+# one canonical token family (#1a1a1a) across references — no drifted slate ink
+grep -rq 'ink: *#0f172a' "$SKILL/references/" && bad "drifted ink token #0f172a still in references/" || ok
+# README matches what mermaid.html actually loads (Mermaid via CDN — no Tailwind)
+grep -qi 'tailwind' "$SKILL/templates/README.md" && bad "README claims Tailwind for a template that doesn't load it" || ok
+
+# test prompts (tests/visualize/prompts.md) — coverage: every template & module prompted
+PROMPTS="tests/visualize/prompts.md"
+[ -f "$PROMPTS" ] && ok || bad "prompts.md missing"
+if [ -f "$PROMPTS" ]; then
+    for t in cards repo-tree system-map report mermaid timeline before-after cheatsheet barchart; do
+        grep -q "$t\.html" "$PROMPTS" && ok || bad "no test prompt covering template $t.html"
+    done
+    for m in header legend card-grid tree flow table section exec-summary recommendations mermaid footer; do
+        grep -q "\`$m\`" "$PROMPTS" && ok || bad "no test prompt covering module \`$m\`"
+    done
+    grep -q '/skill:d2' "$PROMPTS" && ok || bad "no routing prompt for d2"
+    grep -q '/skill:figure' "$PROMPTS" && ok || bad "no routing prompt for figure"
+    grep -q 'social-og\|slide-16x9' "$PROMPTS" && ok || bad "no output-target prompt"
+fi
+
 # templates
 for t in cards repo-tree system-map report mermaid; do
     [ -f "$SKILL/templates/$t.html" ] && ok || bad "template $t.html missing"
@@ -44,10 +72,33 @@ done
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
 # templates must pass their own gates (house style + self-contained)
-for t in cards repo-tree system-map report mermaid; do
+for t in cards repo-tree system-map report mermaid timeline before-after cheatsheet barchart; do
     check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
     check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
 done
+[ -f "$SKILL/templates/timeline.html" ] && ok || bad "timeline.html missing"
+[ -f "$SKILL/templates/before-after.html" ] && ok || bad "before-after.html missing"
+[ -f "$SKILL/templates/cheatsheet.html" ] && ok || bad "cheatsheet.html missing"
+[ -f "$SKILL/templates/barchart.html" ] && ok || bad "barchart.html missing"
+# system-map template must handle long tokens (paths/URLs) in narrow cards —
+# flex rows + unbreakable strings spill out without overflow-wrap
+grep -q "overflow-wrap" "$SKILL/templates/system-map.html" && ok || bad "system-map.html lacks overflow-wrap (long tokens spill out of cards)"
+# category colour must appear ON the cards, not only in the legend
+# (legend-only colour = hue that encodes nothing on the items — promptlib §2)
+grep -q 'class="cat"><span class="dot"' "$SKILL/templates/cards.html" && ok || bad "cards.html: category dot missing in card footer (colour only in legend)"
+grep -q 'class="cat"><span class="dot"' "$SKILL/references/modules.md" && ok || bad "modules.md card-grid: category dot missing"
+# structure via rhythm + style, not colour alone (grayscale test)
+grep -qF '.grid+.grid' "$SKILL/references/modules.md" && ok || bad "modules.md: no group rhythm (.grid+.grid)"
+grep -qF '.name.dir{font-weight:700' "$SKILL/references/modules.md" && ok || bad "modules.md: no dir/file weight hierarchy"
+grep -qF '.name.dir{font-weight:700' "$SKILL/templates/repo-tree.html" && ok || bad "repo-tree.html: no dir/file weight hierarchy"
+grep -q 'Rhythm & style carry structure' "$SKILL/references/promptlib.md" && ok || bad "promptlib: rhythm/style channels undocumented"
+# repo-tree: kind dots in category hues (colour on the items, not legend-only)
+grep -q 'class="kind"><span class="sw"' "$SKILL/templates/repo-tree.html" && ok || bad "repo-tree.html: kind dot missing on rows"
+# SOTA grounding: WCAG 1.4.1 + gestalt rules; one title size across templates
+grep -q 'WCAG 1.4.1' "$SKILL/references/promptlib.md" && ok || bad "promptlib: WCAG 1.4.1 grounding missing"
+grep -q 'card soup' "$SKILL/references/modules.md" && ok || bad "modules.md: common-region rule missing"
+grep -q 'phantom relationship' "$SKILL/references/modules.md" && ok || bad "modules.md: connector rule missing"
+grep -rq 'font-size:1.9rem' "$SKILL/templates/" && bad "h1 size drift (1.9rem) in templates" || ok
 
 # usage / errors
 check "no args → exit 2" 2 "$SCRIPT"
@@ -181,12 +232,15 @@ EOF
 check "lint neutral inline link → exit 0" 0 "$SCRIPT" lint "$TMP/neutral.html"
 check "lint saturated teal accent → exit 1" 1 "$SCRIPT" lint "$TMP/teal.html"
 
-# open (macOS `open` present) — just check it accepts a real file
-if command -v open >/dev/null 2>&1; then
-    check "open real file → exit 0" 0 "$SCRIPT" open "$TMP/good.html"
-else
-    echo "  (skipping open test: no opener found)"
-fi
+# open — tested via a stub opener: the suite must never pop a real browser tab.
+# The stub wins `command -v open`, so the launcher's file-check + opener path is covered.
+STUB_BIN="$(mktemp -d)"
+printf '#!/bin/sh\necho "stub-open: $*"\n' > "$STUB_BIN/open"
+chmod +x "$STUB_BIN/open"
+check "open real file (stubbed) → exit 0" 0 env PATH="$STUB_BIN:$PATH" "$SCRIPT" open "$TMP/good.html"
+grep -q "stub-open: $TMP/good.html" /tmp/visualize.out && ok || bad "open passed the file to the opener"
+check "open missing file (stubbed) → exit 2" 2 env PATH="$STUB_BIN:$PATH" "$SCRIPT" open /nonexistent.html
+rm -rf "$STUB_BIN"
 
 # share — live upload to throway (network). Skip if offline / curl missing.
 if command -v curl >/dev/null 2>&1; then

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — chart</title>
+<style>
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5;
+      --accent:#10b981;--cat-1:#5e7a9b}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:56rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:1rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .3rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.section{margin-top:2.75rem}
+.section>h2{font-size:.95rem;margin:0 0 1rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.chart{display:grid;gap:.55rem;max-width:46rem}
+.bar-row{display:grid;grid-template-columns:10rem 1fr 4rem;gap:.75rem;align-items:center;font-size:.85rem}
+.bar-row .lbl{text-align:right;font-weight:500;overflow-wrap:anywhere}
+.bar-row .val{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+/* width = value / max — never truncated, never exaggerated (lie factor) */
+.bar{height:1.05rem;background:var(--cat-1);border-radius:2px;min-width:2px}
+.bar.hl{background:var(--accent)}
+.note{color:var(--muted);font-size:.78rem;margin-top:1.25rem}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.3rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">{{KICKER}}</p>
+    <h1>{{TITLE}}</h1>
+    <p class="sub">{{INTENT}}</p>
+  </header>
+
+  <section class="section">
+    <h2>{{MEASURE}}</h2>
+    <div class="chart">
+      <!-- one .bar-row per item — width % = value / max; .hl marks the ONE focus bar -->
+      <div class="bar-row">
+        <span class="lbl">{{ITEM}}</span>
+        <div class="bar hl" style="width:100%"></div>
+        <span class="val">{{VALUE}}</span>
+      </div>
+      <div class="bar-row">
+        <span class="lbl">{{ITEM}}</span>
+        <div class="bar" style="width:{{%}}%"></div>
+        <span class="val">{{VALUE}}</span>
+      </div>
+      <div class="bar-row">
+        <span class="lbl">{{ITEM}}</span>
+        <div class="bar" style="width:{{%}}%"></div>
+        <span class="val">{{VALUE}}</span>
+      </div>
+    </div>
+    <p class="note">Bar width ∝ value · max = {{MAX}} {{UNIT}} · source: {{SOURCE}}</p>
+  </section>
+
+  <div class="footer">
+    Built with the <code>visualize</code> skill · one self-contained HTML file · shared via
+    <code>lubu.skale.dev/throway</code> · expires ~4h
+  </div>
+</main>
+</body>
+</html>

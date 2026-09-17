@@ -29,8 +29,8 @@ Each item is a card with a title, a short body, and optional metadata (tags, num
 Best for heterogeneous items where each deserves its own space.
 
 - Title row, then a few lines of body, then a metadata footer.
-- Category goes as **plain muted text** in the footer — no colored pill badges (those read as
-  AI-generated). A category legend is a quiet text line, not colored swatches.
+- Category goes as a **small dot in the category hue + plain muted text** in the footer —
+  same hue as its legend entry; never colored pill badges (those read as AI-generated).
 - Grid of cards (`grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))`).
 - **Default:** use `templates/cards.html` which is already the clean neutral house style.
 

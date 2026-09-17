@@ -51,13 +51,13 @@ without re-deciding colours each time.
   /* semantic roles — the only colours a page should name */
   --paper:  #fafaf9;   /* page background (warm off-white, stone-50) */
   --paper-2:#f4f4f5;   /* secondary fill: cards, containers, wells */
-  --ink:    #0f172a;   /* primary text + emphasis (near-black) */
-  --muted:  #71717a;   /* secondary text, default arrow stroke */
+  --ink:    #1a1a1a;   /* primary text + emphasis (near-black) */
+  --muted:  #6b7280;   /* secondary text, default arrow stroke */
   --soft:   #a1a1aa;   /* tertiary: sublabels, boundary labels */
-  --line:   #e4e4e7;   /* hairline borders */
+  --line:   #e5e5e5;   /* hairline borders */
   --accent: #10b981;   /* ONE focal accent — emerald, indigo, or similar */
   --accent-tint: rgba(16,185,129,.08); /* fill for accent-bordered boxes */
-  --link:   #0f172a;   /* links as ink (hairline underline), not saturated */
+  --link:   #1a1a1a;   /* links as ink (hairline underline), not saturated */
 
   /* structural colour — hues that carry information (see below) */
   --cat-1:  #5e7a9b;   /* category hues, muted editorial family */
@@ -95,11 +95,11 @@ opacities. The semantic *roles* stay identical — only the material changes.
 
 ```css
 :root[data-theme="dark"] {
-  --paper:   #0f172a;  /* ink flipped */
-  --paper-2: #1e293b;
+  --paper:   #1a1a1a;  /* ink flipped */
+  --paper-2: #262626;
   --ink:     #fafaf9;  /* paper flipped */
   --muted:   #a1a1aa;
-  --soft:    #71717a;
+  --soft:    #6b7280;
   --line:    rgba(250,250,249,.12);
   --accent:  #34d399;  /* brighter accent for dark paper */
   --accent-tint: rgba(52,211,153,.10);
@@ -181,7 +181,7 @@ sets and reads beautifully.
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; }
 .card { background:#fff; border:1px solid var(--line); border-radius:.75rem;
         padding:1.25rem; transition:transform .12s ease, box-shadow .12s ease; }
-.card:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(15,23,42,.08); }
+.card:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(26,26,26,.08); }
 .card h3 { font-size:1.05rem; margin:0 0 .4rem; }
 .card p  { color:var(--muted); font-size:.88rem; margin:0 0 .9rem; }
 ```
@@ -199,6 +199,32 @@ media queries.
   content.
 - **Sparse prose everywhere.** If a sentence could be a bullet, make it a bullet. If a
   bullet could be cut, cut it. The *visuals* carry the meaning.
+
+### Rhythm & style carry structure — not just colour
+
+Colour *confirms* structure; rhythm and style must carry it alone (the test: does the
+page still read in grayscale?). Three channels, used together:
+
+- **Rhythm** — tight within a group, air between groups: cards of one category sit at
+  `1rem` gaps; consecutive grids separate (`.grid+.grid{margin-top:1.75rem}`); sections
+  breathe at `2.75rem`. Indent is depth (tree `.connector`); size is importance
+  (h1 → h2 → card title).
+- **Style** — weight is hierarchy: directories `700`, items `500`; labels uppercase +
+  letter-spaced for wayfinding; hairlines contain, they never decorate. One deliberate
+  type scale, steps of ~1.2 (`2rem` title → `1.2` section → `1.05` item → `.88` muted) —
+  no ad-hoc sizes.
+- **Colour** — category hues and severity only where the hue IS data (§1–2): the
+  confirmation channel, never the only one.
+
+**Why this works (grounded).** Users parse a layout *before* they read labels — the
+Gestalt first read (Wertheimer 1923; Palmer 1992). Proximity groups by **ratio**, not
+absolute distance: the within-group gap must be visibly smaller than the between-group
+gap, or grouping collapses. Similarity needs a second shared trait besides hue — ~8% of
+men are red-green deficient, and **WCAG 1.4.1** (Level A) forbids colour as the only
+carrier: every hue we ship sits next to its text label. A border (common region) is the
+*strongest* cue — it overrides proximity (Palmer 1992); use it to mark real boundaries,
+not to box every line ("card soup"). A connector line is a relationship claim — never
+draw one you don't mean.
 
 ---
 
@@ -239,6 +265,12 @@ makes the page feel intentional and trustworthy.
   `border-radius:999px` capsules with pastel backgrounds and uppercase text scream "LLM
   slop." **Never use them.** Categories go as plain muted text in the card footer, or as a
   quiet legend — not a colored pill on each item.
+- **Inline-duplicated styles** — the same `style="…"` string copy-pasted onto every
+  card/row. All module CSS lives once in the shared base (modules.md); write short
+  class-based HTML instead.
+- **Long tokens in narrow cards** — paths, URLs, and package names don't wrap at slashes;
+  without `overflow-wrap:anywhere` (or ellipsis) they spill out of the card. Budget for
+  the longest identifier when gridding.
 
 ---
 
@@ -321,7 +353,8 @@ it lovely.
 .name{font-weight:600}
 .name.dir{color:var(--ink)}
 .desc{color:var(--muted);font-size:.8rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tag{flex:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;padding:.12rem .45rem;border-radius:999px;font-weight:600}
+.tag{flex:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+.tag .dot{margin-right:.25rem}
 .connector{border-left:1px solid var(--line);margin-left:.5rem;padding-left:1rem}
 ```
 

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — cheatsheet</title>
+<style>
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5;
+      --cat-1:#5e7a9b;--cat-2:#7c8f6f;--cat-3:#b8915a;--cat-4:#9c6b50}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:72rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:1rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .3rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.dot{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+.topics{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.75rem;margin-top:2.25rem}
+.topic{min-width:0}
+.topic h2{font-size:.95rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 .25rem;display:flex;align-items:center}
+.cmd{padding:.55rem 0;border-bottom:1px solid var(--line)}
+.cmd:last-child{border-bottom:none}
+/* stacked (tldr-style): chip wraps at spaces, description below — nothing squeezes or scrolls */
+.cmd code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.8rem;background:#fff;border:1px solid var(--line);border-radius:.35rem;padding:.14rem .45rem;white-space:pre-wrap;overflow-wrap:anywhere;display:inline-block;max-width:100%}
+.cmd .d{display:block;color:var(--muted);font-size:.82rem;margin-top:.2rem;overflow-wrap:anywhere}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.3rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">{{KICKER}}</p>
+    <h1>{{TITLE}}</h1>
+    <p class="sub">{{INTENT}}</p>
+  </header>
+
+  <div class="topics">
+    <!-- one .topic per group — the dot in the heading reuses a category hue -->
+    <section class="topic">
+      <h2><span class="dot" style="background:var(--cat-1)"></span>{{TOPIC}}</h2>
+      <!-- one .cmd per command: code chip + one-line description -->
+      <div class="cmd"><code>{{command --flags}}</code><span class="d">{{what it does}}</span></div>
+      <div class="cmd"><code>{{command}}</code><span class="d">{{what it does}}</span></div>
+      <div class="cmd"><code>{{command}}</code><span class="d">{{what it does}}</span></div>
+    </section>
+    <section class="topic">
+      <h2><span class="dot" style="background:var(--cat-2)"></span>{{TOPIC}}</h2>
+      <div class="cmd"><code>{{command}}</code><span class="d">{{what it does}}</span></div>
+      <div class="cmd"><code>{{command}}</code><span class="d">{{what it does}}</span></div>
+    </section>
+  </div>
+
+  <div class="footer">
+    Built with the <code>visualize</code> skill · one self-contained HTML file · shared via
+    <code>lubu.skale.dev/throway</code> · expires ~4h
+  </div>
+</main>
+</body>
+</html>

@@ -15,7 +15,7 @@ CDN enhancement should degrade gracefully offline.
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Visualization — {{subject}}</title>
     <style>
-      :root { --accent: #10b981; --ink: #0f172a; --paper: #fafaf9; --muted: #71717a; --line: #e4e4e7; }
+      :root { --accent: #10b981; --ink: #1a1a1a; --paper: #fafaf9; --muted: #6b7280; --line: #e5e5e5; }
       * { box-sizing: border-box; }
       body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
              background: var(--paper); color: var(--ink); line-height: 1.5; }

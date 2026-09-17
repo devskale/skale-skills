@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — before / after</title>
+<style>
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5;
+      --cat-1:#5e7a9b;--ok:#15803d;--warn:#b45309;--bad:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:64rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:1rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .3rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.section{margin-top:2.75rem}
+.section>h2{font-size:.95rem;margin:0 0 1rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+.ba-col{background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:1.25rem 1.4rem;min-width:0}
+.ba-col h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 .9rem}
+.delta{list-style:none;margin:0;padding:0}
+.delta li{padding:.45rem 0;border-bottom:1px solid var(--line);font-size:.9rem;overflow-wrap:anywhere}
+.delta li:last-child{border-bottom:none}
+.delta .mark{display:inline-block;width:1rem;font-weight:700;text-align:center;margin-right:.35rem}
+.delta .del .mark{color:var(--bad)}
+.delta .add .mark{color:var(--ok)}
+.delta .keep{color:var(--muted)}
+.trace-head,.tr-row{display:grid;grid-template-columns:1fr 6.5rem 6.5rem;gap:.75rem;align-items:baseline}
+.trace-head{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding-bottom:.4rem;border-bottom:1px solid var(--line)}
+.tr-row{padding:.5rem 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.tr-row:last-child{border-bottom:none}
+.tr-row .rule{overflow-wrap:anywhere}
+.st{font-size:.72rem;font-weight:650;letter-spacing:.04em}
+.st.pass{color:var(--ok)}
+.st.fail{color:var(--bad)}
+.st.skip{color:var(--muted)}
+/* first divergence — the marker the reader scans for (label + hue, never hue alone) */
+.tr-div{background:#fff;border-left:2px solid var(--warn);padding-left:.6rem}
+.tr-div .div-note{font-size:.72rem;color:var(--warn);font-weight:650}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.3rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">{{KICKER}}</p>
+    <h1>{{TITLE}}</h1>
+    <p class="sub">{{INTENT}}</p>
+  </header>
+
+  <section class="section">
+    <h2>{{WHAT CHANGED}}</h2>
+    <div class="ba">
+      <div class="ba-col">
+        <h2>Before — {{LABEL}}</h2>
+        <ul class="delta">
+          <li class="del"><span class="mark">−</span>{{removed or replaced}}</li>
+          <li class="del"><span class="mark">−</span>{{removed or replaced}}</li>
+          <li class="keep">{{unchanged — stays muted}</li>
+        </ul>
+      </div>
+      <div class="ba-col">
+        <h2>After — {{LABEL}}</h2>
+        <ul class="delta">
+          <li class="add"><span class="mark">+</span>{{added or replaced}</li>
+          <li class="add"><span class="mark">+</span>{{added or replaced}</li>
+          <li class="keep">{{unchanged — stays muted}}</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>{{PAIRED TRACE — same rules, both sides}}</h2>
+    <div class="trace-head">
+      <span>{{RULE}}</span><span>Before</span><span>After</span>
+    </div>
+    <!-- one .tr-row per rule; states as TEXT + hue: PASS / FAIL / SKIPPED -->
+    <div class="tr-row">
+      <span class="rule">{{rule — holds on both sides}}</span>
+      <span class="st pass">PASS</span><span class="st pass">PASS</span>
+    </div>
+    <div class="tr-row tr-div">
+      <span class="rule">{{rule — first divergence}} <span class="div-note">◄ first divergence</span></span>
+      <span class="st fail">FAIL</span><span class="st pass">PASS</span>
+    </div>
+    <div class="tr-row">
+      <span class="rule">{{rule}}</span>
+      <span class="st fail">FAIL</span><span class="st pass">PASS</span>
+    </div>
+  </section>
+
+  <div class="footer">
+    Built with the <code>visualize</code> skill · one self-contained HTML file · shared via
+    <code>lubu.skale.dev/throway</code> · expires ~4h
+  </div>
+</main>
+</body>
+</html>

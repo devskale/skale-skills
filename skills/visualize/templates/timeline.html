@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — timeline</title>
+<style>
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5;
+      --accent:#10b981;--cat-1:#5e7a9b;--cat-2:#7c8f6f;--cat-3:#b8915a;--cat-4:#9c6b50;
+      --ok:#15803d;--warn:#b45309;--bad:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:56rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:1rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin:0 0 .3rem}
+h1{font-size:2rem;margin:0 0 .25rem;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:1.1rem;font-size:.78rem;color:var(--muted)}
+.dot{display:inline-block;width:.62rem;height:.62rem;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+.timeline{border-left:1px solid var(--line);margin-left:.4rem;padding-left:1.5rem;margin-top:2rem}
+.phase{margin:0 0 1rem;font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.phase:first-child{margin-top:0}
+.tl{position:relative;margin:0 0 1.4rem}
+.tl .dot{position:absolute;left:-1.84rem;top:.35rem}
+.tl .when{font-size:.75rem;color:var(--muted);letter-spacing:.02em}
+.tl h3{font-size:1.05rem;margin:.1rem 0 .2rem;font-weight:600}
+.tl p{color:var(--muted);font-size:.88rem;margin:0;max-width:42rem}
+.tl.now .dot{background:var(--accent)}
+.tl.now .when{color:var(--accent);font-weight:650}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.3rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">{{KICKER}}</p>
+    <h1>{{TITLE}}</h1>
+    <p class="sub">{{INTENT}}</p>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--cat-1)"></span>{{TYPE A}}</span>
+      <span><span class="dot" style="background:var(--cat-2)"></span>{{TYPE B}}</span>
+      <span><span class="dot" style="background:var(--cat-3)"></span>{{TYPE C}}</span>
+      <span><span class="dot" style="background:var(--accent)"></span>now</span>
+    </div>
+  </header>
+
+  <div class="timeline">
+    <p class="phase">{{PHASE}}</p>
+    <!-- one .tl per event — the dot reuses the legend hue for that event type -->
+    <div class="tl">
+      <span class="dot" style="background:var(--cat-1)"></span>
+      <div class="when">{{WHEN}}</div>
+      <h3>{{EVENT}}</h3>
+      <p>{{one line}}</p>
+    </div>
+    <div class="tl">
+      <span class="dot" style="background:var(--cat-2)"></span>
+      <div class="when">{{WHEN}}</div>
+      <h3>{{EVENT}}</h3>
+      <p>{{one line}}</p>
+    </div>
+    <!-- .tl.now marks the current point — accent dot, no other decoration -->
+    <p class="phase">{{PHASE}}</p>
+    <div class="tl now">
+      <span class="dot"></span>
+      <div class="when">{{WHEN}} · now</div>
+      <h3>{{EVENT}}</h3>
+      <p>{{one line}}</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    Built with the <code>visualize</code> skill · one self-contained HTML file · shared via
+    <code>lubu.skale.dev/throway</code> · expires ~4h
+  </div>
+</main>
+</body>
+</html>
