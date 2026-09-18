@@ -1,7 +1,7 @@
 ---
 name: pdf2md
-version: "1.4.2"
-description: "Convert PDFs to clean Markdown via the skale pdf API — pdfplumber (local, free) for text-layer PDFs, automatic llamaparse (cloud OCR) fallback for scans. Use when the user wants a PDF converted to Markdown, PDF text extraction, or OCR for scanned PDFs. Triggers on: pdf to markdown, pdf2md, pdf text, pdf ocr, convert pdf, extract pdf."
+version: "1.4.3"
+description: "Bash skill — NOT an MCP tool: run `pdf2md <file.pdf>` in your shell. Convert PDFs to clean Markdown via the skale pdf API — pdfplumber (local, free) for text-layer PDFs, automatic llamaparse (cloud OCR) fallback for scans. Use when the user wants a PDF converted to Markdown, PDF text extraction, or OCR for scanned PDFs. Triggers on: pdf to markdown, pdf2md, pdf text, pdf ocr, convert pdf, extract pdf."
 ---
 
 # Skill: pdf2md
