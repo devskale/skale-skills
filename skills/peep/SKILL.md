@@ -1,7 +1,7 @@
 ---
 name: peep
-version: "0.9.1"
-description: "Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/replies, search, mentions, user timelines, home feed, bookmarks, likes, news/trending, lists, following/followers. Knowledge skill — drives the `peep` binary directly (no bundled scripts); requires installing the binary (see Setup). Use when the user wants to read or catch up on X/Twitter, fetch a tweet/thread by URL or ID, search tweets, list bookmarks/likes, or see who someone follows. Triggers on: read a tweet, tweet thread, X, Twitter, bookmarks, timeline, mentions, search tweets, followers, following, trending, news, peep."
+version: "0.9.2"
+description: "Bash skill — NOT an MCP tool: run `peep <command>` in your shell. Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/replies, search, mentions, user timelines, home feed, bookmarks, likes, news/trending, lists, following/followers. Knowledge skill — drives the `peep` binary directly (no bundled scripts); requires installing the binary (see Setup). Use when the user wants to read or catch up on X/Twitter, fetch a tweet/thread by URL or ID, search tweets, list bookmarks/likes, or see who someone follows. Triggers on: read a tweet, tweet thread, X, Twitter, bookmarks, timeline, mentions, search tweets, followers, following, trending, news, peep."
 license: MIT
 ---
 
