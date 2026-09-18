@@ -35,6 +35,11 @@ if bash scripts/lint.sh >/tmp/hb-lint.log 2>&1; then ok; else bad "lint.sh faile
 grep -q 'registerCommand("heartbeat"' "$EXT" && ok || bad "slash command not registered"
 grep -q "registerTool(heartbeatTool)" "$EXT" && ok || bad "agent tool not registered"
 grep -q "promptGuidelines" "$EXT" && ok || bad "promptGuidelines missing"
+grep -q "Never block the turn with a long" "$EXT" && ok || bad "sleep-avoidance guideline missing"
+grep -q "start short (15" "$EXT" && ok || bad "short-first polling guideline missing"
+grep -q "## Agent patterns" extensions/heartbeat.md && ok || bad "agent patterns section missing in heartbeat.md"
+grep -q "Offload + poll with herdr" extensions/heartbeat.md && ok || bad "herdr offload+poll recipe missing in heartbeat.md"
+grep -q 'never .--wait.' extensions/heartbeat.md && ok || bad "never --wait rule missing (fire-and-forget the offload)"
 grep -q "parseCommand" "$EXT" && ok || bad "command parser not wired"
 
 # logic markers (live in the core lib since the wiring/core split)
