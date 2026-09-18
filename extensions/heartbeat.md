@@ -87,6 +87,32 @@ trigger it:
 The tool result includes the full state snapshot in `details`, so forking /
 branching keeps the correct state.
 
+## Agent patterns
+
+Three pacing patterns the tool guidelines teach the agent:
+
+| Pattern | Instead of | How |
+|---------|-----------|-----|
+| **Heartbeat instead of sleep** | blocking the turn with `sleep 120` in bash | `heartbeat` start 2m "check the build", end the turn; the beat wakes the agent |
+| **Short-first polling** | guessing one interval and hoping | start 15–30s when uncertain, `time 2m` once the cadence is known, `stop` when done |
+| **Offload + poll** | waiting inline on a long job | hand the job to another pane (e.g. `/herdr`), then heartbeat to poll its progress — the current pane stays free |
+
+A long `sleep` burns the whole turn and can't be interrupted; a heartbeat keeps the
+session responsive, is visible in the status line, and can be paused/resumed (ESC) or
+tuned live (`time`, `message`) while running.
+
+### Offload + poll with herdr
+
+Inside a Herdr-managed pane: offload the long job to a sibling pane, then heartbeat to
+poll — each beat is one fresh, cheap check. Use the `/herdr` skill for herdr command
+details; the heartbeat-side rules are:
+
+- **Fire-and-forget the offload** — never `--wait` on the herdr prompt/run; that parks the
+  calling turn for the whole job, exactly the `sleep` you're avoiding.
+- **Short first** (30s), widen with `heartbeat time 2m` after a few beats still working.
+- **Cheap checks per beat** — state first (`herdr agent get`), output only when settled,
+  then `heartbeat stop` and close the pane you created.
+
 ## Install
 
 Add to pi settings.

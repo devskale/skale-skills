@@ -134,6 +134,11 @@ export default function (pi: ExtensionAPI) {
 			"Use action 'pause' to freeze the countdown and 'resume' to continue. State is preserved across pauses.",
 			"Use action 'time' or 'message' to change an already-running heartbeat live, 'status' to " +
 				"inspect it, and 'stop' to end it.",
+			"Never block the turn with a long `sleep` in bash — start a heartbeat instead and end the " +
+				"turn; the beat wakes you to re-check.",
+			"When timing is uncertain, start short (15–30s) and tune with action 'time' once you know " +
+				"the cadence; 'stop' when done. Pairs with offloaded work (e.g. a long job handed to " +
+				"another herdr pane): offload, then heartbeat to poll.",
 		],
 		parameters: Type.Object({
 			action: StringEnum(["start", "status", "stop", "message", "time", "pause", "resume", "help"] as const),
