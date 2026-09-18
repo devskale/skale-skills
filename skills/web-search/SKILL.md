@@ -1,7 +1,7 @@
 ---
 name: web-search
-version: "2.3.0"
-description: "Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credentials); an optional Duck API adds advanced filters (site, filetype, inurl, exact), a dedicated news endpoint, and engine override. Returns text, image, news, or video results. Use when the user wants to search the web, look something up, or find images/news/videos. Triggers on: web search, search for, google, look up, find online, image/news/video search."
+version: "2.3.1"
+description: "Bash skill — NOT an MCP tool: run `web-search \"query\"` in your shell. Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credentials); an optional Duck API adds advanced filters (site, filetype, inurl, exact), a dedicated news endpoint, and engine override. Returns text, image, news, or video results. Use when the user wants to search the web, look something up, or find images/news/videos. Triggers on: web search, search for, google, look up, find online, image/news/video search."
 ---
 
 # Web Search
