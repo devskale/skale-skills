@@ -127,6 +127,39 @@ json.dump(p,open(path,"w"),indent=2)
 PY
 }
 
+# --- seed minimal default activation (run right after `pi install`) ---
+# Writes the whitelist default (web-search + fetch-url, deprecated excluded)
+# into the package's skills filter — pi treats plain patterns as the include
+# set (applyPatterns step 1), so everything else stays opt-in via `pi config`.
+# Idempotent + respects customization: if a skills filter already exists,
+# it is left untouched.
+seed_defaults() {
+  if [ ! -f "$SETTINGS" ]; then echo "  (no $SETTINGS — pi not set up yet, skipping seed)"; return 0; fi
+  python3 - "$SETTINGS" <<'PY'
+import json,sys
+path=sys.argv[1]
+p=json.load(open(path))
+for i,x in enumerate(p.get("packages",[])):
+    src=x if isinstance(x,str) else x.get("source","")
+    if "skale-skills" not in src:
+        continue
+    if isinstance(x,dict) and "skills" in x:
+        print("  skills filter already set — leaving your customization untouched")
+        sys.exit(0)
+    obj=x if isinstance(x,dict) else {"source":x}
+    obj["skills"]=[
+        "skills/web-search/SKILL.md",
+        "skills/fetch-url/SKILL.md",
+        "!skills/deprecated/**",
+    ]
+    p["packages"][i]=obj
+    json.dump(p,open(path,"w"),indent=2)
+    print("  seeded default activation: web-search + fetch-url (others opt-in via pi config)")
+    sys.exit(0)
+print("  skale-skills package not found in settings — nothing to seed")
+PY
+}
+
 list_all() {
   echo "── skale-skills package filters ($SETTINGS) ──"
   local idx; idx=$(pkg_index) || die "skale-skills package not found in settings"
@@ -195,5 +228,8 @@ case "$cmd" in
     [ -n "${1:-}" ] || die "usage: $0 $cmd <skill|extension|mcp> <name>"
     run_toggle "$cmd" "$1" "$2"
     ;;
-  *) die "unknown command: $cmd (list|enable|disable)" ;;
+  seed-defaults)
+    seed_defaults
+    ;;
+  *) die "unknown command: $cmd (list|enable|disable|seed-defaults)" ;;
 esac
