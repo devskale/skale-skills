@@ -35,6 +35,8 @@ echo "-------------"
 [ -f "$SKILL/pyproject.toml" ] && ok || bad "pyproject.toml missing"
 [ -f "$PY" ] && ok || bad "scripts/pdf2md.py missing"
 [ -x "$SCRIPT" ] && ok || bad "launcher not executable"
+grep -q 'GIT_ROOT=' "$SCRIPT" && ok || bad "launcher must resolve enclosing git root (GIT_ROOT)"
+grep -q 'GIT_ROOT/.git' "$SCRIPT" && ok || bad "auto-update guard must use GIT_ROOT/.git"
 
 # frontmatter: name + version, version aligned with pyproject
 head -1 "$SKILL/SKILL.md" | grep -q '^---$' && ok || bad "SKILL.md missing frontmatter"

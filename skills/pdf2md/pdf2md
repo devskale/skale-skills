@@ -10,6 +10,14 @@ SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 STAMP_FILE="$SKILL_DIR/.last-update"
 AUTO_UPDATE_DAYS=7
 
+# Enclosing git repo root (pi-package layout: <repo>/skills/<skill>/, .git is at ../..).
+GIT_ROOT="$SKILL_DIR"
+while [ -n "$GIT_ROOT" ] && [ ! -d "$GIT_ROOT/.git" ]; do
+    GIT_ROOT="$(dirname "$GIT_ROOT" 2>/dev/null)"
+    [ "$GIT_ROOT" = "/" ] && GIT_ROOT=""
+done
+GIT_ROOT="${GIT_ROOT:-$SKILL_DIR}"
+
 # ── Dependency environment (kept OUTSIDE the repo) ──
 # pi's package update runs `git clean -fdx`, which deletes ANY untracked/
 # gitignored file inside the package — including a `.venv/` created by `uv sync`.
@@ -22,9 +30,9 @@ export UV_PROJECT_ENVIRONMENT="$ENV_DIR"
 case "${1:-}" in
     --update)
         echo "Updating pdf2md..."
-        cd "$SKILL_DIR"
-        [ -d ".git" ] && git pull --ff-only 2>&1 || true
-        uv sync --quiet 2>&1
+        cd "$GIT_ROOT"
+        git pull --ff-only 2>&1 || true
+        (cd "$SKILL_DIR" && uv sync --quiet 2>&1)
         date +%s > "$STAMP_FILE"
         echo "✓ Updated $(date)"
         exit 0
@@ -41,7 +49,7 @@ case "${1:-}" in
 esac
 
 # ── Auto-update check (non-blocking) ──
-if [ -d "$SKILL_DIR/.git" ]; then
+if [ -d "$GIT_ROOT/.git" ]; then
     needs_update=false
     if [ ! -f "$STAMP_FILE" ]; then
         needs_update=true
@@ -52,9 +60,9 @@ if [ -d "$SKILL_DIR/.git" ]; then
     fi
     if $needs_update; then
         (
-            cd "$SKILL_DIR"
+            cd "$GIT_ROOT"
             git pull --ff-only --quiet 2>/dev/null
-            uv sync --quiet 2>/dev/null
+            (cd "$SKILL_DIR" && uv sync --quiet 2>/dev/null)
             date +%s > "$STAMP_FILE"
         ) &>/dev/null &
     fi
