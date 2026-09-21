@@ -21,6 +21,13 @@ echo "-------------------------"
 [ -x "$SCRIPT" ] && ok || bad "$SCRIPT missing or not executable"
 [ -f "$SCRIPT" ] && ok || bad "$SCRIPT missing"
 
+# ── manifest glob-excludes must not carry a ./ prefix ──
+# pi matches patterns against package-root-relative paths via minimatch;
+# `!./skills/deprecated/**` silently matches NOTHING (see AGENTS.md gotcha).
+# note: grep -F, not BRE — grep interprets ** as a repetition operator
+grep -Fq '"!skills/deprecated/**"' package.json && ok || bad 'package.json: manifest exclusion !skills/deprecated/** missing'
+grep -q '"!\./' package.json && bad 'package.json: ./-prefixed glob-exclude silently matches nothing (drop the ./ prefix)' || ok
+
 # ── shellcheck (if available) ──
 if command -v shellcheck >/dev/null 2>&1; then
   if shellcheck "$SCRIPT" >/tmp/sf-shellcheck.log 2>&1; then
