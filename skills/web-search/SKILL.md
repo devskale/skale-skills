@@ -117,8 +117,14 @@ Or set the `SEARXNG_URL` env var (bare URL, or `URL@user@pass`).
 **Duck API** (enables `--site`, `--filetype`, `--inurl`, `--exclude`, `--exact`):
 
 ```bash
-credgoo WEB_SEARCH_BEARER
+credgoo WEB_SEARCH_BEARER   # token
+credgoo DUCK_API_URL        # BASE URL (e.g. https://host/api/duck)
 ```
+
+Or set the `DUCK_API_URL` env var. It's the **base** URL — the code appends
+`/search` and `/news` for the two endpoints. The endpoint is **config-based**
+(env → credgoo), not baked into the skill — point it at your own Duck-API host.
+If no URL is configured the duck backend is disabled and search uses SearXNG.
 
 **No `credgoo` command?** Install it once (the skill prefers a global install):
 

@@ -99,6 +99,27 @@ Conclusion: don't port heartbeat.ts. In zcode, scheduling is a platform
 feature; our value-add would be at most a `/heartbeat` command that sets the
 automation up with a sensible prompt.
 
+## zcode skill discovery (verified 2026-09-21 from the official `zcode-guide` plugin)
+
+zcode's discovery order — earlier locations take precedence and **shadow** same-named later ones:
+
+1. Explicitly configured roots (`skills.roots` in `~/.zcode/cli/config.json`)
+2. User `~/.zcode/skills`
+3. **User `~/.agents/skills`** ← the agentskills.io standard dir — zcode reads it natively
+4. Workspace `.zcode/skills` (cwd → repo root; deeper wins)
+5. Workspace `.agents/skills`
+6. Enabled plugin roots (lowest)
+
+Within a level `.zcode` is scanned before `.agents`; identity is the file path;
+same-named skills are all discovered but only the first loads. zcode has **no
+manifest exclusion** — `skills/deprecated/**` leaks into any root that contains
+it (including a `skills.roots` entry pointing at the pi package copy).
+
+**Consequence:** `./install.sh --agents` (→ `scripts/link-agents.sh`) symlinking
+selectively into `~/.agents/skills` covers zcode without `~/.zcode/skills`
+symlinks and keeps deprecated out. A leftover explicit `skills.roots` entry
+shadows it (order #1) and should be removed after migrating.
+
 ## Install & precedence
 
 - Install: zcode → **Settings → Plugin Management → Discover** → add this

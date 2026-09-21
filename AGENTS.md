@@ -167,6 +167,7 @@ bash tests/peep/test.sh
 bash tests/imagegen/test.sh          # extensions/imagegen.ts
 bash tests/heartbeat/test.sh         # extensions/heartbeat.ts
 bash tests/skill-filter/test.sh      # scripts/skill-filter.sh (settings filter helper)
+bash tests/link-agents/test.sh      # scripts/link-agents.sh (~/.agents/skills for other agents)
 bash tests/gdocs/test.sh             # live smoke, external gog CLI
 ```
 
@@ -279,5 +280,17 @@ openskills install <org>/<repo>       # multi-agent skill installer
 npx @anthropic-ai/skills add <name>   # Anthropic skills
 # browse/discover: https://skills.sh
 ```
+
+**Our built-in way — the standard dir:** `./install.sh` asks **interactively which
+agents** get the skills (standard `~/.agents/skills`, `~/.zcode/skills`,
+`~/.claude/skills`, `~/.codex/skills`) and records the choice in
+`~/.config/skale-skills/link-agents.conf`. Non-interactive: `./install.sh --agents`
+(standard dir), `--no-agents`, or `SKALE_LINK_AGENTS=1|0`. Linking is done by
+[`scripts/link-agents.sh`](scripts/link-agents.sh) — every non-deprecated skill
+symlinked into the chosen dirs. pi, zcode (discovery #3), and spec-compliant
+agents read `~/.agents/skills` natively. Opt-in per machine — pi's package filter
+(seed-defaults whitelist) does NOT apply to skills found there, so linking
+activates them for pi too. Deprecated skills are never linked (no other agent
+has manifest exclusion).
 
 The former `skiller` CLI is retired — see [`deprecated/`](deprecated/README.md).
