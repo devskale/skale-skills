@@ -45,6 +45,11 @@ pi config                                          # activate only the skills yo
 Note: pi reads skills from its **package copy** at `~/.pi/agent/git/github.com/devskale/skale-skills/` (a full clone made by `pi install`) — not from a working checkout. Skill launchers auto-update that clone in the background every 7 days; `pi install` updates it on demand.
 
 Default activation: **`web-search` + `fetch-url`** skills (extensions: heartbeat, xmodel, statusline, imagegen).
+`./install.sh` seeds this default right after `pi install` (`scripts/skill-filter.sh seed-defaults`) —
+pi checks ALL shipped skills by default otherwise. The seed is a whitelist
+(plain patterns = include set in pi's filter model), so every other skill stays
+opt-in via `pi config`. Idempotent + respects customization: an existing skills
+filter is left untouched.
 
 > **View vs. understand images:** `read img.jpg` is **display-only** (canonical, native pi image display) — it shows an
 > image inline / in the terminal but **never fires the VLM**. Understanding is **opt-in**: the `read_image`
