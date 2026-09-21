@@ -32,6 +32,8 @@ echo ""
 echo "[2] Launcher flags..."
 assert "--selfcheck works" "fetch-url --selfcheck 2>&1 | grep -q 'fetch-url v'"
 assert "--update works"   "fetch-url --update 2>&1 | grep -q 'Updated'"
+assert "launcher resolves enclosing git root" "grep -q 'GIT_ROOT=' fetch-url"
+assert "auto-update guard uses git root" "grep -q 'GIT_ROOT/.git' fetch-url"
 assert "stamp file created" "[ -f .last-update ]"
 echo ""
 

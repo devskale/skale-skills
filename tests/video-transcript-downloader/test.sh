@@ -42,6 +42,7 @@ echo ""
 # ── 3. Launcher ───────────────────────────────────────────────────────
 echo "[3] Launcher..."
 assert "launcher executable" "[ -x vtd ]"
+assert "launcher resolves enclosing git root" "grep -q 'GIT_ROOT=' vtd"
 assert "has --selfcheck"    "grep -q '\-\-selfcheck' vtd"
 assert "has --update"       "grep -q '\-\-update' vtd"
 assert "has --install"      "grep -q '\-\-install' vtd"

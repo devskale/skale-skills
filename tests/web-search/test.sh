@@ -31,6 +31,8 @@ echo ""
 echo "[2] Launcher flags..."
 assert "--selfcheck works" "web-search --selfcheck 2>&1 | grep -q 'web-search v'"
 assert "--update works"   "web-search --update 2>&1 | grep -q 'Updated'"
+assert "launcher resolves enclosing git root" "grep -q 'GIT_ROOT=' search"
+assert "auto-update guard uses git root" "grep -q 'GIT_ROOT/.git' search"
 assert "stamp file created" "[ -f .last-update ]"
 echo ""
 

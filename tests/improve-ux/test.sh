@@ -25,6 +25,8 @@ echo "---------------"
 # structure
 [ -f "$SKILL/SKILL.md" ] && ok || bad "SKILL.md missing"
 [ -x "$SCRIPT" ] && ok || bad "improve-ux launcher not executable"
+grep -q 'GIT_ROOT=' "$SCRIPT" && ok || bad "launcher must resolve enclosing git root (GIT_ROOT)"
+grep -q 'GIT_ROOT/.git' "$SCRIPT" && ok || bad "auto-update guard must use GIT_ROOT/.git"
 [ -f "$SKILL/install.sh" ] && ok || bad "install.sh missing"
 [ -f "$SKILL/install.bat" ] && ok || bad "install.bat missing"
 [ -f "$SKILL/.gitignore" ] && ok || bad ".gitignore missing"

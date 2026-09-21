@@ -9,6 +9,14 @@ done
 SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 STAMP_FILE="$SKILL_DIR/.last-update"
 
+# Enclosing git repo root (pi-package layout: <repo>/skills/<skill>/, .git is at ../..).
+GIT_ROOT="$SKILL_DIR"
+while [ -n "$GIT_ROOT" ] && [ ! -d "$GIT_ROOT/.git" ]; do
+    GIT_ROOT="$(dirname "$GIT_ROOT" 2>/dev/null)"
+    [ "$GIT_ROOT" = "/" ] && GIT_ROOT=""
+done
+GIT_ROOT="${GIT_ROOT:-$SKILL_DIR}"
+
 # ── Python venv for yt-dlp (kept OUTSIDE the repo) ──
 # pi's package update runs `git clean -fdx`, which deletes ANY untracked/
 # gitignored file inside the package — including an in-repo `.venv/`. Keep the
@@ -32,7 +40,7 @@ case "${1:-}" in
     --update|--self-update)
         cd "$SKILL_DIR"
         echo "Updating video-transcript-downloader..."
-        [ -d ".git" ] && git pull --ff-only 2>&1 || true
+        (cd "$GIT_ROOT" && git pull --ff-only 2>&1) || true
         install_ytdlp
         date +%s > "$STAMP_FILE"
         echo "Updated."
@@ -76,7 +84,7 @@ if [ -f "$STAMP_FILE" ]; then
     now=$(date +%s)
     age=$(( (now - last) / 86400 ))
     if [ "$age" -gt 7 ]; then
-        (cd "$SKILL_DIR" && git pull --ff-only --quiet 2>/dev/null && install_ytdlp && date +%s > "$STAMP_FILE") &>/dev/null &
+        (cd "$GIT_ROOT" && git pull --ff-only --quiet 2>/dev/null && install_ytdlp && date +%s > "$STAMP_FILE") &>/dev/null &
     fi
 fi
 

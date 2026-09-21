@@ -41,6 +41,8 @@ echo ""
 # ── 3. Launcher ───────────────────────────────────────────────────────
 echo "[3] Launcher..."
 assert "launcher executable" "[ -x youtube ]"
+assert "launcher resolves enclosing git root" "grep -q 'GIT_ROOT=' youtube"
+assert "auto-update guard uses git root" "grep -q 'GIT_ROOT/.git' youtube"
 assert "has --selfcheck"    "grep -q '\-\-selfcheck' youtube"
 assert "has --update"       "grep -q '\-\-update' youtube"
 assert "has --install"      "grep -q '\-\-install' youtube"
