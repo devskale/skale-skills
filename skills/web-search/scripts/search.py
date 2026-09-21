@@ -53,8 +53,10 @@ except ImportError:
 # Configuration
 # =============================================================================
 
-DUCK_API_URL = os.environ.get("DUCK_API_URL", "https://amd.skale.dev/api/duck/search")
-DUCK_NEWS_URL = os.environ.get("DUCK_NEWS_URL", "https://amd.skale.dev/api/duck/news")
+# Duck API base URL is config-based (env → credgoo), NOT baked into code.
+# Point it at your own Duck-API host; if unset the duck backend is disabled
+# and search falls back to SearXNG. credgoo key: DUCK_API_URL. The news
+# endpoint is optional and defaults to the search URL when not set.
 
 # Public SearXNG instances (no auth required)
 PUBLIC_SEARXNG_INSTANCES = [
@@ -96,6 +98,34 @@ def get_bearer_token() -> Optional[str]:
         return token
 
     return get_api_key("WEB_SEARCH_BEARER")
+
+
+def _resolve_url(env_key: str, credgoo_key: str) -> str:
+    """Resolve a config URL from env var, then credgoo. Empty if unset."""
+    if url := os.environ.get(env_key):
+        return url
+    return (get_api_key(credgoo_key) or "").strip()
+
+
+def get_duck_api_url() -> str:
+    """Duck API base URL: env DUCK_API_URL → credgoo DUCK_API_URL → ''.
+
+    This is the BASE (e.g. https://host/api/duck); the search and news
+    endpoints are derived by appending /search and /news.
+    """
+    return _resolve_url("DUCK_API_URL", "DUCK_API_URL").rstrip("/")
+
+
+def get_duck_search_url() -> str:
+    """Duck search endpoint: {base}/search."""
+    base = get_duck_api_url()
+    return f"{base}/search" if base else ""
+
+
+def get_duck_news_url() -> str:
+    """Duck news endpoint: {base}/news (optional; empty when base unset)."""
+    base = get_duck_api_url()
+    return f"{base}/news" if base else ""
 
 
 def _parse_searxng_cred(cred: str) -> Optional[Dict[str, str]]:
@@ -149,8 +179,8 @@ def select_backend(args: argparse.Namespace) -> str:
     if args.searxng:
         return "searxng"
 
-    # Duck API only if token available
-    if get_bearer_token():
+    # Duck API only if a token AND a configured endpoint URL exist.
+    if get_bearer_token() and get_duck_api_url():
         # News is served natively by the Duck API (/duck/news, dedicated
         # news index with dates). Images/videos stay on SearXNG — the Duck
         # API has no equivalent.
@@ -220,7 +250,7 @@ def search_duck(
 
     try:
         resp = requests.get(
-            DUCK_API_URL, params=params, headers=headers, timeout=(5, 45),
+            get_duck_search_url(), params=params, headers=headers, timeout=(5, 45),
         )
         if resp.status_code == 404:
             # Server raises 404 for a genuinely empty result set —
@@ -282,7 +312,7 @@ def search_duck_news(
 
     try:
         resp = requests.get(
-            DUCK_NEWS_URL, params=params, headers=headers, timeout=(5, 45),
+            get_duck_news_url(), params=params, headers=headers, timeout=(5, 45),
         )
         if resp.status_code == 404:
             return []
@@ -427,7 +457,8 @@ Examples:
 
 Backends:
   - Public SearXNG: Default, no setup required
-  - Duck API: Set WEB_SEARCH_BEARER for advanced filters
+  - Duck API: Set WEB_SEARCH_BEARER (token) + DUCK_API_URL (endpoint,
+              env or credgoo) for advanced filters; news reuses DUCK_API_URL
   - Private SearXNG: Set SEARXNG_URL or add to credgoo
         """
     )
@@ -471,6 +502,13 @@ Backends:
 
     # Select backend
     backend = select_backend(args)
+
+    # Duck backend needs a configured endpoint URL (env/credgoo DUCK_API_URL).
+    if backend == "duck" and not get_duck_api_url():
+        print("Error: DUCK_API_URL not configured. Set the env var or add a "
+              "credgoo key (DUCK_API_URL), or use --searxng for public search.",
+              file=sys.stderr)
+        sys.exit(1)
 
     if args.verbose:
         print(f"# Backend: {backend}", file=sys.stderr)

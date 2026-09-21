@@ -38,23 +38,64 @@ done
 echo "  (d2, peep, improve-ux are knowledge skills; figure needs node — nothing to install)"
 echo "  (rodney: uv tool install per guides/rodney-setup.md)"
 
-# ── 3. zcode (symlink skill dirs into ~/.zcode/skills) ──
-ZCODE_DIR="$HOME/.zcode/skills"
-if [ -d "$ZCODE_DIR" ]; then
+# ── 3. other agents — which agents should get our skills? ──
+# Interactive by default (real terminal); non-interactive fallbacks:
+#   ./install.sh --agents    or SKALE_LINK_AGENTS=1 → standard dir (~/.agents/skills)
+#   ./install.sh --no-agents or SKALE_LINK_AGENTS=0 → none (pi only)
+# The choice is recorded in ~/.config/skale-skills/link-agents.conf and reused
+# on re-runs (delete the file — or pass a flag — to change it).
+# pi caveat: skills discovered via ~/.agents/skills bypass the pi package
+# filter (install.sh seed-defaults whitelist) — they are active for pi too.
+AGENTS_STATE_DIR="$HOME/.config/skale-skills"
+AGENTS_STATE="$AGENTS_STATE_DIR/link-agents.conf"
+AGENTS_CHOICE=""
+
+if [ "${1:-}" = "--agents" ] || [ "${SKALE_LINK_AGENTS:-}" = "1" ]; then
+    AGENTS_CHOICE="$HOME/.agents/skills"              # non-interactive: standard dir
+elif [ "${1:-}" = "--no-agents" ] || [ "${SKALE_LINK_AGENTS:-}" = "0" ]; then
+    AGENTS_CHOICE=""                                  # non-interactive: none
+elif [ -f "$AGENTS_STATE" ]; then
+    AGENTS_CHOICE="$(tr '\n' ' ' < "$AGENTS_STATE")"  # recorded choice (reuse, no re-ask)
+    AGENTS_CHOICE="${AGENTS_CHOICE% }"
+else
+    # interactive pick — only with a real terminal
+    AGENT_PATHS=("$HOME/.agents/skills" "$HOME/.zcode/skills" "$HOME/.claude/skills" "$HOME/.codex/skills")
+    AGENT_LABELS=("standard ~/.agents/skills (zcode, opencode, spec-compliant; pi reads it too)"
+                  "~/.zcode/skills (zcode native)"
+                  "~/.claude/skills (Claude Code)"
+                  "~/.codex/skills (Codex)")
     echo
-    echo "── zcode ($ZCODE_DIR) ──"
-    for d in skills/*/; do
-        name=$(basename "$d")
-        [ -f "${d}SKILL.md" ] || continue
-        target="$ZCODE_DIR/$name"
-        if [ -L "$target" ]; then
-            echo "· $name: already linked"
-        elif [ -e "$target" ]; then
-            echo "· $name: exists as real copy — left untouched"
-        else
-            ln -s "$REPO_DIR/skills/$name" "$target" && echo "· $name: symlinked"
-        fi
+    echo "── Expose skills to other agents? ──"
+    i=0
+    while [ "$i" -lt "${#AGENT_PATHS[@]}" ]; do
+        mark=""
+        [ -d "${AGENT_PATHS[$i]}" ] && mark="  [dir exists]"
+        echo "  $((i+1))) ${AGENT_LABELS[$i]}$mark"
+        i=$((i+1))
     done
+    echo "  0) none — pi only (default)"
+    answer=""
+    [ -t 0 ] && read -r -p "Which agents? (e.g. '1 3', Enter = none): " answer
+    for n in $answer; do
+        case "$n" in
+            1|2|3|4) idx=$((n-1)); AGENTS_CHOICE="$AGENTS_CHOICE ${AGENT_PATHS[$idx]}" ;;
+        esac
+    done
+    AGENTS_CHOICE="${AGENTS_CHOICE# }"
+    mkdir -p "$AGENTS_STATE_DIR"
+    printf '%s\n' $AGENTS_CHOICE > "$AGENTS_STATE"   # unquoted: one path per line; empty = none
+    echo "  choice recorded in $AGENTS_STATE (delete it or pass --agents/--no-agents to change)"
+fi
+
+if [ -n "$AGENTS_CHOICE" ]; then
+    for t in $AGENTS_CHOICE; do
+        echo
+        echo "── other agents → $t ──"
+        bash scripts/link-agents.sh "$t"
+    done
+else
+    echo
+    echo "── other agents: none (pi only; re-run ./install.sh to choose, or use --agents) ──"
 fi
 
 # ── 4. pi (package install/update) ──
