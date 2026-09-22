@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-version: "2.8.1"
+version: "2.8.2"
 description: "Bash skill — NOT an MCP tool: run `fetch-url \"url\"` in your shell. Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jina, markdown, chrome) with smart fallback. Use when the user wants to read an article, docs, or scrape text from a page. Triggers on: fetch this URL, read this page, extract the text, scrape this site, get the article content. Works on Reddit, StackOverflow, GitHub, docs sites, and more."
 ---
 
@@ -56,7 +56,13 @@ fetch-url "URL" -v                        # Verbose (shows tool + redirects)
 
 ## Tools (Auto-Selected)
 
-Priority: free local tools first (w3m, lynx), then free APIs (jina, markdown), then chrome.
+Selection: site hints first (`settings.json`), else `auto` = **jina** (leanest on
+JS-heavy docs) — measured: static HTML local ≈ cloud (W3C: w3m 12.9KB/280 lines vs
+jina 12.3KB/115), JS-heavy docs jina halves the output with less nav noise
+(platform.claude.com: 27.5KB vs 42KB). On failure the fallback chain runs local-first
+(w3m, lynx → jina, markdown, chawan) until the content check accepts. Privacy:
+`auto`/jina/markdown send the URL to a third-party extractor — local-only via
+`--tool w3m` / `--tool lynx`. Chrome is explicit-only.
 
 | Tool | Best For | Cost |
 |------|----------|------|
