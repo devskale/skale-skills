@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-version: "2.8.2"
+version: "2.8.3"
 description: "Bash skill — NOT an MCP tool: run `fetch-url \"url\"` in your shell. Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jina, markdown, chrome) with smart fallback. Use when the user wants to read an article, docs, or scrape text from a page. Triggers on: fetch this URL, read this page, extract the text, scrape this site, get the article content. Works on Reddit, StackOverflow, GitHub, docs sites, and more."
 ---
 
@@ -39,7 +39,6 @@ fetch-url --update / --selfcheck                  # manual update / version+date
 ```bash
 fetch-url "https://example.com"           # Auto-selects best tool
 fetch-url "https://reddit.com/r/python"   # Redirects to old.reddit.com, uses w3m
-fetch-url "https://news.ycombinator.com"  # Uses w3m (free, local)
 fetch-url "URL" --tool jina              # Force specific tool
 fetch-url "URL" -v                        # Verbose (shows tool + redirects)
 ```
