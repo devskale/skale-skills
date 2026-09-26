@@ -168,6 +168,26 @@ SELF_V=$(web-search --selfcheck 2>/dev/null | grep -o 'v[0-9][0-9.]*' | head -1 
 assert "pyproject ($TOML_V), SKILL.md ($SKILL_V), selfcheck ($SELF_V) match" "[ '$TOML_V' = '$SKILL_V' ] && [ '$TOML_V' = '$SELF_V' ]"
 echo ""
 
+# ── 13. cwd independence (CODING_RULES: bare invocation from any cwd) ───
+echo "[13] cwd independence..."
+TMP_CWD="$(mktemp -d)"
+CWD_OUT="$(cd "$TMP_CWD" && web-search "test" --max 1 2>&1)" || true
+if [ -n "$CWD_OUT" ]; then
+    PASS=$((PASS + 1))
+else
+    echo "  WARN: no output from foreign cwd (network?)"
+    WARN=$((WARN + 1))
+fi
+LEFTOVER="$(ls -A "$TMP_CWD" 2>/dev/null)"
+if [ -z "$LEFTOVER" ]; then
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: artifacts left in caller cwd: $LEFTOVER"
+fi
+rm -rf "$TMP_CWD"
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "  Passed: $PASS"
