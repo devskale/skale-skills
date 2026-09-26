@@ -184,10 +184,10 @@ bash scripts/lint.sh     # tsc --noEmit + Biome lint (scoped to extensions/)
 
 ## Development Workflow
 
-### Best Practices (from CONVENTION.md)
+### Best Practices (from CODING_RULES.md)
 
 Full reference incl. launcher/install.sh templates, testing matrix, version alignment:
-[CONVENTION.md → Skill Best Practices](CONVENTION.md#skill-best-practices).
+[CODING_RULES.md → Skill Best Practices](CODING_RULES.md#skill-best-practices).
 
 Every skill must have:
 - `SKILL.md` — frontmatter (`name`, `description`, `version`) + short usage instructions
@@ -220,7 +220,7 @@ Python dependencies & pi package updates](docs/agent-skills-best-practices.md).
 
 ## Coding
 
-Coding guidelines live in [CONVENTION.md → Coding Guidelines](CONVENTION.md) — read it when writing or reviewing skill code. Grounded in [Learnings from the Codex repo](docs/codex-learnings.md): as implementation gets cheaper, tests, boundaries, and lint matter more, not less.
+Coding guidelines live in [CODING_RULES.md](CODING_RULES.md) — read it when writing or reviewing skill code. Grounded in [Learnings from the Codex repo](docs/codex-learnings.md): as implementation gets cheaper, tests, boundaries, and lint matter more, not less.
 
 Always-on hard rules:
 
@@ -232,7 +232,7 @@ Always-on hard rules:
 
 This repo is a **living workshop**, not a finished product. Every session that surfaces a reusable lesson — a convention, a gotcha, a better pattern — should leave a trace. The pipeline, in order:
 
-1. **Capture** — when a lesson appears (a bug we hit, a convention we invented, a trap we stepped in), record it where it belongs: `AGENTS.md` for load-bearing rules the agent must follow, `docs/` for deep-dive guides, `CONVENTION.md` for coding guidelines.
+1. **Capture** — when a lesson appears (a bug we hit, a convention we invented, a trap we stepped in), record it where it belongs: `AGENTS.md` for load-bearing rules the agent must follow, `docs/` for deep-dive guides, `CODING_RULES.md` for coding guidelines.
 2. **Bake into docs** — turn the one-off fix into a documented convention so the next agent doesn't rediscover it. Prefer a short load-bearing rule over a long explanation.
 3. **Automate** — once a rule is stable and objectively checkable, encode it in a `test.sh` (or `scripts/lint.sh` for extensions) and prune the prose. The test is the enforcement; the doc becomes the pointer.
 4. **Prune** — when a skill or pattern is superseded, archive it (see Deprecation below) rather than leaving it to rot in place.

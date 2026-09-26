@@ -300,7 +300,7 @@ bash tests/imagegen/test.sh                             # imagegen extension (pr
 
 ## Contributing
 
-Every skill follows [`CONVENTION.md`](CONVENTION.md): `SKILL.md` + launcher (symlink resolution, `--update`/`--selfcheck`, auto-update) + `install.sh`/`install.bat` + `.gitignore` + `tests/<name>/test.sh`. Python skills use type hints + Google docstrings + credgoo.
+Every skill follows [`CODING_RULES.md`](CODING_RULES.md): `SKILL.md` + launcher (symlink resolution, `--update`/`--selfcheck`, auto-update) + `install.sh`/`install.bat` + `.gitignore` + `tests/<name>/test.sh`. Python skills use type hints + Google docstrings + credgoo.
 
 **Don'ts:** `readlink -f` (breaks macOS) · `requirements.txt` · `.env` with real tokens · `amd1.mooo.com` endpoints (migrated to `*.skale.dev`).
 
