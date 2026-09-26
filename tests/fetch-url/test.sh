@@ -261,6 +261,26 @@ else
 fi
 echo ""
 
+# ── 19. cwd independence (CODING_RULES: bare invocation from any cwd) ────
+echo "[19] cwd independence..."
+TMP_CWD="$(mktemp -d)"
+CWD_OUT="$(cd "$TMP_CWD" && fetch-url "https://example.com" 2>&1)" || true
+if [ -n "$CWD_OUT" ]; then
+    PASS=$((PASS + 1))
+else
+    echo "  WARN: no output from foreign cwd (network?)"
+    WARN=$((WARN + 1))
+fi
+LEFTOVER="$(ls -A "$TMP_CWD" 2>/dev/null)"
+if [ -z "$LEFTOVER" ]; then
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: artifacts left in caller cwd: $LEFTOVER"
+fi
+rm -rf "$TMP_CWD"
+echo ""
+
 # ── Results ──────────────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "  Passed: $PASS"

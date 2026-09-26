@@ -345,7 +345,7 @@ Every skill must have `tests/<skill-name>/test.sh`. Test categories:
 |----------|---------------|
 | Command available | `command -v <name>` |
 | Launcher flags | `--update`, `--selfcheck`, stamp file |
-| cwd independence | run from a foreign dir; no artifacts left behind |
+| cwd independence | run from a foreign dir; no artifacts left behind (**automated**: web-search/fetch-url `test.sh`) |
 | Help output | Key flags present |
 | Live smoke test | Real fetch/search against public APIs (resilient to network issues) |
 | Code quality | Type hints, docstrings, no macOS-incompatible patterns |
@@ -420,3 +420,17 @@ Where a guideline goes (from [docs/codex-learnings.md](docs/codex-learnings.md))
 2. Once the rule is stable and objectively checkable → **automate it**
    (assertion in `test.sh`, grep check, lint) and prune the prose.
    Expensive-and-checkable rules earn automation; judgment calls stay prose.
+
+## Replacing a Canonical Doc
+
+Lesson from CONVENTION.md → CODING_RULES.md (first draft shipped with gaps a
+user review caught). Before a new doc replaces a canonical one:
+
+1. **Coverage-diff** — every heading/rule of the old file must survive somewhere
+   (grep the old file's rule keywords against the new one; missing = gap).
+2. **Update inbound refs** — `rg '<OldName>'` repo-wide; historical logs
+   (release-notes, worklogs) stay untouched.
+3. **One language** — match the repo standard (english here).
+4. **`git rm`** the old file so git records a rename (history/blame stays).
+5. **Separate `chore:` bump commit** for `package.json` — never mixed with the
+   doc change.
