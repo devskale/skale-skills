@@ -1,6 +1,6 @@
 # Learnings from the Codex repo
 
-Grundlage der Coding-Guidelines in [CONVENTION.md → Coding Guidelines](../CONVENTION.md) und
+Grundlage der Coding-Guidelines in [CODING_RULES.md → Coding Rules](../CODING_RULES.md) und
 der Empfehlung in [AGENTS.md](../AGENTS.md) ("as implementation gets cheaper, tests, boundaries,
 and lint matter more, not less").
 
