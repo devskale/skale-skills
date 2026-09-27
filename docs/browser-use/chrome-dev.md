@@ -51,7 +51,7 @@ install -m 755 docs/browser-use/chrome-autoallow.sh ~/.local/bin/chrome-autoallo
 | # | Purpose | Path |
 |---|---------|------|
 | 1 | user-global (shared w/ Cursor, Claude, …) | `~/.config/mcp/mcp.json` |
-| 2 | pi-specific global | `~/.pi/agent/mcp.json` |
+| 2 | pi-specific global | `~/.pi/agent/mcp-adapter.json` |
 | 3 | project-local (shared) | `<repo>/.mcp.json` |
 | 4 | pi-specific project | `<repo>/.pi/mcp.json` |
 
