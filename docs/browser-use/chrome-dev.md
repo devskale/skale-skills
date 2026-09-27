@@ -53,7 +53,7 @@ install -m 755 docs/browser-use/chrome-autoallow.sh ~/.local/bin/chrome-autoallo
 | 1 | user-global (shared w/ Cursor, Claude, …) | `~/.config/mcp/mcp.json` |
 | 2 | pi-specific global | `~/.pi/agent/mcp-adapter.json` |
 | 3 | project-local (shared) | `<repo>/.mcp.json` |
-| 4 | pi-specific project | `<repo>/.pi/mcp.json` |
+| 4 | pi-specific project | `<repo>/.pi/mcp-adapter.json` |
 
 > **Want it everywhere?** Drop it in tier 1 — `~/.config/mcp/mcp.json` — once, and every pi session (plus other MCP-aware tools) picks it up. No per-project file needed.
 
@@ -72,7 +72,7 @@ The server block is identical in any of them:
 
 > Prefer not to hand-edit JSON? Run `/mcp setup` in pi — it has a one-click **Chrome DevTools** preset that writes the file for you. Then replace the block above so it uses `chrome-autoallow` exactly as shown (the wrapper passes everything after `run` to `chrome-devtools-mcp`).
 
-**Project setup (share with a repo):** commit the identical block as `.mcp.json` in the repo root — every MCP-aware client (pi, Cursor, Claude Code, …) picks it up. Pi-only alternative: `<repo>/.pi/mcp.json`. Two rules: keep the block byte-identical everywhere (a diverging tier-1 file silently wins over project files), and make sure `chrome-autoallow` is installed on each machine (`install -m 755 …/chrome-autoallow.sh ~/.local/bin/chrome-autoallow` from this repo) — without it the server fails to spawn.
+**Project setup (share with a repo):** commit the identical block as `.mcp.json` in the repo root — every MCP-aware client (pi, Cursor, Claude Code, …) picks it up. Pi-only alternative: `<repo>/.pi/mcp-adapter.json`. Two rules: keep the block byte-identical everywhere (a diverging tier-1 file silently wins over project files), and make sure `chrome-autoallow` is installed on each machine (`install -m 755 …/chrome-autoallow.sh ~/.local/bin/chrome-autoallow` from this repo) — without it the server fails to spawn.
 
 Restart pi (or run `/mcp`). The server is **lazy** — it only spawns when you first call one of its tools.
 
@@ -231,7 +231,7 @@ Servers auto-disconnect after ~10 minutes of inactivity and reconnect on next us
 ## Notes
 
 - `chrome-autoallow` ([source](chrome-autoallow.sh), installed to `~/.local/bin/`): arms an accessibility watcher when the MCP server spawns — re-armed on every chrome-dev call, disarmed when the server dies. It only presses **Allow** inside a sheet titled "Allow remote debugging?" and self-stops on idle (10 min, resets per click), Chrome-not-running (>30 s), or a 6 h deadline. Manual control: `chrome-autoallow status|arm|disarm`; click log at `$TMPDIR/chrome-autoallow.log`.
-- Config **never** goes in `.pi/settings.json` — use one of the four `mcp.json` locations in [§2](#2-add-the-mcp-server-config). `~/.config/mcp/mcp.json` is the recommended global default.
+- Config **never** goes in `.pi/settings.json` — use one of the four `mcp.json`/`mcp-adapter.json` locations in [§2](#2-add-the-mcp-server-config). `~/.config/mcp/mcp.json` is the recommended global default.
 - For headless-only usage, add `--headless` to the args. No Chrome window will appear.
 - The `--slim` flag reduces the tool set for faster startup — useful if you only need navigation and screenshots.
 - Official flag reference: <https://developer.chrome.com/docs/devtools/agents/get-started/configuration> · repo: <https://github.com/ChromeDevTools/chrome-devtools-mcp>
