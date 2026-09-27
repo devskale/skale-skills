@@ -1,6 +1,6 @@
 ---
 name: visualize
-version: "1.7.0"
+version: "1.7.1"
 description: "Render any set of things as ONE self-contained HTML document and give the user a URL — and generate polished HTML reports. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), figures out the right structure, and builds a single portable HTML file — then opens it locally and optionally shares it as a short-lived URL. Triggers on: visualize, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, put it on a page."
 ---
 

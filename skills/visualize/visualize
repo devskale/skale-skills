@@ -444,6 +444,10 @@ if bad:
 else:
     print(f'visualize validate: OK — one file ({len(src)} bytes; content inline, CDN deps allowed)')
 PYEOF
+            # propagate the gate's verdict: without this the script fell through
+            # to the jscheck run below, whose success reset the exit code to 0,
+            # so a dependency violation exited clean (4 red validate tests).
+            [ $? -ne 0 ] && exit 1
         else
             # python3-less fallback: basic grep for local + non-allowlisted deps
             KNOWNS='https?://(cdn\.tailwindcss\.com|cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|esm\.sh|cdn\.skypack\.dev|fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.plot\.ly)'
