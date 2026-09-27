@@ -6,6 +6,7 @@
 #   visualize share  --dir <dir>            # upload a dir (recursively; nested files flattened)
 #   visualize validate <file.html>          # check it's one file (local refs fail, popular CDNs ok)
 #   visualize lint <file.html>              # style taste-gate: flag decorative AI-tells
+#   visualize chartcheck <file.html>        # dataviz integrity gate (evident-charts influence)
 #   visualize --help
 #
 # The skill itself (see SKILL.md) is what *understands* the request and builds the
@@ -71,9 +72,10 @@ Usage:
   visualize share --dir <dir>     # upload a dir (recursively; nested files flattened)
   visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
   visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
+  visualize chartcheck <file.html> # dataviz integrity gate: bar baseline, log scale, process notes, source
   visualize --help                # this help
 
-The agent builds the HTML (see SKILL.md). This launcher only opens, shares, validates, lints.
+The agent builds the HTML (see SKILL.md). This launcher only opens, shares, validates, lints, chartchecks.
 EOF
 }
 
@@ -280,6 +282,21 @@ PYEOF
             fi
             echo "visualize lint: OK (basic check — install python3 for full taste-gate)" >&2
         fi
+        ;;
+
+    chartcheck)
+        [ $# -eq 1 ] || { echo "visualize chartcheck: expected one file" >&2; exit 2; }
+        f="$1"; [ -f "$f" ] || { echo "visualize chartcheck: not a file: $f" >&2; exit 2; }
+        # Dataviz integrity gate. Evident-charts influence: a page can lie about
+        # the data (truncated bar baseline, unlabelled log scale, TODO left on
+        # the chart, a file name standing in for a publisher). Only what is
+        # provable from the markup is checked - data-integrity rules need the
+        # data, see references/chart-integrity.md. python3-less: skip, not block.
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo "visualize chartcheck: python3 not found — install python3 for the dataviz gate" >&2
+            exit 0   # kein python3 = kein blocking (best-effort, wie jscheck/node)
+        fi
+        exec python3 "$SKILL_DIR/scripts/chartcheck.py" "$f"
         ;;
 
     jscheck)

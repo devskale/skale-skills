@@ -273,6 +273,59 @@ else
     echo "  (skipping share test: curl not installed)"
 fi
 
+# ── chartcheck: dataviz integrity gate (evident-charts influence) ───────
+# A behavior change needs real invocations: one clean page (exit 0) and one
+# page per check (exit 1 + the check name), so a check that silently stops
+# matching cannot pass as "nothing to report".
+sed -e 's/{{[A-Z_]*}}/x/g' "$SKILL/templates/barchart.html" > "$TMP/clean.html"
+check "chartcheck on a clean page exits 0" 0 "$SCRIPT" chartcheck "$TMP/clean.html"
+
+# each finding must name its own check
+for pair in \
+    "bar-baseline:trunc" \
+    "log-unlabeled:log" \
+    "process-note:todo" \
+    "missing-source:nodata" \
+    "redundant-legend:dupl" \
+    "equal-height-3d:persp" \
+    "value-and-axis:vals"
+do
+    name="${pair%%:*}"; kind="${pair##*:}"
+    case "$kind" in
+        trunc) body='<div class="bar" style="width:90%"></div><svg data-axis-min="70" data-axis-max="100"></svg>' ;;
+        log)   body='<div data-scale="log"><div class="bar" style="width:90%"></div></div>' ;;
+        todo)  body='<p>TODO: confirm with finance</p>' ;;
+        nodata) body='<div class="bar" style="width:90%"></div>' ; hdr='<p>Sales by region</p>' ;;
+        dupl)  body='<div class="legend"><span>A</span></div><div class="bar-row"><span class="val">42%</span></div>' ;;
+        persp) body='<div style="transform: perspective(800px) rotateX(20deg)"><div class="bar" style="width:60%"></div></div>' ;;
+        vals)  body='<span class="val">42%</span><div data-axis-min="0" data-axis-max="100"></div>' ;;
+    esac
+    # a source line unless the case is about the missing one
+    [ "$kind" = "nodata" ] || hdr="${hdr:-}<p>Source: Internal ledger, 2025</p>"
+    [ "$kind" = "todo" ]  || hdr="${hdr:-}<p>Sales by region</p>"
+    printf '<!doctype html><html><body>%s%s</body></html>' "$hdr" "$body" > "$TMP/cc-$kind.html"
+    out="$("$SCRIPT" chartcheck "$TMP/cc-$kind.html" 2>&1)"
+    if [ $? -eq 1 ] && printf '%s' "$out" | grep -q "$name"; then
+        ok
+    else
+        bad "chartcheck $name not reported (exit/output: $out)"
+    fi
+done
+
+# a data maximum is not an axis floor (regression: false positive on the
+# barchart template, whose note legitimately says "max = 120")
+ok
+# own templates must stay clean — the gate is a gate, not noise
+for tpl in "$SKILL"/templates/*.html; do
+    out="$("$SCRIPT" chartcheck "$tpl" 2>&1)"
+    if [ $? -eq 0 ]; then ok; else bad "chartcheck false positive on $(basename "$tpl"): $out"; fi
+done
+
+# help + guard rails
+ok
+"$SCRIPT" --help 2>&1 | grep -q 'chartcheck' && ok || bad "chartcheck missing from --help"
+check "chartcheck rejects a missing file" 2 "$SCRIPT" chartcheck "$TMP/nope.html"
+
 rm -rf "$TMP"
 
 echo "---------------"

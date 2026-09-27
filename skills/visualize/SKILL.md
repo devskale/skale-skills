@@ -1,6 +1,6 @@
 ---
 name: visualize
-version: "1.6.1"
+version: "1.7.0"
 description: "Render any set of things as ONE self-contained HTML document and give the user a URL — and generate polished HTML reports. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), figures out the right structure, and builds a single portable HTML file — then opens it locally and optionally shares it as a short-lived URL. Triggers on: visualize, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, put it on a page."
 ---
 
@@ -56,9 +56,10 @@ Write to the OS temp dir (`$TMPDIR` → `/tmp`, `%TEMP%` on Windows), filename
   renders offline. See [references/html-patterns.md](references/html-patterns.md).
 
 Validate before delivering: `visualize validate <file.html>` (one file: local refs fail,
-popular CDNs ok) and `visualize lint <file.html>` (flags decorative AI-tells — saturated
-accent links, pastel pills, large colored circles; structural color passes).
-Launcher flags `--selfcheck` / `--update` per convention.
+popular CDNs ok) and `visualize lint <file.html>` (decorative AI-tells; structural color
+passes). On a **chart/comparison** page also `visualize chartcheck <file.html>` — bar
+baseline, log scale, notes left on the chart, source
+([references/chart-integrity.md](references/chart-integrity.md)). Flags `--selfcheck`/`--update`.
 
 ### 3. Deliver — open it and give the URL
 
@@ -94,5 +95,5 @@ For a global `visualize` command, run this skill's `./install.sh` (Linux/macOS) 
 - [references/structures.md](references/structures.md) — intents → module stacks
 - [references/report.md](references/report.md) — report mode
 - [references/promptlib.md](references/promptlib.md) — design moves for *lovely* pages
-- [references/output.md](references/output.md) — presets; [references/html-patterns.md](references/html-patterns.md) — scaffold + patterns
+- [references/output.md](references/output.md) — presets; [references/html-patterns.md](references/html-patterns.md) — scaffold + patterns; [references/chart-integrity.md](references/chart-integrity.md) — **charts**: what the page proves vs. what needs the data
 - [references/inspirations.md](references/inspirations.md) — visual references to study
