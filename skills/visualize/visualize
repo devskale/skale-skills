@@ -282,6 +282,85 @@ PYEOF
         fi
         ;;
 
+    jscheck)
+        [ $# -eq 1 ] || { echo "visualize jscheck: expected one file" >&2; exit 2; }
+        f="$1"; [ -f "$f" ] || { echo "visualize jscheck: not a file: $f" >&2; exit 2; }
+        # JS quality gate: node --check auf jeden <script>-block + TDZ-heuristik
+        # (befund 2026-09-27: 'Cannot access node before initialization' —
+        # ein .on() vor der const-declaration lief unentdeckt durch validate)
+        if ! command -v node >/dev/null 2>&1; then
+            echo "visualize jscheck: node not found — install nodejs for the JS gate" >&2
+            exit 0   # kein node = kein blocking (best-effort)
+        fi
+        tmpdir="$(mktemp -d)"
+        trap 'rm -rf "$tmpdir"' EXIT
+        found_err=0
+        block=0
+        # extrahiere inline <script>-blöcke (ohne src=)
+        while IFS= read -r line; do
+            if echo "$line" | grep -q '<script[[:space:]]*>'; then
+                block=$((block+1))
+                rm -f "$tmpdir/block.js"; touch "$tmpdir/block.js"
+                in_block=1
+                continue
+            fi
+            if echo "$line" | grep -q '</script>'; then
+                in_block=0
+                if [ -s "$tmpdir/block.js" ]; then
+                    if ! node --check "$tmpdir/block.js" 2>/dev/null; then
+                        echo "visualize jscheck: ✗ script-block #$block has a syntax error:" >&2
+                        node --check "$tmpdir/block.js" 2>&1 | head -5 | sed 's/^/    /' >&2
+                        found_err=1
+                    fi
+                fi
+                continue
+            fi
+            [ -n "${in_block:-}" ] && [ "$in_block" = "1" ] && echo "$line" >> "$tmpdir/block.js"
+        done < "$f"
+
+        # TDZ-heuristik: variablen-nutzung vor const/let-declaration
+        # (muster: `.on(` oder `.attr(` oder `.style(` auf eine variable
+        #  die erst später als const/let deklariert wird)
+        if command -v python3 >/dev/null 2>&1; then
+            python3 - "$f" <<'JSEOF'
+import sys, re
+src = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+scripts = re.findall(r'<script[^>]*>(.*?)</script>', src, re.DOTALL)
+js = '\n'.join(s for s in scripts if 'src=' not in s[:50])
+issues = []
+# finde alle const/let deklarationen mit ihrer position
+decls = {}
+for m in re.finditer(r'\b(?:const|let)\s+([a-zA-Z_$][\w$]*)', js):
+    name = m.group(1)
+    if name not in decls:
+        decls[name] = m.start()
+# prüfe: wird die variable VOR ihrer deklaration mit .on(/.attr(/.style( genutzt?
+for name, pos in decls.items():
+    # suche nutzungen wie `name.on(`, `name.attr(`, `name.style(` vor pos
+    for m in re.finditer(re.escape(name) + r'\.(?:on|attr|style|text|join|call)\s*\(', js[:pos]):
+        # ist diese nutzung in einem anderen script-block oder kommentar?
+        line_start = js.rfind('\n', 0, m.start()) + 1
+        line = js[line_start:js.find('\n', m.start())]
+        if '//' not in line[:m.start() - line_start]:
+            issues.append(f'  TDZ: "{name}" used at pos {m.start()} before declaration at pos {pos}')
+            issues.append(f'    line: {line.strip()[:80]}')
+if issues:
+    print('visualize jscheck: ✗ temporal-dead-zone violations:')
+    for i in issues[:10]:
+        print(i)
+    sys.exit(1)
+JSEOF
+            [ $? -ne 0 ] && found_err=1
+        fi
+
+        if [ $found_err -eq 0 ]; then
+            echo "visualize jscheck: OK — $block script blocks, no syntax errors, no TDZ violations"
+        else
+            echo "visualize jscheck: FAILED — fix the errors above" >&2
+            exit 1
+        fi
+        ;;
+
     validate)
         [ $# -eq 1 ] || { echo "visualize validate: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize validate: not a file: $f" >&2; exit 2; }
@@ -368,6 +447,8 @@ PYEOF
             fi
             echo "visualize validate: OK — one file (basic check — install python3 for the full gate)"
         fi
+        # JS quality gate läuft immer mit (befund 2026-09-27)
+        "$0" jscheck "$f" || exit 1
         ;;
 
     *)
