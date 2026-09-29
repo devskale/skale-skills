@@ -8,7 +8,6 @@ Extracts readable text from web pages without rendering.
 
 import os
 import sys
-import time
 import argparse
 import subprocess
 import platform as platform_module
@@ -53,17 +52,6 @@ LYNX_CONFIG = SKILL_DIR / "lynx_config"
 SETTINGS_FILE = SKILL_DIR / "settings.json"
 DEFAULT_API_URL = "https://amd.skale.dev/api/fetch_url"
 
-# Forced-refetch cooldown for credgoo. A genuine miss must not hit the network
-# on every fetch, but a stale cache / flaky backend should self-heal without a
-# manual `credgoo --update`. Cached hits NEVER refresh and never touch the
-# network. The stamp lives in the skill's cache dir (OUTSIDE the repo — pi's
-# package update `git clean -fdx` wipes anything inside it).
-_CREDGOO_REFRESH_COOLDOWN_S = int(os.environ.get("CREDGOO_REFRESH_COOLDOWN_S", "3600"))
-_CREDGOO_STAMP_DIR = Path(
-    os.environ.get("UV_PROJECT_ENVIRONMENT")
-    or os.path.expanduser("~/.cache/skale-skills/fetch-url")
-)
-_CREDGOO_STAMP = _CREDGOO_STAMP_DIR / "credgoo-refresh"
 MARKDOWN_NEW_URL = "https://markdown.new"
 JINA_READER_URL = "https://r.jina.ai"
 
@@ -178,38 +166,19 @@ def check_tool_available(tool: str, settings: Dict[str, Any]) -> bool:
     return current_platform in tool_config.get("platforms", [])
 
 
-def _refresh_allowed() -> bool:
-    """True if a forced refetch hasn't run within the cooldown window."""
-    now = int(time.time())
-    try:
-        last = int(_CREDGOO_STAMP.read_text().strip())
-    except Exception:
-        last = 0
-    if now - last < _CREDGOO_REFRESH_COOLDOWN_S:
-        return False
-    try:
-        _CREDGOO_STAMP_DIR.mkdir(parents=True, exist_ok=True)
-        _CREDGOO_STAMP.write_text(str(now))
-    except Exception:
-        pass  # cannot record — allow this one, next call re-evaluates
-    return True
-
-
 def _key_with_refresh(service: str) -> Optional[str]:
-    """credgoo lookup: local cache first (no network), self-heal on miss/error.
+    """credgoo lookup: local cache first, refetch from source on miss/error.
 
-    The cache is tried first (fast, offline). Only on a miss OR a fetch
-    exception do we force one refetch (``no_cache=True``) — and at most once per
-    cooldown window, so a genuinely-absent key does not hammer the network on
-    every call. Never raises.
+    credgoo's own cache is the freshness authority (7-day TTL, override with
+    CREDGOO_CACHE_TTL_SECONDS), so one refetch on a miss is correct and a
+    per-skill refresh gate is not — it would track the wrong TTL and starve the
+    second bearer lookup.
     """
     try:
         if key := get_api_key(service):
             return key
     except Exception:
-        pass  # network hiccup / backend down → maybe refetch
-    if not _refresh_allowed():
-        return None  # already refreshed recently; don't retry the network now
+        pass  # network hiccup / backend down → try the source once
     try:
         return get_api_key(service, no_cache=True) or None
     except Exception:
