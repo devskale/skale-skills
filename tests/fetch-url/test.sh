@@ -203,7 +203,7 @@ echo "[15b] credgoo refresh-retry..."
 UNIT="../../tests/fetch-url/test_unit.py"
 assert "test_unit.py present"  "[ -f $UNIT ]"
 assert "fetch.py has wrapper"  "grep -q '_key_with_refresh' scripts/fetch.py"
-assert "cooldown present"      "grep -q '_CREDGOO_REFRESH_COOLDOWN_S' scripts/fetch.py"
+assert "no refresh gate (TTL is credgoo's)" "! grep -q '_refresh_allowed' scripts/fetch.py"
 if uv run --quiet python "$UNIT" 2>/dev/null | grep -q "FAIL=0"; then
     PASS=$((PASS + 1))
 else

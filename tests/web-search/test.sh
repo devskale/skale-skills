@@ -194,6 +194,7 @@ UNIT="../../tests/web-search/test_unit.py"
 assert "test_unit.py present"   "[ -f $UNIT ]"
 assert "search.py has wrapper"   "grep -q '_key_with_refresh' scripts/search.py"
 assert "no_cache refetch used"  "grep -q 'no_cache=True' scripts/search.py"
+assert "no refresh gate (TTL is credgoo's)" "! grep -q '_refresh_allowed' scripts/search.py"
 if uv run --quiet python "$UNIT" 2>/dev/null | grep -q "FAIL=0"; then
     PASS=$((PASS + 1))
 else

@@ -1,36 +1,21 @@
 #!/usr/bin/env python3
-"""Unit tests for credgoo refresh-retry in search.py (_key_with_refresh).
+"""Unit tests for credgoo lookup in search.py (_key_with_refresh).
 
-Runs with the skill venv's python (monkeypatches the module's get_api_key,
-so no network and no credgoo store are needed). Invoked by
-tests/web-search/test.sh.
+Cache-first; one refetch from the source on a miss or a fetch error. Freshness
+is credgoo's job (its cache carries a 7-day TTL), so there is deliberately no
+refresh gate here — the tests below pin that decision, including the
+multi-key sequence that a per-skill gate used to starve.
+
+Runs under the skill venv's python (monkeypatches get_api_key → no network, no
+credgoo store). Invoked by tests/web-search/test.sh.
 """
+import os
 import sys
-import types
 from pathlib import Path
 
-# Import search.py standalone (it only needs credgoo importable, which the venv has).
 SCRIPTS = Path(__file__).resolve().parents[2] / "skills" / "web-search" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import search  # noqa: E402
-
-# Isolate the refresh cooldown: point the stamp at a throwaway dir and force
-# the window wide open, so each case below starts from "refresh allowed".
-import os as _os  # noqa: E402
-import tempfile as _tempfile  # noqa: E402
-
-_stamp_dir = _tempfile.mkdtemp()
-search._CREDGOO_STAMP_DIR = Path(_stamp_dir)
-search._CREDGOO_STAMP = search._CREDGOO_STAMP_DIR / "credgoo-refresh"
-search._CREDGOO_REFRESH_COOLDOWN_S = 3600
-
-
-def reset_cooldown():
-    try:
-        search._CREDGOO_STAMP.unlink()
-    except Exception:
-        pass
-
 
 PASS = 0
 FAIL = 0
@@ -56,70 +41,81 @@ def run(calls, key):
     search.get_api_key = fake
 
 
-# ── 1. cache hit → no refetch, no network ──
-reset_cooldown()
+# 1. cache hit → single call, no network
 calls = []
-run(calls, lambda nocache: "TOKEN")
+run(calls, lambda n: "TOKEN")
 check("cache hit returns key", search._key_with_refresh("S") == "TOKEN")
 check("cache hit makes exactly 1 call", len(calls) == 1 and calls[0][1] is False)
 
-# ── 2. cache miss → one forced refetch that succeeds ──
-reset_cooldown()
+# 2. miss → one refetch, which succeeds
 calls = []
-run(calls, lambda nocache: None if not nocache else "FRESH")
-check("miss then refresh returns key", search._key_with_refresh("S") == "FRESH")
-check("refresh forced with no_cache=True", len(calls) == 2 and calls[1][1] is True)
+run(calls, lambda n: None if not n else "FRESH")
+check("miss then refetch returns key", search._key_with_refresh("S") == "FRESH")
+check("refetch forced with no_cache=True", len(calls) == 2 and calls[1][1] is True)
 
-# ── 3. cache miss + refresh miss → None (falls back) ──
-reset_cooldown()
+# 3. total miss → None (caller falls back)
 calls = []
-run(calls, lambda nocache: None)
+run(calls, lambda n: None)
 check("total miss returns None", search._key_with_refresh("S") is None)
-check("total miss tries twice", len(calls) == 2)
+check("total miss tries exactly twice", len(calls) == 2)
 
-# ── 3b. cooldown: after a failed refresh, the NEXT call must NOT re-hit the network ──
-# (same fake, cooldown now active because the stamp was written during call 1)
+# 3b. NO refresh gate: a repeated miss retries the source every time.
+# Regression test for the removed per-skill gate — a gate made the second call
+# of a multi-key skill return None even though the source was reachable.
 calls2 = []
-run(calls2, lambda nocache: None)
-check("cooldown: repeat miss stays offline", search._key_with_refresh("S") is None)
-check("cooldown: repeat miss makes only the cache call", len(calls2) == 1 and calls2[0][1] is False)
+run(calls2, lambda n: None)
+check("repeat miss returns None", search._key_with_refresh("S") is None)
+check("repeat miss still hits the source (no gate)", len(calls2) == 2 and calls2[1][1] is True)
 
-# ── 3c. cooldown expires → refresh allowed again ──
-search._CREDGOO_REFRESH_COOLDOWN_S = 0  # window open
-calls3 = []
-run(calls3, lambda nocache: None if not nocache else "AGAIN")
-check("cooldown expiry allows refetch", search._key_with_refresh("S") == "AGAIN")
-check("cooldown expiry made 2 calls", len(calls3) == 2 and calls3[1][1] is True)
-search._CREDGOO_REFRESH_COOLDOWN_S = 3600
-
-# ── 4. first call raises (network) → refetch succeeds ──
-reset_cooldown()
+# 4. network error on cache read → refetch recovers
 calls = []
 
 
-def raiser(nocache):
-    if not nocache:
+def raiser(n):
+    if not n:
         raise OSError("read timed out")
     return "RECOVERED"
 
 
 run(calls, raiser)
-check("network error then refresh returns key", search._key_with_refresh("S") == "RECOVERED")
-check("error path forced no_cache on retry", len(calls) == 2 and calls[1][1] is True)
+check("network error then refetch returns key", search._key_with_refresh("S") == "RECOVERED")
+check("error path retried with no_cache", len(calls) == 2 and calls[1][1] is True)
 
-# ── 5. both raise → None, never propagates ──
-reset_cooldown()
+# 5. both attempts fail → None, never propagates
 calls = []
-run(calls, lambda nocache: (_ for _ in ()).throw(OSError("down")))
-check("both fail returns None (no raise)", search._key_with_refresh("S") is None)
+run(calls, lambda n: (_ for _ in ()).throw(OSError("down")))
+check("both fail returns None", search._key_with_refresh("S") is None)
 
-# ── 6. the public resolvers use the refreshing path ──
-reset_cooldown()
-calls = []
-run(calls, lambda nocache: None if not nocache else "https://host/api/duck")
-import os
+# 6. THE SEQUENCE: web-search needs two keys (bearer + DUCK_API_URL). Both must
+#    resolve — a shared refresh gate used to starve the second one.
 os.environ.pop("DUCK_API_URL", None)
-check("_resolve_url goes through refresh", search.get_duck_api_url() == "https://host/api/duck")
+os.environ.pop("WEB_SEARCH_BEARER", None)
+calls = []
+
+
+def multi(service, no_cache=False, **kw):
+    calls.append((service, no_cache))
+    return {
+        "WEB_SEARCH_BEARER": "TOK",
+        "DUCK_API_URL": "https://amd.skale.dev/api/duck",
+    }[service]
+
+
+search.get_api_key = multi
+bearer = search.get_bearer_token()
+url = search.get_duck_api_url()
+check("sequence: bearer resolves", bearer == "TOK")
+check("sequence: DUCK_API_URL resolves", url == "https://amd.skale.dev/api/duck")
+check("sequence: both services queried", {c[0] for c in calls} == {"WEB_SEARCH_BEARER", "DUCK_API_URL"})
+
+# 6b. env vars short-circuit credgoo entirely (no network, no gate)
+os.environ["DUCK_API_URL"] = "https://env.example/api/duck"
+calls = []
+search.get_api_key = multi
+url = search.get_duck_api_url()
+check("env wins over credgoo", url == "https://env.example/api/duck")
+check("env short-circuits (0 credgoo calls)", len(calls) == 0)
+del os.environ["DUCK_API_URL"]
 
 print("")
 print(f"PASS={PASS} FAIL={FAIL}")

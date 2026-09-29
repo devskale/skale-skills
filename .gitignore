@@ -76,3 +76,4 @@ pi
 
 # machine-local kanban board (symlink → ~/code/handoffs/)
 .handoff
+python-openutils
