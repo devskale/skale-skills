@@ -10,6 +10,7 @@ import io
 import json
 import os
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -92,19 +93,53 @@ def filter_ads(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # Credentials (Optional)
 # =============================================================================
 
+# Forced-refetch cooldown. A genuine miss (key absent from the backend) must
+# not hit the network on every invocation, but a stale cache / flaky backend
+# should still self-heal without a manual `credgoo --update`. A forced refetch
+# is therefore allowed at most once per window. The stamp lives in the skill's
+# cache dir (OUTSIDE the repo — pi's package update `git clean -fdx` wipes
+# anything inside it). Cached hits NEVER refresh and never touch the network.
+_CREDGOO_REFRESH_COOLDOWN_S = int(os.environ.get("CREDGOO_REFRESH_COOLDOWN_S", "3600"))
+_CREDGOO_STAMP_DIR = Path(
+    os.environ.get("UV_PROJECT_ENVIRONMENT")
+    or os.path.expanduser("~/.cache/skale-skills/web-search")
+)
+_CREDGOO_STAMP = _CREDGOO_STAMP_DIR / "credgoo-refresh"
+
+
+def _refresh_allowed() -> bool:
+    """True if a forced refetch hasn't run within the cooldown window."""
+    now = int(time.time())
+    try:
+        last = int(_CREDGOO_STAMP.read_text().strip())
+    except Exception:
+        last = 0
+    if now - last < _CREDGOO_REFRESH_COOLDOWN_S:
+        return False
+    try:
+        _CREDGOO_STAMP_DIR.mkdir(parents=True, exist_ok=True)
+        _CREDGOO_STAMP.write_text(str(now))
+    except Exception:
+        pass  # cannot record — allow this one, next call re-evaluates
+    return True
+
+
 def _key_with_refresh(service: str) -> Optional[str]:
-    """credgoo lookup with one refresh-and-retry on miss or fetch error.
+    """credgoo lookup: local cache first (no network), self-heal on miss/error.
 
     A stale/missing cache entry or a flaky backend (e.g. the gdrive/Apps-Script
-    path) should not silently degrade the skill. First attempt uses the cache;
-    on a miss OR any fetch exception we force one refetch from the source
-    (``no_cache=True``). The second attempt decides. Never raises.
+    path) should not silently degrade the skill. The cache is tried first (fast,
+    offline). Only on a miss OR a fetch exception do we force one refetch from
+    the source (``no_cache=True``) — and at most once per cooldown window, so a
+    genuinely-absent key does not hammer the network on every call. Never raises.
     """
     try:
         if key := get_api_key(service):
             return key
     except Exception:
-        pass  # network hiccup / backend down → try a forced refetch
+        pass  # network hiccup / backend down → maybe refetch
+    if not _refresh_allowed():
+        return None  # already refreshed recently; don't retry the network now
     try:
         return get_api_key(service, no_cache=True) or None
     except Exception:
