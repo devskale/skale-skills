@@ -198,6 +198,20 @@ SKILL_V=$(grep 'version' SKILL.md | head -1 | grep -o '[0-9][0-9.]*')
 assert "pyproject ($TOML_V) and SKILL.md ($SKILL_V) match" "[ '$TOML_V' = '$SKILL_V' ]"
 echo ""
 
+# ── 15b. credgoo refresh-retry (unit, no network) ─────────────────────
+echo "[15b] credgoo refresh-retry..."
+UNIT="../../tests/fetch-url/test_unit.py"
+assert "test_unit.py present"  "[ -f $UNIT ]"
+assert "fetch.py has wrapper"  "grep -q '_key_with_refresh' scripts/fetch.py"
+assert "cooldown present"      "grep -q '_CREDGOO_REFRESH_COOLDOWN_S' scripts/fetch.py"
+if uv run --quiet python "$UNIT" 2>/dev/null | grep -q "FAIL=0"; then
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: credgoo refresh-retry unit tests"
+fi
+echo ""
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo ""
 echo "=== Results ==="
