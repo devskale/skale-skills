@@ -92,19 +92,38 @@ def filter_ads(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # Credentials (Optional)
 # =============================================================================
 
+def _key_with_refresh(service: str) -> Optional[str]:
+    """credgoo lookup with one refresh-and-retry on miss or fetch error.
+
+    A stale/missing cache entry or a flaky backend (e.g. the gdrive/Apps-Script
+    path) should not silently degrade the skill. First attempt uses the cache;
+    on a miss OR any fetch exception we force one refetch from the source
+    (``no_cache=True``). The second attempt decides. Never raises.
+    """
+    try:
+        if key := get_api_key(service):
+            return key
+    except Exception:
+        pass  # network hiccup / backend down → try a forced refetch
+    try:
+        return get_api_key(service, no_cache=True) or None
+    except Exception:
+        return None  # genuinely unavailable → caller falls back (SearXNG)
+
+
 def get_bearer_token() -> Optional[str]:
     """Get bearer token from env or credgoo. No silent fallbacks."""
     if token := os.environ.get("WEB_SEARCH_BEARER"):
         return token
 
-    return get_api_key("WEB_SEARCH_BEARER")
+    return _key_with_refresh("WEB_SEARCH_BEARER")
 
 
 def _resolve_url(env_key: str, credgoo_key: str) -> str:
     """Resolve a config URL from env var, then credgoo. Empty if unset."""
     if url := os.environ.get(env_key):
         return url
-    return (get_api_key(credgoo_key) or "").strip()
+    return (_key_with_refresh(credgoo_key) or "").strip()
 
 
 def get_duck_api_url() -> str:

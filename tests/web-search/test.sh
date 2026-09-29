@@ -188,6 +188,20 @@ fi
 rm -rf "$TMP_CWD"
 echo ""
 
+# ── 14. credgoo refresh-retry (unit, no network) ────────────────────────
+echo "[14] credgoo refresh-retry..."
+UNIT="../../tests/web-search/test_unit.py"
+assert "test_unit.py present"   "[ -f $UNIT ]"
+assert "search.py has wrapper"   "grep -q '_key_with_refresh' scripts/search.py"
+assert "no_cache refetch used"  "grep -q 'no_cache=True' scripts/search.py"
+if uv run --quiet python "$UNIT" 2>/dev/null | grep -q "FAIL=0"; then
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: credgoo refresh-retry unit tests"
+fi
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "  Passed: $PASS"
