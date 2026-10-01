@@ -1,7 +1,8 @@
 # ZCode Plugin — skale-skills as a first-class zcode extension (sketch)
 
-Status: **idea/sketch** — not implemented. Source of truth for zcode's
-extension model: the built-in `zcode-guide` plugin (`zcode-configuration-guide`).
+Status: **idea** — decided direction, deliberately not implemented. Listed in
+[ideas.md](ideas.md). Source of truth for zcode's extension model: the built-in
+`zcode-guide` plugin (`zcode-configuration-guide`).
 
 ## Why
 
