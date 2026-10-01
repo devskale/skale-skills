@@ -72,8 +72,11 @@ done
 # ── 2. orphaned docs files ──
 # A docs/ file is orphaned if NONE of the live hubs reference it by name.
 # Exempt binary/vector assets that are wired via skill-diagrams.md, not a hub.
+# Root-level .md docs (pi-architecture.md, LAYOUT.md, …) are checked the same way —
+# they were silently skipped until now, because the loop only walked docs/.
 ORPHAN_EXEMPT='\.(svg|png)$|\.d2$|^docs/diagrams/|^docs/images/'
-for f in $(git ls-files docs/ | grep -vE "$ORPHAN_EXEMPT"); do
+DOC_FILES=$( { git ls-files docs/ | grep -vE "$ORPHAN_EXEMPT"; git ls-files -- '*.md' ':!docs/**' ':!skills/**' ':!tests/**' ':!deprecated/**' ':!skills/deprecated/**'; } | sort -u )
+for f in $DOC_FILES; do
     base="$(basename "$f")"
     referenced=0
     for hub in "${HUBS[@]}"; do
