@@ -889,7 +889,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			}
 			let filePath: string;
 			if (rawPath) {
-				filePath = rawPath.startsWith("/") ? rawPath : join(ctx.cwd, rawPath);
+				// expand ~ — the agent passes "~/Pictures/x.jpg" and join(cwd, "~/…") is not a path
+				filePath = rawPath.startsWith("~")
+					? join(homedir(), rawPath.slice(1))
+					: rawPath.startsWith("/")
+						? rawPath
+						: join(ctx.cwd, rawPath);
+				filePath = filePath.replace("//", "/");
 			} else if (rawUrl) {
 				const dl = await downloadImage(rawUrl);
 				if (!dl.ok) {
