@@ -62,6 +62,55 @@ to package root (e.g. `"+skills/rodney/SKILL.md"`).
 > set — used **alone** they turn the whole type on. For "only these", use plain names/paths,
 > not `+path`. The `pi config` TUI manages this for you; hand-editing is where it bites.
 
+### Skill states (what each state means)
+
+A skill can be in exactly one of four states. The state is decided by **two independent axes**:
+whether it is in the model's context (the `<available_skills>` catalog) and whether it is
+invokable via `/skill:name`.
+
+| State | In context? | `/skill:` invokable? | File stays? | Mechanism |
+|---|---|---|---|---|
+| **aktiv** | ✅ | ✅ | ✅ | loaded (default) |
+| **passiv** | ❌ | ✅ | ✅ | `disable-model-invocation: true` |
+| **deaktiviert** | ❌ | ❌ | ✅ | settings filter `-skills/<name>/SKILL.md` |
+| **löschen** | ❌ | ❌ | ❌ | delete the file / symlink |
+
+**Definitions:**
+
+- **aktiv** — the skill is fully loaded. Its description sits in the `<available_skills>`
+  catalog, so the model can route to it automatically, and `/skill:name` works.
+- **passiv** — the skill is loaded but **hidden from the catalog** (`disable-model-invocation`).
+  The model no longer auto-routes to it, but you can still invoke it explicitly with
+  `/skill:name`. Saves the description tokens in the prompt. *Caveat: this edits the skill's
+  own frontmatter, so on a **symlink** it changes the target file in the source repo.*
+- **deaktiviert** — the skill is **removed from the load list** by a settings filter
+  (`-skills/<name>/SKILL.md`). It is neither in the catalog nor invokable, but the file stays,
+  so it is reversible (`+skills/<name>/SKILL.md` re-enables it). *This is the clean state for a
+  skill you no longer auto-load: it touches no file, only `settings.json`.*
+- **löschen** — the skill file or symlink is **physically removed**. Not in the catalog, not
+  invokable, and **not reversible** without git/backup. Use only when the skill is truly dead.
+
+**The two axes:**
+
+| Axis | aktiv | passiv | deaktiviert | löschen |
+|---|---|---|---|---|
+| in context | ✅ | ❌ | ❌ | ❌ |
+| invokable | ✅ | ✅ | ❌ | ❌ |
+| file present | ✅ | ✅ | ✅ | ❌ |
+| reversible | — | yes | yes | no |
+
+**Decision rule:**
+
+- Want the model to use it automatically → **aktiv**.
+- Want it out of the catalog but still callable when you ask → **passiv**.
+- Want it fully out but keep the option to bring it back → **deaktiviert** (the clean,
+  reversible, file-safe choice).
+- Want it gone for good → **löschen**.
+
+> For **symlinked** skills (common in `~/.pi/agent/skills/`), **passiv** edits the target in the
+> source repo, while **deaktiviert** only touches `settings.json`. Prefer **deaktiviert** unless
+> you deliberately want to change the skill itself.
+
 ## Update
 
 ```bash

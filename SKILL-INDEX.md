@@ -31,21 +31,21 @@ Web search, URL fetching, GitHub repo cloning, PDF extraction, YouTube/local vid
 | Status | Name | Description | Source |
 |--------|------|-------------|--------|
 | 🟢 global | **improve-ux** | Improve UI/UX of web interfaces by grounding every change in curated example sites and design ref... | `~/.pi/agent/skills/improve-ux` |
-| 🟢 global | **peep** | Read X/Twitter via the `peep` CLI (cookie auth, undocumented GraphQL) — read tweets/threads/repli... | `~/.pi/agent/skills/peep` |
+| 🟢 global | **peep** | Bash skill — NOT an MCP tool: run `peep <command>` in your shell. Read X/Twitter via the `peep` C... | `~/.pi/agent/skills/peep` |
 
 ### Available (not installed)
 
 | Status | Name | Description |
 |--------|------|-------------|
 | ⚪ available | **d2** | Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the ... |
-| ⚪ available | **fetch-url** | Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jin... |
+| ⚪ available | **fetch-url** | Bash skill — NOT an MCP tool: run `fetch-url \"url\"` in your shell. Fetch and extract readable t... |
 | ⚪ available | **figure** | Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec ... |
-| ⚪ available | **pdf2md** | Convert PDFs to clean Markdown via the skale pdf API — pdfplumber (local, free) for text-layer PD... |
+| ⚪ available | **pdf2md** | Bash skill — NOT an MCP tool: run `pdf2md <file.pdf>` in your shell. Convert PDFs to clean Markdo... |
 | ⚪ available | **rodney** | Drive a persistent headless Chrome from the CLI for web scraping, screenshots, form filling, PDF ... |
 | ⚪ available | **surf** | Drive the user's real, logged-in Google Chrome on macOS for web scraping, form filling, screensho... |
 | ⚪ available | **video-transcript-downloader** | Download videos, audio, subtitles, and clean paragraph-style transcripts (no timestamps by defaul... |
-| ⚪ available | **visualize** | Render any set of things as ONE self-contained HTML document and give the user a URL — and genera... |
-| ⚪ available | **web-search** | Search the web with automatic backend selection — public SearXNG works out-of-the-box (no credent... |
+| ⚪ available | **visualize** | Explain or present a topic: answer it with the SMALLEST view that makes the point — inline pseudo... |
+| ⚪ available | **web-search** | Bash skill — NOT an MCP tool: run `web-search \"query\"` in your shell. Search the web with autom... |
 | ⚪ available | **youtube** | Search YouTube for fresh, long, deep content and curate ranked lists you can refine and later tra... |
 
 ## Extensions
