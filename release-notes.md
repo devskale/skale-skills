@@ -4,6 +4,20 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel 0.5.9 — VLM delegation actually sees images under `blockImages`.** Two layers:
+  (1) The delegation child inherits the user's `images.blockImages: true` and strips the
+  attachment before the model sees it — glm answered literally `NO IMAGE` (forensic:
+  `textLen: 8`). A project-scope override in a throwaway cwd does **not** reach pi 1.0's
+  `-p` runtime, so `runChildPi` now isolates the child completely via `PI_CODING_AGENT_DIR`:
+  its own `settings.json` (blockImages off) plus copies of `models.json`/`auth.json` — the
+  user's real config is untouched, the temp dir is removed on finish. Verified: zai/glm
+  now returns real visual detail (lemon tree, rattan chairs — not guessable from the
+  filename). (2) The VLM-failure texts now explicitly forbid describing the image: with
+  the blinded child, agents narrated confident fake descriptions invented from the
+  filename ("Capri coast, Faraglioni") and users cannot tell that from real vision.
+  Note: a preset/config `vlm` pointing at a free endpoint (kilo@nvidia…:free) still drops
+  image attachments provider-side — configure a vision model on a real endpoint.
+
 - **xmodel 0.5.8 — pi 1.0: display entries render live again (and land at turn end).** pi 1.0's
   `SessionManager._appendEntry` only persists — it emits nothing, so our direct
   `appendCustomMessageEntry` call wrote entries to the session file while the live TUI never
