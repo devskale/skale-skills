@@ -36,6 +36,7 @@ grep -q 'GIT_ROOT/.git' "$SCRIPT" && ok || bad "auto-update guard must use GIT_R
 [ -f "$SKILL/references/output.md" ] && ok || bad "output.md missing"
 [ -f "$SKILL/references/html-patterns.md" ] && ok || bad "html-patterns.md missing"
 [ -f "$SKILL/references/routing.md" ] && ok || bad "routing.md missing"
+[ -f "$SKILL/references/code-forms.md" ] && ok || bad "code-forms.md missing"
 # SKILL.md convention: under 100 lines (routing depth lives in references/)
 [ "$(wc -l < "$SKILL/SKILL.md" | tr -d ' ')" -le 99 ] && ok || bad "SKILL.md over 99 lines"
 
@@ -65,6 +66,35 @@ if [ -f "$PROMPTS" ]; then
     grep -q '/skill:d2' "$PROMPTS" && ok || bad "no routing prompt for d2"
     grep -q '/skill:figure' "$PROMPTS" && ok || bad "no routing prompt for figure"
     grep -q 'social-og\|slide-16x9' "$PROMPTS" && ok || bad "no output-target prompt"
+    # inline-first routing (code-forms.md, merged from humanlayer show-me)
+    grep -q 'inline' "$PROMPTS" && ok || bad "no prompt covering the inline (no-file) tier"
+    for f in pseudocode "call tree" "annotated file tree"; do
+        grep -qi "$f" "$PROMPTS" && ok || bad "no prompt covering inline form: $f"
+    done
+fi
+
+# code-forms.md: the inline tier must be complete and reachable
+CF="$SKILL/references/code-forms.md"
+if [ -f "$CF" ]; then
+    for h in "## Pseudocode" "## Call tree" "## Component tree" "## Annotated file tree" "## Diff" "## Mermaid"; do
+        grep -qF "$h" "$CF" && ok || bad "code-forms.md missing section: $h"
+    done
+    # the four diff shapes from show-me (component / file-layout / call-tree / control-flow)
+    grep -q "File-layout change" "$CF" && ok || bad "code-forms.md: missing file-layout diff shape"
+    grep -q "Call-tree change" "$CF" && ok || bad "code-forms.md: missing call-tree diff shape"
+    grep -q "State / control-flow change" "$CF" && ok || bad "code-forms.md: missing control-flow diff shape"
+    # the humanlayer HTML fallback must NOT come along (a page is visualize's job).
+    # Match an actual usage (`Bash(open ...)` in a fenced block / bare line), not prose
+    # that merely mentions it while explaining that it was dropped.
+    if grep -qE '^\s*(Bash\(open|`Bash\(open)' "$CF"; then
+        bad "code-forms.md: Claude-only Bash(open …) leaked in as an instruction"
+    else
+        ok
+    fi
+    # and it must be wired into the routing tiers + SKILL.md
+    grep -q 'code-forms.md' "$SKILL/references/routing.md" && ok || bad "routing.md: code-forms.md not linked"
+    grep -q 'code-forms.md' "$SKILL/SKILL.md" && ok || bad "SKILL.md: code-forms.md not linked"
+    grep -q 'code-forms.md' "$SKILL/references/structures.md" && ok || bad "structures.md: code-forms.md not cross-linked"
 fi
 
 # templates
@@ -78,6 +108,26 @@ for t in cards repo-tree system-map report mermaid timeline before-after cheatsh
     check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
     check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
 done
+# --- validate must not flag documentation of an import as a dependency -----------
+# Regression: `validate` scanned the whole file for `import ... from '...'`, so a page
+# that merely *shows* an import in <code> (e.g. explaining a refactor) was rejected —
+# which taught agents not to trust the gate. Only real <script> content counts now.
+VT="$(mktemp -d)"
+cat > "$VT/prose.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title></head><body>
+<div class="note"><code>import ... from './transport'</code> weiterhin funktioniert.</div>
+<code>import {connect} from './client'</code>
+<pre>import x from './y'</pre>
+</body></html>
+EOF
+cat > "$VT/script.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<script type="module">import mermaid from './mermaid.mjs';</script></head><body>x</body></html>
+EOF
+check "validate: import shown in <code>/<pre> → exit 0" 0 "$SCRIPT" validate "$VT/prose.html"
+check "validate: real local import in <script> → exit 1" 1 "$SCRIPT" validate "$VT/script.html"
+rm -rf "$VT"
+
 [ -f "$SKILL/templates/timeline.html" ] && ok || bad "timeline.html missing"
 [ -f "$SKILL/templates/before-after.html" ] && ok || bad "before-after.html missing"
 [ -f "$SKILL/templates/cheatsheet.html" ] && ok || bad "cheatsheet.html missing"

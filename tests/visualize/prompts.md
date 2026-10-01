@@ -38,6 +38,24 @@ base, no inline-duplicated styles).
 | P7 | "Compare the three hosting options side by side." | compose · `table` | one `table`; recommended option highlighted |
 | P8 | "Show the CI pipeline as numbered steps." | compose · `flow` | `flow` steps numbered, arrows between |
 
+## Inline forms (tier 0 — answer in chat, build NO file)
+
+These must produce **zero** HTML. The smallest view that makes the point wins.
+
+| # | Prompt (verbatim) | Expect | Pass when |
+|---|---|---|---|
+| P14 | "What does this save handler actually branch on?" | inline pseudocode | a short `text` pseudocode block beside the answer; no HTML file, no URL |
+| P15 | "Trace what submitForm calls at runtime." | inline call tree | indented `text` call tree; not a page, not a diagram tangle |
+| P16 | "Which module owns session state, and where does it live?" | inline component tree | `tsx`-style tree with the owning file annotated |
+| P17 | "What does each of these three directories own?" | inline annotated file tree | flat `text` tree, one-line roles, no colour-tagged repo page |
+| P18 | "Show me what changes if I split transport.ts in two." | inline diff, file-layout shape | a `diff` block shaped like the file-layout change; no page |
+| P19 | "Walk me through what submitForm does, step by step." | inline pseudocode + no preamble | form only; prose trimmed; still no HTML |
+
+> Tier 0 must **not** escalate on its own. If the agent builds a page for P14–P18, it failed —
+> these are exactly the cases a 150 KB page answers worse than four lines of text. Escalate only
+> when the user names a deliverable ("make it a page", "for the README") or the content is a set
+> to scan/share/print.
+
 ## Routing (must recommend and stop — no weak inline build)
 
 | # | Prompt (verbatim) | Expect | Pass when |
@@ -54,4 +72,4 @@ base, no inline-duplicated styles).
 | P13 | "Visualize the internal audit findings and share the link." | share | warns: URL is **public**, expires ~4h; keeps the local file |
 
 > `tests/visualize/test.sh` greps this file for coverage: every template file, every
-> module name, both routing targets, and an output target must appear above.
+> module name, both routing targets, an output target, and every inline form must appear above.
