@@ -39,10 +39,11 @@ const check = (name, cond) => {
 	if (!cond) failures++;
 };
 
-// ── mocked ExtensionAPI ─────────────────────────────────────────────────────
+// ── mocked ExtensionAPI ─────────────────────────────────────────────────
 const handlers = {};
 const renderers = {};
 const tools = [];
+const sentMessages = [];
 const pi = {
 	on: (ev, fn) => {
 		(handlers[ev] ??= []).push(fn);
@@ -52,6 +53,13 @@ const pi = {
 	registerShortcut: () => {},
 	registerMessageRenderer: (type, fn) => {
 		renderers[type] = fn;
+	},
+	// pi ≥1.0 surface — writeEntry must prefer this over the raw session append.
+	// Mirrors real pi: record the call, then append to the session (which the
+	// assertions below read via ctx._entries).
+	sendMessage: (msg, opts) => {
+		sentMessages.push({ msg, opts });
+		currentEntries?.push({ type: msg.customType, content: msg.content, display: msg.display, details: msg.details });
 	},
 	appendEntry: () => {},
 	getThinkingLevel: () => "high",
@@ -64,9 +72,12 @@ const pi = {
 
 loadExtension(pi);
 
+let currentEntries = null;
+
 function makeCtx(model) {
 	const entries = [];
 	const notes = [];
+	currentEntries = entries;
 	return {
 		cwd: process.cwd(),
 		mode: "test",
@@ -128,6 +139,10 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 		ctx._entries.length === 1 && entry.type === "xmodel-view" && entry.display === true,
 	);
 	check("a: display entry carries image", (entry?.details?.images ?? []).length === 1);
+	const lastSent = sentMessages.at(-1);
+	check("a: pi.sendMessage path used (pi ≥1.0)", lastSent !== undefined);
+	check("a: sendMessage triggerTurn:false (display never steers the LLM)", lastSent?.opts?.triggerTurn === false);
+	check("a: sendMessage shape (xmodel-view, display:true)", lastSent?.msg?.customType === "xmodel-view" && lastSent?.msg?.display === true);
 	// Truth-telling: the note must state HOW it rendered (pixels inline OR chafa ASCII),
 	// and must never claim a render when the terminal can't actually draw it.
 	const note = textOf(res);
