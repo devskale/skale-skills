@@ -107,7 +107,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.6";
+const VERSION = "0.5.7";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -125,6 +125,29 @@ interface WritableSessionManager {
 }
 function writeEntry(ctx: ExtensionContext, ...args: Parameters<WritableSessionManager["appendCustomMessageEntry"]>) {
 	return (ctx.sessionManager as unknown as WritableSessionManager).appendCustomMessageEntry(...args);
+}
+
+/**
+ * True when the MAIN model will actually receive pixels this session.
+ *
+ * pi's `images.blockImages` setting (~/.pi/agent/settings.json → images.blockImages)
+ * replaces image blocks in user and toolResult messages with "Image reading is
+ * disabled." at LLM-conversion time (sdk.js convertToLlmWithBlockImages, checked
+ * dynamically per call). A vision-capable model then sees the placeholder, not the
+ * image — so every routing decision of the shape "vision-capable ⇒ pixels arrive"
+ * must ask this instead. Read fresh on each call: the setting can change mid-session
+ * (settings menu / settings.json) and pi picks it up without a restart.
+ */
+function modelSeesPixels(ctx: ExtensionContext): boolean {
+	if (!isVisionCapable(ctx.model)) return false;
+	try {
+		const settings = JSON.parse(readFileSync(join(homedir(), ".pi", "agent", "settings.json"), "utf8")) as {
+			images?: { blockImages?: boolean };
+		};
+		return !settings.images?.blockImages;
+	} catch {
+		return true; // no/unreadable settings file → pi default (blockImages off)
+	}
 }
 
 // chafa rendering (chafaAvailable/chafaPreview) lives in ./lib/chafa — shared
@@ -929,8 +952,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				ctx.ui.notify(`xmodel: file not found: ${filePath}`, "error");
 				return;
 			}
-			// Main model already sees images — no handoff needed; just show it inline.
-			if (isVisionCapable(ctx.model)) {
+			// modelSeesPixels, not isVisionCapable: under pi's images.blockImages the pixels
+			// never reach the model, so /readimg must run the VLM instead of claiming vision.
+			if (modelSeesPixels(ctx)) {
 				ctx.ui.notify(`xmodel: current model (${fmt(ctx.model)}) is vision-capable — it sees images directly, no handoff. Use \`read\` to display it.`, "info");
 				return;
 			}
@@ -947,8 +971,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		"Never use understand:true just to view or show an image. If your provider rejects the extra parameter, use the read_image tool instead. For deep understanding (complex diagrams, dense screenshots) use read_image with thinking:'high'. Image URLs: read_image accepts url directly (downloads to ~/.cache/webimg/); for pure display, curl the URL to ~/.cache/webimg/ first, then read the file.";
 
 	pi.on("before_agent_start", async (event, ctx) => {
-		// auto-vision (switch mode only): user attached images to this prompt
-		if (visionCfg.mode === "switch" && event.images && event.images.length > 0) await ensureVision(ctx, "before_agent_start");
+		// auto-vision (switch mode only): user attached images to this prompt. Only worth a
+		// model switch when the pixels can actually arrive — blockImages placeholders them.
+		if (visionCfg.mode === "switch" && modelSeesPixels(ctx) && event.images && event.images.length > 0) await ensureVision(ctx, "before_agent_start");
 		let systemPrompt = `${event.systemPrompt}\n\n${READ_PROTOCOL}`;
 		if (activePreset?.instructions) {
 			systemPrompt = `${systemPrompt}\n\n${activePreset.instructions}`;
@@ -1003,7 +1028,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		// RELIABILITY: MCP inline screenshots time out on large images. Tools that save to disk
 		// (e.g. chrome_devtools_take_screenshot with filePath) always succeed — detect the saved
 		// path in the text result, read the file, and delegate it just like an inline image.
-		if (images.length === 0 && visionCfg.mode !== "off" && !isVisionCapable(ctx.model)) {
+		if (images.length === 0 && visionCfg.mode !== "off" && !modelSeesPixels(ctx)) {
 			const saved = detectSavedScreenshot(event.content);
 			if (saved) {
 				const synth = readImageFileBlock(saved);
@@ -1029,12 +1054,14 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			const focus = typeof understandRaw === "string" && understandRaw.trim() ? understandRaw.trim() : undefined;
 			const wantsUnderstand = understandRaw === true || focus !== undefined;
 			if (wantsUnderstand) {
-				// DISPLAY ALWAYS: the user sees the image inline regardless of mode. A vision-capable
-				// main model gets the pixels natively (it understands them itself); a non-vision model
-				// delegates to the VLM. Either way the display entry is written first.
+				// DISPLAY ALWAYS: the user sees the image inline regardless of mode. If the main
+				// model will actually receive the pixels (vision-capable AND pi's
+				// images.blockImages off), pass them natively; otherwise delegate to the VLM —
+				// under blockImages a returned image block becomes "Image reading is disabled."
+				// before send, so native pass-through would silently explain nothing.
 				let shown: { rendered: boolean; mode: "pixels" | "chafa" | "none"; count: number } | undefined;
 				if (!visionCfg.keepImage) shown = await writeViewEntry(ctx, images);
-				if (isVisionCapable(ctx.model)) {
+				if (modelSeesPixels(ctx)) {
 					// Keep the image blocks in the tool result — pi strips what the model can't process.
 					return; // pixels pass to the model natively — it understands them itself
 				}
@@ -1052,9 +1079,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			// stays available for other tools (MCP screenshots, generate_image) via viewOnly.
 			return readHandover(event, ctx, images);
 		}
-		// Non-`read` tools on a vision-capable model: the model consumes the pixels itself,
-		// so nothing to display — the user sees the image only via understand/read_image.
-		if (isVisionCapable(ctx.model)) return;
+		// Non-`read` tools when the model will actually receive the pixels: it consumes them
+		// itself, so nothing to display — otherwise (non-vision OR blockImages) route below.
+		if (modelSeesPixels(ctx)) return;
 		// UNHOOKED: `generate_image` is a DISPLAY tool — show the image inline but never
 		// fire the VLM on it. Only analysis-oriented tools (screenshots, MCP captures,
 		// etc.) still auto-delegate.
@@ -1086,7 +1113,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			return { content };
 		}
 		if (mode === "switch") {
-			await ensureVision(ctx, "tool_result");
+			if (modelSeesPixels(ctx)) await ensureVision(ctx, "tool_result"); // pointless switch under blockImages
 			return;
 		}
 		if (mode === "human") {
@@ -1659,10 +1686,12 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		const buf = readFileSync(filePath);
 		if (!isValidImage(buf)) return `(xmodel: ${filePath} is not a valid image)`;
 
-		// #1 — main model sees images natively: no handoff. Return the image block so
+		// #1 — main model receives pixels natively: no handoff. Return the image block so
 		// the caller embeds it inline; the main model analyses it directly.
-		if (isVisionCapable(ctx.model)) {
-			debug("analyzeImageFile: main model is vision-capable — no handoff", { filePath, model: fmt(ctx.model) });
+		// modelSeesPixels, not isVisionCapable: under pi's images.blockImages the block is
+		// replaced by a placeholder before send — delegate to the VLM instead.
+		if (modelSeesPixels(ctx)) {
+			debug("analyzeImageFile: main model receives pixels — no handoff", { filePath, model: fmt(ctx.model) });
 			return "__VISION_CAPABLE__";
 		}
 

@@ -4,6 +4,18 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel 0.5.7 — composes with pi's `images.blockImages`.** pi can strip image blocks from
+  LLM messages (`~/.pi/agent/settings.json` → `images.blockImages: true`; replaced by
+  "Image reading is disabled." at conversion time, checked dynamically). Our routing assumed
+  "vision-capable ⇒ pixels arrive" — under blockImages a vision-capable model got the
+  placeholder instead, silently breaking native understanding. New `modelSeesPixels(ctx)`
+  (capability AND not blocked, read fresh per call) now gates every pixel-routing decision:
+  the `understand:true` native pass-through, non-`read` tool results, `read_image`'s inline
+  return, `/readimg`'s no-handoff shortcut, saved-screenshot synthesis, and both
+  `switch`-mode triggers (a model switch is pointless when pixels cannot arrive). With
+  blockImages on, understanding routes through the VLM automatically — the display entry is
+  unaffected (custom display entries never go to the model).
+
 - **xmodel 0.5.6 — images actually render inline again.** Two independent changes, plus a
   correction of this entry's own first draft (kept honest below). (1) pi-tui's Kitty encoder
   hardcodes the format key `f=100` (PNG) and ignores `mimeType`, so `.webp`/`.jpg`/`.gif`/`.bmp`
