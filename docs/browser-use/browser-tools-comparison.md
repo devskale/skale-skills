@@ -559,8 +559,8 @@ sudo mkswap /swapfile && sudo swapon /swapfile
 ```
 
 ### Links
-- Setup → [guides/rodney-setup.md](rodney-setup.md)
-- Full skill → [skills/rodney/SKILL.md](../skills/rodney/SKILL.md)
+- Setup → [guides/rodney-setup.md](../../guides/rodney-setup.md)
+- Full skill → [skills/rodney/SKILL.md](../../skills/rodney/SKILL.md)
 - Tests → `bash tests/rodney/test.sh`
 
 ---
@@ -721,7 +721,7 @@ Scraping protected sites, anti-detect needs, Cloudflare challenges, any workflow
 - Repo → [CloakHQ/CloakBrowser](https://github.com/CloakHQ/CloakBrowser)
 - PyPI → [`cloakbrowser`](https://pypi.org/project/cloakbrowser/)
 - Docs → [cloakbrowser.dev](https://cloakbrowser.dev/)
-- Our test suite → [testbed/cloakbrowser/](../testbed/cloakbrowser/) (stealth, humanize, Cloudflare, session tests)
+- Our test suite → `testbed/cloakbrowser/` (local, gitignored) (stealth, humanize, Cloudflare, session tests)
 
 ---
 
@@ -1618,7 +1618,7 @@ These tools **can** be composed:
 ### Tool Homepages
 | Tool | Link |
 |------|------|
-| rodney | [skills/rodney/SKILL.md](../skills/rodney/SKILL.md) (this repo) |
+| rodney | [skills/rodney/SKILL.md](../../skills/rodney/SKILL.md) (this repo) |
 | Chrome DevTools MCP | [github.com/anthropics/chrome-devtools-mcp](https://github.com/anthropics/chrome-devtools-mcp) |
 | agent-browser | [github.com/vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) |
 | CloakBrowser | [github.com/CloakHQ/CloakBrowser](https://github.com/CloakHQ/CloakBrowser) · [cloakbrowser.dev](https://cloakbrowser.dev/) · [PyPI](https://pypi.org/project/cloakbrowser/) |
@@ -1641,12 +1641,12 @@ These tools **can** be composed:
 ### In-Repo Guides
 | Guide | What |
 |-------|------|
-| [guides/rodney-setup.md](rodney-setup.md) | Rodney install & setup |
+| [guides/rodney-setup.md](../../guides/rodney-setup.md) | Rodney install & setup |
 | [guides/chrome-dev.md](chrome-dev.md) | Chrome DevTools MCP setup |
 | [guides/vcl-agent-browser.md](vcl-agent-browser.md) | Vercel agent-browser setup |
-| [tests/eval_browsers.md](../tests/eval_browsers.md) | Terminal browser eval (w3m, chawan) |
-| [tests/browserfortui_eval.md](../tests/browserfortui_eval.md) | Terminal browser results table |
-| [testbed/cloakbrowser/](../testbed/cloakbrowser/) | CloakBrowser stealth/humanize/CF tests |
+| [tests/eval_browsers.md](../../tests/eval_browsers.md) | Terminal browser eval (w3m, chawan) |
+| [tests/browserfortui_eval.md](../../tests/browserfortui_eval.md) | Terminal browser results table |
+| `testbed/cloakbrowser/` (local, gitignored) | CloakBrowser stealth/humanize/CF tests |
 
 ---
 

@@ -195,9 +195,3 @@ Only **custom skills** we actively develop:
 - **youtube** — Invidious API video search with auto-fallback
 - **rodney** — headless Chrome automation
 - **d2** — diagrams as code (D2 language). `openskills install devskale/skale-skills/skills/d2`
-
-## API Docs
-
-Reverse-engineered public APIs useful for agents:
-
-- **[api/ryanair/](api/ryanair/)** — Ryanair fare search (free, no auth)
