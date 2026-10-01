@@ -851,14 +851,17 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				return { content: [{ type: "text" as const, text: "Error: provide path OR url, not both." }], isError: true, details: { error: "path xor url" } };
 			}
 			let filePath: string;
-			if (rawUrl) {
+			if (rawPath) {
+				filePath = rawPath.startsWith("/") ? rawPath : join(ctx.cwd, rawPath);
+			} else if (rawUrl) {
 				const dl = await downloadImage(rawUrl);
 				if (!dl.ok) {
 					return { content: [{ type: "text" as const, text: `Error: ${dl.error}` }], isError: true, details: { error: dl.error } };
 				}
 				filePath = dl.path;
 			} else {
-				filePath = rawPath!.startsWith("/") ? rawPath! : join(ctx.cwd, rawPath!);
+				// Unreachable — the guards above reject missing path and path+url together.
+				return { content: [{ type: "text" as const, text: "Error: provide either path (local file) or url (http(s) image URL)." }], isError: true, details: { error: "path or url required" } };
 			}
 			// Show the image FIRST, then feed it to the VLM. Previously the VLM ran
 			// before the image was assembled, so the user didn't see the image until

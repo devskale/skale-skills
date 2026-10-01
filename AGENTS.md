@@ -161,9 +161,18 @@ See `RECOMMENDED-SKILLS.md` for the full list of sources and install commands.
 
 ## Running Tests
 
-No global runner, no CI. Per-skill suites (`~` counts above):
+**The gate:** `bash scripts/check.sh` runs on every commit (wired via `core.hooksPath .githooks` —
+run `git config core.hooksPath .githooks` once after cloning). Pre-push runs `check.sh --full`
+(all suites; live-browser suites rodney/surf skip honestly unless `LIVE_OK=1` — they drive the
+user's real desktop Chrome). Escape hatch for WIP pushes: `PUSH_SKIP_TESTS=1 git push`.
+
+Per-skill suites (`~` counts above):
 
 ```bash
+bash scripts/check.sh              # the gate: lint + typecheck + docs integrity
+bash scripts/check.sh --full       # the gate + every suite below
+bash scripts/extension-drift.sh    # is the running agent's package clone in sync?
+bash tests/statusline/test.sh
 bash tests/fetch-url/test.sh
 bash tests/web-search/test.sh
 bash tests/youtube/test.sh
@@ -197,6 +206,13 @@ bash scripts/lint.sh     # tsc --noEmit + Biome lint (scoped to extensions/)
 **Test cadence:** run **focused** tests during development (exercise only the command/section you changed — a standalone snippet or a single feature), and run the **full regression suite** before release (i.e. right before a version bump + ship). Don't loop the whole suite on every edit.
 
 ## Development Workflow
+
+**Edit-here ≠ runs-there:** pi loads extensions from the **package clone**
+(`~/.pi/agent/git/.../skale-skills/`), never from this checkout — after editing
+`extensions/`, the running agent is on old code until you push + `pi install` (or set a
+temporary dev override, which you must remove before shipping). Check drift with
+`scripts/extension-drift.sh`; the loop is documented in
+[docs/development.md](docs/development.md).
 
 ### Best Practices (from CODING_RULES.md)
 
@@ -255,35 +271,12 @@ This repo is a **living workshop**, not a finished product. Every session that s
 
 ## Deprecation & Archiving
 
-When a skill is superseded (like `viewimg` → `read img.jpg`), **archive** it rather than deleting or leaving it live. This keeps history for archaeology while taking it out of the active package and settings.
-
-Convention:
-
-- **Move** `skills/<name>/` → `skills/deprecated/<name>/`. The exclusion ships with the package: `package.json`'s `pi.skills` manifest is `["./skills", "!skills/deprecated/**"]` — the **`!` glob-exclude** keeps the whole archive out at the **manifest level**, so every user of the package gets it without touching their own settings. This is the SOTA approach (matches `narumiruna/pi-extensions`, which simply omits `deprecated/` from its manifest).
-- **Never prefix manifest glob-excludes with `./`** (load-bearing): pi matches patterns against **package-root-relative** paths via minimatch, and `!./skills/deprecated/**` silently matches **nothing** — minimatch does not strip the leading `./`. Confirmed against pi's own matcher (2026-09-21): `"./skills/deprecated/**"` → false, `"skills/deprecated/**"` → true for `skills/deprecated/viewimg/SKILL.md`. The broken form shipped for weeks while deprecated skills stayed active on fresh installs. Write `!skills/deprecated/**` (no `./`).
-- **Keep the settings filter as a redundant safety net**: `!skills/deprecated/**` in the package's `skills` list in `~/.pi/agent/settings.json`. pi discovers `SKILL.md` **recursively**, so directory depth alone does **not** hide a skill — the filter (manifest *and* settings) is what actually keeps archived skills out. Use the **`!` glob-exclude** form, not `-`: force-exclude (`-`) does exact path matching and silently ignores the `**` glob. If you remove *both* the manifest entry and the settings entry, every archived skill comes back.
-- **Move** `tests/<name>/` → `tests/deprecated/<name>/` alongside it (keeps the backward-compat suite with the code).
-- **Add a row** to `skills/deprecated/README.md` (Skill | Was | Replaced by).
-- **Fix the `~/.local/bin/<cmd>` symlink** — it points into the old path and silently breaks otherwise.
-- **Regenerate** `SKILL-INDEX.md` (`uv run index-skills.py`).
-- **Update references** in `AGENTS.md` and any docs; point the migration guide at the new path.
-
-**Helper script:** `scripts/skill-filter.sh` manages the settings/mcp filters so you don't hand-edit JSON and don't hit the `-` vs `!` trap. It edits `~/.pi/agent/settings.json` (the per-user filter) — for the **package-author** manifest exclusion in `package.json`, edit `pi.skills` directly (or run `./install.sh` after a change) since that ships with the package:
-
-```bash
-scripts/skill-filter.sh list                          # show package filters + MCP servers
-scripts/skill-filter.sh disable skill deprecated      # → !skills/deprecated/**  (whole tree)
-scripts/skill-filter.sh disable skill viewimg         # → -skills/deprecated/viewimg/SKILL.md
-scripts/skill-filter.sh enable  skill viewimg         # → +skills/deprecated/viewimg/SKILL.md
-scripts/skill-filter.sh disable extension imagegen    # → -extensions/imagegen.ts
-scripts/skill-filter.sh disable mcp chrome-devtools   # remove from ~/.config/mcp/mcp.json
-```
-
-It writes the correct `!` glob for tree excludes and `-`/`+` exact paths for single resources (matching what `pi config` generates), and never touches the real settings/mcp files in its test suite (`tests/skill-filter/` runs against temp copies).
-
-**Path-depth gotcha (load-bearing):** test scripts reach the repo root with `cd "$(dirname "$0")/../.."`. Moving a test **one level deeper** (e.g. `tests/viewimg/` → `tests/deprecated/viewimg/`) silently lands it in `tests/` instead of the root and **every check fails with exit 127**. When you move a test deeper, bump the `../` depth to match. Always re-run the moved suite before committing.
-
-A superseded skill's `SKILL.md` keeps its deprecation banner and migration table; the launcher stays functional for backward-compat but is frozen (no further development).
+When a skill is superseded, **archive** it — move it to `skills/deprecated/`, keep history,
+take it out of the active package. The full step-by-step and the load-bearing exclusion
+traps (`!` vs `-`, the `./`-prefix no-op, path-depth on moved tests) live in
+**[docs/deprecation.md](docs/deprecation.md)** — follow it, don't improvise. Folder
+semantics (idea / under review / deprecated, and why the two `deprecated/` folders exist):
+**[LAYOUT.md](LAYOUT.md)**. Helper: `scripts/skill-filter.sh`.
 
 ## Managing skills across agents
 

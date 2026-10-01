@@ -55,7 +55,13 @@ echo ""
 echo "[1] File structure..."
 assert "xmodel.ts exists"                      "[ -f xmodel.ts ]"
 assert "xmodel.md doc exists"                  "[ -f xmodel.md ]"
-assert "version bumped to 0.5.6"               "grep -q 'VERSION = \"0.5.6\"' xmodel.ts"
+# Version drift check — derived, not hardcoded: the extension's VERSION const and the
+# newest "xmodel X.Y.Z" entry in release-notes.md must agree. A bump that edits only one
+# side fails here instead of shipping two sources of truth.
+RN_VER=$(grep -oE 'xmodel [0-9]+\.[0-9]+\.[0-9]+' "$REPO/release-notes.md" 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+TS_VER=$(grep -oE 'VERSION = "[0-9]+\.[0-9]+\.[0-9]+"' xmodel.ts | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+assert "version matches release-notes (${TS_VER:-none} vs ${RN_VER:-none})" \
+    "[ -n '$RN_VER' ] && [ '$TS_VER' = '$RN_VER' ]"
 assert "xmodel-view display entry registered"  "grep -q 'XMODEL_VIEW_MSG = \"xmodel-view\"' xmodel.ts"
 assert "message renderer registered"           "grep -q 'registerMessageRenderer' xmodel.ts"
 assert "understand param handled"              "grep -q 'understandRaw === true' xmodel.ts"

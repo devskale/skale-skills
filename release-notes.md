@@ -4,16 +4,22 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
-- **xmodel 0.5.6 — images actually render inline again.** Two silent bugs, both producing
-  valid-looking output with nothing on screen. (1) pi-tui's Kitty encoder hardcodes the format
-  key `f=100` (PNG) and ignores `mimeType`, so `.webp`/`.jpg`/`.gif`/`.bmp` were sent labelled as
-  PNG and the terminal dropped them without a word — only real `.png` files ever worked.
-  Non-PNG is now transcoded via `sips`; PNG stays byte-identical. (2) `read` skipped the display
-  entry entirely on a **vision-capable** main model — the pixel pass-through returned before the
-  display was written, so a plain `read` showed nothing while still looking successful (this is why
-  it read as "the VLM processed it instead of showing it"). With `_vision.mode = view`, `read`
-  additionally routed to throway/browser instead of the terminal. `read` is now **always** local
-  inline display; understanding stays explicit and orthogonal (`understand` / `read_image`).
+- **xmodel 0.5.6 — images actually render inline again.** Two independent changes, plus a
+  correction of this entry's own first draft (kept honest below). (1) pi-tui's Kitty encoder
+  hardcodes the format key `f=100` (PNG) and ignores `mimeType`, so `.webp`/`.jpg`/`.gif`/`.bmp`
+  were sent labelled as PNG and the terminal dropped them without a word — only real `.png` files
+  ever worked. Non-PNG is now transcoded via `sips`; PNG stays byte-identical. This alone explains
+  the original symptom: the `🖼 view-only` header rendered while the pixels never did.
+  (2) `read` display semantics changed by contract: `understand:true` on a **vision-capable** main
+  model used to `return;` before the display entry was written — the user got only the model's
+  text description, which is exactly what read as "the VLM processed it instead of showing it"
+  (the system-prompt note steers agents toward `understand:true`, so this was the common path).
+  And with `_vision.mode = view`, `read` routed to throway/browser instead of the terminal.
+  `read` now **always** writes the local inline display, for every model and every mode;
+  understanding stays explicit and orthogonal (`understand` / `read_image`).
+  *Correction:* an earlier draft of this entry claimed plain `read` also skipped the display on
+  vision-capable models. False — plain `read` always reached the handover; only the
+  `understand:true` path early-returned. Verified against the pre-change code before rewriting.
   `imagegen.ts` carried the same un-normalised render and was fixed too. Reported upstream as
   [earendil-works/pi#10292](https://github.com/earendil-works/pi/issues/10292) — the local fix is a
   workaround for that bug.

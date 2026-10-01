@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# pre-commit: the fast gate.lint + typecheck + docs integrity.
+# Full per-skill suites run on pre-push (they are slower and some hit the network).
+bash "$(git rev-parse --show-toplevel)/scripts/check.sh"
