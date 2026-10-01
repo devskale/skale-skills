@@ -107,7 +107,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.7";
+const VERSION = "0.5.8";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -123,8 +123,22 @@ interface WritableSessionManager {
 		details?: T,
 	): string;
 }
-function writeEntry(ctx: ExtensionContext, ...args: Parameters<WritableSessionManager["appendCustomMessageEntry"]>) {
-	return (ctx.sessionManager as unknown as WritableSessionManager).appendCustomMessageEntry(...args);
+function writeEntry(pi: unknown, ctx: ExtensionContext, ...args: Parameters<WritableSessionManager["appendCustomMessageEntry"]>) {
+	const [customType, content, display, details] = args;
+	// pi ≥1.0: the official path. sendCustomMessage defers while the agent is streaming
+	// and then appends AND emits message_start/end — that emit is what makes the live TUI
+	// render the entry. A bare sessionManager.appendCustomMessageEntry only persists
+	// (pi 1.0's _appendEntry emits nothing), so the entry never reached the chat and
+	// images never drew. triggerTurn:false keeps the display entry out of the agent
+	// stream — the streaming default would steer() it into the LLM conversation.
+	// Side effect that matters for UX: deferral places the images AFTER the agent's
+	// text at turn end, i.e. in the live viewport, instead of scrolled away above it.
+	const api = pi as unknown as { sendMessage?: (m: unknown, o?: unknown) => unknown };
+	if (typeof api.sendMessage === "function") {
+		return api.sendMessage({ customType, content, display, details }, { triggerTurn: false });
+	}
+	// pi ≤0.99: direct append — the TUI picked entries up live there.
+	return (ctx.sessionManager as unknown as WritableSessionManager).appendCustomMessageEntry(customType, content, display, details);
 }
 
 /**
@@ -1535,6 +1549,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			if (arts.length) details.ascii = arts;
 		}
 		writeEntry(
+			pi,
 			ctx,
 			XMODEL_VIEW_MSG,
 			blocks.map((b) => ({ type: "image", data: b.b64, mimeType: b.mime })),

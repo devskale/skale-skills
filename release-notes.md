@@ -4,6 +4,19 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel 0.5.8 — pi 1.0: display entries render live again (and land at turn end).** pi 1.0's
+  `SessionManager._appendEntry` only persists — it emits nothing, so our direct
+  `appendCustomMessageEntry` call wrote entries to the session file while the live TUI never
+  heard about them: the read handover noted "displayed inline" (truthfully, per its own return
+  value), the model behaved, and the terminal showed nothing — zero Kitty APCs in the write
+  log. `writeEntry` now goes through the official `pi.sendMessage(..., { triggerTurn: false })`
+  when available (defers while streaming, then appends **and** emits `message_start/end`, which
+  is what makes the chat render the entry), falling back to the direct append on pi ≤0.99.
+  `triggerTurn: false` matters twice: the streaming default would `steer()` the display entry
+  into the LLM conversation, and the deferral places images **after** the agent's text at turn
+  end — in the live viewport, where Kitty graphics can actually show, instead of scrolled away
+  above it. Contract unchanged: `read` → images inline, VLM only when asked.
+
 - **xmodel 0.5.7 — composes with pi's `images.blockImages`.** pi can strip image blocks from
   LLM messages (`~/.pi/agent/settings.json` → `images.blockImages: true`; replaced by
   "Image reading is disabled." at conversion time, checked dynamically). Our routing assumed
