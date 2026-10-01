@@ -1,4 +1,17 @@
-# Routing — build inline vs. recommend d2 / figure
+# Routing — answer inline, build inline, or recommend d2 / figure
+
+Three tiers, cheapest first. **Check tier 0 before anything else.**
+
+## Tier 0 — answer inline (no file)
+
+If one small form answers the question — pseudocode, call tree, component tree, annotated file
+tree, or a diff matched to the shape — **answer inline** and build nothing. See
+[code-forms.md](code-forms.md). No URL, no temp file, no validation.
+
+Build a page only when the content is a **set** to scan/share/print, the user named a
+deliverable, or no single inline form fits.
+
+## Tier 1 — build inline (this skill's own diagram in a page)
 
 `visualize` builds its own simple diagrams inline (SVG arrows, optional Mermaid) — good
 for a small graph embedded in a page. But some challenges are **better served by `d2`
@@ -9,6 +22,8 @@ don't build a weak inline version. Decide **live per request**, re-reading the
 
 ## Decision
 
+- **→ tier 0 (inline form)** — one explanation fits in a screen: the algorithm, a call path, a
+  component boundary, a file's responsibility, or what a change does. Cheapest and clearest.
 - **→ `d2`** — complex technical graphs: sequence / ER / class diagrams; dependency or
   call graphs with many nodes and edges (elk auto-layout handles the density, inline SVG
   tangles); diagrams that must be self-verifiable (d2 renders ASCII) or are the

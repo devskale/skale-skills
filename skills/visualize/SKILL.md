@@ -1,7 +1,7 @@
 ---
 name: visualize
-version: "1.7.1"
-description: "Render any set of things as ONE self-contained HTML document and give the user a URL — and generate polished HTML reports. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), figures out the right structure, and builds a single portable HTML file — then opens it locally and optionally shares it as a short-lived URL. Triggers on: visualize, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, put it on a page."
+version: "1.8.0"
+description: "Explain or present a topic: answer it with the SMALLEST view that makes the point — inline pseudocode, call tree, component tree, annotated file tree, or a matched-shape diff in chat — and render a set of things as ONE self-contained HTML document with a URL. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), picks the right form, and builds a single portable HTML file — then opens it locally and optionally shares it as a short-lived URL. Triggers on: visualize, show me, explain this, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, put it on a page."
 ---
 
 # visualize — one self-contained HTML for any set of things
@@ -14,9 +14,19 @@ structured document: exec summary, findings, recommendations —
 (`/skill:d2` / `/skill:figure`); when to hand off vs. build inline:
 [references/routing.md](references/routing.md).
 
+**Not every answer needs a page.** A pseudocode block, call tree, component tree, annotated
+file tree, or a matched-shape **diff** placed next to the sentence it supports often answers the
+question better — and smaller. See [references/code-forms.md](references/code-forms.md).
+
 ## Workflow
 
 ### 1. Understand — mode, then pattern, then structure
+
+**First: does this need a page at all?** If one inline form answers it — pseudocode, call tree,
+component tree, annotated file tree, or a diff matched to the shape — answer inline with
+[references/code-forms.md](references/code-forms.md) and skip the rest. Build a page when the
+content is a *set* to scan, share, or print, when the user named a deliverable ("for my deck",
+"put it in the README"), or when no single inline form fits.
 
 Mode = **report** when the deliverable is a *document* — "write a report", "evaluate",
 "assess", "findings + recommendations" → [references/report.md](references/report.md).
@@ -29,10 +39,7 @@ Then the **d2 / figure routing check** ([references/routing.md](references/routi
 complex technical diagram → recommend `/skill:d2` and stop; hand-drawn presentation
 figure → recommend `/skill:figure`; otherwise build it here.
 
-When behaviour, state, or risk is load-bearing, name the **semantic pattern** first
-([references/patterns.md](references/patterns.md) — complexity budgets + static
-fallbacks); then the structure: `overview-grid`, `cards`, `before-after`, `list`,
-`timeline`, `flow`, `comparison`, `hierarchy`. One strong structure beats a kitchen sink.
+When behaviour, state, or risk is load-bearing, name the **semantic pattern** first ([references/patterns.md](references/patterns.md) — complexity budgets + static fallbacks); then the structure: `overview-grid`, `cards`, `before-after`, `list`, `timeline`, `flow`, `comparison`, `hierarchy`. One strong structure beats a kitchen sink.
 
 ### 2. Build — compose one HTML page
 
@@ -48,18 +55,11 @@ once (all module CSS lives there), then write **short class-based HTML** per mod
 `recommendations`, `mermaid`, `footer`). Never inline-duplicate styles per element.
 When building, read [references/promptlib.md](references/promptlib.md) — the design moves that make a page *lovely*.
 
-Write to the OS temp dir (`$TMPDIR` → `/tmp`, `%TEMP%` on Windows), filename
-`<slug>-<timestamp>.html`:
+Write to the OS temp dir (`$TMPDIR` → `/tmp`, `%TEMP%` on Windows), filename `<slug>-<timestamp>.html`:
 
-- **One file** — no local sibling files (`style.css`, `app.js`, images). Inline content
-  and layout; popular packages via popular CDNs, but keep the layout inline so content
-  renders offline. See [references/html-patterns.md](references/html-patterns.md).
+- **One file** — no local sibling files (`style.css`, `app.js`, images). Inline content and layout; popular packages via popular CDNs, but keep the layout inline so content renders offline. See [references/html-patterns.md](references/html-patterns.md).
 
-Validate before delivering: `visualize validate <file.html>` (one file: local refs fail,
-popular CDNs ok) and `visualize lint <file.html>` (decorative AI-tells; structural color
-passes). On a **chart/comparison** page also `visualize chartcheck <file.html>` — bar
-baseline, log scale, notes left on the chart, source
-([references/chart-integrity.md](references/chart-integrity.md)). Flags `--selfcheck`/`--update`.
+Validate before delivering: `visualize validate <file.html>` (one file: local refs fail, popular CDNs ok) and `visualize lint <file.html>` (decorative AI-tells; structural color passes). On a **chart/comparison** page also `visualize chartcheck <file.html>` — bar baseline, log scale, notes left on the chart, source ([references/chart-integrity.md](references/chart-integrity.md)). Flags `--selfcheck`/`--update`.
 
 ### 3. Deliver — open it and give the URL
 
@@ -75,10 +75,8 @@ files are flattened (`sub/f.txt` → `sub-f.txt`). Default stays one self-contai
 
 - **Visual first** — diagrams and layout carry the meaning; prose is sparse. If a diagram
   needs a paragraph to be understood, redraw it.
-- **Scannable** — generous whitespace, neutral ink on warm paper, clear hierarchy.
-  Editorial, not corporate-dashboard.
-- **Color is structure, not decoration** — category hues and `--ok/--warn/--bad` severity
-  carry meaning; never pastel pills, saturated links, big colored circles (promptlib §0–2).
+- **Scannable** — generous whitespace, neutral ink on warm paper, clear hierarchy. Editorial, not corporate-dashboard.
+- **Color is structure, not decoration** — category hues and `--ok/--warn/--bad` severity carry meaning; never pastel pills, saturated links, big colored circles (promptlib §0–2).
 - **Honest about scope** — if the user named a subset, visualize exactly that.
 
 ## Install
@@ -90,6 +88,7 @@ For a global `visualize` command, run this skill's `./install.sh` (Linux/macOS) 
 ## References
 
 - [references/routing.md](references/routing.md) — **hand off to d2/figure or build inline?**
+- [references/code-forms.md](references/code-forms.md) — **smallest view first**: pseudocode, call tree, component tree, file tree, matched-shape diff, Mermaid
 - [references/modules.md](references/modules.md) — the page-module catalog
 - [references/patterns.md](references/patterns.md) — semantic patterns + complexity budgets
 - [references/structures.md](references/structures.md) — intents → module stacks

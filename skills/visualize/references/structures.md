@@ -9,6 +9,10 @@ is genuinely two-sided (e.g. before/after comparison).
 > loop feeds back, two things diverge), a *semantic pattern* owns the challenge and maps
 > to one of these structures. Pattern first, then structure.
 
+> **Before choosing a structure at all**, check [code-forms.md](code-forms.md). If the
+> question is a single explanation — an algorithm, a call path, a component boundary, a
+> file's responsibility, or what a change does — answer it inline and build no page.
+
 ## Choosing a structure
 
 | Subject / intent | Structure |
