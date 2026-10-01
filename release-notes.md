@@ -2,6 +2,51 @@
 
 Log of notable changes to skale-skills. Newest first.
 
+## Unreleased
+
+- **xmodel 0.5.6 — images actually render inline again.** Two silent bugs, both producing
+  valid-looking output with nothing on screen. (1) pi-tui's Kitty encoder hardcodes the format
+  key `f=100` (PNG) and ignores `mimeType`, so `.webp`/`.jpg`/`.gif`/`.bmp` were sent labelled as
+  PNG and the terminal dropped them without a word — only real `.png` files ever worked.
+  Non-PNG is now transcoded via `sips`; PNG stays byte-identical. (2) `read` skipped the display
+  entry entirely on a **vision-capable** main model — the pixel pass-through returned before the
+  display was written, so a plain `read` showed nothing while still looking successful (this is why
+  it read as "the VLM processed it instead of showing it"). With `_vision.mode = view`, `read`
+  additionally routed to throway/browser instead of the terminal. `read` is now **always** local
+  inline display; understanding stays explicit and orthogonal (`understand` / `read_image`).
+  `imagegen.ts` carried the same un-normalised render and was fixed too. Reported upstream as
+  [earendil-works/pi#10292](https://github.com/earendil-works/pi/issues/10292) — the local fix is a
+  workaround for that bug.
+
+- **visualize: `validate` no longer rejects pages that *document* an import.** Regression found by
+  running the new tier-0 routing end-to-end (see below): the single-file check scanned the whole
+  file for `import … from '…'`, so a page explaining a refactor — `<code>import … from './transport'</code>`
+  — was flagged as a local dependency. A gate that fails valid output is worse than no gate: it
+  teaches agents to ignore it. The JS-import check now reads only real `<script>` content
+  (`validate` on the produced page: exit 1 → exit 0). Covered by two new regression checks —
+  prose passes, a real local `<script>` import still fails — because the existing template suite
+  could not catch this (no template shows an import in prose).
+
+- **visualize 1.8.0 — inline forms merged from humanlayer's `show-me`.** `visualize` is no longer
+  HTML-only: a pseudocode block, call tree, component tree, annotated file tree, or a
+  **matched-shape diff** placed next to the sentence it supports is now a first-class output
+  (`references/code-forms.md`). The routing gains **tier 0 — answer inline, build no file**
+  (`references/routing.md`), ahead of the existing inline-diagram and `d2`/`figure` tiers, and
+  `structures.md` cross-links it so structure selection never runs before the inline check.
+  Adapted from [humanlayer/skills](https://github.com/humanlayer/skills) `show-me` (MIT): the
+  Claude-only `Bash(open …)` HTML fallback was dropped — building the page stays `visualize`'s
+  job — and the four diff shapes (component / file-layout / call-tree / control-flow) were kept
+  verbatim because the shape-matched diff is the strongest idea in the original.
+  Tests: 167 pass / 0 fail (+13). New checks cover the code-forms sections, the diff shapes, the
+  absence of the `Bash(open …)` fallback, and the wiring into `routing.md`/`SKILL.md`/`structures.md`;
+  `prompts.md` gains P14–P19, six tier-0 prompts that must produce **zero** HTML.
+  SKILL.md kept under the repo's 100-line convention (98).
+  **Verified live** (`pi --print --skill ./skills/visualize`): P15 call tree and the file-layout
+  diff both answered inline with no HTML; the escalation prompt ("Mach mir daraus eine Seite fürs
+  README") built a page as designed. Two failure modes surfaced while testing and are fixed below
+  or documented: a prompt that embeds the answer invites explanation instead of the form, and an
+  invented path (`src/transport.ts` that exists in no repo here) makes the agent refuse or pad.
+
 ## 1.4.6 — 2026-09-08
 
 - **vtd:** the yt-dlp venv now lives outside the repo (`~/.cache/skale-skills/video-transcript-downloader`) — pi package updates run `git clean -fdx` and would wipe an in-repo `.venv`. Launcher exports `VTD_ENV_DIR`; `--update` uses `--ff-only` and refreshes yt-dlp.
