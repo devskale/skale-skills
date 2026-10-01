@@ -95,6 +95,8 @@ configure a DEBUG handler on the `credgoo` logger to see it.
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 | [pi-architecture.md](pi-architecture.md) | How pi (the agent runtime) discovers packages, skills, extensions — background for this repo's layout |
 | [docs/codex-learnings.md](docs/codex-learnings.md) | Grounding for the coding guidelines — what the Codex repo teaches about testing, boundaries & lint at scale |
+| [docs/agent-agnostic.md](docs/agent-agnostic.md) | **Living review + roadmap**: repo verdict, ecosystem comparison, agent-agnostic plan with status |
+| [docs/deprecation.md](docs/deprecation.md) | Deprecating a skill — the step-by-step and the load-bearing exclusion traps |
 | [docs/ideas.md](docs/ideas.md) | **Ideas** — well-developed issues: decided directions, deliberately not implemented (the hub for all sketches) |
 | [LAYOUT.md](LAYOUT.md) | The three "not shipped" states — idea / under review / deprecated, and how each is excluded from the package |
 | [release-notes.md](release-notes.md) | Changelog of notable changes, newest first (`## Unreleased` at the top) |
