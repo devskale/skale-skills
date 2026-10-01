@@ -103,6 +103,7 @@ let lastEscAt = 0;
 // never fires on kitty-protocol terminals — ESC pause/stop silently no-ops.
 // Built via RegExp string so no control character appears in a regex literal
 // (biome: noControlCharactersInRegex).
+// biome-ignore lint/complexity/useRegexLiterals: deliberate — a literal would embed the ESC control char and trip noControlCharactersInRegex
 const ESC_PRESS_RE = new RegExp("^\\u001b(?:\\[27(;1)?u)?$");
 export function isEscapePress(data: string): boolean {
 	return data === "\x1b" || ESC_PRESS_RE.test(data);

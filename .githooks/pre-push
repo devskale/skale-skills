@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# pre-push: full regression. Every published suite runs here so nothing ships on the
+# author's memory of having tested. Escape hatch for WIP pushes: PUSH_SKIP_TESTS=1 git push.
+if [ "${PUSH_SKIP_TESTS:-0}" = "1" ]; then
+    echo "pre-push: PUSH_SKIP_TESTS=1 — skipping suites (lint only)"
+    bash "$(git rev-parse --show-toplevel)/scripts/lint.sh"
+    exit $?
+fi
+bash "$(git rev-parse --show-toplevel)/scripts/check.sh" --full
