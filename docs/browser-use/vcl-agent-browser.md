@@ -140,7 +140,7 @@ From pi, the agent will call these via `bash`.
 
 ## 5. Smoke Tests
 
-Evaluated in our [testbed](../testbed/). Results: **6/6 ✅**.
+Evaluated in our `testbed/` (local, gitignored). Results: **6/6 ✅**.
 
 ```bash
 cd testbed && bash agents/smoke_agent_browser.sh

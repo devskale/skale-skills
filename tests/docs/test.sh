@@ -91,5 +91,36 @@ for f in $DOC_FILES; do
 done
 
 echo ""
+
+# ── 3. dead relative links in EVERY shipped markdown file ──
+# The hub check above only looks at AGENTS.md / README.md / CODING_RULES.md, so a
+# broken cross-reference inside docs/ (e.g. ../skills/x/ from docs/browser-use/) is
+# invisible — four such links shipped for months. This walks every .md we publish.
+#
+# Skipped: skills/deprecated/ (archived vendor docs with spaces in filenames, kept
+# verbatim for archaeology) and testbed/ (local, gitignored).
+dead_all=0
+while IFS= read -r f; do
+    while IFS= read -r target; do
+        case "$target" in
+            http*|https*|mailto:*|\#*|/*|~*) continue ;;
+        esac
+        target="${target%%#*}"; target="${target%%\?*}"
+        [ -z "$target" ] && continue
+        target="${target#./}"
+        # %20 in a link must decode to a space-containing path; resolve against
+        # the file's DIRECTORY (dirname), not the file itself
+        resolved=$(python3 -c "
+import os,sys,urllib.parse
+print(os.path.normpath(os.path.join(sys.argv[1], urllib.parse.unquote(sys.argv[2]))))" "$(dirname "$ROOT/$f")" "$target")
+        if [ ! -e "$resolved" ]; then
+            dead_all=$((dead_all+1))
+            echo "  DEAD LINK in $f: $target" >&2
+        fi
+    done < <(grep -oE '\]\([^)]+\)' "$f" | sed 's/](//;s/)$//')
+done < <(git ls-files '*.md' | grep -vE '^skills/deprecated/|^testbed/|^node_modules/')
+if [ "$dead_all" -eq 0 ]; then ok; else bad "$dead_all dead relative link(s) outside the hubs"; fi
+
+echo ""
 echo "PASS=$PASS FAIL=$FAIL WARN=$WARN"
 [ "$FAIL" -eq 0 ]
