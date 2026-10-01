@@ -1644,7 +1644,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				analyses.push(
 					timedOut
 						? `(xmodel: vision model ${vlm} TIMED OUT after ${VLM_TIMEOUT_MS / 1000}s — image not analysed)`
-						: analysis || "(vision model returned no usable analysis — image may not have been received)",
+						: analysis || "(vision model returned no usable analysis — you did NOT receive this image. Do NOT describe it — guessing from the filename is a hallucination. Tell the user the analysis is unavailable.)",
 				);
 			} finally {
 				if (tmp) {
@@ -1747,7 +1747,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			ctx.ui.notify(`xmodel: vision model ${vlm} TIMED OUT after ${VLM_TIMEOUT_MS / 1000}s — could not analyse ${filePath}`, "error");
 			return `(xmodel: vision model ${vlm} TIMED OUT after ${VLM_TIMEOUT_MS / 1000}s — image not analysed)`;
 		}
-		return analysis || `(xmodel: vision model returned no usable analysis for ${filePath})`;
+		return analysis || `(xmodel: vision model returned no usable analysis for ${filePath} — you did NOT receive this image. Do NOT describe it from the filename; tell the user the analysis is unavailable.)`;
 	}
 
 	// =========================================================================
