@@ -55,7 +55,7 @@ echo ""
 echo "[1] File structure..."
 assert "xmodel.ts exists"                      "[ -f xmodel.ts ]"
 assert "xmodel.md doc exists"                  "[ -f xmodel.md ]"
-assert "version bumped to 0.5.5"               "grep -q 'VERSION = \"0.5.5\"' xmodel.ts"
+assert "version bumped to 0.5.6"               "grep -q 'VERSION = \"0.5.6\"' xmodel.ts"
 assert "xmodel-view display entry registered"  "grep -q 'XMODEL_VIEW_MSG = \"xmodel-view\"' xmodel.ts"
 assert "message renderer registered"           "grep -q 'registerMessageRenderer' xmodel.ts"
 assert "understand param handled"              "grep -q 'understandRaw === true' xmodel.ts"
@@ -129,8 +129,73 @@ else
 fi
 echo ""
 
-# === 3. pi loads the extension ======================================
-echo "[3] Extension loads in pi..."
+# === 3. display path normalises non-PNG to PNG ======================
+# Regression for "inline image not rendering" (2026-10-01): pi-tui's Kitty encoder
+# hardcodes f=100 (PNG) and ignores mimeType, so a .webp/.jpg payload was sent
+# labelled as PNG and the terminal dropped it SILENTLY — the TUI wrote a valid
+# APC, the user saw no image. toDisplayPng must transcode non-PNG to PNG.
+echo "[3] Display path normalises non-PNG to PNG..."
+if ! command -v sips >/dev/null 2>&1; then
+    WARN=$((WARN + 1))
+    echo "  WARN: sips not on PATH (macOS only) — skipped"
+else
+    UT="$TMP/todisplaypng.mjs"
+    cat >"$UT" <<'UTEOF'
+import { toDisplayPng, isPng } from "EXTPATH/lib/image-utils.ts";
+import { readFileSync } from "node:fs";
+
+const files = process.argv.slice(2);
+if (!files.length) { console.error("no fixture files given"); process.exit(1); }
+let bad = 0;
+for (const f of files) {
+    const b64 = readFileSync(f).toString("base64");
+    const out = toDisplayPng(b64);
+    if (!isPng(Buffer.from(out, "base64"))) {
+        console.log(`NOTPNG ${f}`);
+        bad++;
+    }
+}
+// A PNG input must survive untouched (no re-encode, no size drift).
+const png = files.find((f) => f.endsWith(".png"));
+if (png) {
+    const b64 = readFileSync(png).toString("base64");
+    if (toDisplayPng(b64) !== b64) { console.log("REENCODED-PNG"); bad++; }
+}
+process.exit(bad ? 1 : 0);
+UTEOF
+    sed -i.bak "s|EXTPATH|$EXT|" "$UT" && rm -f "$UT.bak"
+
+    # Real fixtures: one per format that used to vanish.
+    mkdir -p "$TMP/fx"
+    if [ ! -f "$HERE/fixtures/t2-small.png" ]; then
+        sips -s format png /System/Library/Desktop\ Pictures/*.heic --out "$TMP/fx/t2-small.png" >/dev/null 2>&1 \
+            || cp /tmp/t2-small.png "$TMP/fx/t2-small.png" 2>/dev/null \
+            || printf '\211PNG\r\n\032\n' > "$TMP/fx/t2-small.png"
+    else
+        cp "$HERE/fixtures/t2-small.png" "$TMP/fx/t2-small.png"
+    fi
+    sips -s format jpeg "$TMP/fx/t2-small.png" --out "$TMP/fx/t2-small.jpg"   >/dev/null 2>&1 || true
+    sips -s format webp "$TMP/fx/t2-small.png" --out "$TMP/fx/t2-small.webp" >/dev/null 2>&1 || true
+
+    FX=$(ls "$TMP"/fx/* 2>/dev/null | tr '\n' ' ')
+    if [ "$(echo "$FX" | wc -w)" -lt 2 ]; then
+        WARN=$((WARN + 1))
+        echo "  WARN: could not build image fixtures — skipped"
+    else
+        if (cd "$REPO" && node "$UT" $FX >"$TMP/ut.out" 2>&1); then
+            PASS=$((PASS + 1))
+            echo "  ok: webp/jpeg/png all normalise to PNG (png byte-identical)"
+        else
+            FAIL=$((FAIL + 1))
+            echo "  FAIL: non-PNG not normalised to PNG"
+            sed 's/^/    /' "$TMP/ut.out" | head -8
+        fi
+    fi
+fi
+echo ""
+
+# === 4. pi loads the extension ======================================
+echo "[4] Extension loads in pi..."
 if command -v pi >/dev/null 2>&1; then
     # --no-extensions: the installed package copy also registers switch_model/read_image;
     # loading the repo copy on top would CONFLICT (duplicate tool names), so isolate it.
