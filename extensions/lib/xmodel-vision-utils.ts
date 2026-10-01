@@ -8,8 +8,9 @@
  * gatherRecentContext) stay in xmodel.ts.
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
 import { isValidImage } from "./image-utils";
 
@@ -71,7 +72,24 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 		args.push(opts.prompt);
 		const timeoutMs = opts.timeoutMs ?? VLM_TIMEOUT_MS;
 		debug("runChildPi", { model: opts.model, hasImage: !!opts.imageFile, promptLen: opts.prompt.length, timeoutMs });
-		const proc = spawn("pi", args, { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
+		// The child must SEE the image even when the user blocks image pixels globally
+		// (settings.json → images.blockImages). The child inherits that setting and then
+		// answers "NO IMAGE" (observed 2026-10-01: outLen 1.4 MB, textLen 8 — literally
+		// "NO IMAGE"), which our NO-IMAGE filter turns into "no usable analysis".
+		// Fix: a throwaway cwd whose PROJECT settings override blockImages for this one
+		// headless call (project scope wins the merge; the user's global config is
+		// untouched). Only needed when an image is attached.
+		let spawnCwd: string | undefined;
+		if (opts.imageFile) {
+			try {
+				spawnCwd = mkdtempSync(join(tmpdir(), "xmodel-vlm-"));
+				mkdirSync(join(spawnCwd, ".pi"), { recursive: true });
+				writeFileSync(join(spawnCwd, ".pi", "settings.json"), JSON.stringify({ images: { blockImages: false } }));
+			} catch {
+				spawnCwd = undefined;
+			}
+		}
+		const proc = spawn("pi", args, { cwd: spawnCwd, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
 		let deltaText = "";          // accumulated assistant text deltas (small, no image)
 		let lastMsgEndText = "";      // last assistant message_end text (small, no image)
 		let lineBuf = "";
@@ -118,6 +136,9 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 			debug("runChildPi done", { model: opts.model, reason, timedOut, aborted, outLen, elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
 			forensic("runChildPi done", { model: opts.model, reason, timedOut, aborted, outLen, elapsedSec: elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none", imageFile: opts.imageFile });
 			if (!text) forensic("runChildPi empty", { model: opts.model, reason, timedOut, aborted, outLen, elapsedSec: elapsed, imageFile: opts.imageFile });
+			if (spawnCwd) {
+				try { rmSync(spawnCwd, { recursive: true, force: true }); } catch {}
+			}
 			resolve({ text, timedOut, aborted, reason: timedOut ? "timeout" : aborted ? "abort" : reason });
 		};
 		proc.on("close", () => finish("close"));
