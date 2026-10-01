@@ -14,6 +14,9 @@ npx @anthropic-ai/skills add <name> # Anthropic skills
 | Source | What | URL |
 |--------|------|-----|
 | **Anthropic** | Official Claude skills (docx, xlsx, etc.) | https://github.com/anthropics/skills |
+| **cursor/plugins** | Official Cursor plugin marketplace — skills + agents + rules + `mcp.json` for 80+ dev-tool/SaaS integrations (github, playwright, gmail, google-drive, …) and first-party workflows (`thermos`, `advisor`, `orchestrate`) | https://github.com/cursor/plugins |
+| **emilkowalski** | Front-end craft: animation (web + Expo), Apple-style design, motion review, UI library picks, Swift. ~42k ★ | https://github.com/emilkowalski/skills |
+| **humanlayer** | Advanced-workflow skills — agentic control loops, iterated CI loops, visual PRs, HTML explainers, CLAUDE.md rewriting. ~4.6k ★ | https://github.com/humanlayer/skills |
 | **numman-ali** | Large community collection | https://github.com/numman-ali/n-skills |
 | **badlogic** | Pi-specific skills | https://github.com/badlogic/pi-skills |
 | **moltbot** | Curated Claude skills | https://github.com/moltbot/skills |
@@ -26,6 +29,80 @@ npx @anthropic-ai/skills add <name> # Anthropic skills
 | **skills.sh** | Skill marketplace/manager | https://skills.sh/ |
 | **skillsmp.com** | Skill marketplace | https://skillsmp.com/ |
 | **context7** | Skill manager | https://context7.com/?tab=skills |
+
+### cursor/plugins — official Cursor plugin marketplace
+
+https://github.com/cursor/plugins — ~9k ★, MIT. A **multi-plugin marketplace**: each plugin is its
+own top-level directory with a `.cursor-plugin/plugin.json` manifest, holding `skills/`, `agents/`,
+`rules/`, and its own `mcp.json`. Root `.cursor-plugin/marketplace.json` lists all of them.
+
+- **First-party workflows** (agents + skills) — `thermos` (deep security/correctness branch review
+  with parallel subagents), `advisor` (consult a stronger model before major decisions / before
+  declaring done), `orchestrate` (fan large tasks across parallel cloud agents), `pstack`,
+  `pr-review-canvas`, `ralph-loop`, `create-plugin`, `cli-for-agent`.
+- **SaaS integrations as MCP plugins** — `github`, `playwright`, `gmail`, `google-drive`,
+  `google-calendar`, `vercel`, +70 more, each shipping a `mcp.json` you can lift into your own
+  pi `mcp.json` (see [MCP setup](docs/browser-use/chrome-dev.md)).
+
+Skills are plain `SKILL.md` files, and nested several levels deep, so **always pass `--full-depth`**:
+
+```bash
+# list what's available (99 skills as of 2026-09)
+npx skills@latest add cursor/plugins -l --full-depth
+
+# install one
+npx skills@latest add cursor/plugins -s thermo-nuclear-review -g
+```
+
+> ⚠️ One known defect: `agent-compatibility`'s SKILL.md has a YAML parse error (unquoted `:` in a
+> long `description:`) and is skipped by the installer with a warning. Everything else installs.
+
+### emilkowalski/skills — front-end craft
+
+https://github.com/emilkowalski/skills — ~42k ★, MIT, Markdown. 13 skills, all animation/UI/mobile
+craft. The highest-signal ones:
+
+| Skill | What |
+|-------|------|
+| `emil-design-eng` | The philosophy itself: UI polish, component design, animation decisions, invisible details |
+| `animate` | Web animation with the decisions made in the right order and exact values |
+| `animate-expo` | React Native / Expo + Reanimated + Gesture Handler, incl. off-device haptics |
+| `apple-design` | Apple's interface + motion approach translated to the web (springs, sheets, translucent depth, typography) |
+| `review-animations` | Reviews motion code against a high bar; **default to flagging, approval is earned** |
+| `improve-animations` | Read-only codebase motion audit → prioritized plan for other agents to execute |
+| `find-animation-opportunities` | Read-only: proposes motion with exact values, rejects what shouldn't move |
+| `mobile-native` | Make a web app feel installed — 100vh, tap highlight, hover stickiness, notch |
+| `pick-ui-library` | Opinionated library pick per task (OTP inputs, charts, command menus, toasts…) |
+| `write-swift` | Modern Swift: value types, Swift 6 concurrency, `@concurrent`, Swift Testing, macros |
+| `ask-sonner` | Sonner toast wiring + the failure modes (no show, double show, dark mode) |
+| `animation-vocabulary` | Reverse lookup: vague motion description → the exact term |
+| `prototype` | Builds several genuinely different UI versions behind a visual picker to promote one |
+
+```bash
+npx skills@latest add emilkowalski/skills -s emil-design-eng -g
+```
+
+### humanlayer/skills — advanced workflows
+
+https://github.com/humanlayer/skills — ~4.6k ★, 147 forks, MIT, TypeScript. 6 skills, each its own
+plugin under `plugins/` (so also nested — pass `--full-depth` if you install more than one by name).
+These are interview-driven: they ask you questions and then *build* something.
+
+| Skill | What |
+|-------|------|
+| `design-control-loop` | Interviews you to design an agentic control loop (sensor / controller / actuator / disturbances) for your codebase, then builds it as runnable components + a scheduled agent workflow |
+| `build-iterated-agentic-loop` | Repo-local skill + a matching iterated coding-agent GitHub Actions workflow, prompt, memory file, reference templates |
+| `visual-pr` | PR with a concise visual outline so reviewers can actually see the change |
+| `show-me` | Explains the current topic with diagrams, code-shape sketches, focused HTML artifacts |
+| `improve-claude-md` | Rewrites CLAUDE.md using `<important if>` blocks to improve instruction adherence |
+| `narrow-react-prop-types` | Narrows React prop types to live code paths instead of Storybook/test/mock-only states |
+
+```bash
+npx skills@latest add humanlayer/skills -s design-control-loop -g
+```
+
+> Claude Code-shaped: several assume `CLAUDE.md` and `/`-invocation. The `SKILL.md` bodies are
+> portable, but check each one for Claude-specific paths before relying on it in another agent.
 
 ## Where to Find Extensions
 

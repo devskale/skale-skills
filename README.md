@@ -294,6 +294,7 @@ bash tests/web-search/test.sh
 bash tests/rodney/test.sh
 bash tests/surf/test.sh && bash tests/surf/furious.sh   # surf: structure + furious live validation
 bash tests/imagegen/test.sh                             # imagegen extension (proxy + live gen)
+bash tests/docs/test.sh                                 # docs integrity: dead links in hubs + orphaned docs
 ```
 
 ---

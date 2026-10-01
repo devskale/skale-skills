@@ -88,7 +88,7 @@ youtube --discover         # refresh the Invidious instance cache
 - **Watch links are `youtube.com`** (not the Invidious host), so they're ready for `vtd transcript --url …`.
 - **Fewer picks than `--num`?** Filters are strict. Widen with `--fresh all`, `--any-length`, lower `--min-views`, or bigger `--pool`.
 - **"all instances failed"** → `youtube --discover` (parallel probe, rebuilds the cache). Most public instances die regularly — the self-heal (evict/promote/merge) usually recovers on its own.
-- **The long-term fix is a yt-dlp backend rewrite** — see [docs/youtube-rewrite-plan.md](../../docs/youtube-rewrite-plan.md).
+- **The long-term fix is a yt-dlp backend rewrite** — tracked as issue [`youtube-ytdlp-rewrite`](../../.handoff/issues/backlog/youtube-ytdlp-rewrite.md).
 
 ## How it works
 
