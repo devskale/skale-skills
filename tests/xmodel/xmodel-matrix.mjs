@@ -8,7 +8,7 @@
 //
 // Prints `CHECK <name>: ok|FAIL` lines; exits non-zero on any FAIL.
 import { createRequire } from "node:module";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 if (process.argv.length < 3) {
@@ -164,6 +164,30 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	const res = await fireToolResult(readEvent({ path: "img.png", understand: "check the wheels" }), ctx);
 	check("b2: focus string + vision model → pass-through", res === undefined);
 	check("b2: display entry STILL written", ctx._entries?.length === 1 && ctx._entries[0].type === "xmodel-view");
+}
+
+// ── (b3) pi images.blockImages → vision model does NOT receive pixels ──────
+// pi's convertToLlmWithBlockImages replaces image blocks with "Image reading is
+// disabled." when settings.json has images.blockImages — so a vision-capable main
+// model must NOT get the native pass-through; route through delegate (falls back to
+// handover when no VLM is configured, as here). settings.json is read fresh per call
+// from $HOME, which the harness points at a temp dir.
+{
+	const home = process.env.HOME;
+	mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+	writeFileSync(join(home, ".pi", "agent", "settings.json"), JSON.stringify({ images: { blockImages: true } }));
+	const ctx = makeCtx(VISION);
+	const res = await fireToolResult(readEvent({ path: "img.png", understand: true }), ctx);
+	const txt = textOf(res);
+	check("b3: blockImages → NO native pass-through", res !== undefined);
+	check("b3: blockImages → no image blocks for model", !hasImage(res));
+	check("b3: blockImages → handover note (delegate fell back)", txt.includes("xmodel handover"));
+	check("b3: blockImages → display entry STILL written", ctx._entries?.length === 1 && ctx._entries[0].type === "xmodel-view");
+	// default off again: without the setting, pass-through must come back
+	unlinkSync(join(home, ".pi", "agent", "settings.json"));
+	const ctx2 = makeCtx(VISION);
+	check("b3: without the setting → native pass-through restored",
+		(await fireToolResult(readEvent({ path: "img.png", understand: true }), ctx2)) === undefined);
 }
 
 // ── (c) understand:true + non-vision → no VLM configured → handover fallback
