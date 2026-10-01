@@ -8,9 +8,9 @@
  * gatherRecentContext) stay in xmodel.ts.
  */
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { spawn } from "node:child_process";
 import { isValidImage } from "./image-utils";
 
@@ -76,20 +76,29 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 		// (settings.json → images.blockImages). The child inherits that setting and then
 		// answers "NO IMAGE" (observed 2026-10-01: outLen 1.4 MB, textLen 8 — literally
 		// "NO IMAGE"), which our NO-IMAGE filter turns into "no usable analysis".
-		// Fix: a throwaway cwd whose PROJECT settings override blockImages for this one
-		// headless call (project scope wins the merge; the user's global config is
-		// untouched). Only needed when an image is attached.
-		let spawnCwd: string | undefined;
+		// Fix: a fully ISOLATED agent dir via PI_CODING_AGENT_DIR — settings.json with
+		// blockImages off, plus copies of models.json (custom models like zai/* live
+		// there) and auth.json (provider keys). Deterministic: pi 1.0's project-scope
+		// settings merge is correct in isolation but does not reach the -p runtime
+		// (verified 2026-10-01 — the child still blocked images), so we don't rely on
+		// project scope at all. The temp dir is removed in finish(); the user's real
+		// config is never touched.
+		let agentDirOverride: string | undefined;
 		if (opts.imageFile) {
 			try {
-				spawnCwd = mkdtempSync(join(tmpdir(), "xmodel-vlm-"));
-				mkdirSync(join(spawnCwd, ".pi"), { recursive: true });
-				writeFileSync(join(spawnCwd, ".pi", "settings.json"), JSON.stringify({ images: { blockImages: false } }));
+				agentDirOverride = mkdtempSync(join(tmpdir(), "xmodel-vlm-"));
+				writeFileSync(join(agentDirOverride, "settings.json"), JSON.stringify({ images: { blockImages: false } }));
+				for (const f of ["models.json", "auth.json"]) {
+					const src = join(homedir(), ".pi", "agent", f);
+					if (existsSync(src)) writeFileSync(join(agentDirOverride, f), readFileSync(src));
+				}
 			} catch {
-				spawnCwd = undefined;
+				agentDirOverride = undefined;
 			}
 		}
-		const proc = spawn("pi", args, { cwd: spawnCwd, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
+		const childEnv: Record<string, string> = { ...process.env, NO_COLOR: "1" };
+		if (agentDirOverride) childEnv.PI_CODING_AGENT_DIR = agentDirOverride;
+		const proc = spawn("pi", args, { stdio: ["ignore", "pipe", "pipe"], env: childEnv });
 		let deltaText = "";          // accumulated assistant text deltas (small, no image)
 		let lastMsgEndText = "";      // last assistant message_end text (small, no image)
 		let lineBuf = "";
@@ -136,8 +145,8 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 			debug("runChildPi done", { model: opts.model, reason, timedOut, aborted, outLen, elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none" });
 			forensic("runChildPi done", { model: opts.model, reason, timedOut, aborted, outLen, elapsedSec: elapsed, textLen: text.length, via: deltaText.trim() ? "delta" : lastMsgEndText.trim() ? "msgEnd" : "none", imageFile: opts.imageFile });
 			if (!text) forensic("runChildPi empty", { model: opts.model, reason, timedOut, aborted, outLen, elapsedSec: elapsed, imageFile: opts.imageFile });
-			if (spawnCwd) {
-				try { rmSync(spawnCwd, { recursive: true, force: true }); } catch {}
+			if (agentDirOverride) {
+				try { rmSync(agentDirOverride, { recursive: true, force: true }); } catch {}
 			}
 			resolve({ text, timedOut, aborted, reason: timedOut ? "timeout" : aborted ? "abort" : reason });
 		};
