@@ -128,13 +128,34 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 		ctx._entries.length === 1 && entry.type === "xmodel-view" && entry.display === true,
 	);
 	check("a: display entry carries image", (entry?.details?.images ?? []).length === 1);
+	// Truth-telling: the note must state HOW it rendered (pixels inline OR chafa ASCII),
+	// and must never claim a render when the terminal can't actually draw it.
+	const note = textOf(res);
+	check("a: note states a render mode", /displayed (inline|as ASCII block art)/.test(note));
+	check("a: note does NOT claim render when it could not", !/could NOT render/.test(note));
 }
 
-// ── (b) understand:true + VISION model → native pass-through ───────────────
+// ── (a2) default read img, VISION-capable model → STILL handover display-only ──
+// Regression: a vision-capable main model must NOT receive pixels on a plain read.
+// The isVisionCapable pass-through only applies when understand is requested.
+{
+	const ctx = makeCtx(VISION);
+	const res = await fireToolResult(readEvent({ path: "img.png" }), ctx);
+	check("a2: VISION model content has NO image blocks", !hasImage(res));
+	check("a2: VISION model gets handover note", textOf(res).includes("xmodel handover"));
+	const entry = ctx._entries[0];
+	check("a2: VISION model display entry written", ctx._entries.length === 1 && entry.type === "xmodel-view" && entry.display === true);
+}
+
+// ── (b) understand:true + VISION model → inline display, pixels native ─────
+// Contract (v0.5.6): `read` displays ALWAYS — understanding is opt-in and orthogonal.
+// The vision model still gets the pixels natively (pass-through, no delegation),
+// but the user must ALSO see the image inline.
 {
 	const ctx = makeCtx(VISION);
 	const res = await fireToolResult(readEvent({ path: "img.png", understand: true }), ctx);
 	check("b: pass-through (undefined)", res === undefined);
+	check("b: but display entry STILL written", ctx._entries?.length === 1 && ctx._entries[0].type === "xmodel-view");
 }
 
 // ── (b2) understand:"<focus>" + VISION model → pass-through too ────────────
@@ -142,6 +163,7 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	const ctx = makeCtx(VISION);
 	const res = await fireToolResult(readEvent({ path: "img.png", understand: "check the wheels" }), ctx);
 	check("b2: focus string + vision model → pass-through", res === undefined);
+	check("b2: display entry STILL written", ctx._entries?.length === 1 && ctx._entries[0].type === "xmodel-view");
 }
 
 // ── (c) understand:true + non-vision → no VLM configured → handover fallback
@@ -155,7 +177,10 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	);
 }
 
-// ── (d) view mode → throway route (fake curl fails deterministically) ──────
+// ── (d) read is ALWAYS inline, even when _vision.mode = "view" ───────────
+// Contract (v0.5.6): `read` on an image NEVER routes to throway/browser. The user
+// asked to see it in their terminal, so that is what happens. `mode=view` remains
+// available for OTHER tools (MCP screenshots, generate_image) via viewOnly.
 {
 	const home = process.env.HOME;
 	mkdirSync(join(home, ".pi", "agent"), { recursive: true });
@@ -163,9 +188,11 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	await handlers.session_start[0]({}, makeCtx(NON_VISION)); // reload config
 	const ctx = makeCtx(NON_VISION);
 	const res = await fireToolResult(readEvent({ path: "img.png" }), ctx);
-	check("d: view note (throway)", textOf(res).includes("xmodel view"));
-	check("d: offline throway reports failure", textOf(res).includes("could not upload to throway"));
+	const txt = textOf(res);
+	check("d: read stays inline under mode=view", txt.includes("handover") && !txt.includes("xmodel view"));
+	check("d: no throway/browser route for read", !txt.includes("throway") && !txt.includes("browser"));
 	check("d: no image blocks for model", !hasImage(res));
+	check("d: display entry still written", ctx._entries?.length === 1 && ctx._entries[0].type === "xmodel-view");
 }
 
 // ── (e) read_image {url} — download branch (fake curl fails deterministically) ─

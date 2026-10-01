@@ -80,7 +80,7 @@ import {
 
 import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
 import { chafaAvailable, chafaPreview } from "./lib/chafa";
-import { isVisionCapable, isValidImage } from "./lib/image-utils";
+import { isVisionCapable, isValidImage, toDisplayPng } from "./lib/image-utils";
 import {
 	debug,
 	detectSavedScreenshot,
@@ -107,7 +107,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.5";
+const VERSION = "0.5.6";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -972,7 +972,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			if (getCapabilities().images) {
 				for (const im of imgs) {
 					c.addChild(new Spacer(1));
-					c.addChild(new Image(im.b64, im.mime, { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }));
+					// Kitty encodes with a hardcoded f=100 (PNG) label regardless of mimeType,
+					// so non-PNG payloads are dropped silently by the terminal. Normalise first.
+					c.addChild(new Image(toDisplayPng(im.b64), "image/png", { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }));
 				}
 			} else if (d?.ascii?.length) {
 				for (const art of d.ascii) {
@@ -1023,25 +1025,33 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			const understandRaw = (event.input as Record<string, unknown> | undefined)?.understand;
 			const focus = typeof understandRaw === "string" && understandRaw.trim() ? understandRaw.trim() : undefined;
 			const wantsUnderstand = understandRaw === true || focus !== undefined;
-			if (wantsUnderstand && isVisionCapable(ctx.model)) {
-				return; // pixels pass to the model natively — it understands them itself
-			}
 			if (wantsUnderstand) {
-				// non-vision main model: display for the user + delegate the analysis to the VLM
-				let displayed = false;
-				if (!visionCfg.keepImage) displayed = (await writeViewEntry(ctx, images)) > 0;
+				// DISPLAY ALWAYS: the user sees the image inline regardless of mode. A vision-capable
+				// main model gets the pixels natively (it understands them itself); a non-vision model
+				// delegates to the VLM. Either way the display entry is written first.
+				let shown: { rendered: boolean; mode: "pixels" | "chafa" | "none"; count: number } | undefined;
+				if (!visionCfg.keepImage) shown = await writeViewEntry(ctx, images);
+				if (isVisionCapable(ctx.model)) {
+					// Keep the image blocks in the tool result — pi strips what the model can't process.
+					return; // pixels pass to the model natively — it understands them itself
+				}
+				// non-vision main model: delegate the analysis to the VLM
 				try {
 					const res = await delegateVision(ctx, event, images, ctx.signal, focus ? { focus } : undefined);
 					if (res) return res;
 				} catch (e) {
 					debug("read understand: delegate threw", { err: String(e) });
 				}
-				return readHandover(event, ctx, images, { alreadyDisplayed: displayed }); // delegate failed → display-only
+				return readHandover(event, ctx, images, { alreadyDisplayed: shown }); // delegate failed → display-only
 			}
-			if (visionCfg.mode === "view") return readView(event, ctx, images);
+			// `read` is ALWAYS local inline display (never throway/browser): the user asked to
+			// see the image in their terminal, so that is what happens. `_vision.mode = view`
+			// stays available for other tools (MCP screenshots, generate_image) via viewOnly.
 			return readHandover(event, ctx, images);
 		}
-		if (isVisionCapable(ctx.model)) return; // main model sees images natively — nothing to do
+		// Non-`read` tools on a vision-capable model: the model consumes the pixels itself,
+		// so nothing to display — the user sees the image only via understand/read_image.
+		if (isVisionCapable(ctx.model)) return;
 		// UNHOOKED: `generate_image` is a DISPLAY tool — show the image inline but never
 		// fire the VLM on it. Only analysis-oriented tools (screenshots, MCP captures,
 		// etc.) still auto-delegate.
@@ -1427,51 +1437,36 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		event: any,
 		ctx: ExtensionContext,
 		images: any[],
-		opts: { alreadyDisplayed?: boolean } = {},
+		opts: { alreadyDisplayed?: { rendered: boolean; mode: "pixels" | "chafa" | "none"; count: number } } = {},
 	): Promise<{ content: any[] }> {
 		const content = stripForModel(event.content);
-		const shown = opts.alreadyDisplayed ? images.length : await writeViewEntry(ctx, images);
+		const shown = opts.alreadyDisplayed ?? (await writeViewEntry(ctx, images));
 		const n = images.length;
-		content.push({
-			type: "text",
-			text: shown
-				? `[xmodel handover · ${n} image${n > 1 ? "s" : ""} displayed to the user inline — view-only, you did NOT receive the pixels. If understanding this image is required for the task, call read again with understand:true (or use read_image).]`
-				: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} — image data invalid, nothing displayed. If understanding is required, call read_image.]`,
-		});
-		return { content };
-	}
-
-	/** `read` → view mode: shared display — upload every image to throway, open it in the
-	 *  browser, strip the pixels from the model-visible content. */
-	async function readView(event: any, ctx: ExtensionContext, images: any[]): Promise<{ content: any[] }> {
-		const content = stripForModel(event.content);
-		const urls: string[] = [];
-		for (const img of images) {
-			const tmp = writeImageTmp(img);
-			if (!tmp.valid) continue;
-			try {
-				const url = await throwayOpenImage(ctx, tmp.path);
-				if (url) urls.push(url);
-			} finally {
-				try {
-					unlinkSync(tmp.path);
-				} catch {}
-			}
+		// Tell the truth: only claim "displayed inline" when the renderer will actually
+		// draw pixels or chafa. If neither is available, say so plainly so the user knows
+		// to open the image another way instead of assuming it rendered.
+		if (shown.rendered) {
+			const how = shown.mode === "pixels" ? "inline" : "as ASCII block art (chafa)";
+			content.push({
+				type: "text",
+				text: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} displayed ${how} to the user — view-only, you did NOT receive the pixels. If understanding this image is required for the task, call read again with understand:true (or use read_image).]`,
+			});
+		} else {
+			content.push({
+				type: "text",
+				text: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} — could NOT render (no kitty/iterm2 graphics, no chafa). The image was NOT displayed. If understanding this image is required, call read_image; to see it, use \`read <path>\` in a graphics-capable terminal or \`open <path>\`.]`,
+			});
 		}
-		content.push({
-			type: "text",
-			text: urls.length
-				? `[xmodel view · ${urls.length} image${urls.length > 1 ? "s" : ""} opened in the browser for the user (throway, expires ~4h): ${urls.join(" ")} — view-only, not analysed. If understanding is required, call read again with understand:true (or use read_image).]`
-				: "[xmodel view · could not upload to throway — image not displayed]",
-		});
 		return { content };
 	}
 
 	/** Write the session-only display entry that renders the images inline for the user.
-	 *  ASCII terminals (no kitty/iterm2 graphics) additionally get chafa block art
-	 *  baked into details.ascii so the image stays VISIBLE. Returns the number of
-	 *  valid images written (0 = nothing displayed). */
-	async function writeViewEntry(ctx: ExtensionContext, images: any[]): Promise<number> {
+	 *  Returns what will ACTUALLY render, so the caller can tell the user the truth.
+	 *  - pixels: terminal supports kitty/iterm2 graphics → real image blocks
+	 *  - chafa:  ASCII terminal, chafa available → block art baked into details.ascii
+	 *  - none:   neither → nothing renders (renderer shows a "not renderable" hint)
+	 *  count is the number of valid image blocks written (0 = no valid data). */
+	async function writeViewEntry(ctx: ExtensionContext, images: any[]): Promise<{ rendered: boolean; mode: "pixels" | "chafa" | "none"; count: number }> {
 		const blocks: Array<{ b64: string; mime: string }> = [];
 		for (const im of images) {
 			if (!im?.data) continue;
@@ -1479,16 +1474,21 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				const raw = typeof im.data === "string" ? im.data : "";
 				const b64 = raw.startsWith("data:") ? (raw.split(",")[1] ?? "") : raw;
 				if (b64 && isValidImage(Buffer.from(b64, "base64"))) {
-					blocks.push({ b64, mime: im.mimeType ?? "image/png" });
+					// Normalise to PNG up front: the display renderer and any replay from
+					// session state both rely on Kitty's f=100 label matching the payload.
+					blocks.push({ b64: toDisplayPng(b64), mime: "image/png" });
 				}
 			} catch {}
 		}
-		if (!blocks.length) return 0;
+		if (!blocks.length) return { rendered: false, mode: "none", count: 0 };
 		const details: { count: number; images: Array<{ b64: string; mime: string }>; ascii?: string[] } = {
 			count: blocks.length,
 			images: blocks,
 		};
-		if (!getCapabilities().images && (await chafaAvailable())) {
+		// Pixels render when the terminal has kitty/iterm2 graphics. Otherwise we try
+		// chafa block art; if that also fails, the renderer falls back to a hint.
+		const canPixels = Boolean(getCapabilities().images);
+		if (!canPixels && (await chafaAvailable())) {
 			const arts: string[] = [];
 			for (const b of blocks) {
 				const tmp = writeImageTmp({ type: "image", data: b.b64, mimeType: b.mime });
@@ -1511,7 +1511,10 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			true,
 			details,
 		);
-		return blocks.length;
+		// Decide what the renderer will actually draw.
+		if (canPixels) return { rendered: true, mode: "pixels", count: blocks.length };
+		if (details.ascii?.length) return { rendered: true, mode: "chafa", count: blocks.length };
+		return { rendered: false, mode: "none", count: blocks.length };
 	}
 
 	/**
