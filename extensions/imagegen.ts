@@ -36,7 +36,7 @@ import process from "node:process";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Container, Image, Spacer, Text, type Component } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-import { guessMime, isVisionCapable } from "./lib/image-utils";
+import { guessMime, isVisionCapable, toDisplayPng } from "./lib/image-utils";
 import { chafaAvailable, chafaPreview } from "./lib/chafa";
 
 // ctx.sessionManager is typed as ReadonlySessionManager (read-only surface), but at
@@ -1189,8 +1189,10 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			if (d?.images) {
 				for (const im of d.images) {
 					c.addChild(new Spacer(1));
+					// Kitty encodes with a hardcoded f=100 (PNG) label regardless of mimeType,
+					// so non-PNG payloads are dropped silently by the terminal. Normalise first.
 					c.addChild(
-						new Image(im.b64, im.mime, { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }),
+						new Image(toDisplayPng(im.b64), "image/png", { fallbackColor: (s: string) => theme.fg("muted", s) }, { maxWidthCells: 80, maxHeightCells: 24 }),
 					);
 				}
 			}
