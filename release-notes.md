@@ -4,6 +4,37 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **pre-push hook — depth ladder, fast by default.** `git push` läuft jetzt nur lint +
+  typecheck (~2s statt der vollen Regression). Tiefer nur on request: `CHECK=1 git push`
+  (fast gate + skill-metadata + docs), `RELEASE=1 git push` (volle Regression). Der alte
+  Default (alle Suites bei jedem Push) machte jeden Push langsam und anfällig für
+  Netzwerk-Flakes. `PUSH_SKIP_TESTS=1` bleibt der WIP-Escape-Hatch.
+
+- **visualize `share --update` — stabile URL, Edit in place.** Teilt eine Seite unter einem
+  stabilen Namen (`/d/<slug>`) via throways eigenem `&share=` (create-or-get) + PUT-Edit
+  (ersetzt in place, Edit-History wächst) statt eines frischen Hash-Uploads. Der Server
+  empfiehlt genau dieses Muster ("PUT edits, do NOT re-upload copies"). Für Iteration an
+  derselben Seite bleibt der Link stabil.
+
+- **visualize SKILL.md — rewrite auf Übersicht + Index (95 → 46 Zeilen).** Lange Prosa
+  (Modes, Patterns, Templates, Validate-Flags, Share-Flags) ist in die references/
+  gewandert; die SKILL.md ist jetzt Landkarte + Index (progressive disclosure). Dazu:
+  Kreativitäts-Freigabe als Design-Prinzip ("templates are a floor, not a cage") +
+  Routing-Tabelle in promptlib §6.5 (Swimlane / Mermaid-Decision-Tree / Before-After-Trace /
+  Trust-Boundary / Loop / System-Map wann immer das Subjekt eine Beziehung ist).
+
+- **xmodel Design-Goal dokumentiert: "show images inline, keep them out of the context".**
+  Load-bearing Prinzip für alle Image-Extensions (xmodel, image-slim, imagegen): der User
+  will Bilder inline SEHEN, aber sie sollen den Modell-Context nicht verstopfen (~580KB
+  base64 pro Foto). Display-only ist der Default; Verstehen ist opt-in und delegiert an
+  einen VLM-Sub-Call; `blockImages` ist das Sicherheitsnetz. Dazu: die zwei KONVERTIERUNGEN
+  präzisiert — pi's `processImage` normalisiert nur das MIME-Label (JPEG/WebP bleiben),
+  unser `toDisplayPng` konvertiert die Pixel zu PNG + 1200px erst beim Display/APC.
+
+- **peep — YAML-Fix.** `description` im Frontmatter enthielt `CLI: ` (Colon+Space) und
+  brach so das YAML-Parsing ("Nested mappings are not allowed") — die Skill lud nicht.
+  Fix: description gequotet.
+
 - **xmodel 0.5.11 — Display-Entries speichern das Original, nicht das transkodierte PNG.**
   Für 20+ angezeigte Bilder war jede Entry ~2,6 MB (full-res PNG aus dem Transcode), obwohl die
   Quelle als JPEG/WebP nur ~300 KB hatte. `writeViewEntry` legt jetzt die **Original-Bytes**

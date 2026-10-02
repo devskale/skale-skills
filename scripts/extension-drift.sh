@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # scripts/extension-drift.sh — is the RUNNING agent's package clone in sync with this checkout?
 #
-# pi loads extensions from the package copy (~/.pi/agent/git/github.com/devskale/skale-skills),
-# NOT from this working checkout (see docs/development.md). After editing extensions/ here, the
-# running agent keeps the old code until the clone is updated — by push + `pi install`, or by a
-# deliberate dev override. This script makes that drift visible instead of letting it cost a
-# debug round-trip ("I fixed it but nothing changed").
+# pi loads extensions AND skills from the package copy
+# (~/.pi/agent/git/github.com/devskale/skale-skills), NOT from this working checkout (see
+# docs/development.md). After editing extensions/ or skills/ here, the running agent keeps the
+# old code until the clone is updated — by push + `pi install`, or by a deliberate dev override.
+# This script makes that drift visible instead of letting it cost a debug round-trip
+# ("I fixed it but nothing changed" — or worse: edits landed in the CLONE instead of the
+# checkout and never reach git).
 #
 # Report-only by design. To actually sync for a quick live test, copy the file yourself —
 # docs/development.md explains why dev overrides must be removed again before shipping.
@@ -21,8 +23,12 @@ if [ ! -d "$CLONE/extensions" ]; then
 fi
 
 drift=0
-for f in extensions/*.ts extensions/lib/*.ts; do
+for f in extensions/*.ts extensions/lib/*.ts \
+         skills/*/SKILL.md skills/*/references/*.md \
+         skills/*/*.sh skills/*/install.sh skills/*/install.bat; do
     [ -f "$f" ] || continue
+    # deprecated/ is not shipped in the package — nothing to drift against
+    case "$f" in skills/deprecated/*) continue ;; esac
     other="$CLONE/$f"
     if [ ! -f "$other" ]; then
         echo "ONLY IN CHECKOUT: $f"
