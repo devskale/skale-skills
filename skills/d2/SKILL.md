@@ -1,7 +1,7 @@
 ---
 name: d2
 version: "1.4.1"
-description: "Draw diagrams as code from text using the D2 language (d2lang.com). Knowledge skill — drives the `d2` CLI directly, plus a few thin bundled wrappers (`scripts/d2v`, `d2png`, `d2fresh`). Use when the user wants to create, edit, validate, or render architecture diagrams, flowcharts, sequence diagrams, ER diagrams, class diagrams, or any .d2 file. Triggers: draw a diagram, architecture diagram, visualize the system, render d2, .d2 file."
+description: Draw architecture, sequence, flowchart, or ER diagrams as code with the D2 CLI. Use when the user wants to create, edit, validate, or render any diagram or .d2 file.
 license: MIT
 disable-model-invocation: true
 ---

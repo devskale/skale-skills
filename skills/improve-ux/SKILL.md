@@ -1,6 +1,6 @@
 ---
 name: improve-ux
-description: Improve UI/UX of web interfaces by grounding every change in curated example sites and design references — with a ratings loop and findings ledger that make passes progressive (rate/ledger commands). Use when polishing a component, page, or design system - visual hierarchy, spacing, motion, empty states, accessibility, copy.
+description: Improve UI/UX grounded in curated reference sites, with a ratings loop and findings ledger. Use when polishing a component, page, or design system (hierarchy, spacing, motion, accessibility, copy).
 version: 0.4.0
 ---
 

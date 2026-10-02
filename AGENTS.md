@@ -192,6 +192,7 @@ bash tests/peep/test.sh
 bash tests/imagegen/test.sh          # extensions/imagegen.ts
 bash tests/heartbeat/test.sh         # extensions/heartbeat.ts
 bash tests/skill-filter/test.sh      # scripts/skill-filter.sh (settings filter helper)
+bash tests/skill-metadata/test.sh    # SKILL.md description hygiene (≤ 600 chars; What + Use-when)
 bash tests/link-agents/test.sh      # scripts/link-agents.sh (~/.agents/skills for other agents)
 bash tests/docs/test.sh             # docs integrity: dead links in hubs + orphaned docs files
 bash tests/gdocs/test.sh             # live smoke, external gog CLI
