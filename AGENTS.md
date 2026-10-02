@@ -104,6 +104,7 @@ configure a DEBUG handler on the `credgoo` logger to see it.
 | [extensions/statusline.md](extensions/statusline.md) | statusline extension — what the footer shows and how to configure it |
 | [extensions/heartbeat.md](extensions/heartbeat.md) | heartbeat extension — recurring reminder timer (`/heartbeat`), pause/resume/stop |
 | [extensions/imagegen.md](extensions/imagegen.md) | imagegen extension — text-to-image generation, providers, and output handling |
+| [extensions/image-slim.md](extensions/image-slim.md) | image-slim extension — strips image payloads from compaction summaries (blockImages doesn't cover compaction) |
 
 ### Best Practices Guides (from skaleshare)
 
