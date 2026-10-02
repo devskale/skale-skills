@@ -56,6 +56,40 @@ When an image appears (a `read` of `*.png`, an MCP screenshot, an attached image
 main model can't see images, xmodel routes it through a vision pipeline. The mode lives under
 `_vision` in the config files and is controlled by **`/xm settings`** or **`/xm vision`**.
 
+### Design goal — show images inline, keep them out of the context
+
+**The user wants to *see* images inline, and does NOT want them to bloat the model context.**
+This is the load-bearing design goal for all image handling in these extensions (xmodel,
+image-slim, imagegen). Every routing decision should satisfy both halves:
+
+- **Show inline** — the pixels render in the terminal for the user (Kitty/iTerm2/Ghostty/WezTerm/Warp
+  via the pi-tui `Image` component), or via the `view`/`human` display paths.
+- **Keep out of context** — the model never receives the raw base64 payload unless it genuinely
+  needs the pixels to do the task. A single `read` of a photo is ~580KB of base64; a handful of
+  attachments can push the context to 100s of KB. Every image in the model payload is a real cost.
+
+Concretely, this means:
+
+1. **Display-only is the default.** `read` on an image moves the pixels into a session display
+   entry for the user; the model gets a short handover note, never the bytes. Zero tokens, zero VLM.
+2. **Understanding is opt-in and delegated.** When the task genuinely needs image content, the
+   agent calls `read` with `understand: true` (or `read_image` / `/readimg`). xmodel routes that
+   to a **VLM sub-call** (compress → VLM → text) so the *main* model receives only a text analysis
+   — never the image bytes. This is the `delegate` mode, and it exists precisely to keep the main
+   model's context small while still answering the user's question.
+3. **`blockImages` is the safety net.** pi's `images.blockImages` (settings.json) filters image
+   blocks on normal requests; `image-slim` closes the compaction hole. Together they ensure images
+   stay on screen but stop costing tokens at every layer. Turning `blockImages` off re-enables the
+   native vision-capable-main-model path (pixels go straight to the model) — that is the ONE case
+   where the bytes legitimately enter the context, and it is a deliberate trade-off, not the default.
+4. **The main model's vision capability is not the trigger.** A vision-capable main model does NOT
+   automatically mean pixels should flow to it. `modelSeesPixels()` also requires `blockImages` to
+   be off. Under `blockImages: true` (the recommended default), even a vision-capable main model
+   gets the VLM text analysis, so the context stays lean.
+
+**Rule of thumb:** if the user can see the image inline, the model should only see text about it.
+The image bytes belong in the display layer, not the model context.
+
 ### Display vs. understand (`read` vs. `read_image` / `/readimg`)
 
 `read` on an image routes through a three-way matrix (v0.5.1):

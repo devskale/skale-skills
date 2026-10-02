@@ -3,6 +3,10 @@
 Keep images inline in the chat — and keep them OUT of the model payload where pi 1.0
 still leaks them.
 
+This is one half of the shared **design goal** for all image extensions: *show images
+inline, keep them out of the context*. See [xmodel.md → Design goal](xmodel.md#design-goal--show-images-inline-keep-them-out-of-the-context)
+for the load-bearing principle that governs every image-handling decision.
+
 ## The hole it closes
 
 pi's `images.blockImages` (settings.json) filters image blocks on **normal** requests.
