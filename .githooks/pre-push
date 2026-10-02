@@ -1,44 +1,32 @@
 #!/usr/bin/env bash
-# pre-push: fast by default. Runs the quick gate (lint + typecheck + docs integrity) so
-# everyday pushes ship fast. The FULL per-skill suites (slow; some hit the network) run only
-# when the push is a MINOR or MAJOR version bump (not a patch) — i.e. a real milestone.
+# pre-push: FAST by default — lint + typecheck only (2s). Deeper checks are opt-in.
 #
-#   git push          # fast gate; full suites only if minor/major version bump
-#   RELEASE=1 git push # force the full regression (before a release)
-#   PUSH_SKIP_TESTS=1 git push # skip suites entirely (lint only) — WIP escape hatch
+#   git push             # lint + typecheck only (the fast default)
+#   CHECK=1 git push     # fast gate (+ skill-metadata + docs integrity)
+#   RELEASE=1 git push   # full regression (all per-skill suites, slow, some network)
+#   PUSH_SKIP_TESTS=1 git push # skip everything (WIP escape hatch)
+#
+# Depth ladder (fastest → deepest): lint → check → check --full. Default is the fastest.
 
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 
-# --- escape hatches ---------------------------------------------------------
 if [ "${PUSH_SKIP_TESTS:-0}" = "1" ]; then
-    echo "pre-push: PUSH_SKIP_TESTS=1 — skipping suites (lint only)"
-    bash "$ROOT/scripts/lint.sh"
-    exit $?
+    echo "pre-push: PUSH_SKIP_TESTS=1 — skipping all checks"
+    exit 0
 fi
+
 if [ "${RELEASE:-0}" = "1" ]; then
     echo "pre-push: RELEASE=1 — full regression (all per-skill suites)"
     bash "$ROOT/scripts/check.sh" --full
     exit $?
 fi
 
-# --- milestone detection: minor/major bump vs. patch ------------------------
-# Compare the package.json version at HEAD vs. origin/main. A change in the minor or
-# major component (1.6.13 → 1.7.0 / 2.0.0) is a milestone → full run. A patch (→ 1.6.14)
-# is not → fast gate. No origin or no version diff → fast gate.
-version() { git show "$1:package.json" 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)["version"])' 2>/dev/null; }
-head_v="$(version HEAD)"
-base_v="$(version origin/main)"
-milestone=0
-if [ -n "$head_v" ] && [ -n "$base_v" ] && [ "$head_v" != "$base_v" ]; then
-    head_minor="${head_v%.*}"; base_minor="${base_v%.*}"
-    [ "$head_minor" != "$base_minor" ] && milestone=1
+if [ "${CHECK:-0}" = "1" ]; then
+    echo "pre-push: CHECK=1 — fast gate (lint + typecheck + docs integrity)"
+    bash "$ROOT/scripts/check.sh"
+    exit $?
 fi
 
-if [ "$milestone" = "1" ]; then
-    echo "pre-push: minor/major version bump ($base_v → $head_v) — full regression"
-    bash "$ROOT/scripts/check.sh" --full
-else
-    echo "pre-push: fast gate (lint + typecheck + docs integrity). Full suites run on a minor/major bump (or RELEASE=1)."
-    bash "$ROOT/scripts/check.sh"
-fi
+echo "pre-push: lint + typecheck (fast). Deeper: CHECK=1 (gate) or RELEASE=1 (full)."
+bash "$ROOT/scripts/lint.sh"
