@@ -78,12 +78,7 @@ files are flattened (`sub/f.txt` → `sub-f.txt`). Default stays one self-contai
 - **Scannable** — generous whitespace, neutral ink on warm paper, clear hierarchy. Editorial, not corporate-dashboard.
 - **Color is structure, not decoration** — category hues and `--ok/--warn/--bad` severity carry meaning; never pastel pills, saturated links, big colored circles (promptlib §0–2).
 - **Honest about scope** — if the user named a subset, visualize exactly that.
-- **Be creative about the form** — the templates are a starting point, not a cage. When the
-  subject is a *relationship* (a pipeline, a decision, a divergence, a boundary), reach for a
-  non-default structure: a swimlane, a Mermaid decision tree, a hand-drawn SVG flow, a
-  before-after trace, a system map. Pick the form that makes the mechanism legible, not the
-  one that's easiest to fill. Keep the editorial house style (no AI-slop) — creativity is in
-  the *structure*, never in decorative noise.
+- **Be creative about the form** — templates are a floor, not a cage; pick the structure that reveals the mechanism (promptlib §6.5).
 
 ## Install
 
