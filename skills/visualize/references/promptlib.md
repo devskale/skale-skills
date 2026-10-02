@@ -311,6 +311,28 @@ honest; don't exaggerate differences to make a point.
 > composing, ask: *is every element earning its ink? is this shown in comparison? does it
 > reveal the mechanism?* If not, cut or rework it.
 
+### Be creative about the form — the templates are a starting point, not a cage
+
+The card grid, table, and timeline templates cover the common cases. But when the subject
+is a *relationship* — a pipeline, a decision, a divergence, a boundary, a loop — the
+*generic* structure hides the mechanism. That's when you should reach for a non-default
+form that makes the relationship legible:
+
+| The subject is… | Reach for… |
+|---|---|
+| A pipeline / data flow across layers | **Swimlane** (one lane per actor, the artifact travelling through) |
+| A decision with branches | **Mermaid decision tree** (or a hand-drawn fork) |
+| Two paths that diverge | **Before-after trace** (aligned rows, first divergence marked) |
+| A boundary with approved/blocked routes | **Trust boundary** (flow / system-map) |
+| A loop / flywheel | **Loop** (hub + dashed write-backs) |
+| A multi-repo platform | **System map** |
+
+**The rule:** creativity lives in the *structure*, never in decorative noise. Choose the
+form that makes the mechanism legible in a still frame — then keep the editorial house
+style (hairlines, warm paper, structural color, no pills, no gradients, no icons without
+meaning). If a non-default form would require decoration to look "designed", it's the
+wrong form. The template is the floor, not the ceiling.
+
 ---
 
 ## 7. Quick recipe — "a set of things" (the repo card grid)
