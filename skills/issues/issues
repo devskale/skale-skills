@@ -651,7 +651,12 @@ cmd_cancel() {  # <slug> [reason...]
   [ -n "${1:-}" ] || die "cancel <slug> [reason]"
   local slug="$1"; shift || true
   cmd_set "$slug" CANCELLED
-  [ $# -gt 0 ] && { local f; f=$(find_file "$slug"); [ -f "$f" ] && printf '\n## Cancelled\n\n%s\n' "$*" >> "$f"; }
+  # append reason if given; the trailing `|| true` keeps a NO-reason cancel
+  # exiting 0 — a bare `[ $# -gt 0 ] && {…}` as the last statement would
+  # return 1 (the test's false) as the function's exit code
+  if [ $# -gt 0 ]; then
+    local f; f=$(find_file "$slug"); [ -f "$f" ] && printf '\n## Cancelled\n\n%s\n' "$*" >> "$f" || true
+  fi
 }
 
 cmd_triage() {  # <slug> <column>

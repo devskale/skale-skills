@@ -98,6 +98,15 @@ rm "$TEST_ROOT/handoffs/testproj/issues/active/live-one.md"
 out=$(run_in "$REPO" set happy-path BLOED); rc=$?
 [ "$rc" -eq 1 ] && echo "$out" | grep -q "bad state" && ok || bad "set must reject bad state"
 
+# cancel without a reason must still exit 0 (regression: trailing `[ $# -gt 0 ] && {…}` returned 1)
+run_in "$REPO" new cancel-noreason >/dev/null
+run_in "$REPO" cancel cancel-noreason >/dev/null && ok || bad "cancel <slug> without reason must exit 0 (regression: function returned 1)"
+grep -q "^state: CANCELLED" "$TEST_ROOT/handoffs/testproj/issues/cancelled/cancel-noreason.md" && ok || bad "cancel-noreason not in cancelled/ with CANCELLED"
+# cancel with reason: reason appended, exit 0
+run_in "$REPO" new cancel-reason >/dev/null
+run_in "$REPO" cancel cancel-reason "duplicate of other" >/dev/null && ok || bad "cancel <slug> <reason> must exit 0"
+grep -q "duplicate of other" "$TEST_ROOT/handoffs/testproj/issues/cancelled/cancel-reason.md" && ok || bad "cancel reason not appended"
+
 # purge: interactive abort (n) and forced (-y)
 run_in "$REPO" new purge-me >/dev/null
 run_in "$REPO" done purge-me >/dev/null
