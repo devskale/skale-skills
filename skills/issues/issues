@@ -1,0 +1,1129 @@
+#!/usr/bin/env bash
+# issues — multi-project kanban for cross-machine shared task tracking.
+#
+# One synced root (default ~/code/handoffs/). Inside it, one dir per project;
+# each project has an issues/ kanban (backlog/active/review/archive/cancelled)
+# plus any other shared subfolders (docs/, etc.). Per-repo `.handoff` symlink
+# points at the project dir.
+#
+# The container dir keeps the historical name `.handoff` (preserves every
+# existing symlink across machines); this tool manages only the `issues/`
+# subfolder of the current project.
+#
+# Identity ("me"):  $HANDOFF_ME  →  ~/.handoff-me  →  hostname -s
+#   Put your machine name in ~/.handoff-me (e.g. "mac", "pi5") and sync it
+#   via dotfiles. Used to match `from:` / `to:` fields (format: <me>@<module>).
+#
+# Usage: see `issues help`.
+set -euo pipefail
+
+# ── Skill-dir + git-root resolution (symlink-safe, cwd-independent) ─────────
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+GIT_ROOT="$SKILL_DIR"
+while [ -n "$GIT_ROOT" ] && [ ! -d "$GIT_ROOT/.git" ]; do
+    GIT_ROOT="$(dirname "$GIT_ROOT" 2>/dev/null)"
+    [ "$GIT_ROOT" = "/" ] && GIT_ROOT=""
+done
+GIT_ROOT="${GIT_ROOT:-$SKILL_DIR}"
+
+# ── Launcher flags (--update / --selfcheck) ────────────────────────────────
+case "${1:-}" in
+    --update|--self-update)
+        echo "Updating issues skill..."
+        cd "$GIT_ROOT" && git pull --ff-only
+        date +%s > "$STAMP_FILE"
+        echo "Updated."
+        exit 0
+        ;;
+    --selfcheck)
+        echo "issues skill selfcheck"
+        echo "  skill dir: $SKILL_DIR"
+        echo "  git root:  $GIT_ROOT"
+        echo "  last update: $(cat "$STAMP_FILE" 2>/dev/null && date -r "$(cat "$STAMP_FILE")" '+%Y-%m-%d' || echo 'never')"
+        exit 0
+        ;;
+esac
+
+# ── Auto-update check (7-day cycle, background, non-blocking) ──────────────
+if [ -d "$GIT_ROOT/.git" ]; then
+    needs_update=false
+    if [ ! -f "$STAMP_FILE" ]; then
+        needs_update=true
+    else
+        last_ts=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+        now_ts=$(date +%s)
+        [ $(( (now_ts - last_ts) / 86400 )) -ge 7 ] && needs_update=true
+    fi
+    if $needs_update; then
+        ( cd "$GIT_ROOT" && git pull --ff-only --quiet 2>/dev/null && date +%s > "$STAMP_FILE" ) &>/dev/null &
+    fi
+fi
+
+CENTRAL="${ISSUES_DIR:-${HANDOFF_DIR:-$HOME/code/handoffs}}"
+LIVE_COLS=(backlog active review)
+ALL_COLS=(backlog active review archive cancelled)
+ARCHIVE_DIR_NAME="archive"
+CANCELLED_DIR_NAME="cancelled"
+
+die()  { echo "issues: $*" >&2; exit 1; }
+
+me() {
+  if [ -n "${HANDOFF_ME:-}" ]; then echo "$HANDOFF_ME"
+  elif [ -f "$HOME/.handoff-me" ]; then head -1 "$HOME/.handoff-me"
+  else hostname -s; fi
+}
+
+# Nearest enclosing repo/package name (for the @<module> part of identity).
+# Overridable per-project via `module_cmd` in the project config.
+module() {
+  local cmd m; cmd=$(cfg module_cmd "")
+  if [ -n "$cmd" ]; then
+    m=$(eval "$cmd" 2>/dev/null | head -1)
+    [ -n "$m" ] && { echo "$m"; return; }
+  fi
+  local d="$PWD"
+  while [ "$d" != "/" ]; do
+    if [ -d "$d/.git" ] || [ -f "$d/pyproject.toml" ] || [ -f "$d/package.json" ]; then
+      basename "$d"; return
+    fi
+    d=$(dirname "$d")
+  done
+  echo unknown
+}
+
+# Resolve the current project dir by walking up to `.handoff`: a symlink → its
+# target (shared board); a real dir → itself (issues init --local, degraded).
+project_dir() {
+  local d="$PWD"
+  while [ "$d" != "/" ]; do
+    if [ -L "$d/.handoff" ]; then
+      readlink "$d/.handoff"
+      return 0
+    fi
+    if [ -d "$d/.handoff" ]; then
+      echo "$d/.handoff"
+      return 0
+    fi
+    d=$(dirname "$d")
+  done
+  return 1
+}
+
+issues_dir() {   # echoes <project>/issues, the kanban root
+  local p; p=$(project_dir) || die "no .handoff found walking up from $PWD (run: issues init <project>)"
+  echo "$p/issues"
+}
+
+# getf <file> <field>  — read one frontmatter field
+getf() { sed -n '/^---$/,/^---$/p' "$1" 2>/dev/null | grep "^$2:" | head -1 | sed "s/^$2:[[:space:]]*//; s/[[:space:]]*$//; s/^\"//; s/\"$//"; }
+
+machine_of() { local v="${1:-}"; echo "${v%%@*}"; }
+
+# cfg <key> [default] — read a config value via cascade:
+#   env ISSUES_<KEY>  →  <project>/.issues/config  →  default
+# Project-specific values (version, module, triage) live in the project
+# config, not in the code — the script itself stays project-neutral.
+cfg() {
+  local key="$1" def="${2:-}" envkey val p
+  envkey="ISSUES_$(echo "$key" | tr '[:lower:]' '[:upper:]')"
+  if [ -n "${!envkey:-}" ]; then echo "${!envkey}"; return; fi
+  p=$(project_dir 2>/dev/null) || true
+  if [ -n "$p" ] && [ -f "$p/.issues/config" ]; then
+    val=$(awk -v k="$key" 'index($0, k)==1 && sub(/^[^=]*=[ \t]*/,"") { sub(/[ \t\r]*$/,""); gsub(/^"|"$/,""); print; exit }' "$p/.issues/config")
+    if [ -n "$val" ]; then val=${val/#\~/$HOME}; echo "$val"; return; fi
+  fi
+  [ -n "$def" ] && echo "$def"
+}
+
+version_of() {
+  local cmd; cmd=$(cfg version_cmd "")
+  if [ -n "$cmd" ]; then
+    eval "$cmd" 2>/dev/null | head -1
+  else
+    cfg version_default "unknown"
+  fi
+}
+
+# state_of <file>: returns state from frontmatter; falls back to inferring by
+# location (so files moved with plain `mv` are still classified correctly).
+state_of() {
+  local f="$1" st
+  st=$(getf "$f" state) || st=""
+  [ -n "$st" ] && { echo "$st"; return; }
+  case "$f" in
+    */backlog/*)     echo "OPEN" ;;
+    */active/*)      echo "WIP" ;;
+    */review/*)      echo "FOR_REVIEW" ;;
+    */archive/*)     echo "DONE" ;;
+    */cancelled/*)   echo "CANCELLED" ;;
+    *)               echo "OPEN" ;;
+  esac
+}
+
+# column_for_state <STATE> → directory name
+column_for_state() {
+  case "$1" in
+    OPEN|WIP)        echo "backlog" ;;   # OPEN defaults to backlog; active is explicit
+    FOR_REVIEW)      echo "review" ;;
+    DONE)            echo "archive" ;;
+    CANCELLED)       echo "cancelled" ;;
+    *)               die "bad state: $1" ;;
+  esac
+}
+
+need_issues_dir() { local d; d=$(issues_dir 2>/dev/null) || die "no issues dir (run from a repo with .handoff)"; [ -d "$d" ] || die "missing $d"; }
+
+# ---- init ---------------------------------------------------------------
+# init_repo_root — nearest enclosing repo root (.git dir / pyproject.toml /
+# package.json — same heuristic as module()), else $PWD. The .handoff link
+# belongs at the repo root, not in whatever subdirectory you ran init from.
+init_repo_root() {
+  local d="$PWD"
+  while [ "$d" != "/" ]; do
+    if [ -d "$d/.git" ] || [ -f "$d/pyproject.toml" ] || [ -f "$d/package.json" ]; then
+      echo "$d"; return 0
+    fi
+    d=$(dirname "$d")
+  done
+  echo "$PWD"
+}
+
+# init_migrate_flat <root> <project> — one-time legacy: flat column dirs
+# directly under <root> → <root>/<project>/issues/. Only safe when the root
+# has NO nested project yet (a flat leftover next to nested projects is
+# ambiguous → report, never guess). Generic successor of setup-issues.sh's
+# migrate_if_flat, which hardcoded DEFAULT_PROJECT=kontext.one.
+init_migrate_flat() {
+  local root="$1" project="$2"
+  [ -d "$root/backlog" ] || return 0
+  if [ -d "$root/$project/issues" ]; then return 0; fi
+  local d nested=""
+  for d in "$root"/*/; do
+    if [ -d "${d%/}/issues" ]; then nested="${d%/}"; break; fi
+  done
+  if [ -n "$nested" ]; then
+    echo "NOTE  legacy flat column dirs at $root left in place — nested projects" >&2
+    echo "      already exist (first: $nested); migrate manually if they belong to $project" >&2
+    return 0
+  fi
+  echo "migrating legacy flat layout → $project/issues/"
+  mkdir -p "$root/$project/issues"
+  local col
+  for col in "${ALL_COLS[@]}"; do
+    if [ -d "$root/$col" ]; then mv "$root/$col" "$root/$project/issues/$col"; fi
+  done
+  echo "  migrated columns → $project/issues/"
+}
+
+# cmd_init <project> [--local] — generic project bootstrap in ONE command:
+#   1. root check ($ISSUES_DIR/$HANDOFF_DIR/~/code/handoffs — missing → mkdir)
+#   2. <root>/<project>/issues/{backlog,active,review,archive,cancelled}
+#      idempotent
+#   3. .handoff symlink at the repo root → <root>/<project>
+#   4. report state: ok (already linked) / fix (re-pointed) / SKIP+die (exists,
+#      not a symlink)
+# --local: EXPLICIT degraded mode — .handoff/ as a real dir in the repo,
+# self-gitignored + README "local-only, not shared", loud warning. Never a
+# silent fallback. Idempotent; bash 3.2-safe (no set -e break on re-run).
+cmd_init() {
+  local project="" local_mode=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --local) local_mode=1; shift ;;
+      --*)     die "unknown init flag: $1 (usage: init <project> [--local])" ;;
+      *)       [ -n "$project" ] && die "init takes one project name: init <project> [--local]"
+               project="$1"; shift ;;
+    esac
+  done
+  case "$project" in
+    ""|.|..|*/*|*..*|*" "*) die "bad project name: '$project'" ;;
+    -*)                    die "bad project name: '$project' (leading dash)" ;;
+  esac
+
+  local root="$CENTRAL"
+  local target="$root/$project"
+
+  # --local: board lives IN the repo, not shared. Loud, never silent.
+  if [ "$local_mode" -eq 1 ]; then
+    local repo; repo=$(init_repo_root)
+    local lh="$repo/.handoff"
+    if [ -L "$lh" ]; then
+      die "--local: $lh is already a symlink → $(readlink "$lh") — remove it first if you really want a local board"
+    fi
+    echo "WARN  --local: degraded mode — the kanban lives in $lh/issues, NOT in the shared root" >&2
+    echo "WARN  ($root). Not synced across machines. Re-run without --local to upgrade." >&2
+    mkdir -p "$lh/issues"
+    local col
+    for col in "${ALL_COLS[@]}"; do
+      if [ ! -d "$lh/issues/$col" ]; then mkdir "$lh/issues/$col"; fi
+    done
+    # self-contained ignore + README — never touches the repo's .gitignore
+    if [ ! -f "$lh/.gitignore" ]; then
+      printf '*\n!.gitignore\n!README.md\n' > "$lh/.gitignore"
+    fi
+    if [ ! -f "$lh/README.md" ]; then
+      cat > "$lh/README.md" <<EOF2
+# local-only, not shared
+
+This .handoff/ is a REAL directory (created by \`issues init --local\`), not a
+symlink into the shared root — the kanban here is clone-local and NOT synced.
+
+To switch to the shared board (from this repo root):
+  rm -rf .handoff && issues init $project
+EOF2
+    fi
+    echo "  ok   $lh/issues (local board, 5 columns, gitignored)"
+    echo "  ok   $lh/README.md (local-only warning)"
+    echo "Try: issues board"
+    return 0
+  fi
+
+  # shared mode
+  mkdir -p "$root"                             # cheap, no degrading
+  local repo; repo=$(init_repo_root)
+  [ "$repo" = "$target" ] && die "init run inside the shared project dir itself ($target) — run from a repo checkout"
+  init_migrate_flat "$root" "$project"
+  local col new=0 existing=0
+  mkdir -p "$target/issues"
+  for col in "${ALL_COLS[@]}"; do
+    if [ -d "$target/issues/$col" ]; then existing=$((existing+1))
+    else mkdir "$target/issues/$col"; new=$((new+1)); fi
+  done
+  echo "board: $target/issues ($new new, $existing existing columns)"
+
+  local link="$repo/.handoff"
+  if [ -L "$link" ]; then
+    local cur; cur=$(readlink "$link")
+    if [ "$cur" = "$target" ]; then
+      echo "  ok   ${repo}/.handoff (already → $project)"
+    else
+      rm "$link"; ln -s "$target" "$link"
+      echo "  fix  ${repo}/.handoff (was → $cur, now → $target)"
+    fi
+  elif [ -e "$link" ]; then
+    die "SKIP $repo/.handoff exists but is not a symlink — resolve manually (or use --local for an explicit local dir)"
+  else
+    ln -s "$target" "$link"
+    echo "  new  ${repo}/.handoff → $target"
+  fi
+  echo "Try: issues board"
+}
+
+# ---- listing --------------------------------------------------------------
+# Listing engine: filter (LS_* vars) → sort → emit (table|tsv|json).
+# Column order everywhere: date state module slug triage from to.
+LS_COL=""; LS_MODULE=""; LS_TRIAGE=""; LS_TO=""; LS_FROM=""; LS_STATE="";
+LS_JSON=0; LS_TSV=0; LS_SORT="date"
+
+# ls_opts <args...> — parse listing flags into global LS_* vars.
+#   issues ls [all|live|backlog|active|review|archive|cancelled]
+#            [--module X] [--triage X] [--to X] [--from X] [--state X]
+#            [--sort date|slug] [--json] [--tsv]
+ls_opts() {
+  LS_COL=""; LS_MODULE=""; LS_TRIAGE=""; LS_TO=""; LS_FROM=""; LS_STATE=""
+  LS_JSON=0; LS_TSV=0; LS_SORT="date"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      all|live|backlog|active|review|archive|cancelled) LS_COL="$1"; shift ;;
+      --module) [ $# -ge 2 ] || die "--module needs a value"; LS_MODULE="$2"; shift 2 ;;
+      --triage) [ $# -ge 2 ] || die "--triage needs a value"; LS_TRIAGE="$2"; shift 2 ;;
+      --to)     [ $# -ge 2 ] || die "--to needs a value"; LS_TO="$2"; shift 2 ;;
+      --from)   [ $# -ge 2 ] || die "--from needs a value"; LS_FROM="$2"; shift 2 ;;
+      --state)  [ $# -ge 2 ] || die "--state needs a value"; LS_STATE="$2"; shift 2 ;;
+      --sort)   [ $# -ge 2 ] || die "--sort needs a value (date|slug)"; LS_SORT="$2"; shift 2 ;;
+      --json)   LS_JSON=1; shift ;;
+      --tsv)    LS_TSV=1; shift ;;
+      *)        die "unknown ls option: $1 (see --help)" ;;
+    esac
+  done
+  case "$LS_SORT" in date|slug) ;; *) die "--sort: expected date|slug, got '$LS_SORT'" ;; esac
+}
+
+# iter all .md in the issues kanban (all columns), printing: file<TAB>state
+iter_all() {
+  local d; d=$(issues_dir) || return 0
+  local col
+  for col in "${ALL_COLS[@]}"; do
+    local sub="$d/$col"
+    [ -d "$sub" ] || continue
+    local f
+    for f in "$sub"/*.md; do
+      [ -f "$f" ] || continue
+      printf '%s\t%s\n' "$f" "$(state_of "$f")"
+    done
+  done
+}
+
+# iter live columns only (backlog/active/review)
+iter_live() {
+  local d; d=$(issues_dir) || return 0
+  local col
+  for col in "${LIVE_COLS[@]}"; do
+    local sub="$d/$col"
+    [ -d "$sub" ] || continue
+    local f
+    for f in "$sub"/*.md; do
+      [ -f "$f" ] || continue
+      printf '%s\t%s\n' "$f" "$(state_of "$f")"
+    done
+  done
+}
+
+# row_of <file> <state> — apply LS_* filters; echo "date|state|module|slug|from|to|triage"
+# or return 1 when filtered out.
+row_of() {
+  local f="$1" st="$2"
+  local date module slug from to triage
+  date=$(getf "$f" date); module=$(getf "$f" module); slug=$(basename "$f" .md)
+  from=$(getf "$f" from); to=$(getf "$f" to); triage=$(getf "$f" triage)
+  # pipes are the row separator — free-text fields must not smuggle one in
+  # (a `|` would shift every downstream field: table, tsv, json, board);
+  # tabs would break the TSV columns — both sanitized here, one place
+  module=${module//|/\/}; from=${from//|/\/}; to=${to//|/\/}; triage=${triage//|/\/}
+  module=${module//$'\t'/ }; from=${from//$'\t'/ }; to=${to//$'\t'/ }; triage=${triage//$'\t'/ }
+  [ -n "$LS_MODULE" ] && ! echo "$module" | grep -qi "$LS_MODULE" && return 1
+  [ -n "$LS_TRIAGE" ] && ! echo "$triage" | grep -qi "$LS_TRIAGE" && return 1
+  [ -n "$LS_STATE" ]  && [ "$st" != "$LS_STATE" ] && return 1
+  if [ -n "$LS_TO" ]; then
+    { [ "$st" = "DONE" ] || [ "$st" = "CANCELLED" ]; } && return 1
+    [ "$(machine_of "$to")" = "$LS_TO" ] || return 1
+  fi
+  if [ -n "$LS_FROM" ]; then
+    [ "$(machine_of "$from")" = "$LS_FROM" ] || return 1
+  fi
+  printf '%s|%s|%s|%s|%s|%s|%s' "$date" "$st" "$module" "$slug" "$from" "$to" "$triage"
+}
+
+# list_emit — iterate (per LS_COL), filter, sort, print in LS_JSON/LS_TSV/table.
+list_emit() {
+  local rows=() f st r sorted
+  local d sub col
+  d=$(issues_dir)
+  if [ -n "$LS_COL" ] && [ "$LS_COL" != "live" ] && [ "$LS_COL" != "all" ]; then
+    sub="$d/$LS_COL"; [ -d "$sub" ] || die "no column '$LS_COL' (try: ${ALL_COLS[*]})"
+    for f in "$sub"/*.md; do
+      [ -f "$f" ] || continue
+      r=$(row_of "$f" "$(state_of "$f")") && rows+=("$r")
+    done
+  else
+    local iter=iter_live; [ "$LS_COL" = "all" ] && iter=iter_all
+    while IFS=$'\t' read -r f st; do
+      r=$(row_of "$f" "$st") && rows+=("$r")
+    done < <("$iter")
+  fi
+  [ ${#rows[@]} -eq 0 ] && { echo "No issues."; return; }
+  if [ "$LS_SORT" = "slug" ]; then
+    IFS=$'\n' sorted=($(printf '%s\n' "${rows[@]}" | sort -t'|' -k4))
+  else
+    IFS=$'\n' sorted=($(printf '%s\n' "${rows[@]}" | sort -t'|' -k1 -r -k4))
+  fi
+  if [ "$LS_JSON" -eq 1 ]; then emit_json "${sorted[@]}"; return; fi
+  if [ "$LS_TSV" -eq 1 ]; then emit_tsv "${sorted[@]}"; return; fi
+  emit_table "${sorted[@]}"
+}
+
+emit_table() {
+  local rows=("$@")
+  local wd=4 ws=5 wm=6 wsl=4 wtr=6 wf=4 wt=4 r
+  for r in "${rows[@]}"; do
+    local date state module slug from to triage
+    IFS='|' read -r date state module slug from to triage <<< "$r"
+    [ ${#date} -gt $wd ]   && wd=${#date}
+    [ ${#state} -gt $ws ]  && ws=${#state}
+    [ ${#module} -gt $wm ] && wm=${#module}
+    [ ${#slug} -gt $wsl ]  && wsl=${#slug}
+    [ ${#triage} -gt $wtr ]&& wtr=${#triage}
+    [ ${#from} -gt $wf ]   && wf=${#from}
+    [ ${#to} -gt $wt ]     && wt=${#to}
+  done
+  printf "%-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s\n" "$wd" DATE "$ws" STATE "$wm" MODULE "$wsl" SLUG "$wtr" TRIAGE "$wf" FROM "$wt" TO
+  for r in "${rows[@]}"; do
+    local date state module slug from to triage
+    IFS='|' read -r date state module slug from to triage <<< "$r"
+    [ -n "$to" ] || to="(unassigned)"
+    printf "%-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s\n" "$wd" "$date" "$ws" "$state" "$wm" "$module" "$wsl" "$slug" "$wtr" "$triage" "$wf" "$from" "$wt" "$to"
+  done
+}
+
+emit_tsv() {
+  local rows=("$@") r
+  printf 'date\tstate\tmodule\tslug\ttriage\tfrom\tto\n'
+  for r in "${rows[@]}"; do
+    local date state module slug from to triage
+    IFS='|' read -r date state module slug from to triage <<< "$r"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$date" "$state" "$module" "$slug" "$triage" "$from" "$to"
+  done
+}
+
+emit_json() {
+  local rows=("$@") r n=${#rows[@]} i=1
+  echo '['
+  for r in "${rows[@]}"; do
+    local date state module slug from to triage
+    IFS='|' read -r date state module slug from to triage <<< "$r"
+    printf '  {"date":"%s","state":"%s","module":"%s","slug":"%s","triage":"%s","from":"%s","to":"%s"}%s\n' \
+      "$(json_esc "$date")" "$(json_esc "$state")" "$(json_esc "$module")" "$(json_esc "$slug")" \
+      "$(json_esc "$triage")" "$(json_esc "$from")" "$(json_esc "$to")" "$([ $i -lt $n ] && echo ,)"
+    i=$((i+1))
+  done
+  echo ']'
+}
+
+# json_esc — escape for a JSON string context (backslash first, then quote;
+# tabs/CR stripped — fields are single lines by construction).
+json_esc() { printf '%s' "${1:-}" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\t\r'; }
+
+cmd_board() {
+  need_issues_dir
+  local d; d=$(issues_dir)
+  local project; project=$(basename "$(dirname "$d")")
+  echo "project: $project"
+  local col n total=0
+  for col in "${ALL_COLS[@]}"; do
+    n=0
+    if [ -d "$d/$col" ]; then
+      # count .md files without pipefail tripping on empty globs
+      n=$(find "$d/$col" -maxdepth 1 -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
+    fi
+    total=$((total + n))
+    printf "  %-11s %2d\n" "$col" "$n"
+  done
+  echo "  ────────────"
+  printf "  %-11s %2d\n" "total" "$total"
+}
+
+cmd_ls() {  # [column|all] [flags…]  (default: live columns)
+  need_issues_dir
+  ls_opts "$@"
+  list_emit
+}
+
+cmd_mine() {  # [flags…] — issues I created (from == me)
+  need_issues_dir
+  ls_opts "$@"
+  LS_FROM=$(me)
+  list_emit
+}
+
+cmd_todo() {  # [flags…] — issues waiting on me (to == me, live)
+  need_issues_dir
+  ls_opts "$@"
+  LS_TO=$(me)
+  list_emit
+}
+
+cmd_show() {  # <slug>
+  [ -n "${1:-}" ] || die "show <slug>"
+  live_dup_guard "$1"
+  local f; f=$(find_file "$1") || die "not found: $1"
+  cat "$f"
+}
+
+# live_dup_guard <slug> — die loudly when the slug sits in more than one LIVE
+# column: a broken board state (moves + edits must go through the ONE live
+# copy); the old silent first-column resolution + mv made `set` destroy the
+# live file. Terminal copies (archive/cancelled) are history and may coexist.
+# Called OUTSIDE $(…) so die's message isn't masked by a caller's fallback.
+live_dup_guard() {
+  local d; d=$(issues_dir); local col f hit=""
+  for col in backlog active review; do
+    f="$d/$col/${1%.md}.md"
+    [ -f "$f" ] || continue
+    if [ -n "$hit" ]; then
+      die "duplicate slug '$1' in $(basename "$(dirname "$hit")")/ and $col/ — merge into one file and delete the stray, then retry"
+    fi
+    hit="$f"
+  done
+}
+
+# find_file <slug> → echo path (first match across all columns; live columns
+# sort before terminal ones, so a live copy always wins over history)
+find_file() {
+  local d; d=$(issues_dir); local col f
+  for col in "${ALL_COLS[@]}"; do
+    f="$d/$col/${1%.md}.md"
+    [ -f "$f" ] && { echo "$f"; return 0; }
+  done
+  return 1
+}
+
+# move_to_column <slug> <column>  — relocate file, no state edit
+move_to_column() {
+  local slug="${1%.md}" col="$2" d f dest
+  live_dup_guard "$slug"
+  d=$(issues_dir); f=$(find_file "$slug") || die "not found: $slug"
+  mkdir -p "$d/$col"
+  dest="$d/$col/$(basename "$f")"
+  [ "$f" = "$dest" ] && return 0
+  [ -e "$dest" ] && die "refusing to overwrite existing $dest"
+  mv "$f" "$dest"
+}
+
+# rewrite_state <file> <STATE>
+rewrite_state() {
+  local f="$1" state="$2" tmp
+  tmp=$(mktemp)
+  awk -v s="$state" 'BEGIN{done=0} /^state:/{if(!done){print "state: "s;done=1;next}} {print}' "$f" > "$tmp" && mv "$tmp" "$f"
+}
+
+cmd_new() {  # <slug> [to]
+  local slug="${1:-}" to="${2:-}" f
+  [ -n "$slug" ] || die "new <slug> [to]"
+  # Slug validation: a `|` would shift every downstream field (table/tsv/json/
+  # board rows are pipe-separated), a tab breaks TSV, spaces/slashes break the
+  # filename and the `issues <slug>` argument passing.
+  case "$slug" in
+    *"|"*|*$'\t'*|*" "*|*"/"*|*"\\"*)
+      die "bad slug: '$slug' (use letters, digits, - and _ only — no spaces, |, tabs, slashes)" ;;
+  esac
+  local i=$(me) mod=$(module) d; d=$(issues_dir)
+  [ -d "$d" ] || die "no issues dir at $d"
+  local file="$d/backlog/${slug}.md"
+  live_dup_guard "$slug"
+  if f=$(find_file "$slug"); then die "already exists: $f"; fi
+  mkdir -p "$d/backlog"
+  local triage deflabel; triage=$(cfg triage "needs-triage needs-info ready-for-agent ready-for-human wontfix")
+  deflabel=$(echo "$triage" | awk '{print $1}')
+  cat > "$file" <<EOF
+---
+state: OPEN
+from: ${i}@${mod}
+to: ${to}
+date: $(date +%Y-%m-%d)
+version: $(version_of)
+module: ${mod}
+triage: ${deflabel}
+---
+
+## Task
+
+
+## Context
+
+EOF
+  echo "$file"
+}
+
+cmd_set() {  # <slug> <STATE>
+  local slug="${1:-}" state="${2:-}"
+  [ -n "$slug" ] && [ -n "$state" ] || die "set <slug> <OPEN|WIP|FOR_REVIEW|DONE|CANCELLED>"
+  case "$state" in
+    OPEN|WIP)        ;;  # location-aware: see below
+    FOR_REVIEW)      ;;
+    DONE)            ;;
+    CANCELLED)       ;;
+    *)               die "bad state: $state (OPEN|WIP|FOR_REVIEW|DONE|CANCELLED)";;
+  esac
+  live_dup_guard "$slug"
+  local f; f=$(find_file "$slug") || die "not found: $slug"
+  rewrite_state "$f" "$state"
+  # Relocate by state. OPEN→backlog, WIP→active, FOR_REVIEW→review,
+  # DONE→archive, CANCELLED→cancelled.
+  case "$state" in
+    OPEN)        move_to_column "$slug" "backlog" ;;
+    WIP)         move_to_column "$slug" "active" ;;
+    FOR_REVIEW)  move_to_column "$slug" "review" ;;
+    DONE)        move_to_column "$slug" "archive" ;;
+    CANCELLED)   move_to_column "$slug" "cancelled" ;;
+  esac
+  echo "$slug → $state"
+}
+
+# Shorthand verbs ----------------------------------------------------------
+cmd_start() {  # <slug>  → active + WIP
+  [ -n "${1:-}" ] || die "start <slug>"
+  cmd_set "$1" WIP
+}
+
+cmd_review() {  # <slug>  → review + FOR_REVIEW
+  [ -n "${1:-}" ] || die "review <slug>"
+  cmd_set "$1" FOR_REVIEW
+}
+
+cmd_cancel() {  # <slug> [reason...]
+  [ -n "${1:-}" ] || die "cancel <slug> [reason]"
+  local slug="$1"; shift || true
+  cmd_set "$slug" CANCELLED
+  [ $# -gt 0 ] && { local f; f=$(find_file "$slug"); [ -f "$f" ] && printf '\n## Cancelled\n\n%s\n' "$*" >> "$f"; }
+}
+
+cmd_triage() {  # <slug> <column>
+  local slug="${1:-}" col="${2:-}"
+  [ -n "$slug" ] && [ -n "$col" ] || die "triage <slug> <backlog|active|review|cancelled>"
+  case "$col" in
+    backlog|active|review|cancelled) ;;
+    *) die "bad column: $col (backlog|active|review|cancelled)";;
+  esac
+  move_to_column "$slug" "$col"
+  echo "$slug → $col/"
+}
+
+# Archive: DONE now lands in archive/ directly via `set`, so this is mostly
+# a no-op kept for muscle memory / sweeping any stray root files.
+cmd_archive() {
+  need_issues_dir
+  local d; d=$(issues_dir); local n=0 f dest
+  # any DONE-state files still outside archive/ → move them
+  while IFS=$'\t' read -r f st; do
+    [ "$st" = "DONE" ] || continue
+    case "$f" in */archive/*) continue ;; esac
+    mkdir -p "$d/archive"
+    dest="$d/archive/$(basename "$f")"
+    [ -e "$dest" ] && die "refusing to overwrite existing $dest (duplicate slug?)"
+    mv "$f" "$dest"; n=$((n+1))
+  done < <(iter_all)
+  [ $n -gt 0 ] && echo "$n archived." || echo "Nothing to archive (DONE items already in archive/)."
+}
+
+cmd_purge() {  # [-y] [slug...]  — permanently delete from archive/cancelled
+  local force=0; [ "${1:-}" = "-y" ] && { force=1; shift; }
+  local d; d=$(issues_dir); local files="" s f
+  if [ $# -eq 0 ]; then
+    local col
+    for col in archive cancelled; do
+      [ -d "$d/$col" ] || continue
+      for f in "$d/$col"/*.md; do [ -f "$f" ] && files="$files"$'\n'"$f"; done
+    done
+  else
+    for s in "$@"; do
+      for col in archive cancelled; do
+        f="$d/$col/${s%.md}.md"; [ -f "$f" ] && { files="$files"$'\n'"$f"; break; }
+      done
+    done
+  fi
+  [ -n "$(printf '%s' "$files" | tr -d ' \n')" ] || { echo "Nothing to purge."; return; }
+  if [ $force -eq 0 ]; then
+    echo "About to DELETE:"; while IFS= read -r f; do [ -n "$f" ] && echo "  - $(basename "$f")"; done <<< "$files"
+    read -rp "Proceed? [y/N] " ans; [ "${ans:0:1}" = "y" ] || { echo "aborted"; return; }
+  fi
+  local n=0; while IFS= read -r f; do [ -n "$f" ] && { rm -f "$f"; n=$((n+1)); }; done <<< "$files"
+  echo "$n purged."
+}
+
+cmd_done() {  # <slug> — mark DONE (was: silently listed archive instead!)
+  [ -n "${1:-}" ] || die "usage: issues done <slug>"
+  cmd_set "$1" DONE
+}
+
+# board-html — render the live kanban as one self-contained HTML (visualize
+# house style), write to $TMPDIR, and (optionally) share to a throway URL.
+#   issues board-html [--share] [--out <file>] [--title <t>] [--no-context]
+#                     [--module X] [--triage X] [--to X] [--from X] [--state X]
+#   --share        upload via `visualize share` and print the URL
+#   --out <file>   write to this path (default: $TMPDIR/issues-board-<ts>.html)
+#   --title <t>    page title (default: "<project> — kanban")
+#   --no-context   strip the (collapsed) Context excerpts — for public shares
+# Markers: age badge (14d/60d), drift (state-field ≠ column dir), unassigned.
+# Interactive: filter chips + slug/module search (vanilla JS, client-only).
+cmd_board_html() {
+  local share=0 out="" title="" CONTEXT_OFF=0
+  export CONTEXT_OFF
+  local args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --share) share=1; shift ;;
+      --out)   [ $# -ge 2 ] || die "--out needs a value"; out="$2"; shift 2 ;;
+      --title) [ $# -ge 2 ] || die "--title needs a value"; title="$2"; shift 2 ;;
+      --no-context) CONTEXT_OFF=1; shift ;;
+      --module|--triage|--to|--from|--state)
+               [ $# -ge 2 ] || die "$1 needs a value"; args+=("$1" "$2"); shift 2 ;;
+      *)       die "unknown flag '$1' (board-html: --share --out --title --no-context + --module --triage --to --from --state)" ;;
+    esac
+  done
+  need_issues_dir
+  local d; d=$(issues_dir)
+  local project; project=$(basename "$(dirname "$d")")
+  [ -n "$title" ] || title="$project — kanban"
+  # pre-escape: title/user text must never reach the HTML raw (h1/title/sub)
+  title=$(html_esc "$title"); project_esc=$(html_esc "$project")
+  # parse ls flags in-process (sets LS_MODULE/LS_TRIAGE/… filters — same path as `ls`)
+  LS_COL=live LS_JSON=0 LS_TSV=0 LS_SORT=date
+  ls_opts ${args[@]+"${args[@]}"} || die "bad flags (see: issues ls --help)"
+  local ts outfile backlog_html active_html review_html nback nact nrev
+  ts=$(date +%Y%m%d-%H%M%S)
+  if [ -n "$out" ]; then outfile="$out"; else outfile="${TMPDIR:-/tmp}/issues-board-$ts.html"; fi
+  [ -d "$(dirname "$outfile")" ] || die "--out: directory does not exist: $(dirname "$outfile")"
+  # "what needs me?": cards assigned to this machine get a marker (set before rendering)
+  MINE=$(machine_of "$(me 2>/dev/null)" 2>/dev/null || true)
+  backlog_html=$(col_cards backlog)
+  active_html=$(col_cards active)
+  review_html=$(col_cards review)
+  nback=$(count_cards "$backlog_html"); nact=$(count_cards "$active_html"); nrev=$(count_cards "$review_html")
+  [ $((nback + nact + nrev)) -eq 0 ] && die "no issues matched (nothing to render)"
+  # column load: backlog >30 / active >5 → count turns hot (bottleneck signal)
+  local back_hot="" act_hot=""
+  [ "${nback:-0}" -gt 30 ] && back_hot=" hot"
+  [ "${nact:-0}" -gt 5 ] && act_hot=" hot"
+  # filter chips + module heat from the same filtered row set
+  local dims chips_html="" heat_html="" n m
+  dims=$(collect_dims)
+  while read -r n m; do
+    [ -n "$m" ] || continue
+    chips_html+="$(printf '<button class="chip" data-k="module" data-v="%s">%s · %s</button>\n' "$(html_esc "$m")" "$(html_esc "$m")" "$n")"
+  done < <(printf '%s\n' "$dims" | grep '^module|' | cut -d'|' -f2- | sort | uniq -c | sort -rn | head -8)
+  while read -r n m; do
+    [ -n "$m" ] || continue
+    chips_html+="$(printf '<button class="chip" data-k="triage" data-v="%s">%s · %s</button>\n' "$(html_esc "$m")" "$(html_esc "$m")" "$n")"
+  done < <(printf '%s\n' "$dims" | grep '^triage|' | cut -d'|' -f2- | sort | uniq -c | sort -rn | head -6)
+  printf '%s\n' "$dims" | grep '^module|' | cut -d'|' -f2- | sort | uniq -c | sort -rn | head -3 \
+    | while read -r n m; do printf '<span>%s · %s</span>' "$(html_esc "$m")" "$n"; done > "${TMPDIR:-/tmp}/.issues-heat-$$"
+  heat_html=$(cat "${TMPDIR:-/tmp}/.issues-heat-$$" 2>/dev/null || true); rm -f "${TMPDIR:-/tmp}/.issues-heat-$$"
+  [ -n "$heat_html" ] && heat_html="<div class=\"heat\">${heat_html}</div>"
+  render_kanban > "$outfile"
+  echo "$outfile"
+  if [ "$share" -eq 1 ]; then
+    if command -v visualize >/dev/null 2>&1; then
+      visualize share "$outfile"
+    else
+      echo "visualize not on PATH — board written to $outfile (run 'visualize share $outfile' to publish)" >&2
+    fi
+  fi
+}
+
+# days_ago <yyyy-mm-dd> — integer days since date (portable GNU/BSD date), empty on failure.
+days_ago() {
+  local e
+  e=$(date -u -d "$1" +%s 2>/dev/null) || e=$(date -j -u -f '%Y-%m-%d' "$1" +%s 2>/dev/null) || return 1
+  [ -n "$e" ] || return 1
+  local n=$(( ($(date +%s) - e) / 86400 ))
+  [ "$n" -ge 0 ] && echo "$n" || return 1
+}
+
+# extract_context <file> — short excerpt of the `## Context` section (client
+# renders it collapsed via <details>; --no-context strips it entirely).
+extract_context() {
+  awk '/^## Context/{f=1;next} /^## /{f=0} f&&NF' "$1" | head -6 | cut -c1-110 | tr '\n' ' ' | cut -c1-480 | sed 's/ *$//'
+}
+
+# extract_wish <file> — first non-empty line of the issue's title section,
+# section priority: Task > Wish > Problem > Goal (Task dominates the real
+# data: 52 of 64 live issues). Markdown emphasis is stripped. Empty when no
+# section matches (card falls back to the slug).
+extract_wish() {
+  awk '/^## (Task|Wish|Problem|Goal)/{sec=1;next} /^## /{sec=0} sec&&NF&&/[[:alnum:]]/{print;exit}' "$1" \
+    | sed 's/\*\*//g; s/\*//g; s/`//g' | cut -c1-90
+}
+
+# collect_dims — module|<val> / triage|<val> lines for the filtered live set
+# (feeds filter chips + module heat; same row_of filters as the cards).
+collect_dims() {
+  local d col f r mod trg
+  d=$(issues_dir) || return 0
+  for col in backlog active review; do
+    for f in "$d/$col"/*.md; do
+      [ -f "$f" ] || continue
+      r=$(row_of "$f" "$(state_of "$f")") || continue
+      mod=$(printf '%s' "$r" | cut -d'|' -f3); trg=$(printf '%s' "$r" | cut -d'|' -f7)
+      [ -n "$mod" ] && printf 'module|%s\n' "$mod"
+      [ -n "$trg" ] && printf 'triage|%s\n' "$trg"
+    done
+  done
+}
+
+# col_cards <col> — cards for one kanban column dir, filtered via row_of (same
+# filters as `issues ls`), newest first (date desc, tie-break slug asc).
+# Appends drift flag (state-field ≠ expected state of the dir) as 8th field.
+col_cards() {
+  local d f r lines="" exp st
+  d=$(issues_dir) || return 0
+  case "$1" in backlog) exp=OPEN ;; active) exp=WIP ;; review) exp=FOR_REVIEW ;; *) exp="" ;; esac
+  for f in "$d/$1"/*.md; do
+    [ -f "$f" ] || continue
+    r=$(row_of "$f" "$(state_of "$f")") || continue
+    st=$(printf '%s' "$r" | cut -d'|' -f2)
+    if [ -n "$exp" ] && [ "$st" != "$exp" ]; then
+      lines+="${r}|drift|${f}"$'\n'
+    else
+      lines+="${r}||${f}"$'\n'
+    fi
+  done
+  [ -n "$lines" ] || return 0
+  printf '%s' "$lines" | sort -t'|' -k1,1r -k4,4 | while IFS= read -r row; do
+    local ctx="" wish=""
+    local fpath; fpath=$(printf '%s' "$row" | awk -F'|' '{print $NF}')
+    [ "$CONTEXT_OFF" = 1 ] || ctx=$(extract_context "$fpath")
+    wish=$(extract_wish "$fpath")
+    emit_card "$(printf '%s' "$row" | awk -F'|' -v OFS='|' '{NF--; print}')" "$ctx" "$wish"
+  done
+}
+
+count_cards() { local n; n=$(grep -c '<article' <<<"${1:-}" || true); echo "${n:-0}"; }
+
+# html_esc — minimal HTML escaping (& first, then angle brackets and quotes).
+html_esc() { sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g' <<<"${1:-}"; }
+
+# render_kanban — emit the self-contained HTML (uses backlog_html/active_html/review_html globals).
+render_kanban() {
+  cat <<HTMLEOF
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${title}</title>
+<style>
+:root{--ink:#1a1a1a;--paper:#fafaf9;--muted:#6b7280;--line:#e5e5e5;
+      --backlog:#5e7a9b;--active:#7c8f6f;--review:#b8915a;--ok:#2f6f4f;--warn:#a16207;--bad:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:96rem;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+header{margin-bottom:2rem}
+h1{font-size:1.7rem;margin:0 0 .3rem;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.1rem;align-items:start}
+.col{background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:1rem}
+.col h2{font-size:.85rem;margin:0 0 .9rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;align-items:center;gap:.5rem}
+.col h2 .count{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:.05rem .55rem;font-size:.75rem;color:var(--ink)}
+.col h2 .bar{width:.55rem;height:.55rem;border-radius:2px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:.45rem;padding:.85rem .95rem;margin-bottom:.75rem}
+.card h3{font-size:.95rem;margin:0 0 .35rem;font-weight:600}
+.card .meta{font-size:.78rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:.6rem}
+.tag{font-size:.72rem;padding:.05rem .45rem;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.tag.ra{color:var(--ok);border-color:var(--ok)}
+.tag.ni{color:var(--warn);border-color:var(--warn)}
+.tag.rh{color:var(--bad);border-color:var(--bad)}
+.tag.wf{color:var(--muted);border-color:var(--line)}
+.tag.age-2{color:var(--warn);border-color:var(--warn)}
+.tag.age-3{color:var(--bad);border-color:var(--bad)}
+.tag.un{border-style:dashed}
+.tag.dflag{color:var(--bad);border-color:var(--bad)}
+.card.drift{border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad)}
+.tag.you{color:var(--ink);border-color:var(--ink);font-weight:600}
+.card .id{font-size:.72rem;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:-.2rem 0 .4rem}
+.count.hot{color:var(--bad);border-color:var(--bad)}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:1.1rem 0 0}
+.chip{font:inherit;font-size:.78rem;background:#fff;border:1px solid var(--line);border-radius:999px;padding:.15rem .7rem;color:var(--muted);cursor:pointer}
+.chip.on{color:var(--ink);border-color:var(--ink)}
+#q{font:inherit;font-size:.8rem;border:1px solid var(--line);border-radius:.4rem;padding:.22rem .6rem;background:#fff;color:var(--ink);width:12rem;margin-left:auto}
+.heat{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:.5rem;font-size:.78rem;color:var(--muted)}
+details{margin-top:.4rem}
+summary{font-size:.75rem;color:var(--muted);cursor:pointer}
+details p{font-size:.8rem;color:var(--muted);margin:.35rem 0 0;white-space:pre-wrap}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+.footer code{background:#fff;border:1px solid var(--line);border-radius:.3rem;padding:.1rem .4rem;font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>${title}</h1>
+    <p class="sub">${project_esc} · snapshot $(date '+%Y-%m-%d %H:%M') · grouped by column dir</p>
+    ${heat_html}
+  </header>
+  <div class="controls">
+${chips_html}    <input id="q" type="search" placeholder="suchen: slug / modul …" />
+  </div>
+  <div class="board">
+    <section class="col" data-col="backlog"><h2><span class="bar" style="background:var(--backlog)"></span>Backlog <span class="count${back_hot}" id="c-backlog">${nback}</span></h2>
+${backlog_html}
+    </section>
+    <section class="col" data-col="active"><h2><span class="bar" style="background:var(--active)"></span>Active <span class="count${act_hot}" id="c-active">${nact}</span></h2>
+${active_html}
+    </section>
+    <section class="col" data-col="review"><h2><span class="bar" style="background:var(--review)"></span>Review <span class="count" id="c-review">${nrev}</span></h2>
+${review_html}
+    </section>
+  </div>
+  <div class="footer">
+    Snapshot · <code>issues board-html</code> · generated $(date '+%Y-%m-%d %H:%M')
+  </div>
+</main>
+<script>
+(function(){
+  var chips=[].slice.call(document.querySelectorAll('.chip'));
+  var cards=[].slice.call(document.querySelectorAll('.card'));
+  var q=document.getElementById('q');
+  function apply(){
+    var on=document.querySelector('.chip.on');
+    var k=on?on.getAttribute('data-k'):'';
+    var v=on?on.getAttribute('data-v'):'';
+    var s=(q&&q.value)?q.value.toLowerCase():'';
+    var vis={};
+    cards.forEach(function(c){
+      var ok=true;
+      if(on){
+        var val=(k==='module')?(c.getAttribute('data-m')||''):(c.getAttribute('data-t')||'');
+        ok=(k==='module')?(val.toLowerCase().indexOf(v.toLowerCase())>=0):(val===v);
+      }
+      if(ok&&s){
+        ok=(((c.getAttribute('data-s')||'')+' '+(c.getAttribute('data-m')||'')+' '+(c.getAttribute('data-w')||'')).toLowerCase().indexOf(s)>=0);
+      }
+      c.style.display=ok?'':'none';
+      if(ok){
+        var col=c.parentNode;
+        while(col&&col!==document.body&&!col.getAttribute('data-col')){col=col.parentNode;}
+        var dc=col?col.getAttribute('data-col'):null;
+        if(dc){vis[dc]=(vis[dc]||0)+1;}
+      }
+    });
+    ['backlog','active','review'].forEach(function(id){
+      var el=document.getElementById('c-'+id);
+      if(el){el.textContent=String(vis[id]||0);}
+    });
+  }
+  chips.forEach(function(ch){
+    ch.addEventListener('click',function(){
+      var was=ch.classList.contains('on');
+      chips.forEach(function(o){o.classList.remove('on');});
+      if(!was){ch.classList.add('on');}
+      apply();
+    });
+  });
+  if(q){q.addEventListener('input',apply);}
+})();
+</script>
+</body>
+</html>
+HTMLEOF
+}
+
+# emit_card <row> <context> <wish> — one issue card. Row: date|state|module|slug|from|to|triage|drift.
+# Face: Task/Wish line as title, slug as small identifier (fallback: slug).
+# Markers: age badge (14d/60d), drift border+badge, unassigned tag, "you"
+# ownership tag (assignee line itself, not card decoration).
+# data-m/-t/-s/-w attributes feed the client-side chip/search filter. All user
+# text is HTML-escaped.
+emit_card() {
+  local date state module slug from to triage drift cls ago acls="" age_html="" to_html drift_cls="" drift_html="" details_html=""
+  local title_html="" id_html=""
+  IFS='|' read -r date state module slug from to triage drift <<<"$1"
+  case "$triage" in
+    ready-for-agent) cls="ra" ;; needs-info) cls="ni" ;; ready-for-human) cls="rh" ;; wontfix) cls="wf" ;; *) cls="" ;;
+  esac
+  if [ -n "${3:-}" ]; then
+    title_html="$(html_esc "$3")"
+    id_html="<div class=\"id\">$(html_esc "$slug")</div>"
+  else
+    title_html="$(html_esc "$slug")"
+  fi
+  ago=$(days_ago "$date") && {
+    if [ "$ago" -ge 60 ]; then acls="age-3"; elif [ "$ago" -ge 14 ]; then acls="age-2"; else acls="age-1"; fi
+    age_html="<span class=\"tag ${acls}\">${ago}d</span>"
+  }
+  if [ -z "$to" ]; then
+    to_html="→ <span class=\"tag un\">unassigned</span>"
+  elif [ -n "${MINE:-}" ] && [ "$(machine_of "$to")" = "$MINE" ]; then
+    to_html="→ <span class=\"tag you\" title=\"$(html_esc "$to")\">you</span>"
+  else
+    to_html="→ $(html_esc "$to")"
+  fi
+  if [ "$drift" = "drift" ]; then
+    drift_cls=" drift"
+    drift_html="<span class=\"tag dflag\">⚠ drift: $(html_esc "$state")</span>"
+  fi
+  if [ -n "$2" ]; then
+    details_html="<details><summary>Context</summary><p>$(html_esc "$2")</p></details>"
+  fi
+  cat <<CARDEOF
+      <article class="card${drift_cls}" data-m="$(html_esc "$module")" data-t="$(html_esc "$triage")" data-s="$(html_esc "$slug")" data-w="$(html_esc "${3:-}")">
+        <h3>${title_html}</h3>
+        ${id_html}
+        <div class="meta"><span>$(html_esc "$module")</span><span>$(html_esc "$date")</span>${age_html}<span>$(html_esc "$from") ${to_html}</span></div>
+        <div class="meta"><span class="tag ${cls}">$(html_esc "$triage")</span><span class="tag">$(html_esc "$state")</span>${drift_html}</div>
+        ${details_html}
+      </article>
+CARDEOF
+}
+
+cmd_help() {
+  cat <<'EOF'
+issues — multi-project kanban (lives in .handoff/<project>/issues/)
+
+  issues init <project> [--local] bootstrap a project board in ONE command:
+                                   root + 5 columns (idempotent) + .handoff
+                                   symlink at the repo root. --local = real
+                                   local dir, gitignored + WARN (not synced)
+  issues board                    one-line-per-column overview (live board)
+  issues board-html [flags]       kanban as self-contained HTML (--share → URL)
+                                   flags: --share --out <f> --title <t>
+                                   --no-context · ls filters (--module …)
+  issues ls [column|all] [flags]  list issues (default: live; "all" = +terminal)
+  issues show <slug>              print one issue
+  issues new <slug> [to]          create in backlog/ (from = me@<repo>)
+  issues start <slug>             → active/  + state WIP
+  issues review <slug>            → review/  + state FOR_REVIEW
+  issues triage <slug> <col>      move to backlog|active|review|cancelled
+  issues set <slug> <STATE>       OPEN|WIP|FOR_REVIEW|DONE|CANCELLED (relocates)
+  issues cancel <slug> [reason]   → cancelled/ + state CANCELLED
+  issues archive                  sweep any stray DONE → archive/
+  issues purge [-y] [slug...]     permanently delete (from archive/cancelled)
+  issues mine [flags]             issues I created (from == me)
+  issues todo [flags]             issues waiting on me (to == me, live)
+  issues done <slug>              mark DONE → archive/ (same as set DONE)
+  issues archive                 sweep stray DONE → archive/ (not set DONE — see done)
+
+LS FLAGS (issues ls|mine|todo)
+  --module X    filter by module substring, case-insensitive (agentos, pdf2md, …)
+  --triage X    filter by triage label substring (needs-triage, ready-for-agent, …)
+  --to X        filter by assigned machine (live only)
+  --from X      filter by creator machine
+  --state X     filter by state (OPEN|WIP|FOR_REVIEW|DONE|CANCELLED)
+  --sort slug   sort by slug (default: date, newest first)
+  --json        machine-readable JSON array
+  --tsv         tab-separated (header + rows)
+  Columns: backlog / active / review / archive / cancelled
+  Example: issues ls --module pdf2md --triage ready-for-agent
+
+Columns: backlog / active / review / archive / cancelled
+State flow: OPEN(backlog) → WIP(active) → FOR_REVIEW(review) → DONE(archive)
+                                                           ↘ CANCELLED(cancelled)
+
+Container dir keeps the name `.handoff` (preserves existing symlinks). This
+tool manages only `<project>/issues/`. Other shared subfolders (docs/, …) are
+just files — manage them with plain mv/ls.
+
+Project is resolved from cwd by walking up to the `.handoff` symlink.
+Env: ISSUES_DIR (default ~/code/handoffs/). Identity: HANDOFF_ME → ~/.handoff-me → hostname.
+
+CONFIG — project-specific values live in <project>/.issues/config, not the
+code. Cascade: env ISSUES_<KEY> → <project>/.issues/config → script default.
+Keys (key = value, one per line; ~ expands to $HOME):
+  version_cmd       shell cmd printing the version (e.g. grep klark0/package.json)
+  version_default   version when version_cmd unset (default: unknown)
+  module_cmd        shell cmd printing the @<module> name (default: repo heuristic)
+  triage            space-separated label vocabulary; new stamps the first
+                    (default: needs-triage needs-info ready-for-agent ready-for-human wontfix)
+  Config file: ~/code/handoffs/<project>/.issues/config
+  Per-call override: ISSUES_VERSION_CMD=…, ISSUES_MODULE_CMD=…, ISSUES_TRIAGE=…
+
+TROUBLESHOOTING
+  no issues dir / no .handoff symlink  → run: issues init <project> (from the repo root;
+                                          on kontext.one: ./k.sh setup-issues)
+  issues not on PATH                   → run ./k.sh setup-issues (installs ~/.local/bin/issues)
+  version: unknown on new              → add version_cmd/version_default to project config
+  version shows raw grep line          → version_cmd quoting broken; write cmd unquoted
+  duplicate slug across columns        → merge into one file, delete the stray
+  purge deleted too much               → final: no git/sync history exists (versioning
+                                          deliberately off, 2026-09-16) — gone is gone
+EOF
+}
+
+# ---- dispatch -------------------------------------------------------------
+cmd="${1:-help}"; [ $# -gt 0 ] && shift || true
+case "$cmd" in
+  board|b)         cmd_board "$@" ;;
+  board-html)      cmd_board_html "$@" ;;
+  init)            cmd_init "$@" ;;
+  new|n)           cmd_new "$@" ;;
+  ls|list)         cmd_ls "$@" ;;
+  todo)            cmd_todo "$@" ;;
+  mine)            cmd_mine "$@" ;;
+  done)            cmd_done "$@" ;;
+  show|cat)        cmd_show "$@" ;;
+  set|state)       cmd_set "$@" ;;
+  start)           cmd_start "$@" ;;
+  review)          cmd_review "$@" ;;
+  cancel)          cmd_cancel "$@" ;;
+  triage)          cmd_triage "$@" ;;
+  archive)         cmd_archive "$@" ;;
+  purge|rm)        cmd_purge "$@" ;;
+  help|-h|--help)  cmd_help ;;
+  *) die "unknown command '$cmd' (try: issues help)";;
+esac

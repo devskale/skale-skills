@@ -17,6 +17,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | d2 | `d2 validate/render` | ~46 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
 | figure | `node build/build_figures.mjs` | ~20 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
+| issues | `issues board/new/todo/…` | 52 | Cross-machine shared issue kanban (`.handoff/<project>/issues/`) — one markdown file per issue, synced dir per project |
 | ~~viewimg~~ | ~~`viewimg img.jpg [--open]`~~ | ~~~16~~ | **DEPRECATED** — use `read img.jpg` instead. Archived to `skills/deprecated/viewimg/`. [Migration guide](docs/image-display-deprecation.md) |
 | pdf2md | `pdf2md document.pdf` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
 | improve-ux | `improve-ux discover/add/rate/ledger` | ~96 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
@@ -192,6 +193,7 @@ bash tests/visualize/test.sh
 bash tests/d2/test.sh
 bash tests/figure/test.sh
 bash tests/peep/test.sh
+bash tests/issues/test.sh         # issues kanban CLI (sandboxed ISSUES_DIR)
 bash tests/imagegen/test.sh          # extensions/imagegen.ts
 bash tests/heartbeat/test.sh         # extensions/heartbeat.ts
 bash tests/skill-filter/test.sh      # scripts/skill-filter.sh (settings filter helper)
