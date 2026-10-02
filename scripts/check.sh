@@ -17,6 +17,26 @@ banner() { printf '\n── %s ──\n' "$1"; }
 banner "Biome lint + typecheck"
 if bash scripts/lint.sh; then echo "ok"; else FAIL=1; echo "FAIL: lint/typecheck" >&2; fi
 
+banner "Shell scripts (bash -n + shellcheck -S error)"
+# Bash launchers/CLIs: a parse error or shellcheck ERROR severity bug must never
+# reach a commit (style warnings stay out of the gate on purpose). Skipped
+# honestly when shellcheck is not installed.
+# NOTE macOS bash 3.2: `case` is a syntax error inside < <( ) — if/glob only.
+# Scope: *.sh files + suffix-less files that actually start with a bash shebang
+# (git ls-files 'skills/*' would swallow every md/svg/ttf — filter by content).
+if command -v shellcheck >/dev/null 2>&1; then
+    sc_fail=0
+    while IFS= read -r f; do
+        [ -f "$f" ] || continue
+        head -1 "$f" 2>/dev/null | grep -q '^#!.*bash' || continue
+        bash -n "$f" || { echo "  ✗ $f: bash -n failed" >&2; sc_fail=1; continue; }
+        shellcheck -S error "$f" || sc_fail=1
+    done < <(git ls-files 'skills/' | grep -v '^skills/deprecated/'; git ls-files --others --exclude-standard 'skills/')
+    [ "$sc_fail" -eq 0 ] && echo "ok" || { FAIL=1; echo "FAIL: shell scripts" >&2; }
+else
+    warn "shellcheck not installed — shell gate skipped"
+fi
+
 banner "Skill metadata (description hygiene)"
 if bash tests/skill-metadata/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: skill-metadata" >&2; fi
 
