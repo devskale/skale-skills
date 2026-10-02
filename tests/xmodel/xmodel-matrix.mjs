@@ -139,6 +139,9 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 		ctx._entries.length === 1 && entry.type === "xmodel-view" && entry.display === true,
 	);
 	check("a: display entry carries image", (entry?.details?.images ?? []).length === 1);
+	const contentKinds = (entry?.content ?? []).map((b) => b.type);
+	check("a: entry content has NO image blocks (pixels only in details)", !contentKinds.includes("image"));
+	check("a: entry content carries text placeholders", contentKinds.filter((k) => k === "text").length === 1);
 	const lastSent = sentMessages.at(-1);
 	check("a: pi.sendMessage path used (pi ≥1.0)", lastSent !== undefined);
 	check("a: sendMessage triggerTurn:false (display never steers the LLM)", lastSent?.opts?.triggerTurn === false);

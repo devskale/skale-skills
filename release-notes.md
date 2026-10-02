@@ -4,6 +4,26 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel 0.5.11 — Display-Entries speichern das Original, nicht das transkodierte PNG.**
+  Für 20+ angezeigte Bilder war jede Entry ~2,6 MB (full-res PNG aus dem Transcode), obwohl die
+  Quelle als JPEG/WebP nur ~300 KB hatte. `writeViewEntry` legt jetzt die **Original-Bytes**
+  ab (Mime via `guessMime`); `toDisplayPng` transkodiert **und resized** (sips `-Z 1200`) erst
+  beim Rendern — einmal pro Bild (der Image-Component cached seine Lines). Session-Dateien für
+  Bildlastige Runs: ~8× kleiner; Modell-Context unchanged (Text-Platzhalter only, seit 0.5.10).
+  PNG-Quellen bleiben byte-identisch (kein Re-Encode, getestet).
+
+- **image-slim 1.0.0 — neues Extension: Compaction bekommt keine Bild-Payloads mehr.** pi 1.0s
+  Compaction ruft das rohe `convertToLlm()` (ohne den `blockImages`-Filter) — jeder gespeicherte
+  Base64-Bild-Block landete voll im Summarize-Prompt (636 KB → Provider-Timeout). Die Extension
+  hookt `session_before_compact` und ersetzt Bild-Blocks **auf Kopien** durch einen kurzen
+  Text-Platzhalter (636 KB → 0.4 KB). Chat/TUI bleibt unberührt — Bilder bleiben inline sichtbar.
+  Dazu: Alt-Sessions gesäubert (~247 MB Base64 entfernt, Backup in `/tmp/pi-session-backup`).
+
+- **xmodel 0.5.10 — Display-Entries speichern Pixel nur noch einmal.** `writeViewEntry` schrieb
+  die Base64-Payload doppelt in die Session (content[] **und** details.images); der Renderer liest
+  ausschließlich details — content[] trägt jetzt nur Text-Platzhalter. Halbiert die Entry-Größe
+  für alle neuen Sessions.
+
 - **xmodel 0.5.9 — VLM delegation actually sees images under `blockImages`.** Two layers:
   (1) The delegation child inherits the user's `images.blockImages: true` and strips the
   attachment before the model sees it — glm answered literally `NO IMAGE` (forensic:

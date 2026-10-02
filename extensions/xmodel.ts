@@ -80,7 +80,7 @@ import {
 
 import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
 import { chafaAvailable, chafaPreview } from "./lib/chafa";
-import { isVisionCapable, isValidImage, toDisplayPng } from "./lib/image-utils";
+import { guessMime, isVisionCapable, isValidImage, toDisplayPng } from "./lib/image-utils";
 import {
 	debug,
 	detectSavedScreenshot,
@@ -107,7 +107,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.9";
+const VERSION = "0.5.11";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -1526,7 +1526,10 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				if (b64 && isValidImage(Buffer.from(b64, "base64"))) {
 					// Normalise to PNG up front: the display renderer and any replay from
 					// session state both rely on Kitty's f=100 label matching the payload.
-					blocks.push({ b64: toDisplayPng(b64), mime: "image/png" });
+					// Store the ORIGINAL bytes — the display renderer transcodes+downscales at
+					// render time (toDisplayPng). Transcoding here would persist a full-res PNG
+					// (often 5–8× the source) into the session for every displayed image.
+					blocks.push({ b64, mime: im.mimeType ?? guessMime(b64) });
 				}
 			} catch {}
 		}
@@ -1558,7 +1561,14 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			pi,
 			ctx,
 			XMODEL_VIEW_MSG,
-			blocks.map((b) => ({ type: "image", data: b.b64, mimeType: b.mime })),
+			// Pixels live ONCE — in details.images (the renderer reads details). Content
+			// carries only a placeholder: pi 1.0 passes custom-entry content 1:1 into the
+			// session, so image blocks here would double the payload and leak into
+			// compaction (image-slim strips them, but not writing them is cheaper).
+			blocks.map((b, i) => ({
+				type: "text",
+				text: `[image ${i + 1}/${blocks.length}: ${b.mime} — inline via display renderer]`,
+			})),
 			true,
 			details,
 		);

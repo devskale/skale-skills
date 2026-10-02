@@ -86,7 +86,11 @@ export function toDisplayPng(b64: string): string {
 		const inPath = join(dir, `in.${(guessMime(b64).split("/")[1] || "png").replace("jpeg", "jpg")}`);
 		const outPath = join(dir, "out.png");
 		writeFileSync(inPath, buf);
-		execFileSync("sips", ["-s", "format", "png", inPath, "--out", outPath], {
+		// Resize while transcoding: the terminal shows images at ≤ ~100 cells wide, so a
+		// full-res photo (2880px) becomes a 2–3 MB APC payload for nothing. 1200px keeps
+		// them crisp on retina and cuts the Kitty payload ~5×. Runs once per image per
+		// session (the Image component caches its rendered lines).
+		execFileSync("sips", ["-s", "format", "png", "-Z", "1200", inPath, "--out", outPath], {
 			stdio: ["ignore", "ignore", "ignore"],
 			timeout: 10000,
 		});
