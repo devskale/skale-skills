@@ -1,7 +1,7 @@
 ---
 name: peep
 version: "0.9.2"
-description: Bash skill — run `peep <command>` in your shell (not an MCP tool). Read X/Twitter via the `peep` CLI: tweets, threads, timelines, bookmarks, search. Use when the user wants to read or catch up on X/Twitter.
+description: "Bash skill — run `peep <command>` in your shell (not an MCP tool). Read X/Twitter via the `peep` CLI: tweets, threads, timelines, bookmarks, search. Use when the user wants to read or catch up on X/Twitter."
 license: MIT
 ---
 
