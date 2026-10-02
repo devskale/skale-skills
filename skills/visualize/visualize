@@ -3,6 +3,7 @@
 #
 #   visualize open   <file.html>            # open an HTML file in the browser
 #   visualize share  <file.html>            # upload to throway, print the URL
+#   visualize share  --update <file>        # share under a STABLE name (create-or-get) — same URL on repeat
 #   visualize share  --dir <dir>            # upload a dir (recursively; nested files flattened)
 #   visualize validate <file.html>          # check it's one file (local refs fail, popular CDNs ok)
 #   visualize lint <file.html>              # style taste-gate: flag decorative AI-tells
@@ -69,6 +70,7 @@ visualize — render a set of things as ONE self-contained HTML document.
 Usage:
   visualize open <file.html>      # open the HTML in your browser (macOS / Linux / Windows)
   visualize share <file.html>     # upload to the throwaway store, print the URL
+  visualize share --update <file> # share under a stable name (create-or-get) — same URL on repeat
   visualize share --dir <dir>     # upload a dir (recursively; nested files flattened)
   visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
   visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
@@ -176,6 +178,32 @@ case "$cmd" in
             [ "$failed" -eq 0 ] || echo "visualize: $failed file(s) failed to upload — dir is incomplete" >&2
             echo "$dirurl"
             echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
+            exit 0
+        fi
+        # --update: share under a STABLE name (create-or-get). The first call creates a
+        # named dir at /d/<slug>; repeat calls PUT the new bytes over the same file, so the
+        # URL never changes. Slug = base name sanitised to [a-z0-9-], 5-32 chars, >=1 letter.
+        if [ "${1:-}" = "--update" ]; then
+            f="${2:-}"; [ -n "$f" ] && [ -f "$f" ] || { echo "visualize share --update: expected a file" >&2; exit 2; }
+            base="$(basename "$f")"; base="${base%%.*}"
+            slug="$(printf '%s' "$base" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/^-\+//; s/-\+$//')"
+            [ -n "$slug" ] || slug="page"
+            # slug must be 5-32 chars [a-z0-9-] with >=1 letter; pad/trim to fit.
+            while [ "${#slug}" -lt 5 ]; do slug="$slug-p"; done
+            slug="${slug:0:32}"
+            curl -sf "$THROWAWAY/api" >/dev/null 2>&1 || echo "visualize: (couldn't read throway contract; proceeding)" >&2
+            # Create-or-get the named dir, then POST the file (add_to_dir). POST with the same
+            # filename overwrites (one file per name), so repeat calls update the same URL.
+            # The file is stored as <slug>.html so the filename in the dir is stable across
+            # updates regardless of the local basename.
+            resp="$(curl -sf -X POST "$THROWAWAY/?dir=1&name=$slug")" || { echo "visualize share --update: create dir failed" >&2; exit 1; }
+            dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
+            [ -n "${dirurl:-}" ] || dirurl="$THROWAWAY/d/$slug"
+            # POST the file into the dir (create or overwrite — same URL either way).
+            curl -sf -X POST "$THROWAWAY/d/$slug" -F "file=@$f;filename=$slug.html" >/dev/null 2>&1 \
+                || { echo "visualize share --update: upload failed" >&2; exit 1; }
+            echo "$dirurl"
+            echo "visualize: shared (update) $f -> $dirurl  (stable URL; repeat to overwrite)"
             exit 0
         fi
         [ $# -eq 1 ] || { echo "visualize share: expected one file" >&2; exit 2; }
