@@ -4,6 +4,10 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **issues**: `cancel <slug>` without a reason exited 1 — the trailing
+  `[ $# -gt 0 ] && {…}` returned the test's false as the function's exit code;
+  a successful cancel looked like a failure to callers. Fixed + regression-tested
+  (suite now 56 checks).
 - **issues (new skill)** — moved from kontext.one to this package. The issues kanban serves
   9 projects (292 issues); the CLI lived in one of its users. Now: `skills/issues/` with
   launcher conventions (`--update`/`--selfcheck`, 7-day auto-update), `install.sh`/`install.bat`,
