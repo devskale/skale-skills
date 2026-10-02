@@ -24,6 +24,8 @@ echo "Output dir: $TEST_OUTPUT_DIR"
 # Cleanup previous runs
 rm -rf "$TEST_OUTPUT_DIR"
 mkdir -p "$TEST_OUTPUT_DIR"
+# Also clean up on ANY exit (failure, abort) — not just the happy path at the end.
+trap 'rm -rf "$TEST_OUTPUT_DIR"' EXIT
 
 # Helper function to run gog with account
 gog() {

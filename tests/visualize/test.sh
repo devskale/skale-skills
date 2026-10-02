@@ -38,7 +38,7 @@ grep -q 'GIT_ROOT/.git' "$SCRIPT" && ok || bad "auto-update guard must use GIT_R
 [ -f "$SKILL/references/routing.md" ] && ok || bad "routing.md missing"
 [ -f "$SKILL/references/code-forms.md" ] && ok || bad "code-forms.md missing"
 # SKILL.md convention: under 100 lines (routing depth lives in references/)
-[ "$(wc -l < "$SKILL/SKILL.md" | tr -d ' ')" -le 99 ] && ok || bad "SKILL.md over 99 lines"
+[ "$(wc -l < "$SKILL/SKILL.md" | tr -d ' ')" -le 99 ] && ok || bad "SKILL.md over 99 lines — disclose detail to references/ (progressive disclosure), don't compress"
 
 # modules.md — class-based catalog (instantiate blocks, don't hand-roll inline CSS)
 grep -q 'class="card"' "$SKILL/references/modules.md" && ok || bad "modules.md card pattern is class-based"

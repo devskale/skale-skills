@@ -165,9 +165,12 @@ See `RECOMMENDED-SKILLS.md` for the full list of sources and install commands.
 ## Running Tests
 
 **The gate:** `bash scripts/check.sh` runs on every commit (wired via `core.hooksPath .githooks` —
-run `git config core.hooksPath .githooks` once after cloning). Pre-push runs `check.sh --full`
-(all suites; live-browser suites rodney/surf skip honestly unless `LIVE_OK=1` — they drive the
-user's real desktop Chrome). Escape hatch for WIP pushes: `PUSH_SKIP_TESTS=1 git push`.
+run `git config core.hooksPath .githooks` once after cloning). Pre-push is a **depth ladder** —
+fast by default, deeper checks on request: `git push` runs lint + typecheck only (~2s);
+`CHECK=1 git push` adds the fast gate (skill-metadata + docs integrity); `RELEASE=1 git push`
+runs the full regression (all suites; live-browser suites rodney/surf skip honestly unless
+`LIVE_OK=1` — they drive the user's real desktop Chrome). Escape hatch for WIP pushes:
+`PUSH_SKIP_TESTS=1 git push` skips all checks.
 
 Per-skill suites (`~` counts above):
 
