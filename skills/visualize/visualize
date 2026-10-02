@@ -180,30 +180,27 @@ case "$cmd" in
             echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
             exit 0
         fi
-        # --update: share under a STABLE name (create-or-get). The first call creates a
-        # named dir at /d/<slug>; repeat calls PUT the new bytes over the same file, so the
-        # URL never changes. Slug = base name sanitised to [a-z0-9-], 5-32 chars, >=1 letter.
+        # --update: share under a STABLE name, then edit in place. Uses throway's own
+        # &share=<slug> (create-or-get, sliding lifetime) + PUT to replace the file, so the
+        # URL never changes and the edit history grows. Slug = base name sanitised to
+        # [a-z0-9-], 5-32 chars, >=1 letter.
         if [ "${1:-}" = "--update" ]; then
             f="${2:-}"; [ -n "$f" ] && [ -f "$f" ] || { echo "visualize share --update: expected a file" >&2; exit 2; }
             base="$(basename "$f")"; base="${base%%.*}"
             slug="$(printf '%s' "$base" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed 's/^-\+//; s/-\+$//')"
             [ -n "$slug" ] || slug="page"
-            # slug must be 5-32 chars [a-z0-9-] with >=1 letter; pad/trim to fit.
             while [ "${#slug}" -lt 5 ]; do slug="$slug-p"; done
             slug="${slug:0:32}"
-            curl -sf "$THROWAWAY/api" >/dev/null 2>&1 || echo "visualize: (couldn't read throway contract; proceeding)" >&2
-            # Create-or-get the named dir, then POST the file (add_to_dir). POST with the same
-            # filename overwrites (one file per name), so repeat calls update the same URL.
-            # The file is stored as <slug>.html so the filename in the dir is stable across
-            # updates regardless of the local basename.
-            resp="$(curl -sf -X POST "$THROWAWAY/?dir=1&name=$slug")" || { echo "visualize share --update: create dir failed" >&2; exit 1; }
+            # First call: &share= creates the named dir + file (idempotent).
+            resp="$(curl -sf -X POST "$THROWAWAY/?name=$slug.html&share=$slug" --data-binary @"$f")" \
+                || { echo "visualize share --update: upload failed" >&2; exit 1; }
             dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
             [ -n "${dirurl:-}" ] || dirurl="$THROWAWAY/d/$slug"
-            # POST the file into the dir (create or overwrite — same URL either way).
-            curl -sf -X POST "$THROWAWAY/d/$slug" -F "file=@$f;filename=$slug.html" >/dev/null 2>&1 \
-                || { echo "visualize share --update: upload failed" >&2; exit 1; }
+            # PUT replaces the file in place (edit, not re-upload) — history grows, URL stable.
+            curl -sf -X PUT "$THROWAWAY/d/$slug/$slug.html" --data-binary @"$f" >/dev/null 2>&1 \
+                || { echo "visualize share --update: edit failed" >&2; exit 1; }
             echo "$dirurl"
-            echo "visualize: shared (update) $f -> $dirurl  (stable URL; repeat to overwrite)"
+            echo "visualize: shared (update) $f -> $dirurl  (stable URL; edit in place)"
             exit 0
         fi
         [ $# -eq 1 ] || { echo "visualize share: expected one file" >&2; exit 2; }

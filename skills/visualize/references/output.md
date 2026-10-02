@@ -91,13 +91,11 @@ For **print**, capture at 3× for a clean A4/Letter raster.
 ## Sharing & updating a URL
 
 `visualize share <file.html>` uploads to throway and prints a **fresh URL** each time
-(expires ~4h, public). To iterate on the same page under a **stable URL**, use
-`visualize share --update <file.html>`:
+(expires ~4h, public). For a **stable URL** you can keep overwriting, use
+`visualize share --update <file.html>` — it stores under a named dir (`/d/<slug>`) and
+edits it in place, so the URL never changes. This is throway's `&share=` + PUT-edit
+pattern; the local file stays the durable copy.
 
-- It derives a slug from the filename (sanitised to `[a-z0-9-]`, 5–32 chars) and creates a
-  named dir at `/d/<slug>` (create-or-get).
-- The file is stored as `<slug>.html`; repeat calls **overwrite** it, so the URL never changes.
-- This is the right call when you're going to re-share the same page as you refine it —
-  the reader keeps one link, you keep overwriting its content.
-- The dir TTL is 7d (sliding): it stays alive as long as you keep updating; a plain `share`
-  is 4h. Both are public; the local file is always the durable copy.
+Throway is itself progressive — for the full contract (sliding lifetimes, write-tokens,
+edit history) read its own docs: `curl https://skale.dev/throway/write_for_agents` or
+`/help/markdown` / `/help/dirs`.
