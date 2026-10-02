@@ -4,6 +4,14 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **issues (new skill)** — moved from kontext.one to this package. The issues kanban serves
+  9 projects (292 issues); the CLI lived in one of its users. Now: `skills/issues/` with
+  launcher conventions (`--update`/`--selfcheck`, 7-day auto-update), `install.sh`/`install.bat`,
+  and a 52-check test suite (`tests/issues/test.sh`, sandboxed `ISSUES_DIR`) covering today's
+  regressions: `ls` flags without a value (was: `unbound variable` crash), bad slugs (`|`/tab/space/
+  `/` were accepted and broke pipe-separated rows), and `done <slug>` (was: silently listed archive
+  instead of setting DONE). kontext.one's `k.sh setup-issues` now sources the CLI from this package.
+- peep SKILL.md: fixed YAML frontmatter parse error (unquoted `CLI: ` colon-space in description).
 - **pre-push hook — depth ladder, fast by default.** `git push` läuft jetzt nur lint +
   typecheck (~2s statt der vollen Regression). Tiefer nur on request: `CHECK=1 git push`
   (fast gate + skill-metadata + docs), `RELEASE=1 git push` (volle Regression). Der alte
