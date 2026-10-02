@@ -90,6 +90,24 @@ Concretely, this means:
 **Rule of thumb:** if the user can see the image inline, the model should only see text about it.
 The image bytes belong in the display layer, not the model context.
 
+### Two different conversions — label vs. pixels
+
+There are **two separate conversions** in the pipeline, and they are NOT the same thing:
+
+- **pi's `processImage()` (pi-Kern, `read.js`)** — normalizes the **MIME label**, not the pixels.
+  `normalizeSupportedImageMimeType()` maps `image/jpg`→`image/jpeg` and leaves PNG/JPEG/WebP/GIF
+  as-is; only unknown formats (BMP, AVIF) are converted to PNG. So `read` on a WebP yields a
+  WebP, not a PNG.
+- **our `toDisplayPng()` (xmodel, `lib/image-utils.ts`)** — converts the **pixels** to PNG, and
+  only at the **display/render** stage (the Kitty/iTerm2-Graphics APC). PNG stays byte-identical;
+  non-PNG (WebP/JPEG/GIF/BMP) is transcoded via `sips` to PNG **and resized to 1200px** (so the
+  APC payload is ~5× smaller).
+
+This matters because pi's `encodeKitty()` hardcodes `f=100` (PNG) and ignores `mimeType` — so a
+WebP sent as a PNG APC is silently discarded by the terminal. `toDisplayPng()` fixes that by
+making the bytes actually PNG *before* the APC. See the `inline-image-not-rendering` issue for
+full root-cause.
+
 ### Display vs. understand (`read` vs. `read_image` / `/readimg`)
 
 `read` on an image routes through a three-way matrix (v0.5.1):
