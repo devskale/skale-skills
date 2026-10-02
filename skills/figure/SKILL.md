@@ -1,7 +1,7 @@
 ---
 name: figure
 version: "1.2.1"
-description: "Hand-drawn 'Daily Dose of DS'-style architecture / pipeline / workflow figures from a small spec — sketchy Excalidraw-style nodes, pastel fills, dashed arrows, numbered step badges, semantic colour coding. Bundles a Node compositor that assembles CC0 icons + the Patrick Hand font into matching SVG + PNG. Same spec → identical figure every time. Use when the user wants to draw, create, or render an architecture diagram, pipeline figure, workflow diagram, or any .fig.mjs. Triggers: draw a diagram, architecture figure, pipeline figure, render a figure, .fig.mjs, make a diagram."
+description: Draw hand-drawn-style architecture or workflow figures (sketchy Excalidraw look) as SVG + PNG from a small .fig.mjs spec. Use when the user wants a presentation-style diagram figure.
 metadata:
   author: skale-dev
 disable-model-invocation: true

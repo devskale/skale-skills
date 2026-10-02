@@ -1,7 +1,7 @@
 ---
 name: fetch-url
 version: "2.8.3"
-description: "Bash skill — NOT an MCP tool: run `fetch-url \"url\"` in your shell. Fetch and extract readable text from any web page — auto-selects the best backend (w3m, lynx, jina, markdown, chrome) with smart fallback. Use when the user wants to read an article, docs, or scrape text from a page. Triggers on: fetch this URL, read this page, extract the text, scrape this site, get the article content. Works on Reddit, StackOverflow, GitHub, docs sites, and more."
+description: "Bash skill — run `fetch-url \"url\"` in your shell (not an MCP tool). Fetch and extract readable text from any web page. Use when the user wants to read an article, docs, or scrape a page."
 ---
 
 # Fetch URL

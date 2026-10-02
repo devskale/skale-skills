@@ -17,6 +17,9 @@ banner() { printf '\n── %s ──\n' "$1"; }
 banner "Biome lint + typecheck"
 if bash scripts/lint.sh; then echo "ok"; else FAIL=1; echo "FAIL: lint/typecheck" >&2; fi
 
+banner "Skill metadata (description hygiene)"
+if bash tests/skill-metadata/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: skill-metadata" >&2; fi
+
 banner "Docs integrity (dead links, orphans)"
 if bash tests/docs/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: docs" >&2; fi
 

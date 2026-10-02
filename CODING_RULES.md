@@ -112,6 +112,32 @@ adding/removing/renaming a resource). Status badges:
 
 ### File Structure
 
+#### SKILL.md `description` — the always-loaded context budget
+
+The frontmatter `description` sits in every session's context for every skill, every turn.
+It is a **routing pointer, not documentation**. Enforced by `tests/skill-metadata/test.sh`
+(hard cap 600 chars; target median ≈ 200).
+
+A description is exactly two things:
+
+1. **What it does** — one sentence.
+2. **Use when** — the routing signal: when should the agent reach for this skill.
+
+Banned from descriptions (they live in the body, loaded on demand):
+
+- **Mechanics** — backends, auth methods, flags, install steps, config keys
+- **Feature enumerations** — one branch written twelve ways ("tweets/threads/replies,
+  mentions, timelines, home feed, bookmarks, likes, news/trending, lists") collapses to
+  "tweets, threads, timelines, bookmarks, search"
+- **Trigger synonyms** — "read a tweet, tweet thread, X, Twitter" is one trigger, not four
+- **Load-bearing exceptions that stay**: the `Bash skill — run \`cmd\` in your shell (not an
+  MCP tool)` flag (routing-critical) and user-invoked skills may skip the Use-when clause
+  entirely (`disable-model-invocation: true` needs no routing signal — Matt Pocock's
+  `implement` is 56 chars).
+
+Benchmark (2026-10-01, medians): mattpocock/skills 136 · anthropics/skills 289 ·
+emilkowalski/skills 425. Ours went 535 → 191 in this pass; the test keeps it there.
+
 Every skill must have:
 
 ```

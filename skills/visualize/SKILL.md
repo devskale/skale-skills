@@ -1,7 +1,7 @@
 ---
 name: visualize
 version: "1.8.0"
-description: "Explain or present a topic: answer it with the SMALLEST view that makes the point — inline pseudocode, call tree, component tree, annotated file tree, or a matched-shape diff in chat — and render a set of things as ONE self-contained HTML document with a URL. Understands what you want (a codebase, modules, data, a plan, a comparison, an architecture, a set of items, or a structured report with findings), picks the right form, and builds a single portable HTML file — then opens it locally and optionally shares it as a short-lived URL. Triggers on: visualize, show me, explain this, make me a page, render this as HTML, show this as a diagram/page, turn this into a report, generate a report, put it on a page."
+description: Explain or present with the smallest view that makes the point — inline code forms or one self-contained HTML page with a shareable URL. Use when the user wants to visualize, compare, explain, or turn data/code into a page, diagram, or report.
 ---
 
 # visualize — one self-contained HTML for any set of things
