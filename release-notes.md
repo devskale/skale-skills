@@ -4,6 +4,29 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **surf 1.5.0 — parallel sessions, smarter new/close.**
+  - `surf --session <name>`: der Target-Pin liegt pro Session in
+    `~/.config/surf/target-<name>` — parallele surf-Agenten überschreiben sich
+    nicht mehr gegenseitig den Pin (gleiches Modell wie `rodney --session`).
+  - `new` pinnt den frisch geöffneten Tab als Target — `here`/`text`/`eval`
+    lesen den Pin, nicht den Front-Tab; vorher arbeitete man nach `new`
+    unbeabsichtigt auf dem alten Ziel.
+  - `close [wN.tN]` schließt einen konkreten Tab per Ref (vorher wurden
+    Argumente still ignoriert und immer der Pin geschlossen); ein Pin auf den
+    Tab wird mit gelöscht.
+  - Tests: [9] läuft gegen eine lokale `file://`-Fixture (example.com hat sein
+    Markup im Wild geändert und brach die Content-Asserts) und räumt jeden
+    geöffneten Tab wieder ab; [12] echter Pin-Isolationstest. Suite 52/52.
+- **rodney 0.6.1 (devskale fork) — parallel sessions & page reuse.**
+  - `rodney --session <name>`: State unter `~/.rodney-sessions/<name>/` — jede
+    Session besitzt eigene `active_page` und eigenen Chrome; `stop` killt nur
+    den eigenen Browser.
+  - `open <url> --reuse`: wechselt zu einer bestehenden Page mit der URL statt
+    die aktive Page wegzunavigieren (Trailing-Slash normalisiert) — parallele
+    Sessions konvergieren auf EINER Page statt sie N-mal zu öffnen.
+  - `page t:<targetID>`: Pinning per stabiler Target-ID, drift-sicher wenn
+    parallele Sessions die Indizes verschieben; `pages` listet `t:`-IDs.
+  - Test-Suite gegen lokale Fixture umgestellt (49/49).
 - **issues**: `cancel <slug>` without a reason exited 1 — the trailing
   `[ $# -gt 0 ] && {…}` returned the test's false as the function's exit code;
   a successful cancel looked like a failure to callers. Fixed + regression-tested
