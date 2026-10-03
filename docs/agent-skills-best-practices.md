@@ -137,8 +137,31 @@ Optional fields (per spec):
 Platform-specific extensions (not in open spec):
 
   disable-model-invocation
-    When true, prevents the agent from invoking the model while
-    processing this skill. Used for instruction-only skills.
+    When true, the skill is HIDDEN from the agent's skill list
+    (system prompt) and can never be auto-selected by the model.
+    Still installed and reachable: the user's explicit /skill:name
+    command loads it, and its shell command (if any) always works.
+    Use for skills whose instructions should enter context only on
+    explicit request -- e.g. shell-CLI wrappers (pdf2md, peep) or
+    skills with side effects the user must control (cloud uploads).
+
+Invocation modes (canonical table -- pi semantics, same idea elsewhere):
+
+  |                                          | default (no flag) | disable-model-invocation: true |
+  |------------------------------------------|-------------------|--------------------------------|
+  | In the agent's skill list (system prompt)? | yes (name + description) | no -- invisible        |
+  | Agent may auto-load it when the task matches | yes            | no                             |
+  | User can force-load via /skill:name        | yes               | yes                            |
+  | Shell command (if any) executable          | yes               | yes                            |
+  | Usable for the rest of the session after /skill:name | yes    | yes                            |
+  | Context cost when unused                   | 1 line            | 0                              |
+
+  Three sentences: at session start pi puts each skill's name + one-line
+  description into the system prompt -- nothing else. When a task matches a
+  description, the agent loads the full SKILL.md itself. With
+  disable-model-invocation the skill is not in that list at all, so only
+  the user's /skill:name (or running its shell command directly) brings
+  it in; the flag never blocks execution, only unsolicited loading.
 
 Description writing formula:
   [What the skill does] + [When to use it] + [Specific trigger phrases]
