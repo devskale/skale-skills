@@ -30,7 +30,27 @@ done
 # get_target and read these two globals; they must not reach around the seam
 # (e.g. calling osascript directly to run JS, or re-deriving the target).
 # ──────────────────────────────────────────────────────────────────────
+# Parse --session <name> from ANY position (before main dispatch): routes the
+# target pin to ~/.config/surf/target-<name> so parallel surf sessions each
+# own their pinned tab instead of stepping on the shared ~/.config/surf/target.
+# Equivalent to SURF_TARGET_FILE=~/.config/surf/target-<name>.
+_surf_session=""
+_args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --session)
+      [ $# -ge 2 ] || { echo "surf: --session needs a name" >&2; exit 1; }
+      _surf_session="$2"; shift 2 ;;
+    *) _args+=("$1"); shift ;;
+  esac
+done
+set -- ${_args[@]+"${_args[@]}"}
+
 APP="$(_surf_pick_app)"
-TARGET_FILE="${SURF_TARGET_FILE:-$HOME/.config/surf/target}"
+if [ -n "$_surf_session" ]; then
+  TARGET_FILE="$HOME/.config/surf/target-$_surf_session"
+else
+  TARGET_FILE="${SURF_TARGET_FILE:-$HOME/.config/surf/target}"
+fi
 
 main "$@"

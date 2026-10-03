@@ -88,23 +88,54 @@ if [ "$(uname)" != "Darwin" ]; then
 elif ! command -v osascript &>/dev/null; then
     echo "  SKIP: no osascript"
 else
-    # open a deterministic page in a fresh tab
-    surf new "https://example.com" >/dev/null 2>&1 && sleep 1.5 || true
-    assert "here returns URL"        "surf here 2>/dev/null | grep -q 'example.com'"
-    assert "text h1 reads"           "[ \"\$(surf text 'h1' 2>/dev/null)\" = 'Example Domain' ]"
+    # cleanup helper: close every tab whose URL starts with $1 (test-owned tabs)
+    close_tabs_by_prefix() {
+        local prefix="$1" tab url
+        surf tabs --json 2>/dev/null | python3 -c "
+import sys, json
+try: data = json.load(sys.stdin)
+except Exception: sys.exit(0)
+for t in data:
+    print(t['window'], t['tab'], t['url'])
+" | while read -r W T url; do
+            case "$url" in "$prefix"*) surf close "w$W.t$T" >/dev/null 2>&1 || true ;; esac
+        done
+    }
+    # deterministic local page — no network, no content drift (example.com
+    # changed its markup in the wild and broke these asserts once)
+    FIXTURE="$TMPDIR/surf-test-fixture.html"
+    cat > "$FIXTURE" <<'HTML'
+<!doctype html><html><head><title>Surf Fixture</title></head>
+<body><h1>Fixture Head</h1><p>one</p><p>two</p></body></html>
+HTML
+    FIXTURE_URL="file://$FIXTURE"
+    surf new "$FIXTURE_URL" >/dev/null 2>&1 && sleep 1 || true
+    assert "here returns URL"        "surf here 2>/dev/null | grep -q 'surf-test-fixture'"
+    assert "text h1 reads"           "[ \"\$(surf text 'h1' 2>/dev/null)\" = 'Fixture Head' ]"
     assert "count p is 2"            "[ \"\$(surf count 'p' 2>/dev/null)\" = '2' ]"
     assert "eval returns JSON-ish"   "surf eval '1+1' 2>/dev/null | grep -q '2'"
-    assert "title works"             "surf title 2>/dev/null | grep -qi 'example'"
+    assert "title works"             "surf title 2>/dev/null | grep -qi 'Surf Fixture'"
     # reuse: opening the same URL reuses the open tab (trailing slash normalized)
-    REUSE_OUT=$(surf open "https://example.com/" 2>&1 || true)
+    REUSE_OUT=$(surf open "$FIXTURE_URL/" 2>&1 || true)
     assert "open reuses existing tab"   "printf '%s' "$REUSE_OUT" | grep -q '^reuse:'"
     # --new forces a fresh navigation (no reuse)
-    NAV_OUT=$(surf open --new "https://example.com" 2>&1 || true)
+    NAV_OUT=$(surf open --new "$FIXTURE_URL" 2>&1 || true)
     assert "open --new navigates (no reuse)" "printf '%s' "$NAV_OUT" | grep -q '^ok:'"
     # prefix tier: open a deeper path, then open its prefix → reuse the deeper tab
-    surf new "https://example.org/a/b/c" >/dev/null 2>&1 && sleep 1.5 || true
-    PREFIX_OUT=$(surf open "https://example.org/a/b" 2>&1 || true)
+    FIXTURE2="$TMPDIR/surf-test-fixture2.html"
+    printf '<!doctype html><title>D2</title>' > "$FIXTURE2"
+    surf new "file://$FIXTURE2" >/dev/null 2>&1 && sleep 1 || true
+    PREFIX_OUT=$(surf open "file://$TMPDIR" 2>&1 || true)
     assert "open prefix reuses deeper tab" "printf '%s' "$PREFIX_OUT" | grep -q '^reuse:'"
+    # cleanup: close all tabs this test opened — leave the user's browser as found
+    close_tabs_by_prefix "file://$FIXTURE"
+    close_tabs_by_prefix "file://$FIXTURE2"
+    LEFT=$(surf tabs --json 2>/dev/null | python3 -c "
+import sys, json
+try: data = json.load(sys.stdin)
+except Exception: data = []
+print(sum(1 for t in data if (t.get('url') or '').startswith('file://') and 'surf-test-fixture' in t['url']))")
+    assert "test tabs cleaned up"   "[ "$LEFT" = "0" ]"
 fi
 echo ""
 
@@ -128,6 +159,50 @@ AS_EXPECTED='"say \"hi\"\\ done"'
 AS_OUT=$(bash -c 'source scripts/lib/engine.sh; as_str "$1"' _ "$AS_IN" 2>&1)
 if [ "$AS_OUT" = "$AS_EXPECTED" ]; then PASS=$((PASS+1)); else
     FAIL=$((FAIL+1)); echo "  FAIL: as_str escapes quotes+backslash (got: $AS_OUT)"
+fi
+echo ""
+
+# ── 12. --session <name>: parallel session state ──────────────────────
+echo "[12] --session parallel state..."
+if [ "$(uname)" != "Darwin" ]; then
+    echo "  SKIP: not macOS"
+else
+    S=scripts/surf.sh
+    assert "--session without name errors" "! bash $S --session 2>/dev/null"
+    # real behavior: two sessions pin different tabs in the user's real Chrome,
+    # each pin lands in its own file, and neither touches the global target.
+    # Use tabs that exist (first two from surf tabs) so the pins are real.
+    PINS=$(surf tabs --json 2>/dev/null | python3 -c "
+import sys, json
+try: data = json.load(sys.stdin)
+except Exception: data = []
+for t in data[:2]:
+    print('w%d.t%d' % (t['window'], t['tab']))")
+    if [ "$(printf '%s\n' "$PINS" | grep -c .)" -ge 2 ]; then
+        PIN1=$(printf '%s\n' "$PINS" | sed -n 1p)
+        PIN2=$(printf '%s\n' "$PINS" | sed -n 2p)
+        TMPHOME=$(mktemp -d)
+        # baseline: no global target file
+        [ -f "$HOME/.config/surf/target" ] && cp "$HOME/.config/surf/target" "$TMPHOME/global-backup"
+        bash $S --session par1 select "$PIN1" >/dev/null 2>&1
+        bash $S --session par2 select "$PIN2" >/dev/null 2>&1
+        assert "session1 pin file exists"    "[ -s $HOME/.config/surf/target-par1 ]"
+        assert "session2 pin file exists"    "[ -s $HOME/.config/surf/target-par2 ]"
+        assert "pins differ (real isolation)" "! cmp -s $HOME/.config/surf/target-par1 $HOME/.config/surf/target-par2"
+        assert "global target untouched"      "
+            if [ -f $TMPHOME/global-backup ]; then
+                cmp -s $HOME/.config/surf/target $TMPHOME/global-backup
+            else
+                [ ! -e $HOME/.config/surf/target ]
+            fi"
+        # each session reads back ITS OWN pin (not the other's)
+        assert "session1 reads its own pin"   "bash $S --session par1 select show 2>/dev/null | grep -q "^target: $(cat $HOME/.config/surf/target-par1 | awk '{print $1, $2}')""
+        assert "session2 reads its own pin"   "bash $S --session par2 select show 2>/dev/null | grep -q "^target: $(cat $HOME/.config/surf/target-par2 | awk '{print $1, $2}')""
+        rm -f "$HOME/.config/surf/target-par1" "$HOME/.config/surf/target-par2"
+        rm -rf "$TMPHOME"
+    else
+        echo "  SKIP: need ≥2 open tabs for pin isolation test"
+    fi
 fi
 echo ""
 
