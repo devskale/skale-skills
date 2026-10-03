@@ -128,8 +128,23 @@ rm -f "$SCREENSHOT_PATH"
 
 echo ""
 
-# ── 9. No stale Chrome processes ─────────────────────────────────────
-echo "[9] Cleanup check..."
+# ── 9. Parallel sessions (--session) ────────────────────────────────
+echo "[9] Parallel sessions..."
+assert "--session without name errors" "! rodney --session status >/dev/null 2>&1"
+SESS_DIR="$HOME/.rodney-sessions/rodney-test"
+rm -rf "$SESS_DIR"
+# named session: start, verify isolated state dir, stop (kills only its own)
+rodney --session rodney-test start >/dev/null 2>&1
+assert "session state dir created"    "[ -f "$SESS_DIR/state.json" ]"
+assert "session has own chrome pid"  "python3 -c \"import json; d=json.load(open('$SESS_DIR/state.json')); exit(0 if d['chrome_pid']>0 else 1)\""
+assert "session status works"        "rodney --session rodney-test status 2>&1 | grep -q 'Browser running'"
+rodney --session rodney-test stop >/dev/null 2>&1
+assert "session stop kills own chrome" "! pgrep -f 'user-data-dir=.*rodney-sessions/rodney-test' >/dev/null 2>&1"
+rm -rf "$SESS_DIR"
+echo ""
+
+# ── 10. No stale Chrome processes ─────────────────────────────────────
+echo "[10] Cleanup check..."
 # rodney stop should have killed Chrome. Check no orphan.
 # NB: rodney uses Chromium with --remote-debugging-port=0, so match on the
 # .rodney user-data-dir, not "chrome.*remote-debugging".
@@ -138,8 +153,8 @@ ORPHANS=$(pgrep -f "user-data-dir=.*\\.rodney" 2>/dev/null | wc -l || echo 0)
 assert "no orphan Chromium" "[ $ORPHANS -eq 0 ]"
 echo ""
 
-# ── 10. Process utilities ────────────────────────────────────────────
-echo "[10] Process utilities..."
+# ── 11. Process utilities ────────────────────────────────────────────
+echo "[11] Process utilities..."
 assert "rodney-cleanup runs"        "scripts/rodney-cleanup.sh >/dev/null 2>&1"
 assert "rodney-cleanup --json valid" "scripts/rodney-cleanup.sh --json | grep -q '\"total_chrome_processes\"'"
 assert "rodney-ps runs"             "scripts/rodney-ps.sh >/dev/null 2>&1"
