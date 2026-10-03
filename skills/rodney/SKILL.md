@@ -81,8 +81,8 @@ cd rodney
 go build -ldflags="-s -w" -o ~/.local/bin/rodney .   # put it on your PATH
 ```
 
-Verify with `rodney --version` (expect a recent release, e.g. `0.6.1` or newer — don't
-rely on a hardcoded version).
+Verify with `rodney --version` (expect `0.7.0` or newer — don't rely on a hardcoded
+version).
 
 ## Project Setup
 
@@ -354,7 +354,7 @@ Adapt strategy after 3+ same failures, escalate after 5+. Full decision matrix:
 
 ## References
 
-- **`rodney --help`** — **canonical and primary** command/flag/env list. Run it first to self-discover the installed feature set; the binary updates independently of these docs (installer pulls the latest release), so it may know commands this skill has never seen. When a command here doesn't behave as documented, or you need a capability the docs lack: check `--help` first, trust the binary over the docs. New commands you find should surface into `references/commands.md` (the suite's drift check fails until documented).
+- **Tiered help — canonical and primary.** `rodney --help` = grouped overview of every command/flag/env var; `rodney help <command>` = that command's flags + examples. Run both first to self-discover the installed feature set — the binary updates independently of these docs (installer pulls the latest release), so it may know commands this skill has never seen. When a command here doesn't behave as documented, or you need a capability the docs lack: trust the binary's help over these docs. New commands you find should surface into `references/commands.md` (the suite's drift check fails until documented).
 - **[references/commands.md](references/commands.md)** — curated full command reference with all flags and options. Read when you need details on a specific command.
 - **[references/examples.md](references/examples.md)** — Ready-to-use workflow scripts for scraping, form filling, smoke tests, and accessibility audits.
 - **[references/debugging.md](references/debugging.md)** — Non-obvious debugging patterns: screenshot time-series, form validation checks, exit code chaining, and visible-mode debugging.
