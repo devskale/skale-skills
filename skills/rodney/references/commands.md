@@ -160,7 +160,7 @@ rodney block "*api.example.com/expensive*" --method POST
 
 | Command | Description |
 |---------|-------------|
-| `rodney screenshot [-w N] [-h N] [file]` | Page screenshot (optional viewport size) |
+| `rodney screenshot [-w N] [-h N] [--full] [file]` | Page screenshot (optional viewport size; `--full` forces full-page capture) |
 | `rodney screenshot-el <selector> [file]` | Screenshot specific element |
 
 ## Tabs
@@ -179,6 +179,20 @@ rodney block "*api.example.com/expensive*" --method POST
 | `rodney console [--level L] [--json] [--browser] [--follow] [--clear]` | Read console output. No collector running: live stream (Ctrl+C stops). Collector running: print buffered messages. `--level` log\|info\|warn\|error\|debug · `--json` JSON lines · `--browser` also browser log entries · `--follow` tail mode · `--clear` print and empty buffer |
 | `rodney console-start` | Start background console collector (captures logs between commands into `console.jsonl`) |
 | `rodney console-stop` | Stop collector and remove the buffer |
+
+## Network Requests
+
+| Command | Description |
+|---------|-------------|
+| `rodney requests [--json] [--follow] [--clear]` | Read network requests. No collector: live view (Ctrl+C stops). Collector: print buffered requests. `--json` JSON lines · `--follow` tail mode · `--clear` print and empty buffer |
+| `rodney requests-start` | Start background request collector (captures into `requests.jsonl`) |
+| `rodney requests-stop` | Stop collector and remove the buffer |
+
+## Dialogs
+
+| Command | Description |
+|---------|-------------|
+| `rodney dialog [--dismiss] [--text MSG] [--json]` | Handle JS dialogs (alert/confirm/prompt/beforeunload) as a persistent foreground process — arms BEFORE the dialog opens (an already-open dialog is unreachable; start this first, then trigger). Default accepts; `--dismiss` cancels; `--text MSG` answers prompts; `--json` JSON lines |
 
 ## Element Checks (exit 1 on failure)
 
