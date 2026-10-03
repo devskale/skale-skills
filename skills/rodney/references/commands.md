@@ -1,6 +1,7 @@
 # Rodney Command Reference
 
-> **Self-discover the real command set with `rodney --help`.** This reference is a curated
+> **Self-discover the real command set with `rodney --help` + `rodney help <command>`.** This
+> reference is a curated
 > snapshot and may lag the installed binary — features evolve upstream. Always treat
 > `rodney --help` as the source of truth before relying on a command or flag listed here.
 
