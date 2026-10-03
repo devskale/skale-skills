@@ -11,7 +11,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | web-search | `web-search "query"` | ~38 | Web search via SearXNG + Duck API |
 | youtube | `youtube "query"` | ~38 | YouTube search via Invidious API with auto-fallback |
 | vtd | `vtd transcript --url '...'` | ~49 | Video/audio/transcript downloader (yt-dlp) |
-| rodney | `rodney start/open/stop` | ~37 | Headless Chrome automation |
+| rodney | `rodney start/open/stop` | ~54 | Headless Chrome automation. **Binary: Go fork at `~/code/clones/rodney` (branch `skale`) — build/test/release only on request (see its AGENTS.md)** |
 | surf | `surf open/click/read` (macOS) | ~36 | Drive your real, logged-in Chrome via AppleScript |
 | visualize | `visualize open/share/validate` | ~124 | Render any set of things as ONE self-contained HTML + share URL |
 | d2 | `d2 validate/render` | ~46 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
