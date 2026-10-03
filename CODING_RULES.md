@@ -391,6 +391,22 @@ else
 fi
 ```
 
+**Never assert on third-party page content.** Live sites change their markup
+without notice — example.com dropped `<h1>Example Domain</h1>` in Oct 2026 and
+broke two suites (surf, rodney) in one session. For content asserts, generate a
+local fixture and serve it via `file://`:
+
+```bash
+FIXTURE="$TMPDIR/mytest.html"
+printf '<!doctype html><title>T</title><h1>H</h1>' > "$FIXTURE"
+# open "file://$FIXTURE", assert against it, then CLEAN UP the opened tab
+```
+
+Deterministic, offline, drift-proof. Live network tests stay allowed for
+"does it respond at all" checks — just never `assert` on the served content.
+Also: any test that opens browser tabs must close them before exiting and
+assert the cleanup (surf's "test tabs cleaned up" check is the pattern).
+
 ## Linting & Typechecking (extensions)
 
 Run the repo's quick check on `extensions/*.ts` before shipping changes:

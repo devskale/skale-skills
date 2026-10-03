@@ -23,9 +23,23 @@ if [ "${RELEASE:-0}" = "1" ]; then
 fi
 
 if [ "${CHECK:-0}" = "1" ]; then
-    echo "pre-push: CHECK=1 — fast gate (lint + typecheck + docs integrity)"
-    bash "$ROOT/scripts/check.sh"
-    exit $?
+    echo "pre-push: CHECK=1 — fast gate + suites of skills changed in this push"
+    bash "$ROOT/scripts/check.sh" || exit $?
+    # changed-skill suites: only skills whose files are in the unpushed commits,
+    # only suites that exist — keeps the tier proportional to the change
+    changed=$(git diff --name-only "@{push}..HEAD" 2>/dev/null \
+        | grep -oE '^skills/[^/]+' | sort -u || true)
+    rc=0
+    for d in $changed; do
+        name=${d#skills/}
+        suite="$ROOT/tests/$name/test.sh"
+        if [ -x "$suite" ] || [ -f "$suite" ]; then
+            echo "── suite: $name ──"
+            bash "$suite" || rc=1
+        fi
+    done
+    [ $rc -eq 0 ] && echo "✓ changed-skill suites ok" || echo "✗ suite failures above"
+    exit $rc
 fi
 
 echo "pre-push: lint + typecheck (fast). Deeper: CHECK=1 (gate) or RELEASE=1 (full)."
