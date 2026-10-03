@@ -28,7 +28,7 @@ main() {
     reload|refresh) cmd_reload ;;
     back)   cmd_back ;;
     fwd|forward)    cmd_fwd ;;
-    close)  cmd_close ;;
+    close)  cmd_close "$@" ;;
     title)  cmd_title "$@" ;;
     url)    cmd_url "$@" ;;
     text)   cmd_text "$@" ;;

@@ -119,6 +119,14 @@ tell application "$APP"
 end tell
 OSA
   osascript -e "tell application \"$APP\" to tell front window to make new tab with properties {URL:$(as_str "$u")}" >/dev/null && echo "new tab: $u"
+  # Pin the new tab as the target: the caller almost always works on it next
+  # (here/text/eval read the pin, not the front tab). Best-effort — if the
+  # lookup fails, the previous target stays and the caller can select manually.
+  local W T NU
+  W=$(osascript -e "tell application \"$APP\" to get index of front window" 2>/dev/null) || return 0
+  T=$(osascript -e "tell application \"$APP\" to get active tab index of front window" 2>/dev/null) || return 0
+  NU=$(osascript -e "tell application \"$APP\" to get URL of active tab of front window" 2>/dev/null) || return 0
+  _surf_pin_target "$W" "$T" "$NU" 2>/dev/null || true
 }
 cmd_reload() { local tgt W T; tgt="$(get_target)"
   if [ "$tgt" = "front" ]; then osascript -e "tell application \"$APP\" to reload active tab of front window" >/dev/null && echo "reloaded"
@@ -128,7 +136,19 @@ cmd_back()   { run_js 'history.back(); "ok"'; }
 cmd_fwd()    { run_js 'history.forward(); "ok"'; }
 
 cmd_close() {
-  local tgt W T; tgt="$(get_target)"
+  # close [wN.tN] — no arg: close the pinned target (as before)
+  local tgt W T
+  if [ $# -gt 0 ] && [[ "$1" =~ ^w([0-9]+)\.t([0-9]+)$ ]]; then
+    W=${BASH_REMATCH[1]}; T=${BASH_REMATCH[2]}
+    osascript -e "tell application \"$APP\" to close tab $T of window $W" >/dev/null && echo "closed w$W.t$T"
+    # if this tab was the pin, drop the pin
+    if [ -f "$TARGET_FILE" ]; then
+      local pW pT; read -r pW pT _ < "$TARGET_FILE" 2>/dev/null || true
+      [ "$pW.$pT" = "$W.$T" ] && rm -f "$TARGET_FILE"
+    fi
+    return 0
+  fi
+  tgt="$(get_target)"
   if [ "$tgt" = "front" ]; then
     osascript -e "tell application \"$APP\" to close active tab of front window" >/dev/null && echo "closed active tab"
   else

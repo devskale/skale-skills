@@ -100,6 +100,7 @@ Ops: `title`/`url`/`text`/`html`/`attr`/`count`/`list`/`exists`/`visible`/`click
 - **`eval` returns one stringified value.** For complex shapes, return JSON: `surf eval 'JSON.stringify({...})'`.
 - **Exit codes:** `0` = success · `1` = error / assertion failed / timeout. Not-found is *not* an error for read/interact commands (they return JSON `{ok:false}` with rc 0); assertions and `wait*` return rc 1 on failure.
 - **`open` reuses by default, across ALL Chrome windows.** `surf open <url>` finds an already-open tab in any window instead of navigating — no duplicate tabs. Tier 1: exact URL match (trailing slash ignored). Tier 2: same-origin path-segment prefix — `open localhost:3000/dashboard` reuses a tab at `localhost:3000/dashboard/ai-chat`, landing on the deeper (already logged-in) page. Reuse pins the tab as the target **without stealing focus** (Chrome stays in the background). Pass `--new` to force a fresh navigation of the target tab.
+- **Parallel sessions: `--session <name>`.** The target pin is one file (`~/.config/surf/target`) — two agents running surf concurrently overwrite each other's pin. `surf --session <name> <cmd>` routes the pin to `~/.config/surf/target-<name>`, so each session owns its target. Combine with the default `open` reuse and parallel sessions converge on already-open tabs instead of opening them N times. Rodeny equivalent: `rodney --session <name>`.
 
 ## References
 
