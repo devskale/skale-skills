@@ -37,6 +37,25 @@ else
     warn "shellcheck not installed — shell gate skipped"
 fi
 
+banner "Python scripts (ruff F,E9 — the vet tier)"
+# Static bug checks for the skill Python code: pyflakes (F) + syntax (E9).
+# Style rules stay OUT of the gate on purpose (same philosophy as shellcheck
+# -S error). Skipped honestly when neither ruff nor uvx is available.
+PY_FILES=$(git ls-files 'skills/*/scripts/*.py' | grep -v '^skills/deprecated/')
+if [ -n "$PY_FILES" ]; then
+    if command -v ruff >/dev/null 2>&1; then
+        # shellcheck disable=SC2086
+        ruff check --select F,E9 $PY_FILES || FAIL=1
+    elif command -v uvx >/dev/null 2>&1; then
+        # shellcheck disable=SC2086
+        uvx ruff check --select F,E9 $PY_FILES || FAIL=1
+    else
+        warn "neither ruff nor uvx installed — python gate skipped"
+    fi
+else
+    echo "  (no python files)"
+fi
+
 banner "Skill metadata (description hygiene)"
 if bash tests/skill-metadata/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: skill-metadata" >&2; fi
 

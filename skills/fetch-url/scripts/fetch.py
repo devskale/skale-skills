@@ -620,7 +620,7 @@ def fetch_with_fallback(url: str, preferred_tool: str, settings: Dict[str, Any],
         except Exception as e:
             errors.append(f"{tool}: {e}")
 
-    raise RuntimeError(f"All tools failed:\n  " + "\n  ".join(errors))
+    raise RuntimeError("All tools failed:\n  " + "\n  ".join(errors))
 
 
 def fetch_url(url: str, tool: str = 'auto', links: bool = False, use_api: bool = False,
@@ -638,7 +638,7 @@ def fetch_url(url: str, tool: str = 'auto', links: bool = False, use_api: bool =
     if re.match(r'https?://(www\.)?reddit\.com', url):
         url = re.sub(r'https?://(www\.)?reddit\.com', 'https://old.reddit.com', url)
         if verbose:
-            print(f"Redirected to old.reddit.com for text browser support", file=sys.stderr)
+            print("Redirected to old.reddit.com for text browser support", file=sys.stderr)
 
     # API mode doesn't use fallback
     if use_api:

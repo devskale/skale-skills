@@ -163,6 +163,29 @@ echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
+# ── 12. Binary↔docs drift (progressive discovery enforcement) ────────
+echo "[12] Binary commands all documented..."
+# The binary evolves independently of this skill (installer pulls the latest
+# release). Every command the binary knows must appear in SKILL.md or
+# references/commands.md — otherwise docs lag and agents misroute. A new
+# binary feature FAILS here until documented.
+BIN_CMDS=$(rodney --help 2>/dev/null | grep -oE '^  rodney [a-z][a-z-]*' | awk '{print $2}' | sort -u || true)
+DOC_CMDS=$(grep -hoE 'rodney [a-z][a-z-]*' SKILL.md references/commands.md 2>/dev/null | awk '{print $2}' | sort -u || true)
+if [ -n "$BIN_CMDS" ]; then
+    MISSING=$(comm -23 <(echo "$BIN_CMDS") <(echo "$DOC_CMDS"))
+    if [ -z "$MISSING" ]; then
+        PASS=$((PASS+1)); echo "  ✓ all $(echo "$BIN_CMDS" | wc -l | tr -d ' ') binary commands documented"
+    else
+        FAIL=$((FAIL+1))
+        echo "  ✗ binary commands missing from docs:"
+        echo "$MISSING" | sed 's/^/      /'
+        echo "    → document them in skills/rodney/references/commands.md"
+    fi
+else
+    echo "  WARN: rodney --help unavailable (binary not installed?)"
+fi
+echo ""
+
 echo "=== Results ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"
