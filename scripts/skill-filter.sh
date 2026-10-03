@@ -150,11 +150,12 @@ for i,x in enumerate(p.get("packages",[])):
     obj["skills"]=[
         "skills/web-search/SKILL.md",
         "skills/fetch-url/SKILL.md",
+        "skills/pdf2md/SKILL.md",
         "!skills/deprecated/**",
     ]
     p["packages"][i]=obj
     json.dump(p,open(path,"w"),indent=2)
-    print("  seeded default activation: web-search + fetch-url (others opt-in via pi config)")
+    print("  seeded default activation: web-search + fetch-url + pdf2md (others opt-in via pi config)")
     sys.exit(0)
 print("  skale-skills package not found in settings — nothing to seed")
 PY

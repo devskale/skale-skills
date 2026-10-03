@@ -36,7 +36,7 @@ plain names/paths mean "only these load":
 // ~/.pi/agent/settings.json
 { "packages": [{
   "source": "git:github.com/devskale/skale-skills",
-  "skills": ["web-search", "fetch-url"],   // only these two skills load
+  "skills": ["web-search", "fetch-url", "pdf2md"],   // only these load (pdf2md is disable-model-invocation)
   "extensions": ["extensions/heartbeat.ts",
                  "extensions/xmodel.ts",
                  "extensions/statusline.ts"]
