@@ -246,6 +246,11 @@ rodney console              # Live console log stream (Ctrl+C stops)
 rodney console-start        # Background collector → console.jsonl
 rodney console [--clear]    # Read + empty the collector buffer
 rodney console-stop         # Stop collector
+rodney requests [--json]    # Network requests (live or collector-buffered)
+rodney requests-start/stop  # Background request collector → requests.jsonl
+rodney dialog [--dismiss]   # Arm JS-dialog handler BEFORE triggering
+                            #   (accept default; --dismiss cancels; --text answers)
+rodney screenshot --full    # Explicit full-page capture
 ```
 
 ### Assertions (exit 1 on failure)
