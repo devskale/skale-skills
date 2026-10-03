@@ -175,7 +175,12 @@ rodney pdf [file]                             # Export as PDF
 
 ```bash
 rodney click <selector>            # Click element
-rodney input <selector> <text>     # Type into input
+rodney input <selector> <text>     # Type into input (sets .value directly)
+rodney type <text>                 # Real keyboard typing into focused element
+                                   #   (fires key events — SPA validation reacts)
+rodney press <key> [key ...]       # Real key events: enter, tab, ctrl+a, shift+tab
+rodney scroll <x> <y> [--steps N]  # Scroll page by pixels (negative y = up)
+rodney scroll-el <selector>        # Scroll element into view
 rodney clear <selector>            # Clear input
 rodney select <selector> <value>   # Select dropdown option
 rodney submit <selector>           # Submit form
@@ -232,10 +237,15 @@ rodney stop-video [file]        # Stop and save (.gif default, .mp4 needs ffmpeg
 
 ```bash
 rodney pages                # List tabs (* marks active, t:<id> = stable target ID)
+rodney pages --json         # Machine-readable: index, targetId, title, url, active
 rodney page <index|t:id>    # Switch tab — t:<id> is drift-proof when parallel
                             #   sessions shift the indices
 rodney newpage [url]        # Open new tab
-rodney closepage [index]    # Close tab
+rodney closepage [index|t:id]  # Close tab
+rodney console              # Live console log stream (Ctrl+C stops)
+rodney console-start        # Background collector → console.jsonl
+rodney console [--clear]    # Read + empty the collector buffer
+rodney console-stop         # Stop collector
 ```
 
 ### Assertions (exit 1 on failure)
@@ -344,7 +354,7 @@ Adapt strategy after 3+ same failures, escalate after 5+. Full decision matrix:
 
 ## References
 
-- **`rodney --help`** — **canonical and primary** command/flag/env list. Run it first to self-discover the installed feature set; it may be newer than the docs below.
+- **`rodney --help`** — **canonical and primary** command/flag/env list. Run it first to self-discover the installed feature set; the binary updates independently of these docs (installer pulls the latest release), so it may know commands this skill has never seen. When a command here doesn't behave as documented, or you need a capability the docs lack: check `--help` first, trust the binary over the docs. New commands you find should surface into `references/commands.md` (the suite's drift check fails until documented).
 - **[references/commands.md](references/commands.md)** — curated full command reference with all flags and options. Read when you need details on a specific command.
 - **[references/examples.md](references/examples.md)** — Ready-to-use workflow scripts for scraping, form filling, smoke tests, and accessibility audits.
 - **[references/debugging.md](references/debugging.md)** — Non-obvious debugging patterns: screenshot time-series, form validation checks, exit code chaining, and visible-mode debugging.

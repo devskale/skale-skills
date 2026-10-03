@@ -52,7 +52,11 @@ rodney js 'document.querySelectorAll("a").length'
 | Command | Description |
 |---------|-------------|
 | `rodney click <selector>` | Click element |
-| `rodney input <selector> <text>` | Type text into input field |
+| `rodney input <selector> <text>` | Type text into input field (sets `.value` directly) |
+| `rodney type <text>` | Type text as **real keyboard input** into the focused element — fires key/input events, so SPA validation, autocomplete, and search-as-you-type react to it (unlike `input`) |
+| `rodney press <key> [key ...]` | Press keys as **real keydown/keyup events** — combos like `ctrl+a`, `shift+tab`; friendly names (`enter`, `tab`, `escape`, arrows, `f1`–`f12`) or single characters |
+| `rodney scroll <x> <y> [--steps N]` | Scroll page by pixels (negative y = up); `--steps N` for smooth scrolling (lazy-loading feeds) |
+| `rodney scroll-el <selector>` | Scroll an element into view |
 | `rodney clear <selector>` | Clear input field |
 | `rodney file <selector> <path\|->` | Set file on file input (`-` for stdin) |
 | `rodney download <sel> [file\|-]` | Download href/src target (`-` for stdout) |
@@ -162,10 +166,18 @@ rodney block "*api.example.com/expensive*" --method POST
 
 | Command | Description |
 |---------|-------------|
-| `rodney pages` | List all tabs (* marks active) |
-| `rodney page <index>` | Switch to tab by index |
+| `rodney pages [--json]` | List all tabs (* marks active, `t:<id>` = stable target ID); `--json` → machine-readable rows (index, targetId, title, url, active) |
+| `rodney page <index\|t:id>` | Switch tab — `t:<id>` is drift-proof when parallel sessions shift the indices |
 | `rodney newpage [url]` | Open new tab |
-| `rodney closepage [index]` | Close tab (active if no index) |
+| `rodney closepage [index\|t:id]` | Close tab (active if no arg; `t:<id>` closes by stable ID) |
+
+## Console Logs
+
+| Command | Description |
+|---------|-------------|
+| `rodney console [--level L] [--json] [--browser] [--follow] [--clear]` | Read console output. No collector running: live stream (Ctrl+C stops). Collector running: print buffered messages. `--level` log\|info\|warn\|error\|debug · `--json` JSON lines · `--browser` also browser log entries · `--follow` tail mode · `--clear` print and empty buffer |
+| `rodney console-start` | Start background console collector (captures logs between commands into `console.jsonl`) |
+| `rodney console-stop` | Stop collector and remove the buffer |
 
 ## Element Checks (exit 1 on failure)
 
