@@ -11,6 +11,7 @@ Complete reference for `surf`, the macOS AppleScript CLI for your real Google Ch
 | `--version` | print version |
 | `--selfcheck` | version + skill dir + last update |
 | `--update` | `git pull` the skill repo + refresh stamp |
+| `--session <name>` | route the target pin to `~/.config/surf/target-<name>` — parallel surf sessions each own their target |
 | `help` / `-h` / `--help` | usage |
 
 ## Targets
@@ -29,10 +30,10 @@ The target is stored in `~/.config/surf/target` as `W T URL` (override with `SUR
 | `surf tabs` | every window → tab as `wN.tN  URL  \|  title`. `--json` → `[{window,tab,url,title}]` |
 | `surf here` | `URL \| title` of the target tab. `--json` → `{window,tab,url,title}` |
 | `surf open <url> [--new]` | reuse an open tab **in any Chrome window** (exact URL, then same-origin path-segment prefix) or navigate the target tab; `--new` forces navigation. Reuse pins the target without stealing focus |
-| `surf new [<url>]` | new tab in a normal (non-incognito, JS-capable) window (default `about:blank`) |
+| `surf new [<url>]` | new tab in a normal (non-incognito, JS-capable) window (default `about:blank`); pins the new tab as the target |
 | `surf reload` | reload target tab |
 | `surf back` / `surf fwd` | `history.back()` / `history.forward()` |
-| `surf close` | close the target (or active) tab; clears a pinned target |
+| `surf close [wN.tN]` | close the target (or active) tab, or a specific tab by ref; clears a pinned target that pointed there |
 
 ## Waiting (async-ready)
 

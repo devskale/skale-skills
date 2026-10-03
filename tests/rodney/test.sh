@@ -91,20 +91,28 @@ echo ""
 
 # ── 8. Live test: start → open → title → stop ───────────────────────
 echo "[8] Live browser test..."
+# local fixture — no network, no content drift (example.com changed its markup
+# in the wild and broke these asserts once)
+FIXTURE="$TMPDIR/rodney-test-fixture.html"
+cat > "$FIXTURE" <<'HTML'
+<!doctype html><html><head><title>Rodney Fixture</title></head>
+<body><h1>Fixture Head</h1><p>one</p></body></html>
+HTML
+
 rodney start 2>&1 | tail -1
 sleep 1
 
-rodney open https://example.com 2>&1 | tail -1
+rodney open "file://$FIXTURE" 2>&1 | tail -1
 rodney waitstable 2>&1 | tail -1
 
 TITLE=$(rodney title 2>&1)
-assert "title is 'Example Domain'" "[ '$TITLE' = 'Example Domain' ]"
+assert "title is 'Rodney Fixture'" "[ '$TITLE' = 'Rodney Fixture' ]"
 
 H1=$(rodney text "h1" 2>&1)
-assert "h1 text found" "[ '$H1' = 'Example Domain' ]"
+assert "h1 text found" "[ '$H1' = 'Fixture Head' ]"
 
 URL=$(rodney url 2>&1)
-assert "url contains example.com" "echo '$URL' | grep -q 'example.com'"
+assert "url contains fixture" "echo '$URL' | grep -q 'rodney-test-fixture'"
 
 # Screenshot test
 SCREENSHOT_PATH="/tmp/rodney-test.png"

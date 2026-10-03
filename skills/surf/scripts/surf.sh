@@ -4,7 +4,7 @@
 # Sources lib/*.sh (engine, target, nav, read, wait, interact, assert, shot,
 # meta, help-overview, help-command, main), sets globals, and dispatches.
 set -euo pipefail
-VERSION="1.4.7"
+VERSION="1.5.0"
 SURF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_ROOT="$(cd "$SURF_DIR/.." && pwd)"
 

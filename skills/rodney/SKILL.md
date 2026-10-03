@@ -132,6 +132,9 @@ matrix, see **[docs/browser-use/which-browser-tool.md](../../docs/browser-use/wh
 
 ```bash
 rodney open <url>           # Navigate (auto-adds http://)
+rodney open <url> --reuse   # Switch to an existing page at that URL instead
+                            #   of navigating the active page away (parallel
+                            #   sessions converge on ONE page)
 rodney back                 # Go back
 rodney forward              # Go forward
 rodney reload [--hard]      # Reload (bypass cache with --hard)
@@ -221,8 +224,9 @@ rodney stop-video [file]        # Stop and save (.gif default, .mp4 needs ffmpeg
 ### Tabs
 
 ```bash
-rodney pages                # List tabs (* marks active)
-rodney page <index>         # Switch tab
+rodney pages                # List tabs (* marks active, t:<id> = stable target ID)
+rodney page <index|t:id>    # Switch tab — t:<id> is drift-proof when parallel
+                            #   sessions shift the indices
 rodney newpage [url]        # Open new tab
 rodney closepage [index]    # Close tab
 ```
@@ -264,8 +268,16 @@ rodney block "*.jpg" "*.gif"                                                # fa
 |------|-------|------|
 | Global | `~/.rodney/` | default |
 | Local | `./.rodney/` | `--local` |
+| Named | `~/.rodney-sessions/<name>/` | `--session <name>` |
 
 Use `--local` for per-project isolation. Auto-detects local if `./.rodney/state.json` exists.
+
+**Parallel sessions:** `rodney --session <name> <cmd>` gives each session its own
+state — its own `active_page` and its own Chrome (a session's `stop` kills only
+its own browser). Combine with `open --reuse` and `page t:<id>` so parallel
+sessions converge on pages instead of duplicating and drifting. Each named
+session starts its own headless Chrome (full isolation, more RAM); it does
+NOT share your visible Chrome or your logged-in profile.
 
 ## Environment
 
