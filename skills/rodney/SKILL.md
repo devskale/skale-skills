@@ -37,44 +37,51 @@ rodney stop                               # 5. ALWAYS stop when done
 
 ## Use the Latest Rodney
 
-Rodney ships as a source-built Go binary (not on PyPI). **Before relying on it, make sure
-you're on the latest version** — new commands and flags land upstream all the time and
-`--help` only reflects what's installed. The working branch is `skale`; install from there.
+Rodney ships as release binaries built by CI (not on PyPI). **Before relying on it,
+make sure you're on the latest version** — new commands and flags land all the time and
+`--help` only reflects what's installed.
 
 ```bash
 rodney --version          # what's installed now
 ```
 
-To refresh from source (no built-in `--update` on the `skale` branch):
+To refresh: re-run the skill's installer (downloads the latest release binary,
+no Go toolchain needed):
 
 ```bash
-cd ~/src/rodney 2>/dev/null || git clone -b skale git@github.com:devskale/rodney.git ~/src/rodney
-cd ~/src/rodney && git pull --ff-only && go build -o ~/.local/bin/rodney .
+bash skills/rodney/install.sh
 rodney --version          # confirm the refresh
+```
+
+Or manually, from the release page (darwin/linux × amd64/arm64 tarballs at
+<https://github.com/devskale/rodney/releases/latest>):
+
+```bash
+curl -fsSL https://github.com/devskale/rodney/releases/latest/download/rodney-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m).tar.gz | tar -xz
+mv rodney ~/.local/bin/
 ```
 
 Then run `rodney --help` to discover the current command set.
 
 ## Install
 
-rodney is not published to PyPI — build the Go binary from source (from the `skale` branch):
+Preferred — the skill installer (downloads the platform release binary):
 
 ```bash
-# Requires Go 1.21+ and Chrome or Chromium installed
-# (set ROD_CHROME_BIN if Chrome isn't at the default location)
-git clone -b skale git@github.com:devskale/rodney.git
+bash skills/rodney/install.sh
+```
+
+Fallback — build the Go binary from source (from the `skale` branch; requires
+Go 1.21+ and Chrome/Chromium, set `ROD_CHROME_BIN` if Chrome isn't at the
+default location):
+
+```bash
+git clone -b skale https://github.com/devskale/rodney.git
 cd rodney
-go build -o ~/.local/bin/rodney .   # put it on your PATH
+go build -ldflags="-s -w" -o ~/.local/bin/rodney .   # put it on your PATH
 ```
 
-Or, if you already have the repo checked out:
-
-```bash
-go build -o rodney .
-sudo mv rodney /usr/local/bin/   # or cp to a dir on your PATH
-```
-
-Verify with `rodney --version` (expect a recent release, e.g. `0.6.0` or newer — don't
+Verify with `rodney --version` (expect a recent release, e.g. `0.6.1` or newer — don't
 rely on a hardcoded version).
 
 ## Project Setup
