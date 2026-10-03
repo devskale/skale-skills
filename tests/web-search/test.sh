@@ -203,6 +203,28 @@ else
 fi
 echo ""
 
+# ── 11. Agent-agnostic fallback probe ─────────────────────────────────
+echo "[11] Launcher fallback probe (agent-agnostic)..."
+# A launcher COPY (no symlink, e.g. Windows git-bash) must find the skill by
+# probing agent skill dirs — standard dir first, pi second.
+TMPD=$(mktemp -d)
+cp search "$TMPD/web-search"
+FB_OUT=$(bash "$TMPD/web-search" --selfcheck 2>&1)
+FB_DIR=$(printf '%s' "$FB_OUT" | grep -o 'dir:  .*' | sed 's|dir:  ||')
+if [ "$(cd "$FB_DIR" 2>/dev/null && pwd -P)" = "$(pwd -P)" ]; then
+    PASS=$((PASS+1)); echo "  ✓ copy resolves skill via agent-dir probe"
+else
+    FAIL=$((FAIL+1)); echo "  ✗ fallback probe failed (resolved: $FB_DIR)"
+fi
+# probe order: standard dir before pi
+if [ "$(grep -n 'skills/\$_name' search | head -1 | cut -d: -f1)" -lt "$(grep -n '.pi/agent/skills/\$_name' search | head -1 | cut -d: -f1)" ]; then
+    PASS=$((PASS+1)); echo "  ✓ standard dir probed before pi"
+else
+    FAIL=$((FAIL+1)); echo "  ✗ probe order wrong"
+fi
+rm -rf "$TMPD"
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "  Passed: $PASS"

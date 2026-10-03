@@ -92,8 +92,11 @@ Status: ☐ open · ◐ in progress · ☒ done
 - ☐ **Verify the 4 agent dirs**: confirm which agents actually read `~/.agents/skills`
   natively today (spec-compliant list changes; re-check before extending
   `link-agents.sh` with more targets like opencode/gemini native dirs)
-- ☐ **Soften the last functional pi-coupling**: `skills/web-search/search` fallback path
-  `~/.pi/agent/skills/` — make the launcher probe the standard dir first
+- ☒ **Soften the last functional pi-coupling**: `skills/web-search/search` fallback path
+  `~/.pi/agent/skills/` — now probes agent skill dirs standard-first
+  (`~/.agents/skills` → `~/.pi/agent/skills` → `~/.claude` → `~/.codex`); pi remains
+  a first-class probe target, the agentskills.io standard dir just comes first
+  (every spec-compliant agent, pi included, reads it). Tested in the suite.
 - ☐ **Later / optional**: per-agent plugin manifests following the superpowers pattern
   (`.claude-plugin/`, plugin marketplace JSON) — only if we want marketplace reach;
   the symlink installer already covers file-based agents
