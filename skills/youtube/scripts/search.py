@@ -678,9 +678,6 @@ def do_search(args) -> int:
         duration = None if args.any_length else "2"
         features = "subtitles" if args.captions else None
         region = args.region
-        max_age_s = parse_age_spec(args.fresh)
-        min_duration_s = 0 if args.any_length else args.min_duration
-        max_duration_s = args.max_duration
         if args.verbose:
             print(f"Mode: preset={args.preset} pool={fetch_n} top={args.num} "
                   f"captions={bool(features)} region={region or '-'} favs={len(favs)} "
@@ -916,7 +913,7 @@ def cmd_channel(rest: List[str]) -> int:
     if a.list or not (a.fav or a.block):
         fav = channels["fav"]
         block = channels["block"]
-        print(f"~/.config/youtube-skill/channels.md")
+        print("~/.config/youtube-skill/channels.md")
         print(f"Favourites ({len(fav)}):")
         for ucid, name in fav.items():
             print(f"  {ucid} | {name}")

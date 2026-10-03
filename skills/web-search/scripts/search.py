@@ -12,7 +12,6 @@ import os
 import sys
 import urllib.parse
 import urllib.request
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 # Fix Windows console encoding: reconfigure stdout to UTF-8 so that
