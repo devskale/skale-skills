@@ -1,1 +1,2 @@
 {"status":"watch","type":"skill","name":"widget-test","source":"github.com/test/repo","why":"write-contract test","added":"2026-10-04"}
+{"status":"watch","type":"skill","name":"widget-test-2","source":"github.com/test/repo2","why":"append","added":"2026-10-04"}
