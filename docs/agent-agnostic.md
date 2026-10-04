@@ -73,6 +73,16 @@ Takeaways:
   extensions, docs. The pi support is a feature, not a liability. Keep as-is.
 - **`~/.agents/skills` is the agent-agnostic channel** — the spec-standard dir that
   zcode/opencode/spec-compliant agents (and pi itself) read natively. Already wired.
+- **pi-priority is enforced, not hoped for** — pi scans `~/.agents/skills` at user
+  precedence and wins every name collision against package skills, bypassing the
+  package filter. `scripts/link-agents.sh` therefore manages a `!skills/<name>/**`
+  exclusion for every linked skill in pi's user settings
+  (`~/.pi/agent/settings.json`, overridable via `PI_SETTINGS`): pi keeps loading
+  these skills from the package copy (filtered, versioned via `pi install`), other
+  agents read the links unchanged. Name-scoped: exclusions only match our skill
+  names, never foreign skills in the same dir. Verified against pi's discovery
+  order (user-auto rank 3 < package rank 4 — user always wins; the exclusion is
+  the only lever).
 - **skill-filter.sh stays pi-only.** The settings-filter support is exactly the pi-first
   value the user wants kept; generalising it would mean reimplementing every other agent's
   settings model for near-zero demand.

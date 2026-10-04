@@ -4,6 +4,21 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **rodney: self-fetching reference + multi-session helpers.**
+  - `scripts/gen-registry.sh` rendert `references/registry.md` direkt aus
+    `rodney help --json` — die Referenz holt sich der Skill progressiv aus der
+    CLI statt statisch zu driften. Suite [13] prüft Byte-Frische.
+  - `scripts/rodney-sessions.sh`: list/`--stop-all`/`--clean [--age]`/`--json`
+    für named sessions; `rodney-cleanup.sh` sieht jetzt auch
+    `~/.rodney-sessions/*/state.json` (fand sofort einen echten Orphan).
+  - Validiert gegen rodney 0.11.0 (83 Commands); 2 Binary-Bugs als
+    devskale/rodney#1/#2 gefiled, Stop-Race als #3.
+- **pi-priority policy beim Agent-Linking.** `scripts/link-agents.sh` verwaltet
+  jetzt `!skills/<name>/**`-Exclusions in pi's User-Settings: pi lädt gelinkte
+  Skills weiter aus der Package-Kopie (gefiltert, `pi install`-versioniert),
+  andere Agenten lesen die `~/.agents/skills`-Links unverändert — keine
+  Skill-Kollisionen mehr, der pi-Package-Filter wird nicht umgangen.
+
 - **surf 1.5.0 — parallel sessions, smarter new/close.**
   - `surf --session <name>`: der Target-Pin liegt pro Session in
     `~/.config/surf/target-<name>` — parallele surf-Agenten überschreiben sich

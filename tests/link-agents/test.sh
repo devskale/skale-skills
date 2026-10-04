@@ -73,6 +73,26 @@ grep -q 'link-agents.conf' install.sh && ok || bad "install.sh must record the a
 grep -q '.agents/skills' install.sh && grep -q '.zcode/skills' install.sh && grep -q '.claude/skills' install.sh && grep -q '.codex/skills' install.sh && ok || bad "install.sh menu must offer agents/standard, zcode, claude, codex"
 grep -q 'deprecated' scripts/link-agents.sh && ok || bad "link-agents.sh must document the deprecated-exclusion guarantee"
 
+# ── pi-priority policy: linking keeps pi on the package copy ──
+# With HOME isolated to $TMP, the default target becomes $TMP/.agents/skills and
+# pi settings $TMP/.pi/agent/settings.json — a full dry run against fakes.
+mkdir -p "$TMP/.pi/agent"
+printf '{"skills": ["+skills/robotni-worker/SKILL.md"]}' > "$TMP/.pi/agent/settings.json"
+OUT3="$(HOME="$TMP" bash "$SCRIPT" 2>&1)"
+echo "$OUT3" | grep -q "pi-priority: +13 exclusion" && ok || bad "pi-priority should add exclusions for all repo skills: $OUT3"
+PI_SKILLS="$(python3 -c "import json; print(json.load(open('$TMP/.pi/agent/settings.json'))['skills'])")"
+echo "$PI_SKILLS" | grep -q '!skills/web-search/\*\*' && ok || bad "web-search exclusion missing: $PI_SKILLS"
+echo "$PI_SKILLS" | grep -q '!skills/rodney/\*\*' && ok || bad "rodney exclusion missing: $PI_SKILLS"
+echo "$PI_SKILLS" | grep -q 'robotni-worker' && ok || bad "existing user skills entries must be preserved"
+# idempotent: second run adds nothing
+OUT4="$(HOME="$TMP" bash "$SCRIPT" 2>&1)"
+echo "$OUT4" | grep -q "all 13 exclusions already in place" && ok || bad "second run should add no exclusions: $OUT4"
+# explicit target arg (test mode) must NOT touch pi settings
+printf '{"skills": []}' > "$TMP/.pi/agent/settings.json"
+bash "$SCRIPT" "$TARGET" >/dev/null 2>&1
+PI_NOW="$(python3 -c "import json; print(json.load(open('$TMP/.pi/agent/settings.json'))['skills'])")"
+[ "$PI_NOW" = "[]" ] && ok || bad "explicit-target run must not modify pi settings: $PI_NOW"
+
 # ── zcode reads ~/.agents/skills natively (documented) ──
 grep -qi 'agents/skills' docs/zcode-plugin.md && ok || bad "docs/zcode-plugin.md should reference the standard dir"
 

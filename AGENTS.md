@@ -306,9 +306,11 @@ agents** get the skills (standard `~/.agents/skills`, `~/.zcode/skills`,
 (standard dir), `--no-agents`, or `SKALE_LINK_AGENTS=1|0`. Linking is done by
 [`scripts/link-agents.sh`](scripts/link-agents.sh) — every non-deprecated skill
 symlinked into the chosen dirs. pi, zcode (discovery #3), and spec-compliant
-agents read `~/.agents/skills` natively. Opt-in per machine — pi's package filter
-(seed-defaults whitelist) does NOT apply to skills found there, so linking
-activates them for pi too. Deprecated skills are never linked (no other agent
-has manifest exclusion).
+agents read `~/.agents/skills` natively. **pi-priority built in:** the linker also
+ensures a `!skills/<name>/**` exclusion for every linked skill in pi's user
+settings, so pi keeps loading these skills from its package copy (filtered,
+versioned via `pi install`) instead of the links — no name collision, no filter
+bypass; other agents read the links unchanged. Deprecated skills are never linked
+(no other agent has manifest exclusion).
 
 The former `skiller` CLI is retired — see [`deprecated/`](deprecated/README.md).
