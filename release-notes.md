@@ -19,6 +19,24 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **docs/browser-use/: Toten-Audit.** Verifikation via GitHub API / npm / PyPI
+  (2026-10-04), tote und walking-dead Tools markiert und in einen Graveyard-Appendix
+  in browser-tools-comparison.md (0.1.6) verschoben:
+  - **Kaputter Puppeteer-MCP-Abschnitt gefixt**: `@anthropic-ai/puppeteer-mcp`
+    existierte nie auf npm (GitHub-Link 404) — der alte Install-Block war
+    ungültig. Realität: Reference-Server deprecated (2025-05), Xandon-Server tot
+    (2025-06). Empfehlung jetzt: Playwright MCP für den MCP-Pfad.
+  - **chrome-mcp → livemcp**: Repo von DeepakSilaych/chrome-mcp nach
+    Magi-Labs/livemcp umbenannt (GitHub-Redirect). Tabellen + Links aktualisiert.
+  - **Walking dead markiert**: mcp-chrome (hangwin, 9 Monate still), Real
+    Browser MCP (0 Stars), agentauth-py (Quelle tot seit 2025-03) — 🧟 in
+    Tabellen, Sections zu One-Linern mit Appendix-Link verdichtet.
+  - **Decision Flow bereinigt**: Extension-Empfehlung jetzt Nanobrowser /
+    Playwright MCP Bridge statt der toten; Cookie-Extraktion → sweet-cookie.
+  - **Appendix "Dead & Walking Dead"**: Operator (2025-08), Instant Checkout,
+    ChatGPT Atlas (2026-08-09, nach 292 Tagen), MultiOn tot; Renames
+    (Cloudflare Browser Rendering → Browser Run); Alive-Spot-Check
+    (OpenChrome, CloakBrowser 31.9k★, agent-browser 43.5k★ u.a.).
 - **docs/browser-use/ Accuracy-Pass.** Live-Verifikation gegen surf 1.5.0,
   rodney 0.11.0, den verbundenen chrome-devtools-MCP und Chrome 154:
   - **chrome-dev.md**: fast alle Beispiel-Tool-Namen waren falsch (chrome_navigate

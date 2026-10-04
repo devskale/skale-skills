@@ -1,8 +1,8 @@
 ---
 name: browser-tools-comparison
 description: "Compare agent browser tools: rodney, Chrome DevTools MCP, agent-browser, CloakBrowser, Playwright MCP, Puppeteer MCP, browser-use, Claude Computer Use, Browserbase, Cloudflare Browser Run. Feature matrix, token costs, decision flow, Playwright vs Puppeteer deep-dive."
-version: 0.1.5
-date: 2026-06-05
+version: 0.1.6
+date: 2026-10-04
 ---
 
 # Agent Browser Tools — Comparison
@@ -22,7 +22,7 @@ date: 2026-06-05
 | 7 | [**Claude Computer Use**](#7-claude-computer-use) | API tool (Anthropic) | — | Desktop / CDP | ❌ external |
 | 8 | [**Browserbase MCP**](#8-browserbase-mcp) | Cloud MCP server | Node.js (Stagehand) | CDP | ❌ external |
 | 9 | [**Cloudflare Browser Run**](#9-cloudflare-browser-run) | Cloud MCP server | — | CDP | ❌ external |
-| 10 | [**Puppeteer MCP**](#10-puppeteer-mcp) | MCP server | Node.js (Google) | CDP | ❌ external |
+| 10 | [**Puppeteer MCP**](#10-puppeteer-mcp--walking-dead-as-an-mcp-product) | MCP server | Node.js (Google) | CDP | ❌ external — see [graveyard](#appendix-dead--walking-dead-verified-2026-10-04) |
 
 ---
 
@@ -944,22 +944,16 @@ Cloudflare Shops users, global-deployed agents needing edge browsers, experiment
 
 ---
 
-## 10. Puppeteer MCP
+## 10. Puppeteer MCP 🧟 (walking dead as an MCP product)
 
-**What:** Google's browser automation library (since 2017) exposed as an MCP server. Chromium-focused with deep CDP access. The original browser automation tool that inspired Playwright (same creator at Microsoft). Multiple MCP server implementations available.
+**What:** Google's browser automation library (since 2017) exposed as an MCP server. Chromium-focused with deep CDP access. The original browser automation tool that inspired Playwright (same creator at Microsoft).
 
-```json
-{
-  "mcpServers": {
-    "puppeteer": {
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/puppeteer-mcp"]
-    }
-  }
-}
-```
-
-> **Note:** The official Puppeteer team now ships a Puppeteer MCP server (`@anthropic-ai/puppeteer-mcp`). Community alternatives exist (e.g., `Xandon/puppeteer-mcp-server` with more tools).
+> **Status (verified 2026-10-04):** there is **no maintained official Puppeteer MCP server**.
+> - `@modelcontextprotocol/server-puppeteer` (the former reference server) is **deprecated on npm** (last publish 2025-05).
+> - `@anthropic-ai/puppeteer-mcp` — referenced here before — **does not exist on npm**; the GitHub link 404s.
+> - Community server `Xandon/puppeteer-mcp-server`: dead since 2025-06, 2 stars.
+>
+> The library (puppeteer) itself is alive and excellent — but for the **MCP** use case, use **Playwright MCP** (microsoft/playwright-mcp, actively maintained) instead. Details → [graveyard appendix](#appendix-dead--walking-dead-verified-2026-10-04).
 
 ### Strengths
 - ✅ **Deep CDP access** — `page.createCDPSession()` for raw Chrome DevTools Protocol control
@@ -980,11 +974,11 @@ Cloudflare Shops users, global-deployed agents needing edge browsers, experiment
 - ❌ **Some MCP servers are deprecated** in favor of Playwright MCP — check freshness
 
 ### Best for
-Chromium-only workflows, CDP-heavy instrumentation, teams already invested in Chrome ecosystem, lightweight browser automation where you don't need Firefox/WebKit.
+Chromium-only workflows in code (not MCP) — use the puppeteer library directly. For the MCP path use Playwright MCP.
 
 ### Links
-- Official MCP → [`@anthropic-ai/puppeteer-mcp`](https://github.com/anthropics/puppeteer-mcp)
-- Community MCP → [Xandon/puppeteer-mcp-server](https://github.com/Xandon/puppeteer-mcp-server)
+- Library → [pptr.dev](https://pptr.dev/) · [github.com/puppeteer/puppeteer](https://github.com/puppeteer/puppeteer)
+- MCP replacement → [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp)
 - Core lib → [pptr.dev](https://pptr.dev/) · [github.com/puppeteer/puppeteer](https://github.com/puppeteer/puppeteer) (88k+ ⭐)
 - Setup guide → [MCP Puppeteer Server Setup 2026](https://markaicode.com/mcp-puppeteer-server-browser-automation-claude/)
 
@@ -1612,7 +1606,7 @@ These tools **can** be composed:
 - [The 2026 Agentic Browser Landscape: Complete Market Map](https://www.browseract.com/blog/agentic-browser-landscape-2026) — market overview
 - [Traditional vs Agentic Browsers: 2026 Comparison Guide](https://www.ruh.ai/blogs/traditional-vs-agentic-browser)
 - [No Hacks: The Agentic Browser Landscape in 2026](https://nohacks.co/blog/agentic-browser-landscape-2026)
-- [AI Browser Comparison 2027: Atlas vs Comet vs Dia](https://www.webfx.com/blog/ai/best-ai-browsers/) — consumer-facing AI browsers
+- [AI Browser Comparison 2027: Atlas vs Comet vs Dia](https://www.webfx.com/blog/ai/best-ai-browsers/) — consumer-facing AI browsers (note: ChatGPT Atlas shut down 2026-08-09)
 - [ZTabs: AI Browser Automation 2026](https://ztabs.co/blog/ai-browser-automation-2026) — ChatGPT agent, Computer Use, browser-use, Playwright MCP
 - [OpenReplay: Introduction to Agentic Browsers](https://blog.openreplay.com/agentic-browsers-introduction/)
 
@@ -1651,10 +1645,50 @@ These tools **can** be composed:
 
 ---
 
+## Appendix: Dead & Walking Dead (verified 2026-10-04)
+
+Tools that are gone, stagnant, or renamed — verified via GitHub API (pushed_at),
+npm registry, and PyPI on 2026-10-04. Kept brief; don't build on these.
+
+**Dead (discontinued):**
+
+| Tool | Died | What happened |
+|------|------|---------------|
+| OpenAI Operator | 2025-08-31 | Absorbed into ChatGPT agent |
+| OpenAI Instant Checkout | 2026-03 | Killed — no purchase completion, no sales-tax handling |
+| ChatGPT Atlas | 2026-08-09 | Standalone browser retired after 292 days; agentic browsing moved into the ChatGPT app + Chrome extension + Codex |
+| MultiOn | ~2025/26 | Consumer web-agent product wound down |
+
+**Walking dead (stagnant / orphaned):**
+
+| Tool | Evidence (2026-10-04) |
+|------|----------------------|
+| `mcp-chrome` (hangwin) | 12.4k stars, but last commit 2026-01, last release 2025-12 — 9 months of silence |
+| Real Browser MCP | 0-star repo, last push 2026-03, never took off |
+| `agentauth-py` | No visible source (GitHub org dead since 2025-03, 3 stars); PyPI orphaned since 2026-01 |
+| `@modelcontextprotocol/server-puppeteer` | Officially **deprecated** on npm (last publish 2025-05) |
+| `Xandon/puppeteer-mcp-server` | Dead since 2025-06, 2 stars |
+| `@anthropic-ai/puppeteer-mcp` | **Never existed on npm** (an old doc error here — the GitHub link 404s too) |
+
+**Renamed / moved:**
+
+| Tool | Now |
+|------|-----|
+| chrome-mcp (DeepakSilaych) | [Magi-Labs/livemcp](https://github.com/Magi-Labs/livemcp) — alive (pushed 2026-09) |
+| Cloudflare Browser Rendering | **Browser Run** (renamed 2026-04, WebMCP support, 120 concurrent browsers) |
+
+**Confirmed alive (spot-check, 2026-10):** OpenChrome, CloakBrowser (31.9k★),
+Nanobrowser (13.9k★), agent-browser (43.5k★), browser-use (117k★),
+Playwright MCP (37.8k★), Stagehand (25.5k★), Skyvern (23.1k★), browserless,
+Airtop, sweet-cookie (0.4.4, 2026-09).
+
+---
+
 ## Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 0.1.6 | 2026-10-04 | **Dead & walking-dead audit** (verified via GitHub/npm/PyPI activity): Puppeteer MCP section corrected — no maintained official server exists (`@anthropic-ai/puppeteer-mcp` never existed on npm; the reference server is deprecated; Xandon server dead). chrome-mcp renamed to livemcp (Magi-Labs). Added [graveyard appendix](#appendix-dead--walking-dead-verified-2026-10-04). Cloudflare "Browser Rendering" renamed to Browser Run (2026-04). |
 | 0.1.5 | 2026-06-05 | **Benchmark results: real RAM/timing for rodney vs agent-browser vs CloakBrowser.** Documented rodney architecture (Go binary via go-rod/rod, Python os.execvp shim — zero runtime overhead, no daemon). Added low-RAM/SSH box flags (--single-process, swap setup). Added verified "What Each Tool Actually Is" table (binary size, language, runtime, daemon status). |
 | 0.1.4 | 2026-06-01 | **Verified CloakBrowser profile-clone capability from official README.** Confirmed `launch_persistent_context(user_data_dir=...)` accepts any directory but fails for cookies/passwords due to Chrome 136+ App-Bound Encryption (Chromium issue #394919677). Documented `storage_state` JSON export/import as the **officially supported** way to transfer cookies+localStorage. Updated the CloakBrowser section with verified code examples and caveats. |
 | 0.1.3 | 2026-06-01 | Added "What Are Your ACTUAL Options?" honest list at top of Connect section (Claude Computer Use ruled out). Updated CloakBrowser section to highlight Browser Profile Manager workaround. |

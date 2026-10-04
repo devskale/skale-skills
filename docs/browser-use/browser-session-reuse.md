@@ -24,10 +24,10 @@ These connect to Chrome you already have open. Your tabs, your cookies, your log
 |---|------|--------|---------|:----:|:-----------------:|
 | 1 | **Chrome DevTools MCP** | Native Chrome toggle (`--autoConnect`, Chrome 144+) | `npx chrome-devtools-mcp@latest` | ✅ | N/A (built-in) |
 | 2 | **OpenChrome** (`openchrome-mcp`) | CDP direct to real Chrome, persistent profiles, parallel | `npx openchrome-mcp` | ✅ | N/A |
-| 3 | **Real Browser MCP** | Chrome extension + WebSocket MCP server | `npm i real-browser-mcp` + extension | ✅ | ✅ Yes |
+| 3 | **Real Browser MCP** 🧟 | Chrome extension + WebSocket MCP server | `npm i real-browser-mcp` + extension | ✅ | ✅ Yes |
 | 4 | **Nanobrowser** | Chrome extension, multi-agent planner→navigator→validator | Chrome Web Store | No (extension) | ✅ Yes |
-| 5 | **mcp-chrome** (hangwin) | Chrome extension + HTTP bridge, 23+ tools | `npm i mcp-chrome` + extension | ✅ | ❌ Sideload |
-| 6 | **chrome-mcp** (DeepakSilaych) | Chrome extension exposes tabs/cookies to MCP | `npm i chrome-mcp` + extension | ✅ | ❌ Sideload |
+| 5 | **mcp-chrome** (hangwin) 🧟 | Chrome extension + HTTP bridge, 23+ tools | `npm i mcp-chrome` + extension | ✅ | ❌ Sideload |
+| 6 | **livemcp** (was chrome-mcp, DeepakSilaych — repo renamed) | Chrome extension exposes tabs/cookies to MCP | GitHub: Magi-Labs/livemcp | ✅ | ❌ Sideload |
 | 7 | **Playwright MCP Bridge** (Microsoft) | Official extension, human authorizes per tab | `npx @playwright/mcp@latest --extension` | ✅ | ✅ Yes |
 | 8 | **Browserfly** | Chrome extension, bring-your-own-keys AI agent | Chrome Web Store | No (extension) | ✅ Yes |
 
@@ -39,7 +39,7 @@ These copy or decrypt your Chrome auth and use it in a fresh browser instance.
 |---|------|--------|---------|:------------------:|------:|
 | 9 | **agent-browser** (`--profile Default`) | Copies Chrome profile to temp dir | `brew install agent-browser` | ✅ (most) | 2.2s ⚡ |
 | 10 | **browser-use** (`from_system_chrome()`) | Copies Chrome profile (Python/Playwright) | `pip install browser-use` | ✅ (most) | 28s |
-| 11 | **agentauth-py** | Decrypts Chrome cookies (defeats App-Bound Encryption) | `pip install agentauth-py` | ✅ all | fast |
+| 11 | **agentauth-py** 🧟 | Decrypts Chrome cookies (defeats App-Bound Encryption) | `pip install agentauth-py` | ✅ all | fast |
 | 12 | **sweet-cookie** | Reads cookie DBs (Chrome/Edge/Firefox/Safari) | `npx @steipete/sweet-cookie` | ✅ most | fast |
 
 ---
@@ -176,25 +176,10 @@ The workflow that works:
 
 **→ Full usage guide: [openchrome-usage.md](openchrome-usage.md)**
 
-### 3. Real Browser MCP
+### 3. Real Browser MCP 🧟 (walking dead)
 
-```bash
-npm install -g real-browser-mcp
-# + install Chrome extension from Web Store: "Real Browser MCP"
-```
-
-```json
-{
-  "mcpServers": {
-    "real-browser": {
-      "command": "real-browser-mcp"
-    }
-  }
-}
-```
-
-**Pros:** Chrome Web Store extension. Dead simple. WebSocket = survives MCP client restarts.
-**Cons:** New project. One tab focus.
+0-star repo, last push 2026-03, no releases. Kept here for the record — see the
+[graveyard appendix](browser-tools-comparison.md#appendix-dead--walking-dead-verified-2026-10-04).
 
 ### 4. Nanobrowser
 
@@ -205,27 +190,10 @@ Bring your own LLM API key (Gemini, GPT-4, etc.). Multi-agent: planner → navig
 **Pros:** Mature extension. Chrome Web Store. Multi-agent architecture. No backend needed.
 **Cons:** Not an MCP server — runs in browser only. Needs your own LLM key.
 
-### 5. mcp-chrome (hangwin)
+### 5. mcp-chrome (hangwin) 🧟 (walking dead)
 
-```bash
-# Install bridge
-npm install -g mcp-chrome
-# Sideload extension from https://github.com/hangwin/mcp-chrome
-```
-
-```json
-{
-  "mcpServers": {
-    "chrome-mcp": {
-      "type": "streamableHttp",
-      "url": "http://127.0.0.1:12306/mcp"
-    }
-  }
-}
-```
-
-**Pros:** 23+ tools. No debug port. HTTP/WebSocket bridge. ~6k stars. LLM-optimized screenshots.
-**Cons:** Sideload extension (not in Web Store). Two processes (extension + bridge).
+12.4k stars but stagnant: last commit 2026-01, last release 2025-12. See the
+[graveyard appendix](browser-tools-comparison.md#appendix-dead--walking-dead-verified-2026-10-04).
 
 ### 6. agent-browser (profile reuse)
 
@@ -238,16 +206,12 @@ agent-browser --profile Default open https://github.com
 **Pros:** 2.2s profile load. Rust binary. Token-efficient a11y snapshots. State persistence.
 **Cons:** Doesn't control your running Chrome — copies profile to temp dir. Some cookies may fail with App-Bound Encryption.
 
-### 7. agentauth-py
+### 7. agentauth-py 🧟 (walking dead)
 
-```bash
-pip install agentauth-py
-agent-auth grab github.com
-# Cookies stored in encrypted vault
-```
-
-**Pros:** Defeats App-Bound Encryption. Works with Playwright/requests/LangChain. macOS/Linux.
-**Cons:** Extract-only — needs another tool to use cookies. macOS/Linux only.
+Defeats App-Bound Encryption, but: no visible source repo (GitHub org dead since
+2025-03, 3 stars), PyPI orphaned since 2026-01. For cookie extraction use
+**sweet-cookie** instead (actively maintained). See the
+[graveyard appendix](browser-tools-comparison.md#appendix-dead--walking-dead-verified-2026-10-04).
 
 ### 8. sweet-cookie
 
@@ -268,7 +232,8 @@ I want my AI coding agent (Claude/Cursor/etc) to browse as me:
 │
 ├─► Chrome 146+? ──► Chrome DevTools MCP + --autoConnect (simplest)
 ├─► Want parallel sessions? ──► OpenChrome
-├─► Prefer extension? ──► mcp-chrome or Real Browser MCP
+├─► Prefer extension? ──► Nanobrowser or Playwright MCP Bridge
+│                      (mcp-chrome & Real Browser MCP: walking dead)
 └─► Enterprise/security? ──► Playwright MCP Bridge Extension
 ```
 
@@ -281,8 +246,8 @@ I want an AI agent IN my browser (side panel):
 ```
 I need cookies in scripts (no browser automation needed):
 │
-├─► Python ──► agentauth-py
-└─► Node/Bun ──► sweet-cookie
+├─► Node/Bun ──► sweet-cookie (actively maintained)
+└─► Python ──► agentauth-py 🧟 (unmaintained — no source since 2025-03)
 ```
 
 ```
@@ -301,7 +266,7 @@ I want CLI automation with my profile:
 - [Real Browser MCP GitHub](https://github.com/iflow-mcp/ofershap-real-browser-mcp)
 - [Nanobrowser](https://nanobrowser.ai/) · [GitHub](https://github.com/nanobrowser/nanobrowser)
 - [mcp-chrome (hangwin)](https://github.com/hangwin/mcp-chrome)
-- [chrome-mcp (DeepakSilaych)](https://github.com/DeepakSilaych/chrome-mcp)
+- [livemcp (was chrome-mcp)](https://github.com/Magi-Labs/livemcp)
 - [Playwright MCP Bridge Extension](https://github.com/microsoft/playwright-mcp)
 - [agent-browser](https://github.com/vercel-labs/agent-browser)
 - [agentauth-py](https://pypi.org/project/agentauth-py/)
