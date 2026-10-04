@@ -143,8 +143,85 @@ assert "session stop kills own chrome" "! pgrep -f 'user-data-dir=.*rodney-sessi
 rm -rf "$SESS_DIR"
 echo ""
 
-# ── 10. No stale Chrome processes ─────────────────────────────────────
-echo "[10] Cleanup check..."
+# ── 10. Fork-exclusive features (live) ────────────────────────────────
+echo "[10] Fork features (not in upstream simonw/rodney)..."
+# Exercises what the fork adds over upstream: real keyboard events, scroll,
+# console capture, network capture, cookie domains, emulation. All against a
+# local fixture — no network, no user-browser contact (headless session).
+FIXTURE2="$TMPDIR/rodney-fork-test.html"
+cat > "$FIXTURE2" <<'HTML'
+<!doctype html><html><head><title>Fork Feature Test</title></head>
+<body style="height:3000px">
+  <input id="q" placeholder="type here">
+  <h1 id="top">Top</h1>
+  <script>console.log('fork-fixture-loaded');</script>
+</body></html>
+HTML
+S="--session fork-feature-test"
+rodney $S start >/dev/null 2>&1
+rodney $S open "file://$FIXTURE2" >/dev/null 2>&1
+rodney $S waitload >/dev/null 2>&1
+
+# real keyboard events: type into focused element, press combos
+rodney $S js 'document.getElementById("q").focus()' >/dev/null 2>&1
+rodney $S type "hello fork" >/dev/null 2>&1
+TYPED=$(rodney $S js 'document.getElementById("q").value' 2>/dev/null)
+assert "type fires real input events"      "[ \"$TYPED\" = 'hello fork' ]"
+# press: single keys work; modifier combos are a known bug (devskale/rodney#1)
+rodney $S press backspace >/dev/null 2>&1
+TYPED=$(rodney $S js 'document.getElementById("q").value' 2>/dev/null)
+assert "press single key (backspace) deletes" "[ \"$TYPED\" = 'hello for' ]"
+
+# scroll: page is 3000px tall, scroll down then check scrollY
+rodney $S scroll 0 1500 >/dev/null 2>&1 && sleep 0.3
+SY=$(rodney $S js 'window.scrollY' 2>/dev/null)
+assert "scroll moves the page"             "[ "${SY:-0}" -ge 1000 ] 2>/dev/null"
+
+# console capture: collector + buffered read
+rodney $S console-start >/dev/null 2>&1
+rodney $S js 'console.log("captured-marker-42")' >/dev/null 2>&1 && sleep 0.5
+CON_OUT=$(rodney $S console 2>/dev/null)
+assert "console collector captures logs"   "echo '$CON_OUT' | grep -q 'captured-marker-42'"
+rodney $S console-stop >/dev/null 2>&1
+
+# network capture: collector catches the document request on reload
+rodney $S requests-start >/dev/null 2>&1
+rodney $S reload >/dev/null 2>&1 && sleep 0.8
+REQ_OUT=$(rodney $S requests 2>/dev/null)
+assert "request collector captures traffic" "echo '$REQ_OUT' | grep -q 'rodney-fork-test.html'"
+rodney $S requests-stop >/dev/null 2>&1
+
+# cookie domain scoping (upstream has no cookie commands at all).
+# file:// pages cannot hold cookies — serve the fixture over http://localhost.
+HTTP_PORT=18923
+( cd "$TMPDIR" && python3 -m http.server $HTTP_PORT >/dev/null 2>&1 & echo $! > "$TMPDIR/http.pid" )
+sleep 0.5
+rodney $S open "http://localhost:$HTTP_PORT/rodney-fork-test.html" >/dev/null 2>&1
+rodney $S waitload >/dev/null 2>&1
+rodney $S cookie-set skale yes --domain "localhost" >/dev/null 2>&1
+COOKIE_OUT=$(rodney $S cookie-get --json 2>/dev/null)
+assert "cookie-set with --domain works"     "echo '$COOKIE_OUT' | grep -q localhost"
+kill "$(cat "$TMPDIR/http.pid")" 2>/dev/null || true
+pkill -f "http.server $HTTP_PORT" 2>/dev/null || true
+
+# emulation: timezone override — KNOWN BUG devskale/rodney#2 (reports success,
+# page keeps host tz). WARN until fixed; assert would fail.
+rodney $S timezone "Asia/Tokyo" >/dev/null 2>&1
+TZ_OUT=$(rodney $S js 'Intl.DateTimeFormat().resolvedOptions().timeZone' 2>/dev/null)
+if [ -z "$TZ_OUT" ]; then
+    echo "  WARN: timezone js read failed"
+else
+    echo "  WARN: timezone override known-broken (devskale/rodney#2): page reports $TZ_OUT"
+fi
+
+rodney $S stop >/dev/null 2>&1
+sleep 1
+rm -rf "$HOME/.rodney-sessions/fork-feature-test"
+assert "fork session cleaned up"           "[ ! -d "$HOME/.rodney-sessions/fork-feature-test" ]"
+echo ""
+
+# ── 11. No stale Chrome processes ─────────────────────────────────────
+echo "[11] Cleanup check..."
 # rodney stop should have killed Chrome. Check no orphan.
 # NB: rodney uses Chromium with --remote-debugging-port=0, so match on the
 # .rodney user-data-dir, not "chrome.*remote-debugging".
@@ -153,8 +230,8 @@ ORPHANS=$(pgrep -f "user-data-dir=.*\\.rodney" 2>/dev/null | wc -l || echo 0)
 assert "no orphan Chromium" "[ $ORPHANS -eq 0 ]"
 echo ""
 
-# ── 11. Process utilities ────────────────────────────────────────────
-echo "[11] Process utilities..."
+# ── 12. Process utilities ────────────────────────────────────────────
+echo "[12] Process utilities..."
 assert "rodney-cleanup runs"        "scripts/rodney-cleanup.sh >/dev/null 2>&1"
 assert "rodney-cleanup --json valid" "scripts/rodney-cleanup.sh --json | grep -q '\"total_chrome_processes\"'"
 assert "rodney-ps runs"             "scripts/rodney-ps.sh >/dev/null 2>&1"

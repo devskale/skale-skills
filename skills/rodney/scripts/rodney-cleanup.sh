@@ -26,13 +26,19 @@ elif [[ "${1:-}" == "--json" ]]; then
     MODE="json"
 fi
 
-# Locate state files: global ~/.rodney/state.json plus any local ./.rodney/state.json
-# (rodney --local sessions). We scan cwd for a local one.
+# Locate state files: global ~/.rodney/state.json, any local ./.rodney/state.json
+# (rodney --local sessions), and every named session ~/.rodney-sessions/*/state.json
+# (rodney --session <name>). Named sessions are managed in depth by
+# rodney-sessions.sh; here they join the inspect/clean view so no session
+# Chrome is invisible to the cleanup.
 STATE_FILES=()
 [[ -f "$HOME/.rodney/state.json" ]] && STATE_FILES+=("$HOME/.rodney/state.json")
 if [[ -f "./.rodney/state.json" ]] && [[ "./.rodney/state.json" != "$HOME/.rodney/state.json" ]]; then
     STATE_FILES+=("./.rodney/state.json")
 fi
+for _sd in "$HOME"/.rodney-sessions/*/state.json; do
+    [[ -f "$_sd" ]] && STATE_FILES+=("$_sd")
+done
 
 # A helper to read a JSON field with or without jq.
 json_field() { # file key

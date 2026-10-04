@@ -14,6 +14,7 @@ The reliable signature is the **`--user-data-dir`** flag, which always points at
 directory:
 - global session → `~/.rodney/chrome-data`
 - local session  → `./.rodney/chrome-data`
+- named session  → `~/.rodney-sessions/<name>/chrome-data`
 
 All scripts detect rodney processes via `user-data-dir=.*\.rodney`.
 
@@ -23,6 +24,10 @@ All scripts detect rodney processes via `user-data-dir=.*\.rodney`.
 |---------|------|----------|
 | `rodney-cleanup` | inspect | Show managed + orphan processes (safe, no changes) |
 | `rodney-cleanup --clean` | clean | Remove stale state, kill orphans, purge old /tmp dirs (non-interactive) |
+| `rodney-sessions` | list | List named sessions (`--session <name>`): pid, status, pages, age, size |
+| `rodney-sessions --stop-all` | stop-all | Gracefully stop every RUNNING named session |
+| `rodney-sessions --clean [--age 24h]` | clean | Remove DEAD session dirs (chrome-data crash leftovers); `--age` gates by state-file age |
+| `rodney-sessions --json` | json | Machine-readable session table |
 | `rodney-cleanup --json` | json | Machine-readable summary `{managed_pid, total, orphans}` |
 | `rodney-ps` | ps | Alias for inspect (selected by the `ps` symlink name) |
 

@@ -333,6 +333,9 @@ prevention (they live in `skills/rodney/scripts/`, symlinked as `rodney-ps` /
 ```bash
 rodney-ps --json           # managed vs orphan Chromium processes (machine-readable)
 rodney-cleanup --clean     # remove stale state + kill orphans + purge old /tmp dirs
+rodney-sessions            # list named sessions: pid, status, pages, age, size
+rodney-sessions --stop-all # stop every RUNNING --session (graceful)
+rodney-sessions --clean [--age 24h]  # remove dead session dirs (crash leftovers)
 rodney-cleanup --json      # quick health check: is a browser running? how many orphans?
 ```
 
