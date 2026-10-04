@@ -4,6 +4,13 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **visualize: share reads the throway contract instead of discarding it.**
+  `share` (single file, `--update`, `--dir`) hat `GET /api` nur angepingt
+  und die Antwort verworfen (throway issue #1). Jetzt wird
+  `max_file_bytes` geparst und VOR dem Upload geprüft — aus einem blinden
+  413-Upload wird ein lokaler, früher, benannter Fehler mit der echten
+  Grenze („over the store's max_file_bytes (5242880)"). Contract
+  unreachable → warnen und weiterfahren wie bisher (best effort).
 - **rodney: self-fetching reference + multi-session helpers.**
   - `scripts/gen-registry.sh` rendert `references/registry.md` direkt aus
     `rodney help --json` — die Referenz holt sich der Skill progressiv aus der

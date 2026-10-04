@@ -48,6 +48,20 @@ urlencode() {
     printf '%s' "$out"
 }
 
+# Read the /api contract and USE it instead of discarding it (throway
+# issue #1): the store's size limit turns a would-be blind 413 into a
+# local, early, named failure. Empty output = contract unreadable;
+# callers warn and proceed (best effort, as before).
+throway_max_bytes() {
+    curl -sf "$THROWAWAY/api" | python3 -c 'import sys,json
+try: print(int(json.load(sys.stdin)["max_file_bytes"]))
+except Exception: pass' 2>/dev/null
+}
+_too_big() {  # _too_big <file> <max> — exit 0 wenn die Datei ueber der Grenze liegt
+    [ -n "${2:-}" ] || return 1
+    [ "$(wc -c < "$1" | tr -d ' ')" -gt "$2" ]
+}
+
 # ── Auto-update check (non-blocking) ──
 if [ -d "$GIT_ROOT/.git" ]; then
     needs_update=false
@@ -140,7 +154,8 @@ case "$cmd" in
         if [ "${1:-}" = "--dir" ]; then
             d="${2:-}"
             [ -n "$d" ] && [ -d "$d" ] || { echo "visualize share --dir: expected a directory" >&2; exit 2; }
-            curl -sf "$THROWAWAY/api" >/dev/null 2>&1 || echo "visualize: (couldn't read throway contract; proceeding)" >&2
+            maxb="$(throway_max_bytes)"
+            [ -n "$maxb" ] || echo "visualize: (couldn't read throway contract; proceeding)" >&2
             resp="$(curl -sf -X POST "$THROWAWAY/?dir=1")" || { echo "visualize share --dir: create failed" >&2; exit 1; }
             dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
             [ -n "${dirurl:-}" ] || { echo "visualize share --dir: could not parse dir URL" >&2; exit 1; }
@@ -167,6 +182,11 @@ case "$cmd" in
                 [ "$name" = "$(basename "$rel")" ] || name="${rel//\//-}"
                 name="$(uniq_name "$name")"
                 seen="$seen$name"$'\n'
+                if _too_big "$f" "$maxb"; then
+                    failed=$((failed+1))
+                    echo "visualize share --dir: over the store's max_file_bytes (${maxb:-?}): $rel" >&2
+                    continue
+                fi
                 if curl -sf -X POST "$dirurl" -F "file=@$f;filename=$name" >/dev/null 2>&1; then
                     n=$((n+1))
                 else
@@ -192,6 +212,12 @@ case "$cmd" in
             while [ "${#slug}" -lt 5 ]; do slug="$slug-p"; done
             slug="${slug:0:32}"
             # First call: &share= creates the named dir + file (idempotent).
+            maxb="$(throway_max_bytes)"
+            [ -n "$maxb" ] || echo "visualize: (couldn't read throway contract; proceeding)" >&2
+            if _too_big "$f" "$maxb"; then
+                echo "visualize share --update: $f is over the store's max_file_bytes ($maxb) — shrink the page (e.g. drop inline data)" >&2
+                exit 1
+            fi
             resp="$(curl -sf -X POST "$THROWAWAY/?name=$slug.html&share=$slug" --data-binary @"$f")" \
                 || { echo "visualize share --update: upload failed" >&2; exit 1; }
             dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
@@ -207,8 +233,15 @@ case "$cmd" in
         f="$1"; [ -f "$f" ] || { echo "visualize share: not a file: $f" >&2; exit 2; }
         name="$(basename "$f")"
         enc="$(urlencode "$name")"
-        # Read the /api contract first (per the service's own instructions), then upload.
-        curl -sf "$THROWAWAY/api" >/dev/null 2>&1 || echo "visualize: (couldn't read throway contract; proceeding)" >&2
+        # Read the /api contract first (per the service's own instructions) —
+        # and use it: fail locally, early and named when the file cannot fit,
+        # instead of shipping 5MB for a blind 413 (throway issue #1).
+        maxb="$(throway_max_bytes)"
+        [ -n "$maxb" ] || echo "visualize: (couldn't read throway contract; proceeding)" >&2
+        if _too_big "$f" "$maxb"; then
+            echo "visualize share: $name is $(wc -c < "$f" | tr -d ' ') bytes — over the store's max_file_bytes ($maxb). Shrink the page (e.g. drop inline data) and retry." >&2
+            exit 1
+        fi
         resp="$(curl -sf -X POST "$THROWAWAY/?name=$enc" --data-binary @"$f")" \
             || { echo "visualize share: upload failed" >&2; exit 1; }
         # Extract the url field. Prefer python3 (json) for correctness.
