@@ -362,8 +362,14 @@ Adapt strategy after 3+ same failures, escalate after 5+. Full decision matrix:
 
 ## References
 
-- **Tiered help — canonical and primary.** `rodney --help` = grouped overview of every command/flag/env var; `rodney help <command>` = that command's flags + examples. Run both first to self-discover the installed feature set — the binary updates independently of these docs (installer pulls the latest release), so it may know commands this skill has never seen. When a command here doesn't behave as documented, or you need a capability the docs lack: trust the binary's help over these docs. New commands you find should surface into `references/commands.md` (the suite's drift check fails until documented).
-- **[references/commands.md](references/commands.md)** — curated full command reference with all flags and options. Read when you need details on a specific command.
+- **Tiered help — THE reference, fetched live from the CLI.** The binary carries its own registry; fetch it at runtime instead of trusting static docs:
+  1. `rodney --help` — grouped overview of every command, flag, env var
+  2. `rodney help <command>` — that command's usage, flags, and examples (canonical)
+  3. `rodney help --json` — the full registry, machine-readable (83 commands)
+  
+  Run these first to discover the installed feature set — the binary updates independently of these docs (the installer pulls the latest release), so it may know commands this skill has never seen. When a command here doesn't behave as documented, or you need a capability the docs lack: trust the binary's help over these docs. New commands found via `--help` must surface into `references/commands.md` (the suite's drift check fails until documented).
+- **[references/registry.md](references/registry.md)** — the binary's full command registry, **generated** (`scripts/gen-registry.sh --write`), never hand-edited: every command's usage, flags, examples, grouped. Byte-identical to `rodney help --json` by construction; regenerate after a binary update (the suite fails if stale).
+- **[references/commands.md](references/commands.md)** — curated quick reference: one-liners per command plus gotchas, patterns, and cross-command notes the binary can't know about itself. Read this for the *why/when*, the registry for the *what/how*.
 - **[references/examples.md](references/examples.md)** — Ready-to-use workflow scripts for scraping, form filling, smoke tests, and accessibility audits.
 - **[references/debugging.md](references/debugging.md)** — Non-obvious debugging patterns: screenshot time-series, form validation checks, exit code chaining, and visible-mode debugging.
 - **[references/network-interception.md](references/network-interception.md)** — Network mocking and blocking (`mock`/`block`): patterns, flags, and use cases for error-state/offline/deterministic testing.

@@ -33,6 +33,7 @@
 | `rodney html [selector]` | Print HTML (full page or element) |
 | `rodney text <selector>` | Print text content of element |
 | `rodney attr <selector> <name>` | Print attribute value |
+| `rodney xpath-of <selector>` | Print the computed XPath of an element — helps building XPath queries |
 | `rodney pdf [file]` | Save page as PDF |
 
 ## JavaScript
@@ -83,10 +84,49 @@ rodney js 'document.querySelectorAll("a").length'
 | Command | Description |
 |---------|-------------|
 | `rodney ua <user-agent>` | Override browser user agent string |
-| `rodney timezone <timezone-id>` | Override timezone (e.g. "Asia/Tokyo") |
+| `rodney timezone <timezone-id>` | Override timezone (e.g. "Asia/Tokyo") — **known bug [#2](https://github.com/devskale/rodney/issues/2): override doesn't reach the page** |
 | `rodney locale <locale>` | Override locale (e.g. "de-DE") |
 | `rodney geo --lat N --lon N` | Spoof geolocation coordinates |
 | `rodney media [--type T] [--feature name=value ...]` | Emulate media type/features |
+| `rodney device <name>` | Emulate a device: viewport, pixel ratio, touch, and user agent in one step |
+| `rodney viewport <WxH>` | Set page viewport size (affects layout, screenshots, innerWidth); persists until cleared/browser stop |
+
+## Session Persistence
+
+| Command | Description |
+|---------|-------------|
+| `rodney headers [<k:v> ...]` | Extra HTTP headers on every request of the session (auth tokens, API versioning); no args: list. Persists in session state |
+| `rodney onload [<js>]` | Register JS that runs on EVERY navigation of the session (hide cookie banners, inject hooks, stub globals); no args: list. Persists |
+
+## History & Resources
+
+| Command | Description |
+|---------|-------------|
+| `rodney history` | Print the active page's navigation history (* marks current) |
+| `rodney resource <url-substr>` | Print the cached body of an already-loaded resource (script, XHR, image) — no new request |
+| `rodney stopload` | Stop pending navigation + fetches — proceed with a half-loaded page (scraping speed) |
+
+## Foreground Helpers
+
+Persistent foreground processes (Ctrl+C stops), like `mock`/`block`/`dialog`:
+
+| Command | Description |
+|---------|-------------|
+| `rodney filechooser <path>` | Intercept file choosers: every chooser the page opens gets the given file |
+| `rodney monitor` | Serve rod's live monitor web UI (pages, eval console, request log) |
+
+## Advanced Interaction
+
+| Command | Description |
+|---------|-------------|
+| `rodney drag <from-sel> <to-sel>` | Drag via real mouse events (down/move/up) — sliders, sortables, kanban |
+| `rodney tap <selector>` | Tap with touch semantics (pairs with `device` emulation) |
+
+## Debugging
+
+| Command | Description |
+|---------|-------------|
+| `rodney doctor` | Self-diagnostics: version, Chrome detection, ffmpeg, session state, connectivity. Exit 2 if any check fails |
 
 ## Network Interception
 
@@ -151,6 +191,8 @@ rodney block "*api.example.com/expensive*" --method POST
 | Command | Description |
 |---------|-------------|
 | `rodney wait <selector>` | Wait for element to appear and be visible |
+| `rodney waitnav` | Wait until the page navigates to a different URL (redirects, submits, SPA route changes) |
+| `rodney waitpage` | Wait until a NEW page/tab opens (window.open, target=_blank, OAuth popups) and switch active page to it |
 | `rodney waitload` | Wait for page load event |
 | `rodney waitstable` | Wait for DOM to stop changing |
 | `rodney waitidle` | Wait for network to be idle |

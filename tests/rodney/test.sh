@@ -138,8 +138,15 @@ rodney --session rodney-test start >/dev/null 2>&1
 assert "session state dir created"    "[ -f "$SESS_DIR/state.json" ]"
 assert "session has own chrome pid"  "python3 -c \"import json; d=json.load(open('$SESS_DIR/state.json')); exit(0 if d['chrome_pid']>0 else 1)\""
 assert "session status works"        "rodney --session rodney-test status 2>&1 | grep -q 'Browser running'"
+# stop can race the booting browser (devskale/rodney#3): verify with retry,
+# and treat a surviving chrome as FAIL only if it outlives the retry window.
 rodney --session rodney-test stop >/dev/null 2>&1
-assert "session stop kills own chrome" "! pgrep -f 'user-data-dir=.*rodney-sessions/rodney-test' >/dev/null 2>&1"
+STOP_OK=0
+for i in 1 2 3 4 5; do
+    pgrep -f 'user-data-dir=.*rodney-sessions/rodney-test' >/dev/null 2>&1 || { STOP_OK=1; break; }
+    sleep 1
+done
+assert "session stop kills own chrome" "[ $STOP_OK -eq 1 ]"
 rm -rf "$SESS_DIR"
 echo ""
 
@@ -230,8 +237,8 @@ ORPHANS=$(pgrep -f "user-data-dir=.*\\.rodney" 2>/dev/null | wc -l || echo 0)
 assert "no orphan Chromium" "[ $ORPHANS -eq 0 ]"
 echo ""
 
-# ── 12. Process utilities ────────────────────────────────────────────
-echo "[12] Process utilities..."
+# ── 14. Process utilities ────────────────────────────────────────────
+echo "[14] Process utilities..."
 assert "rodney-cleanup runs"        "scripts/rodney-cleanup.sh >/dev/null 2>&1"
 assert "rodney-cleanup --json valid" "scripts/rodney-cleanup.sh --json | grep -q '\"total_chrome_processes\"'"
 assert "rodney-ps runs"             "scripts/rodney-ps.sh >/dev/null 2>&1"
@@ -243,9 +250,9 @@ echo ""
 # ── 12. Binary↔docs drift (progressive discovery enforcement) ────────
 echo "[12] Binary commands all documented..."
 # The binary evolves independently of this skill (installer pulls the latest
-# release). Every command the binary knows must appear in SKILL.md or
-# references/commands.md — otherwise docs lag and agents misroute. A new
-# binary feature FAILS here until documented.
+# release). Every command the binary knows must appear in references/ —
+# otherwise docs lag and agents misroute. A new binary feature FAILS here
+# until documented (or the registry regenerated).
 BIN_CMDS=$(rodney --help 2>/dev/null | grep -oE '^  rodney [a-z][a-z-]*' | awk '{print $2}' | sort -u || true)
 DOC_CMDS=$(grep -hoE 'rodney [a-z][a-z-]*' SKILL.md references/commands.md 2>/dev/null | awk '{print $2}' | sort -u || true)
 if [ -n "$BIN_CMDS" ]; then
@@ -260,6 +267,25 @@ if [ -n "$BIN_CMDS" ]; then
     fi
 else
     echo "  WARN: rodney --help unavailable (binary not installed?)"
+fi
+echo ""
+
+# ── 13. Generated registry freshness (binary == registry.md) ────────
+echo "[13] Generated registry in sync..."
+# references/registry.md is GENERATED from the binary (scripts/gen-registry.sh).
+# It must be byte-identical to a fresh regeneration — a stale registry fails.
+if command -v rodney >/dev/null 2>&1; then
+    bash scripts/gen-registry.sh > "$TMPDIR/registry-fresh.md" 2>/dev/null
+    if diff -q "$TMPDIR/registry-fresh.md" references/registry.md >/dev/null 2>&1; then
+        PASS=$((PASS+1)); echo "  ✓ registry.md is fresh (byte-identical to binary output)"
+    else
+        DIFF_N=$(diff "$TMPDIR/registry-fresh.md" references/registry.md 2>/dev/null | grep -c '^[<>]')
+        FAIL=$((FAIL+1))
+        echo "  ✗ registry.md is stale ($DIFF_N drifted lines) — run: scripts/gen-registry.sh --write"
+    fi
+    rm -f "$TMPDIR/registry-fresh.md"
+else
+    echo "  WARN: rodney not installed — registry freshness skipped"
 fi
 echo ""
 
