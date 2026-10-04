@@ -19,6 +19,13 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **youtube 2.2.0: Top-up über Instanzen + Fail-Loud.** Ein Host-Pool, der die
+  Deep-Filter nicht erfüllt, wurde still unterschickt (nur mit --verbose sichtbar).
+  Jetzt: Ergebnisse mergen über die bekannten gesunden Instanzen (Dedup per videoId),
+  bis die Filter `--num` erfüllen; Short-Count druckt eine Note mit den Stellhebeln.
+  Top-up nutzt nur den bekannten Cache (Cold-Start-Pool voller Toter = Timeout-Falle).
+  `YOUTUBE_HOSTS`-Env-Override für deterministische Tests (lokaler Fixture-Server,
+  keine Cache-Schreibseite). Suite [13]: 50/50 (vorher 44).
 - **visualize: references/scaffolds.md — Blueprint je Template** (nach mattpococks
   HTML-REPORT.md-Vorbild): Anatomie + Füllregeln für alle 10 Templates (cards,
   repo-tree, system-map, report, mermaid, tailwind-report, timeline, before-after,

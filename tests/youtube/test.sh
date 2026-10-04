@@ -132,7 +132,10 @@ echo ""
 # ── 10b. v2: list save + subcommands ─────────────────────────────────
 echo "[10b] v2 list save + subcommands..."
 TMP=$(mktemp -d)
-(cd "$TMP" && timeout 25 youtube "linux kernel" --num 2 --pool 8 2>/dev/null) >/dev/null
+# live-content drift tolerance: loosen filters so the save-path is testable
+# even when Invidious's current result mix has no fresh+long matches; || true so
+# a hard network failure counts as a FAIL below instead of killing set -e.
+(cd "$TMP" && timeout 25 youtube "linux kernel" --num 2 --pool 8 --fresh 36m --any-length 2>/dev/null) >/dev/null || true
 assert "saves ./lists/<slug>.md" "ls '$TMP'/lists/*.md >/dev/null 2>&1"
 assert "entry has youtube.com URL" "grep -q 'youtube.com/watch' '$TMP'/lists/*.md 2>/dev/null"
 assert "channel --list runs" "youtube channel --list >/dev/null 2>&1"
@@ -158,6 +161,73 @@ echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
+# ── 13. Top-up across hosts + fail-loud short-count (local fixture) ──
+echo "[13] Top-up + fail-loud (local fixture)..."
+# Local canned-Invidious fixture (no network): host A returns 6 videos of which
+# only 2 pass the deep-preset filters; host B adds 3 more passing + 1 duplicate.
+# Before the fix, one host's filtered remainder was returned silently even when
+# < num. Now: results merge across hosts (dedup by videoId) until filters pass
+# num, and a short-count prints a Note with the levers to loosen.
+FIXT="$(mktemp -d)/fixture-server.py"
+cat > "$FIXT" <<'FIXEOF'
+import json, sys, time
+from http.server import BaseHTTPRequestHandler, HTTPServer
+MODE = sys.argv[2]
+def vid(i, title, views, mins, months_old):
+    return {"videoId": "vid%03d" % i, "title": title, "author": "chan%d" % i,
+            "authorId": "UC%04d" % i, "viewCount": views,
+            "lengthSeconds": mins * 60,
+            "published": time.time() - months_old * 30 * 86400}
+if MODE == "a":
+    VIDS = [vid(1, "Stale Long Vid", 900000, 40, 30),
+            vid(2, "Good Deep Vid A", 500000, 45, 2),
+            vid(3, "Short Fresh Vid", 500000, 5, 2),
+            vid(4, "Obscure Vid", 200, 40, 2),
+            vid(5, "Good Deep Vid B", 400000, 60, 4),
+            vid(6, "Ancient Classic", 5000000, 90, 40)]
+else:
+    VIDS = [vid(5, "Good Deep Vid B", 400000, 60, 4),
+            vid(7, "Good Deep Vid C", 300000, 50, 1),
+            vid(8, "Good Deep Vid D", 350000, 55, 6),
+            vid(9, "Good Deep Vid E", 250000, 70, 9)]
+class H(BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = json.dumps(VIDS).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, *a): pass
+HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+FIXEOF
+P1=18931; P2=18932
+python3 "$FIXT" $P1 a >/dev/null 2>&1 & FXA=$!
+python3 "$FIXT" $P2 b >/dev/null 2>&1 & FXB=$!
+sleep 0.7
+if ! kill -0 $FXA 2>/dev/null || ! kill -0 $FXB 2>/dev/null; then
+    echo "  WARN: fixture ports busy — top-up test skipped"
+    WARN=$((WARN+1))
+else
+    TU_OUT="$(YOUTUBE_HOSTS="http://localhost:$P1,http://localhost:$P2" youtube "fixture query" --stdout --num 5 2>"$FIXT.err")"
+    TU_ERR="$(cat "$FIXT.err")"
+    TU_N=$(printf '%s\n' "$TU_OUT" | grep -cE '^- \[' || true)
+    TU_DUP=$(printf '%s\n' "$TU_OUT" | grep -c vid005 || true)
+    assert "top-up: 5 asked, merged from 2 hosts -> 5 results" "[ "$TU_N" -eq 5 ]"
+    assert "top-up: no Note when pool satisfies num" "! printf '%s' "$TU_ERR" | grep -q '^Note:'"
+    assert "top-up: duplicate videoId counted once" "[ "$TU_DUP" -eq 1 ]"
+    ONE_OUT="$(YOUTUBE_HOSTS="http://localhost:$P1" youtube "fixture query" --stdout --num 5 2>"$FIXT.err2")"
+    ONE_ERR="$(cat "$FIXT.err2")"
+    ONE_N=$(printf '%s\n' "$ONE_OUT" | grep -cE '^- \[' || true)
+    assert "single host: 2 results (its passing remainder)" "[ "$ONE_N" -eq 2 ]"
+    GOT_NOTE=$(printf '%s' "$ONE_ERR" | grep -c 'only 2/5 passed' || true)
+    assert "short-count prints a Note with the count" "[ "$GOT_NOTE" -ge 1 ]"
+    GOT_LEVER=$(printf '%s' "$ONE_ERR" | grep -c -- '--fresh' || true)
+    assert "Note names the levers to loosen" "[ "$GOT_LEVER" -ge 1 ]"
+fi
+kill $FXA $FXB 2>/dev/null
+echo ""
+
 echo "=== Results ==="
 echo "  Passed: $PASS"
 echo "  Failed: $FAIL"

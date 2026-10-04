@@ -229,7 +229,12 @@ def get_instances() -> List[str]:
     2. hosts with recent real-world success from the health history
     3. the static cold-start pool
     A stale or dead cache must never shadow the fallbacks. On cache-miss,
-    probe for fresh instances and cache the survivors."""
+    probe for fresh instances and cache the survivors.
+    YOUTUBE_HOSTS (comma-separated) overrides everything — deterministic
+    testing and debugging against a local fixture."""
+    override = os.environ.get("YOUTUBE_HOSTS", "").strip()
+    if override:
+        return [h.strip() for h in override.split(",") if h.strip()]
     cached = load_cached_instances()
     ranked: List[str] = []
     for h in cached + _ranked_good_hosts() + KNOWN_INSTANCES:
@@ -246,7 +251,14 @@ def get_instances() -> List[str]:
     return ranked
 
 
+def _cache_writes_enabled() -> bool:
+    """YOUTUBE_HOSTS override = deterministic mode: never touch the live cache."""
+    return not os.environ.get("YOUTUBE_HOSTS", "").strip()
+
+
 def promote_instance(host: str) -> None:
+    if not _cache_writes_enabled():
+        return
     """Move a just-successful host to the front of the cache (write-through,
     so the next call starts with a known-healthy instance)."""
     cached = load_cached_instances()
@@ -258,6 +270,8 @@ def promote_instance(host: str) -> None:
 
 def evict_instances(hosts: List[str]) -> None:
     """Drop dead hosts from the cache so the next call re-probes fresh ones."""
+    if not _cache_writes_enabled():
+        return
     cached = load_cached_instances()
     kept = [h for h in cached if h not in hosts]
     if kept != cached:
@@ -293,6 +307,8 @@ def save_stats(stats: Dict[str, Dict[str, float]]) -> None:
 
 
 def _record_stat(host: str, ok: bool) -> None:
+    if not _cache_writes_enabled():
+        return
     stats = load_stats()
     s = stats.setdefault(host, {"ok": 0, "fail": 0})
     s["ok" if ok else "fail"] = s.get("ok" if ok else "fail", 0) + 1
@@ -399,7 +415,8 @@ def search_instance(
         params["features"] = features
     if region:
         params["region"] = region
-    url = f"https://{host}/api/v1/search?{urllib.parse.urlencode(params)}"
+    base = host if host.startswith("http://") or host.startswith("https://") else f"https://{host}"
+    url = f"{base}/api/v1/search?{urllib.parse.urlencode(params)}"
     # First try with the skill UA; on failure retry with a browser UA
     # (some instances 403 non-browser agents but serve the API fine).
     last_err = ""
@@ -689,7 +706,22 @@ def do_search(args) -> int:
     dead: List[str] = []
     errors: Dict[str, str] = {}
     filtered_hosts: List[Tuple[str, int]] = []  # (host, fetched) — alive, filters killed all
+    # Top-up: results are merged across hosts (deduped by videoId) until the
+    # filters pass `num` — one host's pool often can't satisfy strict filters
+    # (fresh 18m + min-views + min-duration), and returning fewer than asked
+    # without a word violates fail-loud.
+    pool: List[Dict[str, Any]] = []
+    seen_ids: set = set()
+    first_healthy: Optional[str] = None
+    # Top-up only from known-healthy hosts (cache / YOUTUBE_HOSTS) — once we
+    # hold results, never walk the static cold-start pool for more: it is
+    # mostly dead instances, each costing up to 2 x 8s of timeouts.
+    override_hosts = os.environ.get("YOUTUBE_HOSTS", "").strip()
+    topup_hosts = set(h.strip() for h in override_hosts.split(",")) if override_hosts \
+        else set(load_cached_instances())
     for host in get_instances():
+        if pool and host not in topup_hosts:
+            break
         tried.append(host)
         if args.verbose:
             print(f"Trying {host}...", file=sys.stderr)
@@ -710,51 +742,74 @@ def do_search(args) -> int:
             promote_instance(host)
             return 0
 
-        filtered = [v for v in result if passes_filters(
+        if first_healthy is None:
+            first_healthy = host
+        for v in result:
+            vid = v.get("videoId") or ""
+            if vid and vid in seen_ids:
+                continue
+            if vid:
+                seen_ids.add(vid)
+            pool.append(v)
+        host_passed = sum(1 for v in pool if passes_filters(
             v, now, args.min_views, parse_age_spec(args.fresh),
-            0 if args.any_length else args.min_duration, args.max_duration, blocked, exclude_channels)]
-        if not filtered:
-            # Host is healthy — the filters were the problem, not the instance.
-            filtered_hosts.append((host, len(result)))
+            0 if args.any_length else args.min_duration, args.max_duration, blocked, exclude_channels))
+        if host_passed == 0:
+            filtered_hosts.append((host, len(pool)))
             continue
+        if host_passed >= args.num:
+            break  # enough — score and return
+    if not pool or not any(passes_filters(
+            v, now, args.min_views, parse_age_spec(args.fresh),
+            0 if args.any_length else args.min_duration, args.max_duration, blocked, exclude_channels)
+            for v in pool):
+        # Self-heal: hosts that never answered are dead — evict them from the
+        # cache so the next call re-probes. Hosts that answered but whose
+        # results were all filtered out stay cached (they're healthy; the
+        # filters were just strict for this query).
+        evict_instances(dead)
+        report_search_failure(dead, errors, filtered_hosts)
+        return 1
 
-        scored = [(score_video(v, rank, len(filtered), now, weights, favs), v)
-                  for rank, v in enumerate(filtered)]
-        scored.sort(key=lambda sv: sv[0], reverse=True)
-        picks = scored[: args.num]
-        candidates = scored[args.num:]
+    filtered = [v for v in pool if passes_filters(
+        v, now, args.min_views, parse_age_spec(args.fresh),
+        0 if args.any_length else args.min_duration, args.max_duration, blocked, exclude_channels)]
+    scored = [(score_video(v, rank, len(filtered), now, weights, favs), v)
+              for rank, v in enumerate(filtered)]
+    scored.sort(key=lambda sv: sv[0], reverse=True)
+    picks = scored[: args.num]
+    candidates = scored[args.num:]
 
-        if args.verbose:
-            print(f"Fetched {len(result)}, passed {len(filtered)}, "
-                  f"picks {len(picks)}, candidates {len(candidates)}.", file=sys.stderr)
+    if args.verbose:
+        print(f"Pool {len(pool)} unique videos, passed {len(filtered)}, "
+              f"picks {len(picks)}, candidates {len(candidates)}.", file=sys.stderr)
 
-        if args.stdout:
-            print_results([v for _, v in picks], now, show_score=args.verbose, scored=picks)
-            promote_instance(host)
-            return 0
+    # Fail loud: fewer picks than asked for — say so, don't go quiet.
+    if len(picks) < args.num:
+        print(f"Note: only {len(picks)}/{args.num} passed the filters "
+              f"(pool {len(pool)} unique, preset {args.preset}) — "
+              "loosen --fresh/--min-views/--min-duration or raise --pool "
+              "for more.", file=sys.stderr)
 
-        # Auto-save list.
-        slug = slugify(args.save) if args.save else slugify(args.query)
-        path = os.path.join(LISTS_DIR, f"{slug}.md")
-        meta = (f"_Search: {time.strftime('%Y-%m-%d', time.localtime(now))} · "
-                f"pool {len(result)} · preset {args.preset} · "
-                f"`{args.query}`" + (f" · channel:{channel_ucid}" if channel_ucid else "") + "_")
-        write_list(path, args.query or slug, picks, candidates, now, meta)
-        print(path)
-        promote_instance(host)
-        # Preview: first ~6 lines so the agent/user sees what landed.
-        with open(path, encoding="utf-8") as f:
-            preview = [next(f, "") for _ in range(6)]
-        sys.stderr.write("".join(preview).rstrip() + "\n")
+    promote_instance(first_healthy or tried[0])
+
+    if args.stdout:
+        print_results([v for _, v in picks], now, show_score=args.verbose, scored=picks)
         return 0
 
-    # Self-heal: hosts that never answered are dead — evict them from the
-    # cache so the next call re-probes. Hosts that answered but whose results
-    # were all filtered out stay cached (they're healthy; the filters were
-    # just strict for this query).
-    evict_instances(dead)
-    report_search_failure(dead, errors, filtered_hosts)
-    return 1
+    # Auto-save list.
+    slug = slugify(args.save) if args.save else slugify(args.query)
+    path = os.path.join(LISTS_DIR, f"{slug}.md")
+    meta = (f"_Search: {time.strftime('%Y-%m-%d', time.localtime(now))} · "
+            f"pool {len(pool)} · preset {args.preset} · "
+            f"`{args.query}`" + (f" · channel:{channel_ucid}" if channel_ucid else "") + "_")
+    write_list(path, args.query or slug, picks, candidates, now, meta)
+    print(path)
+    # Preview: first ~6 lines so the agent/user sees what landed.
+    with open(path, encoding="utf-8") as f:
+        preview = [next(f, "") for _ in range(6)]
+    sys.stderr.write("".join(preview).rstrip() + "\n")
+    return 0
 
 
 # ╔ Subcommands ══════════════════════════════════════════════════════════
