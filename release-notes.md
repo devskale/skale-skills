@@ -19,6 +19,16 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **WATCHLIST.md — persönliche Watchlist für Skills & Extensions.** Eine
+  Datei im Repo-Root (nicht im pi-Package-Manifest, bleibt privat): append-only
+  Liste mit Status-Lebenszyklus 👀 watch → 🔍 in review → ✅ adopted / ❌
+  rejected, Einzeilen-Format `skill:/ext:` mit Quelle, Warum und Datum. Adden
+  per Chat (`watchlist add <org/repo> — <why>`, Agent kennt die Konvention via
+  AGENTS.md) oder einfach selbst eine Zeile dranhängen. Review-Phase: Session
+  fetcht Repo + SKILL.md, schreibt 2-3-Zeilen-Verdict, flippt den Status —
+  ✅-Einträge mit Install-Cmd sind automatisch die Empfehl-Liste. Bewusst kein
+  Script (der Agent ist der Add-Befehl; Script bei Bedarf nachrüstbar, Format
+  bleibt gleich). Seeds: mattpocock 🔍, emilkowlski 👀, pi-web-access 👀.
 - **docs/browser-use/terminal-browsing.md — eigene Intelligence-Sektion über
   Terminal-Browsing.** Warum Terminal-Browser für Menschen (SSH/low-RAM),
   Agenten (Dump = layout-bewusster Text-Extraktor) und TUI-Workflows (pi,

@@ -149,6 +149,12 @@ Our own tools (rodney, surf, CloakBrowser tests) are unaffected — they launch 
 
 ## External Skills
 
+Personal watchlist for skills/extensions worth reviewing or installing:
+[`WATCHLIST.md`](WATCHLIST.md) (repo root, not shipped in the package). When the user
+says `watchlist add <org/repo> — <why>`, append one line there in the documented
+format; `review the watchlist` means: fetch each 👀/🔍 entry's repo + SKILL.md,
+write a 2-3 line verdict under it, flip the status (✅/❌).
+
 Install from upstream, don't maintain locally:
 
 ```bash
