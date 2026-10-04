@@ -179,8 +179,9 @@ def _probe_instance(host: str, timeout: int = 6) -> bool:
     (some instances 403 non-browser agents)."""
     for ua in (UA, BROWSER_UA):
         try:
+            base = host if host.startswith("http://") or host.startswith("https://") else f"https://{host}"
             data = _get_json(
-                f"https://{host}/api/v1/search?q=test&type=video", timeout=timeout, ua=ua
+                f"{base}/api/v1/search?q=test&type=video", timeout=timeout, ua=ua
             )
             if isinstance(data, list) and data:
                 return True
@@ -995,11 +996,86 @@ def cmd_channel(rest: List[str]) -> int:
 
 # ╔ Main / dispatch ═══════════════════════════════════════════════════════
 
+def cmd_hosts(rest: List[str]) -> int:
+    """youtube hosts [--probe] — which instances are alive.
+    Default: cached view (cache + health history, no network).
+    --probe: actively health-check every known host in parallel and report
+    alive/dead with latency; alive hosts are written back to cache+stats."""
+    p = argparse.ArgumentParser(prog="youtube hosts", description="Show instance health")
+    p.add_argument("--probe", action="store_true", help="Actively probe every known host (network)")
+    a = p.parse_args(rest)
+
+    now = time.time()
+    stats = load_stats()
+
+    def fmt_age(ts: Optional[float]) -> str:
+        if not ts:
+            return "never"
+        d = (now - ts) / 86400.0
+        return f"{d:.1f}d ago" if d >= 1 else f"{int((now - ts) / 3600.0)}h ago"
+
+    if a.probe:
+        from concurrent.futures import ThreadPoolExecutor
+
+        override = os.environ.get("YOUTUBE_HOSTS", "").strip()
+        if override:
+            hosts = [h.strip() for h in override.split(",") if h.strip()]
+        else:
+            hosts = []
+            for h in load_cached_instances() + _ranked_good_hosts() + KNOWN_INSTANCES:
+                if h not in hosts:
+                    hosts.append(h)
+
+        def probe(host: str) -> Tuple[str, bool, float]:
+            t0 = time.time()
+            ok = _probe_instance(host, 6)
+            return host, ok, (time.time() - t0) * 1000.0
+
+        alive: List[str] = []
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for host, ok, ms in ex.map(probe, hosts):
+                st = stats.get(host, {})
+                if ok:
+                    alive.append(host)
+                    print(f"  ✓ {host:32} alive   {ms:6.0f} ms   ok={int(st.get('ok', 0)):4} fail={int(st.get('fail', 0)):3}")
+                else:
+                    print(f"  ✗ {host:32} dead          -   ok={int(st.get('ok', 0)):4} fail={int(st.get('fail', 0)):3}")
+        print(f"{len(alive)}/{len(hosts)} alive")
+        if alive and _cache_writes_enabled():
+            save_cached_instances(alive)
+            for h in alive:
+                _record_stat(h, ok=True)
+        return 0
+
+    cached = load_cached_instances()
+    ranked = _ranked_good_hosts()
+    rows: List[Tuple[str, str, str, str]] = []
+    for h in cached:
+        st = stats.get(h, {})
+        rows.append((h, "cached", fmt_age(st.get("last_ok")),
+                     f"ok={int(st.get('ok', 0))} fail={int(st.get('fail', 0))}"))
+    for h in ranked:
+        if any(r[0] == h for r in rows):
+            continue
+        st = stats.get(h, {})
+        rows.append((h, "history", fmt_age(st.get("last_ok")),
+                     f"ok={int(st.get('ok', 0))} fail={int(st.get('fail', 0))}"))
+    if not rows:
+        print("No cached instances — run: youtube hosts --probe")
+        return 0
+    print(f"{'HOST':32} {'SOURCE':8} {'LAST OK':10} STATS")
+    for host, src, age, st in rows:
+        print(f"{host:32} {src:8} {age:10} {st}")
+    print("Active health check: youtube hosts --probe")
+    return 0
+
+
 SUBCOMMANDS = {
     "expand": cmd_expand,
     "exclude": cmd_exclude,
     "dedup": cmd_dedup,
     "channel": cmd_channel,
+    "hosts": cmd_hosts,
 }
 
 

@@ -19,6 +19,11 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **youtube 2.2.0: `hosts`-Subcommand.** `youtube hosts` zeigt Cache + Health-History
+  (offline), `youtube hosts --probe` prüft aktiv jeden bekannten Host parallel
+  (alive/dead + Latenz) und schreibt Überlebende zurück in Cache. Aktueller Stand:
+  3/9 alive (catgirl 637ms, f5.si 955ms, materialio 2390ms) — der statische
+  Cold-Start-Pool ist fast komplett tot. Suite [14]: 54/54 (vorher 50).
 - **youtube 2.2.0: Top-up über Instanzen + Fail-Loud.** Ein Host-Pool, der die
   Deep-Filter nicht erfüllt, wurde still unterschickt (nur mit --verbose sichtbar).
   Jetzt: Ergebnisse mergen über die bekannten gesunden Instanzen (Dedup per videoId),

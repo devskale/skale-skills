@@ -75,10 +75,13 @@ Stored at `~/.config/youtube-skill/channels.md`. Blocked → filtered before ran
 ## Update / health
 
 ```bash
+youtube hosts                  # which instances are alive (cache + history, no network)
+youtube hosts --probe           # actively check every known host (alive/dead + latency)
 youtube --update           # git pull
 youtube --selfcheck        # version + last update
 youtube --discover         # refresh the Invidious instance cache
 ```
+
 
 ## Gotchas
 

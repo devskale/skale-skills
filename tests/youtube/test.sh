@@ -159,6 +159,44 @@ assert "unit tests cover score_video" "grep -q 'def test_fav_boost' '$UNIT_PY'"
 assert "unit tests cover passes_filters" "grep -q 'def test_too_old' '$UNIT_PY'"
 echo ""
 
+# ── 14. hosts subcommand (instance health view) ──
+echo "[14] hosts subcommand..."
+# cached view: offline, prints the cache table
+HOSTS_OUT="$(youtube hosts 2>/dev/null)"
+if printf '%s' "$HOSTS_OUT" | grep -q "^HOST"; then
+    PASS=$((PASS + 1))
+else
+    echo "  WARN: no cached instances to show — hosts table skipped"
+    WARN=$((WARN+1))
+fi
+# probe view: deterministic against a local fixture (1 alive, 1 dead port).
+# Own minimal server: [14] runs before the [13] fixture section defines $FIXT.
+FIXT2="$(mktemp -d)/probe-server.py"
+cat > "$FIXT2" <<'PSEOF'
+import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+class H(BaseHTTPRequestHandler):
+    def do_GET(self):
+        body = b'[{"videoId":"x","title":"t"}]'
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, *a): pass
+HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+PSEOF
+python3 "$FIXT2" 18933 >/dev/null 2>&1 & FXC=$!
+sleep 0.7   # port 18934 stays closed: reported dead
+PROBE_OUT="$(YOUTUBE_HOSTS="http://localhost:18933,http://localhost:18934" youtube hosts --probe 2>/dev/null)"
+PROBE_N_OK=$(printf '%s\n' "$PROBE_OUT" | grep -c 'alive' || true)
+PROBE_N_DEAD=$(printf '%s\n' "$PROBE_OUT" | grep -c 'dead' || true)
+assert "hosts --probe: fixture host alive" "[ "$PROBE_N_OK" -ge 1 ]"
+assert "hosts --probe: dead port reported dead" "[ "$PROBE_N_DEAD" -ge 1 ]"
+assert "hosts --probe: summary line" "printf '%s' "$PROBE_OUT" | grep -qE '[0-9]+/[0-9]+ alive'"
+kill $FXC 2>/dev/null
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────
 echo ""
 # ── 13. Top-up across hosts + fail-loud short-count (local fixture) ──
