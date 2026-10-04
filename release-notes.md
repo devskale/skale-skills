@@ -19,6 +19,11 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **youtube ↔ vtd: Cross-Links geschlossen.** youtube-SKILL.md verlinkt vtd jetzt
+  richtig (relativer Link statt Fließtext) und nennt den Loop-Closer
+  `vtd transcript --list <name>` (Batch-Transkription der Picks); curation.md
+  endet nicht mehr beim Einzel-URL-Handoff, sondern beim Batch. Gegenseite war
+  schon sauber verlinkt.
 - **youtube 2.2.0: Leanness-Pass.** SKILL.md 101 → 97 Zeilen (Limit <100, wieder
   eingehalten); cmd_hosts kompaktiert (1136 → 1121 Zeilen search.py trotz neuem
   Subcommand); Age-restricted-Gotcha gestrafft.

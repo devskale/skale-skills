@@ -13,7 +13,7 @@ youtube "rust async" --preset fresh           # ranking preset
 youtube "query" --stdout                      # print only (legacy)
 ```
 
-Finds fresh, long, deep content (Invidious API, no key), ranks it, and **saves a list you curate** — promote picks, tag, exclude channels, expand — then hand a URL to `vtd` to transcribe. Zero dependencies (stdlib only).
+Finds fresh, long, deep content (Invidious API, no key), ranks it, and **saves a list you curate** — promote picks, tag, exclude channels, expand. When the Picks are right: `vtd transcript --list <name>` transcribes them all → [vtd skill](../video-transcript-downloader/SKILL.md). Zero dependencies (stdlib only).
 
 ## Install
 
@@ -82,7 +82,7 @@ youtube --update | --selfcheck | --discover
 ## Gotchas
 
 - **Invidious `date`/`duration` API filters are leaky** — deep mode re-checks age + duration client-side.
-- **Age-restricted videos** are marked `🔒 age-restricted` — the public Invidious stream returns 403 for them. Transcribe via `vtd transcript --url … --cookies`; which profile passes the age gate is account-specific (vtd SKILL.md). Translated captions often 429 — prefer the original language.
+- **Age-restricted videos** are marked `🔒 age-restricted` — the public Invidious stream returns 403 for them. Transcribe via `vtd … --cookies`; which profile passes the age gate is account-specific → [vtd SKILL.md](../video-transcript-downloader/SKILL.md) ("Profile selection"). Translated captions often 429 — prefer the original language.
 - **Invidious `/videos/{id}` (related videos) is widely blocked** — so `expand --like` resolves the video's *channel* instead (more from creator). If that fails, use `--channel` or `--more`.
 - **Watch links are `youtube.com`** (not the Invidious host), so they're ready for `vtd transcript --url …`.
 - **Fewer picks than `--num`?** Filters are strict. Widen with `--fresh all`, `--any-length`, lower `--min-views`, or bigger `--pool`.

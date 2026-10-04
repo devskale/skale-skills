@@ -83,4 +83,7 @@ Blocked channels are filtered out before ranking; favourites get a score boost
 2. read the list, curate by editing (promote / section / tag / drop)
 3. bulk ops via the CLI helpers above
 4. repeat until the `## Picks` are what the user wants
-5. hand a pick's URL to `vtd transcript --url …` when they want the content
+5. done curating: `vtd transcript --list <name>` transcribes every Pick in one
+   batch (resumable, writes `./transcripts/<name>/INDEX.md`) — the
+   [vtd skill](../../video-transcript-downloader/SKILL.md) closes the loop.
+   A single pick: `vtd transcript --url …`.
