@@ -75,18 +75,14 @@ Stored at `~/.config/youtube-skill/channels.md`. Blocked → filtered before ran
 ## Update / health
 
 ```bash
-youtube hosts                  # which instances are alive (cache + history, no network)
-youtube hosts --probe           # actively check every known host (alive/dead + latency)
-youtube --update           # git pull
-youtube --selfcheck        # version + last update
-youtube --discover         # refresh the Invidious instance cache
+youtube hosts [--probe]   # which instances are alive (probe: active check + latency)
+youtube --update | --selfcheck | --discover
 ```
-
 
 ## Gotchas
 
 - **Invidious `date`/`duration` API filters are leaky** — deep mode re-checks age + duration client-side.
-- **Age-restricted videos** are discovered (Invidious returns their metadata) but are **marked `🔒 age-restricted`** in the saved list — the public Invidious stream returns `403 Forbidden` for them (Google requires auth). To transcribe a marked video: `vtd transcript --url … --cookies` — but **which browser profile passes the age gate is account-specific** (see vtd SKILL.md → "Profile selection"). Translated captions often 429; prefer the video's original language.
+- **Age-restricted videos** are marked `🔒 age-restricted` — the public Invidious stream returns 403 for them. Transcribe via `vtd transcript --url … --cookies`; which profile passes the age gate is account-specific (vtd SKILL.md). Translated captions often 429 — prefer the original language.
 - **Invidious `/videos/{id}` (related videos) is widely blocked** — so `expand --like` resolves the video's *channel* instead (more from creator). If that fails, use `--channel` or `--more`.
 - **Watch links are `youtube.com`** (not the Invidious host), so they're ready for `vtd transcript --url …`.
 - **Fewer picks than `--num`?** Filters are strict. Widen with `--fresh all`, `--any-length`, lower `--min-views`, or bigger `--pool`.

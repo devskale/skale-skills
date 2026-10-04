@@ -999,8 +999,8 @@ def cmd_channel(rest: List[str]) -> int:
 def cmd_hosts(rest: List[str]) -> int:
     """youtube hosts [--probe] — which instances are alive.
     Default: cached view (cache + health history, no network).
-    --probe: actively health-check every known host in parallel and report
-    alive/dead with latency; alive hosts are written back to cache+stats."""
+    --probe: parallel health-check of every known host (alive/dead + latency);
+    survivors are written back to cache+stats."""
     p = argparse.ArgumentParser(prog="youtube hosts", description="Show instance health")
     p.add_argument("--probe", action="store_true", help="Actively probe every known host (network)")
     a = p.parse_args(rest)
@@ -1018,28 +1018,23 @@ def cmd_hosts(rest: List[str]) -> int:
         from concurrent.futures import ThreadPoolExecutor
 
         override = os.environ.get("YOUTUBE_HOSTS", "").strip()
-        if override:
-            hosts = [h.strip() for h in override.split(",") if h.strip()]
-        else:
-            hosts = []
-            for h in load_cached_instances() + _ranked_good_hosts() + KNOWN_INSTANCES:
-                if h not in hosts:
-                    hosts.append(h)
+        hosts = ([h.strip() for h in override.split(",") if h.strip()] if override
+                 else list(dict.fromkeys(load_cached_instances() + _ranked_good_hosts()
+                                         + KNOWN_INSTANCES)))
 
         def probe(host: str) -> Tuple[str, bool, float]:
             t0 = time.time()
-            ok = _probe_instance(host, 6)
-            return host, ok, (time.time() - t0) * 1000.0
+            return host, _probe_instance(host, 6), (time.time() - t0) * 1000.0
 
         alive: List[str] = []
         with ThreadPoolExecutor(max_workers=8) as ex:
             for host, ok, ms in ex.map(probe, hosts):
                 st = stats.get(host, {})
+                stx = f"ok={int(st.get('ok', 0)):4} fail={int(st.get('fail', 0)):3}"
+                print(f"  {'✓' if ok else '✗'} {host:32} "
+                      f"{'alive %5.0f ms' % ms if ok else 'dead       -'}   {stx}")
                 if ok:
                     alive.append(host)
-                    print(f"  ✓ {host:32} alive   {ms:6.0f} ms   ok={int(st.get('ok', 0)):4} fail={int(st.get('fail', 0)):3}")
-                else:
-                    print(f"  ✗ {host:32} dead          -   ok={int(st.get('ok', 0)):4} fail={int(st.get('fail', 0)):3}")
         print(f"{len(alive)}/{len(hosts)} alive")
         if alive and _cache_writes_enabled():
             save_cached_instances(alive)
@@ -1047,25 +1042,18 @@ def cmd_hosts(rest: List[str]) -> int:
                 _record_stat(h, ok=True)
         return 0
 
+    # Cached view: cache first, then history hosts not already listed.
     cached = load_cached_instances()
-    ranked = _ranked_good_hosts()
-    rows: List[Tuple[str, str, str, str]] = []
-    for h in cached:
-        st = stats.get(h, {})
-        rows.append((h, "cached", fmt_age(st.get("last_ok")),
-                     f"ok={int(st.get('ok', 0))} fail={int(st.get('fail', 0))}"))
-    for h in ranked:
-        if any(r[0] == h for r in rows):
-            continue
-        st = stats.get(h, {})
-        rows.append((h, "history", fmt_age(st.get("last_ok")),
-                     f"ok={int(st.get('ok', 0))} fail={int(st.get('fail', 0))}"))
-    if not rows:
+    hosts = cached + [h for h in _ranked_good_hosts() if h not in cached]
+    if not hosts:
         print("No cached instances — run: youtube hosts --probe")
         return 0
     print(f"{'HOST':32} {'SOURCE':8} {'LAST OK':10} STATS")
-    for host, src, age, st in rows:
-        print(f"{host:32} {src:8} {age:10} {st}")
+    for h in hosts:
+        st = stats.get(h, {})
+        src = "cached" if h in cached else "history"
+        print(f"{h:32} {src:8} {fmt_age(st.get('last_ok')):10} "
+              f"ok={int(st.get('ok', 0))} fail={int(st.get('fail', 0))}")
     print("Active health check: youtube hosts --probe")
     return 0
 

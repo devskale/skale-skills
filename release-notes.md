@@ -19,6 +19,9 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **youtube 2.2.0: Leanness-Pass.** SKILL.md 101 → 97 Zeilen (Limit <100, wieder
+  eingehalten); cmd_hosts kompaktiert (1136 → 1121 Zeilen search.py trotz neuem
+  Subcommand); Age-restricted-Gotcha gestrafft.
 - **youtube 2.2.0: `hosts`-Subcommand.** `youtube hosts` zeigt Cache + Health-History
   (offline), `youtube hosts --probe` prüft aktiv jeden bekannten Host parallel
   (alive/dead + Latenz) und schreibt Überlebende zurück in Cache. Aktueller Stand:
