@@ -86,7 +86,7 @@ agent-browser --auto-connect state save ./my-auth.json
 agent-browser --state ./my-auth.json open https://app.example.com
 ```
 
-> ⚠️ **Chrome 136+ (current stable: v149):** `--remote-debugging-port` on the default profile is **blocked for security**. You MUST use `--user-data-dir` pointing to a non-default directory. This means Mode D gets a blank profile, not your real Chrome. For your real sessions, use **Mode A** (`--profile Default`) or **Chrome DevTools MCP + `--autoConnect`**.
+> ⚠️ **Chrome 136+ (current stable at last check: v154):** `--remote-debugging-port` on the default profile is **blocked for security**. You MUST use `--user-data-dir` pointing to a non-default directory. This means Mode D gets a blank profile, not your real Chrome. For your real sessions, use **Mode A** (`--profile Default`) or **Chrome DevTools MCP + `--autoConnect`**.
 
 ### Encrypted state
 
@@ -159,14 +159,14 @@ cd testbed && bash agents/smoke_agent_browser.sh
 
 | | agent-browser | rodney | browser-use |
 |---|---|---|---|
-| Install | `brew install agent-browser` | `uv tool install rodney` | `pip install 'browser-use[cli]'` |
-| Daemon | Rust (no Node.js) | Go + rod | Python (socket-based) |
+| Install | `brew install agent-browser` | `go build` from the [devskale fork](https://github.com/devskale/rodney) (releases on GitHub) | `pip install 'browser-use[cli]'` |
+| Daemon | Rust (no Node.js) | Go + rod (no daemon — fire-and-forget) | Python (socket-based) |
 | Profile reuse | ✅ `--profile Default` (2.2s) | ❌ | ✅ `--profile "Default"` (28s) |
 | State persistence | ✅ `--session-name` (auto) | cookies only | manual export/import |
 | Page state | a11y tree + `@ref` (~50 tokens) | text/html extraction | `[N]` indices |
-| Network interception | yes (`network route`) | no | no (CLI) |
+| Network interception | ✅ (`network route`) | ✅ `mock`/`block` (write-only) | no (CLI) |
 | Batch mode | yes | no | no (CLI) |
-| Semantic locators | `find role/text/label` | CSS selectors only | no (CLI) |
+| Semantic locators | `find role/text/label` | CSS + XPath selectors | no (CLI) |
 | Assertions | none | `exists`, `visible`, `count`, `assert` | none |
 | Diff | `diff snapshot/screenshot` | no | no |
 | PDF | yes | yes | no (CLI) |

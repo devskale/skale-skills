@@ -502,7 +502,7 @@ rodney start && rodney open https://example.com && rodney text "h1" && rodney st
 
 ### Architecture: Why It's Lean
 
-rodney is a **Go static binary** (11.5 MB) packaged as a Python wheel. The `__init__.py` is 30 lines — it finds the binary and calls `os.execvp()`. Zero Python runtime overhead.
+rodney is a **Go static binary** (~17 MB, 0.11.0) packaged as a Python wheel. The `__init__.py` is 30 lines — it finds the binary and calls `os.execvp()`. Zero Python runtime overhead.
 
 ```
 rodney CLI → os.execvp() → Go binary (go-rod/rod) → CDP WebSocket → Chrome/Chromium
@@ -527,12 +527,13 @@ This is why rodney wins on RAM in benchmarks (~400–600 MB vs 600–900 MB for 
 - ✅ Accessibility tree (`ax-tree`, `ax-find`, `ax-node`)
 - ✅ PDF export, element screenshots, form filling, file downloads
 - ✅ **Network interception** (`mock` serves a canned response, `block` fails requests client-side)
+- ✅ **Request interception** (`mock` serves a canned response, `block` fails requests client-side) and **XPath selectors** (selectors starting `//` or `(`) — verified live on 0.11.0
 - ✅ Session isolation (`--local` for per-project state)
 - ✅ Visible mode (`--show`) for debugging
-- ✅ 35 tests in our test suite
+- ✅ 63 tests in our test suite (live-validated against 0.11.0)
 
 ### Weaknesses
-- ❌ CSS selectors only (no XPath, no semantic locators)
+- ❌ No semantic locators (CSS/XPath only — no role/text/label queries like agent-browser's `find`)
 - ❌ Network interception is **write-only** — no console/network *reading*, perf traces, or Lighthouse (that's chrome-devtools-mcp)
 - ❌ No batch mode — each call is a separate CLI invocation
 - ❌ JS evaluation is single-line only

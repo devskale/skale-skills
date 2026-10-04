@@ -1,8 +1,8 @@
 ---
 name: surf-guide
 description: "Surf — lean macOS CLI to drive your real, logged-in Google Chrome via AppleScript. Setup, capabilities, recipes, and where it fits vs rodney and chrome-devtools-mcp (see which-browser-tool.md)."
-version: 1.0.0
-date: 2026-07-12
+version: 1.5.0
+date: 2026-10-04
 ---
 
 # Surf — Drive Your Real Chrome (macOS, AppleScript)
@@ -15,7 +15,7 @@ date: 2026-07-12
 
 ## What it is
 
-`surf` is a ~11 KB bash script that talks to your running Google Chrome through **macOS AppleScript** and Chrome's **"Allow JavaScript from Apple Events"**. It doesn't launch a browser — it drives the one you have open. JS is injected via `execute … javascript`; navigation/tab control uses Chrome's AppleScript dictionary.
+`surf` is a bash CLI (~90 KB across `scripts/surf.sh` + `scripts/lib/*.sh`) that talks to your running Google Chrome through **macOS AppleScript** and Chrome's **"Allow JavaScript from Apple Events"**. It doesn't launch a browser — it drives the one you have open. JS is injected via `execute … javascript`; navigation/tab control uses Chrome's AppleScript dictionary.
 
 ```
 bash  →  osascript  →  Google Chrome (your live session)
@@ -45,6 +45,7 @@ That single toggle is permanent and unlocks every JS command (`text`, `click`, `
 surf tabs                       # w1.t1  URL  |  title  (every window/tab)
 surf tabs --json                # [{window,tab,url,title}, ...]
 surf here                       # active/target tab: URL | title
+surf find-tab "github.com"      # find a tab by URL/title substring → its ref
 surf select w1.t3               # pin a tab — operate it in the background, no focus steal
 surf select reset               # back to active tab of front window
 surf close                      # close the target/active tab
@@ -74,6 +75,8 @@ surf html "article"             # outerHTML of first match
 surf attr "a.login" "href"      # attribute value
 surf count "a"                  # number of matches
 surf list ".item-title"         # JSON array of all matches' text (scrape lists)
+surf table "table.rates"        # whole <table> as JSON rows
+surf cookie "name" / surf localstorage "key"   # read cookies / localStorage
 surf eval 'JSON.stringify({...})'  # arbitrary JS, result stringified
 ```
 
@@ -87,13 +90,15 @@ surf assert 'document.querySelectorAll(".row").length' '5'   # exit 0 if JS == e
 ### Interact
 ```bash
 surf click "button#submit"      # scrolls into view, clicks first match
-surf fill "input[name=q]" "x"   # sets value + fires input/change (React/Vue-safe)
+surf fill "input[name=q] "x"   # sets value + fires input/change (React/Vue-safe)
+surf form 'input[name=q]=x' 'select#c=US'  # fill many fields in one call
 surf hover ".menu-item"         # mouseover/mouseenter
 surf select-option "select#c" "US"  # set a <select> value + fire change
 surf submit "form#checkout"     # submit the enclosing form (requestSubmit)
 surf scroll down 3              # scroll by N viewport-heights (down|up|top|bottom)
 surf scroll-to "h2"             # scroll element into view (center)
 surf press enter                # real key/chord: enter, tab, escape, a, cmd+a
+surf download "a.export"        # trigger a download (Chrome saves to disk)
 ```
 
 ### Screenshot
@@ -101,11 +106,19 @@ surf press enter                # real key/chord: enter, tab, escape, a, cmd+a
 surf shot                       # → ./surf-shot.png  (window rect, no shadow)
 surf shot ~/Desktop/before.png
 surf shot-el "h1" after.png     # one element (crop via sips)
+surf shot-full page.png        # full page (scroll+stitch)
+```
+
+### Batch, bookmarks, diagnostics
+```bash
+surf batch < steps.json        # many ops, ONE browser call (JSON steps on stdin)
+surf bookmarks "query"         # search Chrome bookmarks (reads the file, no browser)
+surf doctor                    # checks every prerequisite (macOS, Chrome, JS, perms)
 ```
 
 ### Meta
 ```bash
-surf --version                  # surf 1.0.0
+surf --version                  # surf 1.5.0
 surf --selfcheck                # version + dir + last update
 surf --update                   # git pull the skill
 surf help                       # full usage
@@ -186,7 +199,7 @@ tell application "Google Chrome"
 end tell
 ```
 
-State (the pinned tab) lives in `~/.config/surf/target`. No background process ever runs.
+State (the pinned tab) lives in `~/.config/surf/target-<name>` (default: `target-default`) — one pin file per named surf session, so parallel sessions don't step on each other. No background process ever runs.
 
 ## References
 

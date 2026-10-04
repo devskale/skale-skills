@@ -15,7 +15,7 @@ cd rodney
 go build -o ~/.local/bin/rodney .
 ```
 
-Verify: `rodney --version` → `0.6.x` (e.g. `0.6.1`).
+Verify: `rodney --version` → `0.11.0` (skale fork).
 
 Requires Chrome or Chromium.
 

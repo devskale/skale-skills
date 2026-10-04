@@ -42,7 +42,7 @@ These are complementary, not rivals. A typical session mixes them:
 | **Platform** | macOS only | cross-platform | cross-platform |
 | **Form factor** | bash CLI | bash CLI | MCP tools |
 | **Assertions / CI** | DIY (`eval`/`count` + exit codes) | ✅ built-in | ❌ |
-| **Network intercept (mock/block)** | ❌ | ✅ | ✅ |
+| **Network intercept (mock/block)** | ❌ | ✅ | ❌ (network is read-only: list/get requests) |
 | **Network / console / perf *read*** | ❌ | ❌ | ✅ |
 | **PDF / a11y audit** | ❌ | ✅ | ✅ (Lighthouse) |
 | **Session reuse** | ✅ | ❌ | ✅ |

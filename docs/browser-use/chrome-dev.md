@@ -12,7 +12,7 @@ Control a live Chrome browser from Pi via MCP. Screenshots, DOM snapshots, netwo
 |-----------|--------|
 | **Real session reuse** | Connects to your running Chrome — all cookies, logins, extensions work |
 | **No `--remote-debugging-port` hack** | Uses `--autoConnect` (Chrome 144+) via the `chrome://inspect` toggle, sidestepping the Chrome 136+ port restriction |
-| **29+ tools** | Navigate, click, screenshot, network logs, JS console, DOM queries, performance traces |
+| **29+ tools** | Navigate, click, screenshot, network logs, JS console, DOM snapshots, performance traces, Lighthouse |
 | **Zero config in Chrome** | Toggle remote debugging once in `chrome://inspect/#remote-debugging`; the `chrome-autoallow` wrapper auto-clicks the **Allow** consent dialog |
 | **Lazy-loaded** | MCP server only starts when you use it, auto-disconnects when idle |
 
@@ -100,33 +100,37 @@ You should see ~29 tools available. If not, make sure Chrome is running and remo
 
 ```
 # Navigate
-mcp({ tool: "chrome_navigate", args: '{"url": "https://github.com"}' })
+mcp({ tool: "chrome_navigate_page", args: '{"url": "https://github.com"}' })
 
 # Take a screenshot
-mcp({ tool: "chrome_screenshot", args: '{"name": "github-home"}' })
+mcp({ tool: "chrome_take_screenshot", args: '{"name": "github-home"}' })
 
-# Get DOM snapshot
-mcp({ tool: "chrome_get_console_logs", args: '{}' })
+# List console messages
+mcp({ tool: "chrome_list_console_messages", args: '{}' })
 
 # Execute JavaScript
-mcp({ tool: "chrome_evaluate", args: '{"script": "document.title"}' })
+mcp({ tool: "chrome_evaluate_script", args: '{"function": "() => document.title"}' })
 
 # Click an element
-mcp({ tool: "chrome_click_element", args: '{"selector": "a[href='/login']"}' })
+mcp({ tool: "chrome_click", args: '{"uid": "<uid from take_snapshot>"}' })
+
+# List network requests (read) / get one request by reqid
+mcp({ tool: "chrome_list_network_requests", args: '{}' })
+mcp({ tool: "chrome_get_network_request", args: '{"reqid": "..."}' })
 ```
 
 ### Available Tool Categories
 
 | Category | Tools (examples) |
 |----------|-------------------|
-| **Navigation** | `chrome_navigate`, `chrome_go_back`, `chrome_go_forward`, `chrome_refresh` |
-| **Interaction** | `chrome_click_element`, `chrome_type_text`, `chrome_select_option`, `chrome_hover_element` |
-| **Inspection** | `chrome_screenshot`, `chrome_get_console_logs`, `chrome_get_network_logs`, `chrome_get_dom_snapshot` |
-| **JavaScript** | `chrome_evaluate`, `chrome_execute_script` |
-| **Performance** | `chrome_performance_profiler_start`, `chrome_performance_profiler_stop` |
-| **Tabs** | `chrome_list_tabs`, `chrome_new_tab`, `chrome_switch_tab`, `chrome_close_tab` |
+| **Navigation & pages** | `chrome_navigate_page`, `chrome_new_page`, `chrome_list_pages`, `chrome_select_page`, `chrome_close_page` |
+| **Interaction** | `chrome_click`, `chrome_fill`, `chrome_fill_form`, `chrome_hover`, `chrome_drag`, `chrome_press_key`, `chrome_type_text`, `chrome_upload_file` |
+| **Inspection** | `chrome_take_screenshot`, `chrome_take_snapshot`, `chrome_list_console_messages`, `chrome_get_console_message`, `chrome_list_network_requests`, `chrome_get_network_request`, `chrome_get_css_styles` |
+| **JavaScript** | `chrome_evaluate_script` |
+| **Performance** | `chrome_performance_start_trace`, `chrome_performance_stop_trace`, `chrome_performance_analyze_insight`, `chrome_take_heapsnapshot`, `chrome_lighthouse_audit` |
+| **Misc** | `chrome_resize_page`, `chrome_emulate`, `chrome_handle_dialog`, `chrome_wait_for` |
 
-> Run `mcp({ describe: "chrome_devtools_list" })` for the full list.
+> Run `mcp({ server: "chrome-devtools" })` for the full list (30 tools, live-verified 2026-10-04).
 
 ## How It Compares
 

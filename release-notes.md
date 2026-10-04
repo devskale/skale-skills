@@ -19,6 +19,28 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **docs/browser-use/ Accuracy-Pass.** Live-Verifikation gegen surf 1.5.0,
+  rodney 0.11.0, den verbundenen chrome-devtools-MCP und Chrome 154:
+  - **chrome-dev.md**: fast alle Beispiel-Tool-Namen waren falsch (chrome_navigate
+    → chrome_navigate_page, chrome_screenshot → chrome_take_screenshot,
+    chrome_evaluate → chrome_evaluate_script, chrome_get_console_logs →
+    chrome_list_console_messages, chrome_get_dom_snapshot → chrome_take_snapshot,
+    …) — jetzt live-verifiziert (30 Tools). Kategorien-Tabelle auf echten
+    Bestand umgeschrieben.
+  - **surf.md**: war auf 1.0.0-Stand — Version/datum auf 1.5.0, Kommandoinventar
+    ergänzt (find-tab, table, cookie, localstorage, form, download, shot-full,
+    bookmarks, batch, doctor), "~11 KB script" → ~90 KB Multi-File-Realität,
+    State-Datei ist jetzt per-Session (target-<name>).
+  - **vcl-agent-browser.md**: rodney-Install war `uv tool install rodney`
+    (upstream-PyPI, nicht unser Fork) → go build/devskale-Release; rodney hatte
+    "Network interception: no" — real: mock/block; "CSS only" → CSS+XPath;
+    Chrome "v149" → 154.
+  - **browser-tools-comparison.md**: 35→63 Tests, 11.5→17 MB Binary, XPath-Schwäche
+    entfiel (0.11.0 nimmt `//`-Selektoren + xpath-of).
+  - **which-browser-tool.md**: chrome-devtools-mcp hatte "Network intercept ✅" —
+    real read-only (list/get requests, kein mock/block).
+  - **README.md**: surf.md war nicht in der Navigation. guides/rodney-setup.md:
+    "verify 0.6.x" → 0.11.0.
 - **vtd 1.3.1: Cookie-Bug — Default war nicht off.** `cookieArgs()` behandelte ein
   fehlendes `--cookies`-Flag wie `--cookies` (undefined fiel in den Config-Zweig):
   Mit vorhandener Config (`vtd cookies set …`) zog **jeder** vtd-Aufruf still die
