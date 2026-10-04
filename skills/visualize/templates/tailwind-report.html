@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — report (Tailwind track)</title>
+<!-- Tailwind track: utilities as syntax, house tokens as vocabulary. CDN at view time
+     (same contract as mermaid.html). The tiny critical CSS below keeps the first paint
+     on warm paper — no white flash before the CDN compiles. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: "#1a1a1a", paper: "#fafaf9", paper2: "#f4f4f5",
+          muted: "#6b7280", soft: "#a1a1aa", line: "#e5e5e5",
+          cat1: "#5e7a9b", cat2: "#7c8f6f", cat3: "#b8915a",
+          ok: "#15803d", warn: "#b45309", bad: "#b91c1c",
+        },
+      },
+    },
+  };
+</script>
+<style>
+  /* critical paint: paper + ink before Tailwind loads (kills the flash) */
+  html{background:#fafaf9}
+  body{margin:0;background:#fafaf9;color:#1a1a1a;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  /* diagram semantics (Mermaid classDef helpers) — only when mixing in Mermaid */
+  .seam { stroke-dasharray: 4 4; }
+  .leak { stroke: #b91c1c; }
+</style>
+</head>
+<body class="bg-paper text-ink antialiased">
+<main class="max-w-4xl mx-auto px-6 py-12 space-y-10">
+
+  <header>
+    <p class="text-xs uppercase tracking-widest text-muted font-semibold mb-2">{{KICKER}}</p>
+    <h1 class="text-3xl font-semibold tracking-tight">{{TITLE}}</h1>
+    <p class="text-muted mt-2 max-w-2xl">{{INTENT}}</p>
+    <p class="text-sm text-muted mt-2">{{AUTHOR}} · {{DATE}} · {{STATUS}}</p>
+  </header>
+
+  <section class="bg-white border border-line rounded-lg p-6" id="summary">
+    <h2 class="text-base font-semibold mt-0">Executive summary</h2>
+    <ul class="mt-2 space-y-2 text-sm">
+      <li><strong>{{FINDING 1}}</strong> — one line.</li>
+      <li><strong>{{FINDING 2}}</strong> — one line.</li>
+    </ul>
+  </section>
+
+  <section id="s1">
+    <h2 class="text-sm uppercase tracking-widest text-muted font-semibold"><span class="text-cat1 font-semibold mr-2">1</span>{{SECTION TITLE}}</h2>
+    <!-- candidate / finding card: utilities for layout, tokens for meaning -->
+    <article class="bg-white border border-line rounded-lg p-5 mt-3">
+      <h3 class="font-semibold">{{CANDIDATE TITLE}}</h3>
+      <!-- strength: dot + plain text in severity hue — never a colored pill -->
+      <p class="text-sm mt-1">
+        <span class="inline-block w-2.5 h-2.5 rounded-sm bg-ok align-middle mr-1.5"></span><span class="text-ok font-semibold">strong</span>
+        <span class="text-muted mx-2">·</span><span class="text-muted">{{CATEGORY — dot + muted text, not a pill}}</span>
+      </p>
+      <p class="font-mono text-sm text-muted mt-2 break-all">{{path/to/file1.go}} · {{path/to/file2.go}}</p>
+      <div class="grid md:grid-cols-2 gap-4 mt-4">
+        <div class="border border-line rounded-md p-3">
+          <p class="text-xs uppercase tracking-widest text-muted mb-2">Before</p>
+          <!-- hand-built divs + inline SVG: the editorial half of the mix -->
+          {{BEFORE DIAGRAM — cross-section / mass diagram / collapse (see structures.md)}}
+        </div>
+        <div class="border border-line rounded-md p-3">
+          <p class="text-xs uppercase tracking-widest text-muted mb-2">After</p>
+          {{AFTER DIAGRAM}}
+        </div>
+      </div>
+      <p class="text-sm mt-4"><strong>Problem</strong> — one sentence. <strong>Change</strong> — one sentence.</p>
+      <ul class="mt-2 space-y-1 text-sm list-disc pl-5">
+        <li>{{WIN — ≤6 words, in the subject's real terms}}</li>
+      </ul>
+    </article>
+  </section>
+
+  <section id="recs">
+    <h2 class="text-sm uppercase tracking-widest text-muted font-semibold">Recommendations</h2>
+    <ol class="mt-3 space-y-2 text-sm list-decimal pl-5">
+      <li><strong>{{RECOMMENDATION}}</strong> — because {{reason}}.
+        <span class="inline-block w-2.5 h-2.5 rounded-sm bg-warn align-middle mr-1 ml-1"></span><span class="text-warn font-semibold">worth exploring</span></li>
+    </ol>
+  </section>
+
+  <footer class="border-t border-line pt-5 text-sm text-muted">
+    <p>Built with the visualize skill · Tailwind track (CDN at view time — same contract as <code>mermaid.html</code>) · shared via throway {{URL}} · local source of truth: this file.</p>
+  </footer>
+</main>
+</body>
+</html>

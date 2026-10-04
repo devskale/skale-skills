@@ -137,4 +137,7 @@ Pick the panels that fit the platform — not all four always apply. See
 - **Generic dashboard** — avoid corporate chrome, heavy borders, dense tables of numbers.
   Editorial and scannable instead.
 - **Prose-heavy** — the visuals carry the meaning. Cut paragraphs to bullets.
-- **External deps for the core** — the layout must work from inline CSS alone.
+- **External deps: default track stays inline.** The inline base works with zero
+  network; CDN tracks (Mermaid for graphs, Tailwind for irregular layouts — see
+  [html-patterns.md](html-patterns.md)) are opt-in per page. Content must stay readable
+  when a CDN fails — colour and polish may drop, structure must not.

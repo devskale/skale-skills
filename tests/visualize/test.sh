@@ -50,8 +50,13 @@ for m in header legend card-grid tree flow table section exec-summary recommenda
 done
 # one canonical token family (#1a1a1a) across references — no drifted slate ink
 grep -rq 'ink: *#0f172a' "$SKILL/references/" && bad "drifted ink token #0f172a still in references/" || ok
-# README matches what mermaid.html actually loads (Mermaid via CDN — no Tailwind)
-grep -qi 'tailwind' "$SKILL/templates/README.md" && bad "README claims Tailwind for a template that doesn't load it" || ok
+# README may claim Tailwind ONLY if a template actually loads it (honesty guard)
+if grep -qi 'tailwind' "$SKILL/templates/README.md"; then
+    grep -q 'cdn.tailwindcss.com' "$SKILL/templates/tailwind-report.html" && ok || bad "README claims Tailwind but tailwind-report.html doesn't load the CDN"
+else
+    ok
+fi
+
 
 # test prompts (tests/visualize/prompts.md) — coverage: every template & module prompted
 PROMPTS="tests/visualize/prompts.md"
@@ -98,13 +103,21 @@ if [ -f "$CF" ]; then
 fi
 
 # templates
-for t in cards repo-tree system-map report mermaid; do
+for t in cards repo-tree system-map report mermaid tailwind-report; do
     [ -f "$SKILL/templates/$t.html" ] && ok || bad "template $t.html missing"
 done
+
+# lint catches Tailwind pill classes (rounded-full + tinted bg in one class attr)
+PILLFILE="$(mktemp -d)/pilltest.html"
+cat > "$PILLFILE" <<'PILLEOF'
+<p class="rounded-full bg-emerald-100 px-3 py-1">badge</p>
+PILLEOF
+check "lint Tailwind pill tell -> exit 1" 1 "$SCRIPT" lint "$PILLFILE"
+rm -rf "$(dirname "$PILLFILE")"
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
 # templates must pass their own gates (house style + self-contained)
-for t in cards repo-tree system-map report mermaid timeline before-after cheatsheet barchart; do
+for t in cards repo-tree system-map report mermaid tailwind-report timeline before-after cheatsheet barchart; do
     check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
     check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
 done

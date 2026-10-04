@@ -19,6 +19,13 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **visualize 1.x: Tailwind-Track (CDN, opt-in).** `templates/tailwind-report.html`
+  übernimmt mattpococks Tailwind-Scaffold: Utilities als Syntax, House-Tokens als
+  Vokabular (inline `tailwind.config` mappt ink/paper/severity → `text-ink`,
+  `bg-paper`, `text-ok`), kritisches CSS gegen den White-Flash, House-Regeln gelten
+  weiter (Dot+Text statt Pills). `visualize lint` erkennt jetzt auch Tailwind-Pill-
+  Klassen (`rounded-full` + getönte bg-Utility). Netzwerk zur View-Zeit ist der
+  akzeptierte Contract (wie mermaid.html); Inline-Basis bleibt Default-Track.
 - **pi-priority policy beim Agent-Linking.** `scripts/link-agents.sh` verwaltet
   jetzt `!skills/<name>/**`-Exclusions in pi's User-Settings: pi lädt gelinkte
   Skills weiter aus der Package-Kopie (gefiltert, `pi install`-versioniert),

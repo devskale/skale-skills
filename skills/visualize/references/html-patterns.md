@@ -81,6 +81,30 @@ doesn't feel parachuted in.
 SVG for the more editorial visuals. Don't lean on Mermaid for everything — a page that
 renders every visual through the same engine starts to look generic.
 
+## Tailwind track (optional)
+
+`templates/tailwind-report.html` loads Tailwind from CDN at view time — the same network
+contract as Mermaid, but for **layout**: utilities as syntax, house tokens as vocabulary.
+
+**When:** the per-page layout is irregular (Pocock-style candidate cards, bespoke
+before/after centrepieces) and composing from the module catalog would mean hand-rolling
+one-off CSS. **Not when:** a standard structure fits (cards, tree, timeline, report) —
+the inline base is the default track and stays first choice.
+
+The template's essentials:
+
+- `tailwind.config` inline maps the house tokens as first-class colors
+  (`ink`, `paper`, `muted`, `line`, `cat1..3`, `ok/warn/bad`) — utilities read semantic
+  (`text-ink`, `bg-paper`, `text-ok`), and two pages drift apart slower.
+- A tiny critical CSS (`html{background:#fafaf9}` + font on body) keeps the first paint
+  on warm paper — no white flash before the CDN compiles.
+- **House rules apply unchanged:** categories as small square dot + muted text (never
+  pills — `visualize lint` also flags Tailwind pill classes like
+  `rounded-full bg-emerald-100`), colour is structure, severity hues only where the
+  colour IS the data.
+- Mix freely with Mermaid (the scaffold keeps `.seam`/`.leak` classDef helpers) and with
+  hand-built divs + inline SVG — same mix-media rule as above.
+
 ```html
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs";

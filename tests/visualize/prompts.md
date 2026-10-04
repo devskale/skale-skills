@@ -25,6 +25,7 @@ base, no inline-duplicated styles).
 | P3 | "Map this platform: orchestrator repo, its sub-repos, the pipeline, and the fleet." | visualize · system-map · **`system-map.html`** | multi-panel (topology, pipeline, fleet, tree) — only panels that fit |
 | P4 | "Write a report on test coverage in this repo: findings and prioritized recommendations." | **report** · **`report.html`** | `exec-summary` first, numbered `section`s, `recommendations` with priorities |
 | P5 | "Show the request flow through the stack as a dependency graph." | visualize · graph · **`mermaid.html`** | `mermaid` via CDN inside a card; page layout stays inline CSS |
+| P20 | "Review-report our build pipeline as Tailwind-page: candidate cards with before/after diagrams." | report · Tailwind track · **`tailwind-report.html`** | loads cdn.tailwindcss.com; house tokens as semantic classes (`text-ink`, `bg-paper`); dot + muted-text categories (no pills); passes validate + lint |
 | P14 | "Show this year's release history as a timeline with phases." | visualize · sequence · **`timeline.html`** | spine + type dots matching the legend; one `now` marker |
 | P15 | "Show before vs after the migration — removed, added, and which rules now pass." | visualize · change · **`before-after.html`** | −/+ deltas with symbols AND hues; paired trace marks first divergence |
 | P16 | "Make me a cheatsheet for the visualize CLI." | visualize · reference · **`cheatsheet.html`** | command chips + one-line descriptions; topics grouped with hue dots |

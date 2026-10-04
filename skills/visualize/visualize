@@ -284,6 +284,14 @@ for sel, decls in rules:
         if sizes and max(sizes) >= 20:
             add(f'large colored circle badge (border-radius:50% + colored background + >=20px, "{sel[:40]}")')
 
+# 4. Decorative tell: Tailwind pill classes (rounded-full + tinted bg utility in the
+#    same class attribute). The Tailwind track (templates/tailwind-report.html) uses
+#    utilities, which the style-block parser above never sees — check class="..." too.
+TINTED_BG = re.compile(r'\bbg-(?:emerald|amber|red|rose|blue|sky|indigo|violet|purple|fuchsia|pink|cyan|teal|lime|green|orange|yellow)-\d{2,3}\b')
+for cls in re.findall(r'class="([^"]*)"', src):
+    if re.search(r'\brounded-full\b', cls) and TINTED_BG.search(cls):
+        add(f'Tailwind pill classes (rounded-full + tinted background, "{cls[:50]}") — use a small square dot + severity text instead')
+
 # Structural color (category hues on text/kickers, semantic .ok/.warn/.bad,
 # small dots, tinted grouping) is allowed — it carries meaning, so no check here.
 

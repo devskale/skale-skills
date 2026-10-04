@@ -66,6 +66,8 @@ ol.recs li{margin-bottom:.6rem}
 ```
 
 Neutral ink on warm paper, system-ui font. Every class used below is defined here.
+This is the **inline base — the default track** (for the optional Tailwind track see
+[html-patterns.md](html-patterns.md)).
 **Colour is structure, not decoration:** category hues (`--cat-1..3`) sit on small
 elements — dots, swatches, 2px rules, small kickers; severity `--ok/--warn/--bad` only
 when the colour IS the data (findings, priorities, test results). Never decorative:
