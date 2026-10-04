@@ -19,6 +19,15 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **vtd 1.3.1: Cookie-Bug — Default war nicht off.** `cookieArgs()` behandelte ein
+  fehlendes `--cookies`-Flag wie `--cookies` (undefined fiel in den Config-Zweig):
+  Mit vorhandener Config (`vtd cookies set …`) zog **jeder** vtd-Aufruf still die
+  Browser-Cookies (1842 Cookies pro Aufruf beobachtet). Fix: `undefined` → keine
+  Cookies; Config gilt nur noch bei explizitem Flag. Suite [12] pinnt jetzt die
+  Semantik per echtem CLI-Aufruf (isoliertes HOME + VTD_DEBUG, Bogus-URL): kein
+  Flag → keine Auflösung; `--cookies` → Config; `false` → aus; inline → inline.
+  64/64. Live-Check: WAP-Captions sind nicht age-gated (Fast Path transkribiert
+  ohne Cookies — das Gate trifft das Video-Playback, nicht die Untertitel).
 - **youtube ↔ vtd: Cross-Links geschlossen.** youtube-SKILL.md verlinkt vtd jetzt
   richtig (relativer Link statt Fließtext) und nennt den Loop-Closer
   `vtd transcript --list <name>` (Batch-Transkription der Picks); curation.md

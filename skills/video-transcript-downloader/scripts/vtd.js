@@ -52,7 +52,10 @@ function saveConfig(cfg) {
 }
 
 // Resolve the yt-dlp --cookies-from-browser argument.
-// Priority: explicit --cookies flag > config file > env var > none.
+// Priority: explicit --cookies flag (inline spec or no value → config/env) >
+// config file > env var > none. Default is OFF: without the flag, no cookies
+// are ever extracted — even with a config present (a stored profile must not
+// silently attach the user's browser identity to every download).
 //
 // Forms accepted:
 //   --cookies                 → read browser+profile from config/env
@@ -60,6 +63,9 @@ function saveConfig(cfg) {
 //   --cookies chrome          → browser only
 //   --cookies chrome:Profile 1 → browser + profile (inline)
 function cookieArgs(opts) {
+  // Default off: flag never passed.
+  if (opts.cookies === undefined) return [];
+
   // Explicit disable.
   if (opts.cookies === false || opts.cookies === "false") return [];
 

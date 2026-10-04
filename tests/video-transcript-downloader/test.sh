@@ -131,7 +131,25 @@ echo ""
 
 # ── 12. Cookies / age-restricted support ─────────────────────────────
 echo "[12] Cookies / age-restricted support..."
-assert "has --cookies flag"        "grep -q 'cookies' scripts/vtd.js"
+# cookieArgs semantics via the REAL CLI: isolated HOME with a config (as if
+# `vtd cookies set chrome "Profile 2"` had run), VTD_DEBUG=1, bogus URL (dies
+# fast, but the cookie resolution debug line prints first). Default is OFF:
+# without the flag no cookies are ever extracted — a stored profile must not
+# silently attach the user's browser identity to every download.
+COOKIE_HOME="$(mktemp -d)"
+mkdir -p "$COOKIE_HOME/.config/vtd-skill"
+printf '{"browser":"chrome","profile":"Profile 2"}' > "$COOKIE_HOME/.config/vtd-skill/config.json"
+VTD="$(command -v vtd || echo vtd)"
+VTD_NOOP_URL='https://example.com/none'
+NOFLAG=$(HOME="$COOKIE_HOME" VTD_DEBUG=1 "$VTD" transcript --url "$VTD_NOOP_URL" --no-file 2>&1 | grep -c 'cookies (config)' || true)
+assert "no flag -> NO cookie resolution (default off, even with config)" "[ "$NOFLAG" -eq 0 ]"
+WITHFLAG=$(HOME="$COOKIE_HOME" VTD_DEBUG=1 "$VTD" transcript --url "$VTD_NOOP_URL" --no-file --cookies 2>&1 | grep -c 'cookies (config): chrome:Profile 2' || true)
+assert "--cookies -> reads config (chrome:Profile 2)" "[ "$WITHFLAG" -ge 1 ]"
+WITHFALSE=$(HOME="$COOKIE_HOME" VTD_DEBUG=1 "$VTD" transcript --url "$VTD_NOOP_URL" --no-file --cookies false 2>&1 | grep -c 'cookies (' || true)
+assert "--cookies false -> no cookies" "[ "$WITHFALSE" -eq 0 ]"
+WITHINLINE=$(HOME="$COOKIE_HOME" VTD_DEBUG=1 "$VTD" transcript --url "$VTD_NOOP_URL" --no-file --cookies firefox 2>&1 | grep -c 'cookies (inline): firefox' || true)
+assert "--cookies firefox -> inline spec" "[ "$WITHINLINE" -ge 1 ]"
+rm -rf "$COOKIE_HOME"
 assert "has cookies subcommand"    "grep -q 'cookies set' scripts/vtd.js"
 assert "has cookieArgs function"   "grep -q 'function cookieArgs' scripts/vtd.js"
 assert "has loadConfig"            "grep -q 'function loadConfig' scripts/vtd.js"
