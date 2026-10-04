@@ -13,6 +13,12 @@ Log of notable changes to skale-skills. Newest first.
     `~/.rodney-sessions/*/state.json` (fand sofort einen echten Orphan).
   - Validiert gegen rodney 0.11.0 (83 Commands); 2 Binary-Bugs als
     devskale/rodney#1/#2 gefiled, Stop-Race als #3.
+- **visualize: Diagramm-Vokabular aus mattpococks improve-codebase-architecture
+  übernommen.** Cross-section / Mass-diagram / Collapse als before/after-Inhalte
+  (structures.md), „if the diagram needs a paragraph, redraw the diagram", Wins-Bullets
+  ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
+  für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
+  deren Scaffold widersprechen unserer Inline-Regel).
 - **pi-priority policy beim Agent-Linking.** `scripts/link-agents.sh` verwaltet
   jetzt `!skills/<name>/**`-Exclusions in pi's User-Settings: pi lädt gelinkte
   Skills weiter aus der Package-Kopie (gefiltert, `pi install`-versioniert),

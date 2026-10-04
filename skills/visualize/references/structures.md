@@ -52,6 +52,27 @@ The centrepiece of a "what would change" visualization.
 - Keep each column ~320px tall so they sit comfortably without scrolling.
 - Use colour to highlight what *changed* (e.g. red = removed, emerald = added).
 
+### Inside the columns — diagram vocabulary
+
+The structure says *two columns*; it doesn't say what to draw in them. Borrow
+vocabulary from the subject, drawn with hand-built divs + inline SVG (no framework).
+Proven shapes (from mattpocock's improve-codebase-architecture report):
+
+- **Cross-section (layered shallowness):** stack horizontal bands, one per layer a
+  call/path passes through. Before: many thin bands each doing nothing. After: one
+  thick band labelled with the consolidated responsibility.
+- **Mass diagram (surface vs substance):** two rectangles per item — one for the
+  exposed surface, one for the implementation behind it. Before: surface nearly as
+  tall as the implementation. After: surface short, implementation tall (deep).
+- **Collapse (many into one):** before: a tree of nested boxes. After: the same tree
+  collapsed into one thick-bordered box, the formerly-internal parts shown faded
+  inside it.
+
+The rule that governs all of them: **if the diagram needs a paragraph to be
+understood, redraw the diagram.** Prose never rescues a weak visual — and wins/bullets
+inside a before/after name the gain in ≤6 words each ("tests hit one interface",
+"pricing stops leaking"), not "easier to maintain".
+
 ## Timeline
 
 A vertical or horizontal sequence of steps/phases, each with a label + one line.

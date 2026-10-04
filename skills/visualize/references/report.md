@@ -90,11 +90,17 @@ Findings/priorities in practice:
 
 - **Findings first.** State the finding, then the evidence. Don't bury the conclusion.
 - **Prioritise recommendations.** Order by impact/urgency; tag with a priority if useful.
+  For a set of recommendations, mark strength as a **dot + plain text in the severity
+  hue** (strong = `--ok`, worth exploring = `--warn`, speculative = muted) — never colored
+  pill badges. A "top recommendation" section links to its detail card with an anchor.
 - **Sparse prose, rich visuals.** A report is still a `visualize` deliverable — embed
   card grids, before/after, charts, or a system map where they communicate better than
   text.
 - **Be specific, not generic.** Use the real subject's data and findings. No filler like
-  "it's worth noting that…".
+  "it's worth noting that…". If a sentence could be a bullet, make it a bullet; if a
+  bullet could be cut, cut it.
+- **Use the subject's real terms.** Call things what the domain calls them, without
+  inventing synonyms — a report that renames its subject's nouns reads second-hand.
 - **Executive summary is non-negotiable.** Even a short report should open with the key
   points.
 

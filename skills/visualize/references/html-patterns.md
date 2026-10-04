@@ -77,6 +77,10 @@ SVG would be unwieldy. It loads from a CDN at runtime, so it **needs network**. 
 page layout in inline CSS; Mermaid only renders the diagram block. Wrap it in a card so it
 doesn't feel parachuted in.
 
+**Mix media deliberately:** Mermaid for graph-shaped diagrams, hand-built divs + inline
+SVG for the more editorial visuals. Don't lean on Mermaid for everything — a page that
+renders every visual through the same engine starts to look generic.
+
 ```html
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs";
