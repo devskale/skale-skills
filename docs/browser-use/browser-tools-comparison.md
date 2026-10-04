@@ -1639,7 +1639,8 @@ These tools **can** be composed:
 | [guides/rodney-setup.md](../../guides/rodney-setup.md) | Rodney install & setup |
 | [guides/chrome-dev.md](chrome-dev.md) | Chrome DevTools MCP setup |
 | [guides/vcl-agent-browser.md](vcl-agent-browser.md) | Vercel agent-browser setup |
-| [tests/eval_browsers.md](../../tests/eval_browsers.md) | Terminal browser eval (w3m, chawan) |
+| [terminal-browsing.md](terminal-browsing.md) | Terminal browsing intelligence — w3m/chawan, the agent ladder, verified breakage |
+| [tests/eval_browsers.md](../../tests/eval_browsers.md) | Terminal browser eval raw notes (w3m, chawan) |
 | [tests/browserfortui_eval.md](../../tests/browserfortui_eval.md) | Terminal browser results table |
 | `testbed/cloakbrowser/` (local, gitignored) | CloakBrowser stealth/humanize/CF tests |
 

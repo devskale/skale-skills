@@ -19,6 +19,16 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **docs/browser-use/terminal-browsing.md — eigene Intelligence-Sektion über
+  Terminal-Browsing.** Warum Terminal-Browser für Menschen (SSH/low-RAM),
+  Agenten (Dump = layout-bewusster Text-Extraktor) und TUI-Workflows (pi,
+  herdr) zählen; die Agenten-Leiter fetch-url → w3m/cha → rodney/surf
+  (mittlere Sprosse am unterbenutztesten); w3m-vs-chawan-Urteil (chawans
+  QuickJS = JS im Terminal, w3m = das robuste Default); heute re-verifizierte
+  Bruchstellen (GitHub-Gzip reproduziert, **reddit.com neu blockiert** —
+  Feb-Eval sagte noch "works", orf.at/Wikipedia/HN/lite-DDG weiter ok);
+  Text-Web-Endpunkte (lite.duckduckgo, old.reddit, hn.algolia-API); unsere
+  Empfehlungs-Policy. Verlinkt aus README-Nav und browser-tools-comparison.
 - **docs/browser-use/: Toten-Audit.** Verifikation via GitHub API / npm / PyPI
   (2026-10-04), tote und walking-dead Tools markiert und in einen Graveyard-Appendix
   in browser-tools-comparison.md (0.1.6) verschoben:

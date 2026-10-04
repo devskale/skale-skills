@@ -12,6 +12,7 @@ Everything about browser automation for AI agents — tools, setups, and Chrome 
 | Set up OpenChrome MCP | [openchrome-usage.md](openchrome-usage.md) |
 | Set up Chrome DevTools MCP | [chrome-dev.md](chrome-dev.md) |
 | Set up Vercel agent-browser | [vcl-agent-browser.md](vcl-agent-browser.md) |
+| **Browse in the terminal (w3m, chawan) — when a text browser beats a real one** | [terminal-browsing.md](terminal-browsing.md) |
 | **surf — drive your real Chrome on macOS (AppleScript)** | [surf.md](surf.md) |
 
 ## Tool Decision Flow
@@ -58,3 +59,4 @@ Key facts:
 | [chrome-dev.md](chrome-dev.md) | Chrome DevTools Protocol MCP setup — inspect, debug, automate live Chrome |
 | [vcl-agent-browser.md](vcl-agent-browser.md) | Vercel agent-browser — Rust CLI, accessibility-tree snapshots, best Chrome profile reuse |
 | [surf.md](surf.md) | surf — drive your real logged-in Chrome on macOS via AppleScript (skill doc) |
+| [terminal-browsing.md](terminal-browsing.md) | Terminal-based browsing — w3m/chawan intelligence: the agent ladder, verified breakage, text-web endpoints |
