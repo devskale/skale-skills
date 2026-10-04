@@ -19,6 +19,16 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **watchlist.jsonl — Watchlist jetzt JSONL (war WATCHLIST.md).** Eine
+  Quelle der Wahrheit, eine Zeile pro Eintrag, maschinenlesbar: Pflichtfelder
+  `status` (watch/review/adopted/rejected), `type` (skill/ext), `name`,
+  `source`, `why`, `added`; optional `verdict`, `install`. Adden per Chat
+  (`watchlist add <org/repo> — <why>`) oder `echo '...' >> watchlist.jsonl`.
+  Der Gate prüft die Datei jetzt mit (scripts/check.sh): valides JSON pro
+  Zeile, Pflichtfelder, Status/Type-Enums, keine doppelten Quellen.
+  Negativtest verifiziert (kaputte Zeile → FAIL). Grund für JSONL: trivial
+  appendbar, von der geplanten skale.dev/skills-Seite beim Build direkt
+  einlesbar, und die eventuelle Write-API-Queue wäre ebenfalls JSONL.
 - **WATCHLIST.md — persönliche Watchlist für Skills & Extensions.** Eine
   Datei im Repo-Root (nicht im pi-Package-Manifest, bleibt privat): append-only
   Liste mit Status-Lebenszyklus 👀 watch → 🔍 in review → ✅ adopted / ❌

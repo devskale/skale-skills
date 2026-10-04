@@ -59,6 +59,42 @@ fi
 banner "Skill metadata (description hygiene)"
 if bash tests/skill-metadata/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: skill-metadata" >&2; fi
 
+banner "Watchlist (watchlist.jsonl)"
+if python3 - <<'PY'
+import json, sys
+
+REQUIRED = {"status", "type", "name", "source", "why", "added"}
+STATUSES = {"watch", "review", "adopted", "rejected"}
+TYPES = {"skill", "ext"}
+
+lines = open("watchlist.jsonl", encoding="utf-8").read().splitlines()
+errors = []
+seen_sources = set()
+for i, line in enumerate(l for l in lines if l.strip()):
+    try:
+        e = json.loads(line)
+    except json.JSONDecodeError as err:
+        errors.append(f"line {i + 1}: invalid JSON: {err}")
+        continue
+    missing = REQUIRED - e.keys()
+    if missing:
+        errors.append(f"line {i + 1} ({e.get('name', '?')}): missing {sorted(missing)}")
+    if e.get("status") not in STATUSES:
+        errors.append(f"line {i + 1}: status {e.get('status')!r} not in {sorted(STATUSES)}")
+    if e.get("type") not in TYPES:
+        errors.append(f"line {i + 1}: type {e.get('type')!r} not in {sorted(TYPES)}")
+    if e.get("source") in seen_sources:
+        errors.append(f"line {i + 1}: duplicate source {e['source']!r}")
+    seen_sources.add(e.get("source"))
+
+if errors:
+    for e in errors:
+        print(f"  ✗ {e}")
+    sys.exit(1)
+print(f"  {len([l for l in lines if l.strip()])} entries OK (required fields, status/type enums, no duplicate sources)")
+PY
+then echo "ok"; else FAIL=1; echo "FAIL: watchlist" >&2; fi
+
 banner "Docs integrity (dead links, orphans)"
 if bash tests/docs/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: docs" >&2; fi
 

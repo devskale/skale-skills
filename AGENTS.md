@@ -150,10 +150,14 @@ Our own tools (rodney, surf, CloakBrowser tests) are unaffected — they launch 
 ## External Skills
 
 Personal watchlist for skills/extensions worth reviewing or installing:
-[`WATCHLIST.md`](WATCHLIST.md) (repo root, not shipped in the package). When the user
-says `watchlist add <org/repo> — <why>`, append one line there in the documented
-format; `review the watchlist` means: fetch each 👀/🔍 entry's repo + SKILL.md,
-write a 2-3 line verdict under it, flip the status (✅/❌).
+[`watchlist.jsonl`](watchlist.jsonl) (repo root, JSONL, not shipped in the
+package). One JSON object per line — required fields: `status`
+(`watch|review|adopted|rejected`), `type` (`skill|ext`), `name`, `source`,
+`why`, `added`; optional: `verdict`, `install`. When the user says
+`watchlist add <org/repo> — <why>`, append one line there. `review the
+watchlist` means: fetch each watch/review entry's repo + SKILL.md, fill the
+`verdict` field (2-3 lines), flip `status` to `adopted`/`rejected`. The file
+is parse-checked by the gate (`scripts/check.sh`).
 
 Install from upstream, don't maintain locally:
 
