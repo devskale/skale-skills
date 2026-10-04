@@ -19,6 +19,10 @@ Log of notable changes to skale-skills. Newest first.
   ≤6 Wörter, Empfehlungsstärke als Dot+Text in Severity-Hue (report.md), Mix-Media-Regel
   für Mermaid vs. hand-built (html-patterns.md). Ideen ja — Code nein (Tailwind-CDN und
   deren Scaffold widersprechen unserer Inline-Regel).
+- **visualize: references/scaffolds.md — Blueprint je Template** (nach mattpococks
+  HTML-REPORT.md-Vorbild): Anatomie + Füllregeln für alle 10 Templates (cards,
+  repo-tree, system-map, report, mermaid, tailwind-report, timeline, before-after,
+  cheatsheet, barchart), verlinkt aus SKILL.md und templates/README.md.
 - **visualize 1.x: Tailwind-Track (CDN, opt-in).** `templates/tailwind-report.html`
   übernimmt mattpococks Tailwind-Scaffold: Utilities als Syntax, House-Tokens als
   Vokabular (inline `tailwind.config` mappt ink/paper/severity → `text-ink`,

@@ -2,6 +2,8 @@
 
 Ready-to-use, self-contained HTML templates. The agent copies one, fills in the `{{PLACEHOLDERS}}`,
 and adapts. Each is the proven "house style" — start from a template rather than rebuilding.
+The anatomy of each (which blocks exist, what they carry, the filling rules) is documented
+in [../references/scaffolds.md](../references/scaffolds.md).
 
 ## Which template to use
 
