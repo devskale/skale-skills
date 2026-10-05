@@ -76,7 +76,7 @@ Rules:
   first (headings, key highlights, a tint). Everything else in neutrals. Two accents =
   noise. If you're tempted to colour a third thing, it isn't the focus — leave it neutral.
 - **Colour is structure, not decoration.** Structural colour lives on *small* elements:
-  category dots and swatches, 2–3px rules and left borders, small uppercase kickers,
+  category dots and swatches, 2–3px rules, small uppercase kickers,
   status values. Never on body text, never as large fills. Every hue must encode
   something (§2 below).
 - **Semantic roles, not hex.** Recipes and modules reference `accent`, `muted`, `cat-1`,
@@ -132,10 +132,11 @@ The single highest-impact move for "a set of things." When items fall into categ
 - Give each category a distinct hue from the **`--cat-1..5` family** (muted, editorial —
   not saturated dashboard tones).
 - Add a compact **legend** under the header so the colours read instantly.
-- Category colour sits on **small elements**: the legend dot, a card's category label, a
-  quiet left border. Categories are **plain text + a dot**, not saturated pills. When the
-  grouping is just a label (not a thing to distinguish at a glance), plain muted text in
-  the card footer reads cleaner than any badge.
+- Category colour sits on **small elements**: the legend dot, a card's category label
+  (plain text + dot). Categories are **plain text + a dot**, never saturated pills and
+  never a coloured left edge on the card. When the grouping is just a label (not a
+  thing to distinguish at a glance), plain muted text in the card footer reads cleaner
+  than any badge.
 
 ```css
 /* small structural swatches — square-ish, quiet, never pills */
@@ -155,7 +156,7 @@ Legend (in the header):
 
 ### Where colour earns its place (structure, not decoration)
 
-- **Categories / groups** — `--cat-1..5` on dots, swatches, 2px left borders, small
+- **Categories / groups** — `--cat-1..5` on dots, swatches, small
   uppercase labels. One hue = one category, applied consistently from legend to cards.
 - **Severity / status** — `--ok/--warn/--bad` when the colour IS the data: audit
   findings, test results, priorities, verdicts. The value text takes the colour (or a
@@ -265,6 +266,12 @@ makes the page feel intentional and trustworthy.
   `border-radius:999px` capsules with pastel backgrounds and uppercase text scream "LLM
   slop." **Never use them.** Categories go as plain muted text in the card footer, or as a
   quiet legend — not a colored pill on each item.
+- **Colored left-edge accent on cards** (`border-left: 3-4px solid <hue>`) — the other
+  tell-tale AI-generated look ("that damn left-edge coloured line on a panel"). A card
+  is a bordered box on paper; its category/severity lives in the content (label text,
+  dot, severity hue on the value) — never as a coloured stripe down the left edge.
+  Exception: **connectors** — a neutral `--line` border-left that *draws structure*
+  (timeline spine, tree indentation, nested-list guides) is layout, not decoration.
 - **Inline-duplicated styles** — the same `style="…"` string copy-pasted onto every
   card/row. All module CSS lives once in the shared base (modules.md); write short
   class-based HTML instead.

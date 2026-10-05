@@ -284,6 +284,23 @@ cat > "$TMP/circle.html" <<'EOF'
 EOF
 check "lint large colored circle badge → exit 1" 1 "$SCRIPT" lint "$TMP/circle.html"
 
+# lint — colored left-edge accent on a card is a decorative AI tell (the
+# "left-edge coloured line on a panel"); neutral --line connectors pass.
+cat > "$TMP/edge.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>.finding{background:#fff;border:1px solid #e5e5e5;border-left:4px solid var(--warn);border-radius:.6rem;padding:1rem}
+.sev-warn{border-left:3px solid #b45309}</style>
+</head><body><div class="finding">x</div><div class="sev-warn">y</div></body></html>
+EOF
+cat > "$TMP/connector.html" <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"><title>t</title>
+<style>.timeline{border-left:1px solid var(--line);margin-left:.4rem;padding-left:1.5rem}
+.tree ul{border-left:1px solid #e5e5e5;padding-left:1rem}</style>
+</head><body><div class="timeline">x</div></body></html>
+EOF
+check "lint colored left-edge accent → exit 1" 1 "$SCRIPT" lint "$TMP/edge.html"
+check "lint neutral connector border-left → exit 0" 0 "$SCRIPT" lint "$TMP/connector.html"
+
 cat > "$TMP/neutral.html" <<'EOF'
 <!doctype html><html><head><meta charset="utf-8"><title>t</title>
 <style>a{color:#1a1a1a}</style></head>

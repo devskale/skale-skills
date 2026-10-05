@@ -4,6 +4,16 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **visualize: colored left-edge accent on cards is now a banned AI-tell.**
+  „That damn left-edge coloured line on a panel" (Kosta, „Spot the Slop") —
+  `border-left:≥2px solid <hue>` auf Karten/Panels. Ursache war unsere eigene
+  Anleitung: promptlib.md empfahl „2px left borders" als strukturelle Farbe.
+  Jetzt: Hue gehört auf den Inhalt (Label/Dot/Value), nie auf die Kartenkante;
+  Ausnahme bleiben neutrale Konnektoren (Timeline-Spine, Tree-Guides, `--line`).
+  `visualize lint` prüft das als Tell #5 (Hex + var(--ok/--warn/--bad/--cat-*/
+  --accent) erkannt, `var(--line|--muted|--soft|--ink)` + <2px passieren).
+  before-after.html Template bereinigt (.tr-div-Streifen → div-note-Text in
+  Hue). Suite: 176 Checks.
 - **issues: `doctor` — pocock-style Setup-Check (explore → report → fix).**
   `issues doctor` prüft die ganze Maschinen-Setup: synced root, Transport
   (Syncthing / `throway_dir` in der Projekt-Config), Versionierung, Identity

@@ -316,6 +316,23 @@ for sel, decls in rules:
                  re.findall(r'(?:^|[;\s])(?:width|height)\s*:\s*([\d.]+(?:px|rem))', decls)]
         if sizes and max(sizes) >= 20:
             add(f'large colored circle badge (border-radius:50% + colored background + >=20px, "{sel[:40]}")')
+    # 5. Decorative tell: colored left-edge accent on a card/panel
+    #    (border-left >= 2px in a NON-neutral color). The "left-edge coloured
+    #    line on a panel" is a classic AI tell. Neutral --line-family colors are
+    #    connectors (timeline spine, tree guides) and pass.
+    blm = re.search(r'border-left\s*:\s*([\d.]+)(px|rem)\s+solid\s+(#[0-9a-fA-F]{6}|var\(\s*--[a-z0-9-]+\s*\))', decls)
+    if blm:
+        w = float(blm.group(1)) * (16 if blm.group(2) == 'rem' else 1)
+        color = blm.group(3)
+        neutral = False
+        if color.startswith('#'):
+            neutral = color[1:].lower() in NEUTRAL
+        else:
+            # var(--line)/var(--muted)/var(--soft)/var(--ink) are the connector
+            # neutrals; var(--ok/--warn/--bad/--cat-*/--accent) on an edge is decoration
+            neutral = bool(re.search(r'var\(\s*--(line|muted|soft|ink)\s*\)', color))
+        if w >= 2 and not neutral:
+            add(f'colored left-edge accent on a card (border-left:{blm.group(0)}, "{sel[:40]}") — put the hue on content (label/dot/value), not on the card edge')
 
 # 4. Decorative tell: Tailwind pill classes (rounded-full + tinted bg utility in the
 #    same class attribute). The Tailwind track (templates/tailwind-report.html) uses
