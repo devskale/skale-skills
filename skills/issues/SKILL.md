@@ -37,11 +37,16 @@ New machine? `issues install.sh` (this skill dir) puts the CLI on PATH
 
 ```bash
 issues board                 # overview
+issues doctor                # setup check (new machine? start here)
 issues new <slug> [to]       # create (from = me@<repo>)
 issues todo                  # what's waiting on you
 issues start <slug> → work → issues review <slug> → issues done <slug>
 ```
 (New project? `issues init <project>` first — see above.)
+
+**New machine?** `issues doctor` checks the whole setup (synced root, transport,
+identity, `.handoff` link, board columns) and `issues doctor --fix` applies the
+safe fixes (create root, pin `~/.handoff-me`, create missing columns).
 
 **As a worker:** `issues todo` → `issues start <slug>` → work → `issues review <slug>`.
 **As a requester:** `issues mine review` → review → `issues done <slug>` (sets DONE → archive/).
@@ -57,9 +62,11 @@ issues start <slug> → work → issues review <slug> → issues done <slug>
   revived live copy; commands resolve to the LIVE copy. Don't hand-edit
   terminal columns — use `purge` to remove, or move back to a live column to
   reopen.
-- **`purge` is irreversible — there is NO history.** No git in the root (one
-  transport: Syncthing), no file versioning. A purged file is gone on every
-  machine. Double-check before purging.
+- **`purge` deletes the live file everywhere.** The synced root has no git —
+  but the local auto-commit history (LaunchAgent, hourly, per-machine) is a
+  recovery net: `git -C ~/code/handoffs log`. History is NOT synced; a purged
+  file is recoverable only on machines with local history. Double-check before
+  purging.
 - **Project-specific values** (version, module, triage vocabulary) come from
   `<project>/.issues/config`, NOT from the code — see `issues --help` §CONFIG.
 

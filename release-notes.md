@@ -4,6 +4,19 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **issues: `doctor` — pocock-style Setup-Check (explore → report → fix).**
+  `issues doctor` prüft die ganze Maschinen-Setup: synced root, Transport
+  (Syncthing / `throway_dir` in der Projekt-Config), Versionierung, Identity
+  (`~/.handoff-me`), `.handoff`-Link, Board-Kolumnen. `--fix` wendet die
+  sicheren Fixes an (root anlegen, Identity pinnen, fehlende Kolumnen
+  erstellen). Neue Maschine: `install.sh` → `issues doctor --fix` → fertig.
+- **issues: „purge ist final" war gelogen — Doku an die Realität angepasst.**
+  `~/code/handoffs/` hat seit 2026-10-03 ein lokales Git + stündlichen
+  Auto-Commit (LaunchAgent `com.skale.handoffs`, Recovery nach Issue-Datei-
+  Verlust). SKILL.md, `--help` und die Root-README behaupteten trotzdem
+  „no git, purge is final". Jetzt ehrlich: History ist ein per-Maschine-
+  Recovery-Netz, nicht synchronisiert — `purge` löscht live überall,
+  wiederherstellbar nur wo lokale History existiert. Suite: 63 Checks.
 - **visualize: share reads the throway contract instead of discarding it.**
   `share` (single file, `--update`, `--dir`) hat `GET /api` nur angepingt
   und die Antwort verworfen (throway issue #1). Jetzt wird

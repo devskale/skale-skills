@@ -120,6 +120,27 @@ out=$(run_in "$REPO" board-html --out "$TEST_ROOT/board.html" --title '<script>x
 [ -f "$TEST_ROOT/board.html" ] && ok || bad "board-html did not write output"
 grep -q '<script>x</script>' "$TEST_ROOT/board.html" && bad "board-html title not HTML-escaped (XSS)" || ok
 
+# doctor: fresh nonexistent root, no .handoff → problems reported, exit 1
+# (ISSUES_DIR points at a path that does NOT exist yet — the suite's own root
+# was already created by init, so use a fresh subdir)
+DOCTOR_DIR="$TEST_ROOT/doctor-cwd"
+mkdir -p "$DOCTOR_DIR"
+DOCTOR_ROOT="$TEST_ROOT/doctor-handoffs"
+out=$(ISSUES_DIR="$DOCTOR_ROOT" run_in "$DOCTOR_DIR" doctor); rc=$?
+[ "$rc" -eq 1 ] && ok || bad "doctor must exit 1 when problems found (rc=$rc)"
+echo "$out" | grep -q "synced root missing" && ok || bad "doctor must warn about missing root"
+echo "$out" | grep -q "no git history in root" && ok || bad "doctor must warn about missing versioning"
+echo "$out" | grep -q "problem(s)" && ok || bad "doctor must report problem count"
+# --fix: creates missing columns + pins identity (HANDOFF_ME unset, ~/.handoff-me absent → hostname)
+# run inside REPO after removing one column
+rmdir "$TEST_ROOT/handoffs/testproj/issues/review"
+out=$(run_in "$REPO" doctor --fix); rc=$?
+[ -d "$TEST_ROOT/handoffs/testproj/issues/review" ] && ok || bad "doctor --fix must recreate missing column"
+echo "$out" | grep -q "created missing columns" && ok || bad "doctor --fix must report created columns"
+# unknown flag dies cleanly
+out=$(run_in "$REPO" doctor --bogus); rc=$?
+[ "$rc" -eq 1 ] && echo "$out" | grep -q "unknown doctor flag" && ok || bad "doctor --bogus must die cleanly"
+
 # help (capture first — help output is large; echo|grep -q can SIGPIPE under pipefail)
 out=$(run_in "$REPO" help); echo "$out" | grep -q "TROUBLESHOOTING" && ok || bad "help missing TROUBLESHOOTING section"
 echo "$out" | grep -q "done <slug>" && ok || bad "help must document done <slug>"

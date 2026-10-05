@@ -1045,6 +1045,11 @@ issues — multi-project kanban (lives in .handoff/<project>/issues/)
                                    root + 5 columns (idempotent) + .handoff
                                    symlink at the repo root. --local = real
                                    local dir, gitignored + WARN (not synced)
+  issues doctor [--fix]          setup check (pocock-style): synced root, transport
+                                   (Syncthing/throway), versioning, identity,
+                                   .handoff link, board columns. --fix = apply
+                                   safe fixes (mkdir root, pin ~/.handoff-me,
+                                   create missing columns)
   issues board                    one-line-per-column overview (live board)
   issues board-html [flags]       kanban as self-contained HTML (--share → URL)
                                    flags: --share --out <f> --title <t>
@@ -1105,9 +1110,143 @@ TROUBLESHOOTING
   version: unknown on new              → add version_cmd/version_default to project config
   version shows raw grep line          → version_cmd quoting broken; write cmd unquoted
   duplicate slug across columns        → merge into one file, delete the stray
-  purge deleted too much               → final: no git/sync history exists (versioning
-                                          deliberately off, 2026-09-16) — gone is gone
+  purge deleted too much               → recovery: local git history in the root
+                                          (auto-commit hourly, per-machine) —
+                                          git -C ~/code/handoffs log / show
 EOF
+}
+
+# ---- doctor ----------------------------------------------------------------
+# doctor — pocock-style setup check: explore → report → propose fix → confirm.
+#   issues doctor          check this machine's issues setup, report + advice
+#   issues doctor --fix     apply safe fixes (mkdir root, write ~/.handoff-me,
+#                           create missing .handoff symlink if project dir exists)
+# Checks: synced root, transport (Syncthing / local-git versioning / throway
+# config), identity (~/.handoff-me), .handoff link resolution, board columns.
+# Exit 0 = all ok, 1 = something needs attention (report says what).
+DOCTOR_PROBLEMS=0
+
+doc_ok()   { echo "  ok    $1"; }
+doc_warn() { echo "  WARN  $1"; DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS+1)); }
+doc_fix()  { echo "  fix   $1"; }
+
+doctor_syncthing() {
+  # transport detection: any signal that the synced root is Syncthing-shared
+  [ -d "$CENTRAL/.stfolder" ] && return 0
+  pgrep -x syncthing >/dev/null 2>&1 && return 0
+  ls "$HOME/Library/LaunchAgents"/*syncthing* >/dev/null 2>&1 && return 0
+  ls "$HOME/.config/syncthing" >/dev/null 2>&1 && return 0
+  command -v syncthing >/dev/null 2>&1 && return 0
+  return 1
+}
+
+doctor_versioning() {
+  # local git history in the synced root (recovery net, per-machine, NOT synced)
+  [ -d "$CENTRAL/.git" ]
+}
+
+cmd_doctor() {
+  local fix=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --fix) fix=1; shift ;;
+      *)     die "unknown doctor flag: $1 (usage: doctor [--fix])" ;;
+    esac
+  done
+
+  echo "issues doctor — setup check"
+  echo "  root:      $CENTRAL"
+  echo "  identity:  $(me 2>/dev/null || echo '?')"
+  echo
+
+  # 1. synced root
+  if [ -d "$CENTRAL" ]; then
+    doc_ok "synced root exists: $CENTRAL"
+  else
+    if [ "$fix" -eq 1 ]; then
+      mkdir -p "$CENTRAL" && doc_fix "created synced root: $CENTRAL"
+    else
+      doc_warn "synced root missing: $CENTRAL — run 'issues doctor --fix' (or: issues init <project>)"
+    fi
+  fi
+
+  # 2. transport — how does the root travel between machines?
+  if doctor_syncthing; then
+    doc_ok "transport: Syncthing detected"
+  elif [ -n "$(cfg throway_dir "")" ]; then
+    doc_ok "transport: throway dir configured (see project config throway_dir)"
+  else
+    doc_warn "no transport detected (no Syncthing, no throway_dir in project config) — the root is machine-local; boards will NOT sync. Install Syncthing, or set throway_dir in <project>/.issues/config"
+  fi
+
+  # 3. versioning — honest report (docs used to claim 'no git here')
+  if doctor_versioning; then
+    if [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
+      doc_ok "versioning: local git + auto-commit (recovery net; history is per-machine, not synced)"
+    else
+      doc_warn "local git in root but no auto-commit found — commits happen only by hand"
+    fi
+  else
+    doc_warn "no git history in root — 'purge' is FINAL (no recovery). Consider git init + hourly auto-commit in $CENTRAL"
+  fi
+
+  # 4. identity
+  if [ -n "${HANDOFF_ME:-}" ] || [ -f "$HOME/.handoff-me" ]; then
+    doc_ok "identity pinned: $(me)"
+  else
+    if [ "$fix" -eq 1 ]; then
+      hostname -s > "$HOME/.handoff-me" && doc_fix "wrote ~/.handoff-me: $(me)"
+    else
+      doc_warn "identity falls back to hostname — pin it: echo <machine-name> > ~/.handoff-me (or run doctor --fix)"
+    fi
+  fi
+
+  # 5. .handoff link (only if we're inside a repo)
+  local repo=""
+  repo=$(init_repo_root 2>/dev/null || true)
+  if [ -n "$repo" ] && [ "$repo" != "$CENTRAL" ]; then
+    local link="$repo/.handoff"
+    if [ -L "$link" ]; then
+      local tgt; tgt=$(readlink "$link")
+      if [ -d "$tgt" ]; then
+        doc_ok ".handoff → $tgt"
+      else
+        doc_warn ".handoff → $tgt but target missing — run: issues init <project>"
+      fi
+    elif [ -e "$link" ]; then
+      doc_warn "$link exists but is not a symlink — resolve manually (or: rm it && issues init <project>)"
+    else
+      doc_warn "no .handoff in $repo — run: issues init <project> (from the repo root)"
+    fi
+  fi
+
+  # 6. board columns (only if a project dir resolved)
+  local p=""
+  p=$(project_dir 2>/dev/null || true)
+  if [ -n "$p" ] && [ -d "$p" ]; then
+    local missing="" col
+    for col in "${ALL_COLS[@]}"; do
+      [ -d "$p/issues/$col" ] || missing="$missing $col"
+    done
+    if [ -z "$missing" ]; then
+      doc_ok "board columns complete: $(basename "$p")"
+    else
+      if [ "$fix" -eq 1 ]; then
+        for col in $missing; do mkdir -p "$p/issues/$col"; done
+        doc_fix "created missing columns:$missing"
+      else
+        doc_warn "board missing columns:$missing — run: issues doctor --fix"
+      fi
+    fi
+  fi
+
+  echo
+  if [ "$DOCTOR_PROBLEMS" -eq 0 ]; then
+    echo "all checks passed."
+  else
+    echo "$DOCTOR_PROBLEMS problem(s) — fixable ones: issues doctor --fix"
+    exit 1
+  fi
 }
 
 # ---- dispatch -------------------------------------------------------------
@@ -1116,6 +1255,7 @@ case "$cmd" in
   board|b)         cmd_board "$@" ;;
   board-html)      cmd_board_html "$@" ;;
   init)            cmd_init "$@" ;;
+  doctor)          cmd_doctor "$@" ;;
   new|n)           cmd_new "$@" ;;
   ls|list)         cmd_ls "$@" ;;
   todo)            cmd_todo "$@" ;;
