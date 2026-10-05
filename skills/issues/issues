@@ -1179,10 +1179,24 @@ cmd_doctor() {
     doc_warn "no transport detected (no Syncthing, no throway_dir in project config) — the root is machine-local; boards will NOT sync. Install Syncthing, or set throway_dir in <project>/.issues/config"
   fi
 
-  # 3. versioning — honest report (docs used to claim 'no git here')
+  # 3. versioning — honest report (docs used to claim 'no git here'). The
+  # auto-commit must be LOADED, not just installed: a plist on disk with an
+  # unloaded LaunchAgent silently never runs (found 2026-10-05: last commit
+  # Oct 3 while doctor said ok).
   if doctor_versioning; then
-    if [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
-      doc_ok "versioning: local git + auto-commit (recovery net; history is per-machine, not synced)"
+    local autocommit_loaded=0
+    if [ -x "$CENTRAL/.autocommit.sh" ] && ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
+      # macOS: verify the LaunchAgent is actually loaded (launchctl list)
+      if command -v launchctl >/dev/null 2>&1 && launchctl list 2>/dev/null | grep -q handoffs; then
+        autocommit_loaded=1
+      elif [ ! -x /usr/bin/launchctl ]; then
+        autocommit_loaded=1  # not macOS — plist presence is all we can check
+      fi
+    fi
+    if [ "$autocommit_loaded" -eq 1 ]; then
+      doc_ok "versioning: local git + auto-commit loaded (recovery net; history is per-machine, not synced)"
+    elif [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
+      doc_warn "auto-commit installed but NOT loaded (launchctl) — recovery net is not running. Fix: launchctl load ~/Library/LaunchAgents/com.skale.handoffs.plist"
     else
       doc_warn "local git in root but no auto-commit found — commits happen only by hand"
     fi

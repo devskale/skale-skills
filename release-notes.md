@@ -4,6 +4,14 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **issues: doctor prüft jetzt, ob der Auto-Commit-LaunchAgent wirklich LÄUFT.**
+  Fund (Retro 2026-10-05): der LaunchAgent `com.skale.handoffs` war entladen —
+  letzter Commit 2026-10-03, während `issues doctor` grün zeigte („versioning:
+  local git + auto-commit"). Der Check testete die plist-Existenz, nicht den
+  Load-Zustand. Jetzt: `launchctl list` wird geprüft (macOS); nicht geladen →
+  WARN mit Fix-Zeile. Suite unverändert (63) — der Check ist Umgebung, nicht
+  Sandbox.
+
 - **rodney: self-decompose — leaked rod-family browsers are now rodney's own
   responsibility.** Fund: 5 verwaiste Chromium-Prozesse (seit Sa), 139
   rod-Temp-Profile unter `$TMPDIR/rod/user-data` = 2.0 GB. Ursache:
