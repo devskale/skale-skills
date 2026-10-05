@@ -243,6 +243,10 @@ assert "rodney-cleanup runs"        "scripts/rodney-cleanup.sh >/dev/null 2>&1"
 assert "rodney-cleanup --json valid" "scripts/rodney-cleanup.sh --json | grep -q '\"total_chrome_processes\"'"
 assert "rodney-ps runs"             "scripts/rodney-ps.sh >/dev/null 2>&1"
 assert "rodney-ps --json valid"     "scripts/rodney-ps.sh --json | grep -q '\"managed_pid\"'"
+# self-decompose: cleanup must see the WHOLE rod family, not just .rodney dirs
+assert "cleanup detects rod-managed binary" "grep -q 'cache/rod/browser' scripts/rodney-cleanup.sh"
+assert "cleanup sweeps stale rod temp dirs" "grep -q 'stale_rod_temp_dirs' scripts/rodney-cleanup.sh"
+assert "cleanup never kills managed sessions" "grep -q 'managed_pids' scripts/rodney-cleanup.sh"
 echo ""
 
 # ── Summary ──────────────────────────────────────────────────────────

@@ -18,6 +18,14 @@ directory:
 
 All scripts detect rodney processes via `user-data-dir=.*\.rodney`.
 
+**Self-decompose (2026-10-05):** the cleanup also covers the wider **rod family** —
+any Chromium launched from rod's managed binary (`~/.cache/rod/browser/...`), which
+includes go-rod's *default* temp profiles (`$TMPDIR/rod/user-data/<hex>`) created by
+`launcher.New()` without `UserDataDir` (rodney's own test suite did this; 139 leaked
+dirs / 2.0 GB found on mac). `rodney-cleanup --clean` kills orphan rod-family browsers
+and sweeps their stale temp dirs (unused by any live process, older than 1h).
+Sessions referenced by a live `state.json` are NEVER touched.
+
 ## Modes
 
 | Command | Mode | Behavior |

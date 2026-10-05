@@ -4,6 +4,19 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **rodney: self-decompose — leaked rod-family browsers are now rodney's own
+  responsibility.** Fund: 5 verwaiste Chromium-Prozesse (seit Sa), 139
+  rod-Temp-Profile unter `$TMPDIR/rod/user-data` = 2.0 GB. Ursache:
+  `main_test.go` nutzte `launcher.New()` ohne `UserDataDir` — go-rod streut
+  pro Run ein Random-Dir; bei abgebrochenen Test-Läufen bleibt der Chromium
+  (Leakless false) + das Profil für immer liegen. Fix zweigeteilt:
+  (1) Fork `main_test.go`: dediziertes `rodney-test-*`-Dir + `chrome.pid` +
+  `defer os.RemoveAll` — normale Läufe räumen selbst ab, abgebrochene sind
+  auffindbar. (2) `rodney-cleanup.sh` erkennt jetzt die ganze rod-Familie
+  (rod-managed Binary `~/.cache/rod/browser`, nicht nur `.rodney`-Dirs), killt
+  Orphans (nie PIDs aus lebenden `state.json`s) und fegt stale rod-Temp-Dirs
+  (ungenutzt + älter 1h). Suite: 66 Checks. Aufgeräumt: 15 Prozesse, 135 Dirs,
+  ~1.9 GB frei.
 - **visualize: colored left-edge accent on cards is now a banned AI-tell.**
   „That damn left-edge coloured line on a panel" (Kosta, „Spot the Slop") —
   `border-left:≥2px solid <hue>` auf Karten/Panels. Ursache war unsere eigene
