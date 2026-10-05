@@ -24,6 +24,36 @@ work ships: they then collide with the git package on every startup (see
 > package entry (setup B). See the skaleshare guide §19 for the full precedence/identity
 > model.
 
+## The testbed — try out a THIRD-PARTY skill (`.pi/skills/`)
+
+To evaluate a skill from outside this repo (a GitHub find, a candidate for
+`watchlist.jsonl`) without installing it anywhere permanent:
+
+```bash
+cd ~/code/skale-skills
+mkdir -p .pi/skills
+git clone --depth 1 https://github.com/<org>/<repo> /tmp/<repo>-src
+cp -r /tmp/<repo>-src/skills/<skill-name> .pi/skills/   # or the repo root if it IS the skill
+pi -p "do you see a skill called '<name>'? answer YES or NO"   # verify discovery
+```
+
+Why this works safely:
+
+- pi discovers **project skills** from `.pi/skills/` after project trust — a fresh
+  session inside the repo sees them; sessions elsewhere never do.
+- `.pi/` is **gitignored** (line 24) — the testbed never reaches a commit, the package,
+  or `pi install`.
+- No settings are written, no global dir is touched — removal is `rm -rf .pi/skills/<name>`.
+- Name collisions with package skills are **soft** (first wins, `[conflicts]` warning) —
+  a testbed skill that shadows a shipped one warns loudly instead of silently replacing it.
+
+This is the **evaluation** lane, distinct from the three "not shipped" states in
+[LAYOUT.md](../LAYOUT.md): a testbed skill is neither an idea, under review, nor
+deprecated — it is someone else's code under live trial. Verdict after the trial goes to
+[`watchlist.jsonl`](../watchlist.jsonl) (`status: review → adopted|rejected`, fill `verdict`);
+adopted skills get installed properly (upstream, per [RECOMMENDED-SKILLS.md](../RECOMMENDED-SKILLS.md)),
+not copied into this repo.
+
 ### A. Session-only override (preferred — zero persistent state)
 
 Load the working tree for **one run** via a CLI flag. Nothing is written to settings, so

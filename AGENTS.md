@@ -94,7 +94,7 @@ configure a DEBUG handler on the `credgoo` logger to see it.
 | Doc | What |
 |-----|------|
 | [docs/installation.md](docs/installation.md) | Install the pi package, activate only what you use, the **skill states** (aktiv/passiv/deaktiviert/löschen), and the loose-symlink conflict gotcha |
-| [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides |
+| [docs/development.md](docs/development.md) | Dev loop for skills & extensions — edit, ship upstream, then remove dev overrides. **Testbed**: try third-party skills live in `.pi/skills/` (gitignored, project-only) |
 | [docs/credgoo.md](docs/credgoo.md) | Credential management — setup, CLI, Python patterns, adding to new skills |
 | [pi-architecture.md](pi-architecture.md) | How pi (the agent runtime) discovers packages, skills, extensions — background for this repo's layout |
 | [docs/codex-learnings.md](docs/codex-learnings.md) | Grounding for the coding guidelines — what the Codex repo teaches about testing, boundaries & lint at scale |
