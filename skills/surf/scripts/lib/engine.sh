@@ -22,6 +22,33 @@ _surf_pick_app() {
 
 die() { echo "surf: $*" >&2; exit 1; }
 
+# ── multi-instance discovery ─────────────────────────────────────────
+# Chromium-family apps surf can drive (they share Chrome's AppleScript
+# dictionary). open/find-tab reuse search every RUNNING instance, so a page
+# attaches wherever it's already open — independent of which Chrome it
+# lives in. Echoes one app name per line, $APP first. An explicit SURF_APP
+# restricts to that single app; SURF_APPS overrides the candidate list
+# (colon- or comma-separated, e.g. "Brave Browser:Vivaldi").
+_surf_running_apps() {
+  if [ -n "${SURF_APP:-}" ]; then printf '%s\n' "$SURF_APP"; return; fi
+  if [ -n "${_SURF_RUNNING_APPS_CACHE:+x}" ]; then printf '%s\n' "${_SURF_RUNNING_APPS_CACHE[@]}"; return; fi
+  local picked="${1:-$APP}" a apps=() cands=()
+  apps+=("$picked")
+  if [ -n "${SURF_APPS:-}" ]; then
+    local IFS=':,'
+    read -r -a cands <<<"$SURF_APPS"
+  else
+    cands=("Google Chrome" "Google Chrome Beta" "Chromium" "Brave Browser" "Microsoft Edge" "Arc" "Opera" "Vivaldi")
+  fi
+  for a in "${cands[@]}"; do
+    [ -n "$a" ] || continue
+    [ "$a" = "$picked" ] && continue
+    [ "$(osascript -e "application $(as_str "$a") is running" 2>/dev/null || true)" = "true" ] && apps+=("$a")
+  done
+  _SURF_RUNNING_APPS_CACHE=("${apps[@]}")
+  printf '%s\n' "${apps[@]}"
+}
+
 # JS string literal
 js_str() {
   local s="${1-}"

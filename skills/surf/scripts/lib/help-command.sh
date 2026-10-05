@@ -81,12 +81,17 @@ RETURNS
   "ok (wN.tN): <url>"    — same, with a pinned target.
 
 NOTES
-  Reuse is the default — two tiers, tried in order:
+  Reuse is the default — two tiers, tried in order, each searching EVERY
+  running Chromium-family instance (Chrome first, then any other running
+  Chrome Beta/Chromium/Brave/Edge/…): a page attaches wherever it's already
+  open, independent of which instance it lives in.
     1. exact URL match (a single trailing slash is ignored)
     2. same-origin path-segment prefix: the request path is a prefix of an open
        tab's path at a "/" boundary — e.g. open "localhost:3000/dashboard" reuses
        a tab at "localhost:3000/dashboard/ai-chat", landing on the deeper
        (already logged-in) page instead of duplicating.
+  A hit in another instance attaches there: the pin records the app (stderr
+  note "attached to …"), and subsequent surf commands drive that instance.
   --new skips both tiers and navigates the target tab (forces a fresh load).
 
 EXAMPLE
@@ -597,6 +602,12 @@ USAGE
 RETURNS
   Every match as:  wN.tN  URL  |  title   (exit 0). No match -> stderr + exit 1.
   --activate brings the first match's window to front and makes it the active tab.
+  Matches from OTHER running instances are prefixed "[App]" — refs are
+  instance-relative, the prefix says which one (also switches --activate).
+
+NOTES
+  Searches every running Chromium-family instance (see _surf_running_apps):
+  Chrome first, then any other running Chrome Beta/Chromium/Brave/Edge/…
 
 EXAMPLE
   surf find-tab "github"

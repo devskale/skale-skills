@@ -189,19 +189,76 @@ for t in data[:2]:
         assert "session1 pin file exists"    "[ -s $HOME/.config/surf/target-par1 ]"
         assert "session2 pin file exists"    "[ -s $HOME/.config/surf/target-par2 ]"
         assert "pins differ (real isolation)" "! cmp -s $HOME/.config/surf/target-par1 $HOME/.config/surf/target-par2"
+        assert "pin files are v2 (App|W T url)" "grep -q '^[A-Za-z][A-Za-z ]*|[0-9]' $HOME/.config/surf/target-par1"
         assert "global target untouched"      "
             if [ -f $TMPHOME/global-backup ]; then
                 cmp -s $HOME/.config/surf/target $TMPHOME/global-backup
             else
                 [ ! -e $HOME/.config/surf/target ]
             fi"
-        # each session reads back ITS OWN pin (not the other's)
-        assert "session1 reads its own pin"   "bash $S --session par1 select show 2>/dev/null | grep -q "^target: $(cat $HOME/.config/surf/target-par1 | awk '{print $1, $2}')""
-        assert "session2 reads its own pin"   "bash $S --session par2 select show 2>/dev/null | grep -q "^target: $(cat $HOME/.config/surf/target-par2 | awk '{print $1, $2}')""
+        # each session reads back ITS OWN pin (not the other's) — compare W T
+        # after stripping the v2 app prefix ("Google Chrome|1 1 url" → "1 1")
+        W1=$(sed 's/^[^|]*|//' $HOME/.config/surf/target-par1 | awk '{print $1, $2}')
+        W2=$(sed 's/^[^|]*|//' $HOME/.config/surf/target-par2 | awk '{print $1, $2}')
+        assert "session1 reads its own pin"   "bash $S --session par1 select show 2>/dev/null | grep -q \"^target: .*$W1\""
+        assert "session2 reads its own pin"   "bash $S --session par2 select show 2>/dev/null | grep -q \"^target: .*$W2\""
         rm -f "$HOME/.config/surf/target-par1" "$HOME/.config/surf/target-par2"
         rm -rf "$TMPHOME"
     else
         echo "  SKIP: need ≥2 open tabs for pin isolation test"
+    fi
+fi
+echo ""
+
+# ── 13. multi-instance: attach across Chromium-family apps ──────────
+echo "[13] multi-instance attach (open/find-tab across running apps)..."
+assert "engine.sh defines _surf_running_apps"  "grep -q '_surf_running_apps()' scripts/lib/engine.sh"
+assert "nav.sh attaches cross-app hits"        "grep -q '_surf_attach_app()' scripts/lib/nav.sh"
+assert "open search loops running apps"        "grep -q '_surf_running_apps' scripts/lib/nav.sh"
+assert "target.sh writes v2 app-prefixed pins"  "grep -q '%s|%s %s %s' scripts/lib/target.sh"
+assert "surf.sh promotes pinned app"           "grep -q '_SURF_PICKED_APP' scripts/surf.sh"
+assert "help open mentions instances"          "bash $S help open 2>&1 | grep -qi 'instance'"
+if [ "$(uname)" != "Darwin" ]; then
+    echo "  SKIP: not macOS"
+else
+    S=scripts/surf.sh
+    # unit: _surf_running_apps — picked app first, SURF_APP restricts to one
+    UNIT_APPS=$(bash -c 'source scripts/lib/engine.sh; APP="Google Chrome"; _surf_running_apps' 2>/dev/null | head -1)
+    assert "running apps list starts with picked app" "[ \"$UNIT_APPS\" = 'Google Chrome' ]"
+    UNIT_RESTRICT=$(bash -c 'source scripts/lib/engine.sh; APP="Google Chrome"; SURF_APP="Chromium" _surf_running_apps' 2>/dev/null)
+    assert "SURF_APP restricts to that single app"    "[ \"$(printf '%s' "$UNIT_RESTRICT" | grep -c .)\" = 1 ] && [ \"$UNIT_RESTRICT\" = 'Chromium' ]"
+    # live: pin a real tab, then read it back through the v2 format
+    LIVEPIN=$(bash $S tabs --json 2>/dev/null | python3 -c "
+import sys, json
+try: data = json.load(sys.stdin)
+except Exception: data = []
+print('w%d.t%d' % (data[0]['window'], data[0]['tab']) if data else '')")
+    if [ -n "$LIVEPIN" ]; then
+        bash $S select "$LIVEPIN" >/dev/null 2>&1
+        assert "live pin file carries app prefix" "grep -q '^[A-Za-z][A-Za-z ]*|[0-9]' $HOME/.config/surf/target"
+        assert "ops resolve through v2 pin"      "bash $S here 2>/dev/null | grep -q 'http\|file'"
+        bash $S select reset >/dev/null 2>&1
+    else
+        echo "  SKIP: no open tab for live pin test"
+    fi
+    # live cross-instance: only when a SECOND chromium app is already running
+    # (never launches one). Then open reuses a tab living in that other app.
+    OTHER=$(bash -c 'source scripts/lib/engine.sh; APP="Google Chrome"; _surf_running_apps' 2>/dev/null | grep -v '^Google Chrome$' | head -1)
+    if [ -n "$OTHER" ]; then
+        FIX="$TMPDIR/surf-xinst-test.html"
+        printf '<!doctype html><title>XInstTest</title>' > "$FIX"
+        FURL="file://$FIX"
+        osascript -e "tell application \"$OTHER\" to set URL of active tab of front window to \"$FURL\"" >/dev/null 2>&1 && sleep 1
+        XOUT=$(bash $S open "$FURL" 2>&1 || true)
+        assert "open attaches to other instance"  "printf '%s' "$XOUT" | grep -q '^reuse:' && printf '%s' "$XOUT" | grep -q 'attached to $OTHER'"
+        assert "pin names the other instance"     "grep -q '^$OTHER|' $HOME/.config/surf/target"
+        assert "here reads the other instance"    "bash $S here 2>/dev/null | grep -q 'XInstTest'"
+        # cleanup: close the fixture tab in the other instance, reset pin
+        osascript -e "tell application \"$OTHER\" to close active tab of front window" >/dev/null 2>&1 || true
+        bash $S select reset >/dev/null 2>&1
+        rm -f "$FIX"
+    else
+        echo "  WARN: cross-instance live test skipped — no second Chromium app running (start Chrome Beta to cover)"
     fi
 fi
 echo ""

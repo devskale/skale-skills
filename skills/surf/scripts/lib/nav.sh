@@ -2,18 +2,7 @@
 
 cmd_tabs() {
   if _want_json "$@"; then
-    osascript <<APPLESCRIPT | python3 -c 'import sys,json;print(json.dumps([{"window":int(a),"tab":int(b),"url":c,"title":d} for a,b,c,d in (l.rstrip("\n").split("\t") for l in sys.stdin if l.strip())],ensure_ascii=False))'
-tell application "$APP"
-  set out to ""
-  repeat with wi from 1 to count of windows
-    repeat with ti from 1 to count of tabs of window wi
-      set t to tab ti of window wi
-      set out to out & (wi as text) & (character id 9) & (ti as text) & (character id 9) & (URL of t) & (character id 9) & (title of t) & linefeed
-    end repeat
-  end repeat
-  return out
-end tell
-APPLESCRIPT
+    _surf_tabs_json_for "$APP"
     return
   fi
   osascript <<APPLESCRIPT
@@ -30,6 +19,25 @@ tell application "$APP"
   end repeat
 end tell
 return out
+APPLESCRIPT
+}
+
+# Tabs of ANY app as JSON (app-parameterized cmd_tabs) — the seam under
+# multi-instance reuse: _surf_running_apps iterates instances, each search
+# needs that instance's tab list without touching the global $APP.
+_surf_tabs_json_for() {
+  local _app="$1"
+  osascript <<APPLESCRIPT | python3 -c 'import sys,json;print(json.dumps([{"window":int(a),"tab":int(b),"url":c,"title":d} for a,b,c,d in (l.rstrip("\n").split("\t") for l in sys.stdin if l.strip())],ensure_ascii=False))'
+tell application "$_app"
+  set out to ""
+  repeat with wi from 1 to count of windows
+    repeat with ti from 1 to count of tabs of window wi
+      set t to tab ti of window wi
+      set out to out & (wi as text) & (character id 9) & (ti as text) & (character id 9) & (URL of t) & (character id 9) & (title of t) & linefeed
+    end repeat
+  end repeat
+  return out
+end tell
 APPLESCRIPT
 }
 
@@ -64,19 +72,23 @@ cmd_open() {
   done
   [ -n "$url" ] || die "open needs a url"
 
-  # Reuse by default — two tiers, tried in order (--new skips both):
+  # Reuse by default — two tiers, tried in order (--new skips both), each
+  # searching EVERY running Chromium-family instance ($APP first, then any
+  # other running Chrome/Beta/Chromium/Brave/Edge/… — see _surf_running_apps).
+  # A hit in another instance switches $APP for this invocation AND the pin
+  # records the app ("App|W T url"), so subsequent surf ops drive that tab.
   #   1. exact URL match (trailing slash ignored)
   #   2. same-origin path-segment prefix: the request path is a prefix of an
   #      open tab's path at a "/" boundary — e.g. open "localhost:3000/dashboard"
   #      reuses a tab at "localhost:3000/dashboard/ai-chat". Lands on the deeper
   #      (already logged-in) page instead of duplicating.
   if ! $force_new; then
-    local hit W T taburl
+    local hit W T taburl app
     # Tier 1: exact.
     hit="$(_surf_find_tab_by_url "$url")"
     if [ -n "$hit" ]; then
-      W="$(printf '%s' "$hit" | awk '{print $1}')"
-      T="$(printf '%s' "$hit" | awk '{print $2}')"
+      IFS=$'\t' read -r app W T <<<"$hit"
+      _surf_attach_app "$app"
       _surf_pin_target "$W" "$T" "$url"
       echo "reuse: w$W.t$T  $url"
       return 0
@@ -84,9 +96,8 @@ cmd_open() {
     # Tier 2: same-origin path-segment prefix.
     hit="$(_surf_find_tab_by_prefix "$url")"
     if [ -n "$hit" ]; then
-      W="$(printf '%s' "$hit" | cut -f1)"
-      T="$(printf '%s' "$hit" | cut -f2)"
-      taburl="$(printf '%s' "$hit" | cut -f3-)"
+      IFS=$'\t' read -r app W T taburl <<<"$hit"
+      _surf_attach_app "$app"
       _surf_pin_target "$W" "$T" "$taburl"
       echo "reuse: w$W.t$T  $url  →  $taburl"
       return 0
@@ -141,10 +152,14 @@ cmd_close() {
   if [ $# -gt 0 ] && [[ "$1" =~ ^w([0-9]+)\.t([0-9]+)$ ]]; then
     W=${BASH_REMATCH[1]}; T=${BASH_REMATCH[2]}
     osascript -e "tell application \"$APP\" to close tab $T of window $W" >/dev/null && echo "closed w$W.t$T"
-    # if this tab was the pin, drop the pin
+    # if this tab was the pin, drop the pin (pin may be app-prefixed: "App|W T url")
     if [ -f "$TARGET_FILE" ]; then
-      local pW pT; read -r pW pT _ < "$TARGET_FILE" 2>/dev/null || true
-      [ "$pW.$pT" = "$W.$T" ] && rm -f "$TARGET_FILE"
+      local pin pW pT
+      pin="$(_target_raw)"
+      if [ "$pin" != "front" ]; then
+        read -r pW pT _ <<<"$pin"
+        [ "$pW.$pT" = "$W.$T" ] && rm -f "$TARGET_FILE"
+      fi
     fi
     return 0
   fi
@@ -160,6 +175,15 @@ cmd_close() {
 
 # ── tab helpers (shared by find-tab and open's reuse path) ─────────────
 
+# Switch this invocation (and, via the pin file, subsequent ones) to $1's
+# instance when the reused tab lives in another app. Stdout stays stable;
+# the cross-instance attach is a stderr note.
+_surf_attach_app() {
+  [ "$1" = "$APP" ] && return 0
+  APP="$1"
+  echo "surf: attached to $APP (page was open there, not in ${_SURF_PICKED_APP:-$APP})" >&2
+}
+
 # Bring window W to the front and make tab T its active tab. Best-effort
 # (ignore errors — used for focusing a reused/matched tab).
 _surf_activate_tab() {
@@ -168,16 +192,17 @@ _surf_activate_tab() {
   osascript -e "tell application \"$APP\" to activate" >/dev/null 2>&1 || true
 }
 
-# First tab whose URL exactly matches $1. A single trailing slash is ignored on
-# both sides, so "https://x.com" matches a tab showing "https://x.com/". Echoes
-# "W T" on the first match; nothing on no match. Uses cmd_tabs --json (in-process).
-# JSON is passed as argv (not stdin) to avoid stdin contention with cmd_tabs'
-# internal osascript|python pipe.
+# First tab whose URL exactly matches $1, searching EVERY running instance
+# ($APP first). A single trailing slash is ignored on both sides, so
+# "https://x.com" matches a tab showing "https://x.com/". Echoes
+# "<app>\t<W>\t<T>" of the first match (tab-delimited — app names contain
+# spaces); nothing on no match.
 _surf_find_tab_by_url() {
-  local tabs_json
-  tabs_json="$(cmd_tabs --json 2>/dev/null || true)"
-  [ -n "$tabs_json" ] || return 0
-  SURF_URL="$1" python3 -c '
+  local url="$1" app json res
+  while IFS= read -r app; do
+    json="$(_surf_tabs_json_for "$app" 2>/dev/null || true)"
+    [ -n "$json" ] || continue
+    res="$(SURF_URL="$url" python3 -c '
 import sys, json, os
 def norm(u):
     return u[:-1] if (u and u.endswith("/") and u != "/") else u
@@ -188,22 +213,26 @@ except Exception:
     data = []
 for t in data:
     if norm(t.get("url", "") or "") == want:
-        print("%d %d" % (t["window"], t["tab"]))
+        print("%d\t%d" % (t["window"], t["tab"]))
         break
-' "$tabs_json"
+' "$json" 2>/dev/null || true)"
+    if [ -n "$res" ]; then printf '%s\t%s\n' "$app" "$res"; return 0; fi
+  done < <(_surf_running_apps)
 }
 
-# First tab whose URL is a same-origin path-segment prefix of $1: the request's
-# scheme://host:port must match, and its path must be a prefix of the tab's path
-# at a "/" boundary. So open "localhost:3000/dashboard" reuses a tab at
-# "localhost:3000/dashboard/ai-chat" (lands on the deeper logged-in page), but
-# "…/ai-chat" does NOT match "…/ai-chat-settings". Echoes "W<TAB>T<TAB>url" of
-# the first match; nothing on no match.
+# First tab whose URL is a same-origin path-segment prefix of $1, searching
+# EVERY running instance ($APP first): the request's scheme://host:port must
+# match, and its path must be a prefix of the tab's path at a "/" boundary. So
+# open "localhost:3000/dashboard" reuses a tab at "localhost:3000/dashboard/ai-chat"
+# (lands on the deeper logged-in page), but "…/ai-chat" does NOT match
+# "…/ai-chat-settings". Echoes "<app>\t<W>\t<T>\t<url>" of the first match;
+# nothing on no match.
 _surf_find_tab_by_prefix() {
-  local tabs_json
-  tabs_json="$(cmd_tabs --json 2>/dev/null || true)"
-  [ -n "$tabs_json" ] || return 0
-  SURF_URL="$1" python3 -c '
+  local url="$1" app json res
+  while IFS= read -r app; do
+    json="$(_surf_tabs_json_for "$app" 2>/dev/null || true)"
+    [ -n "$json" ] || continue
+    res="$(SURF_URL="$url" python3 -c '
 import sys, json, os
 from urllib.parse import urlsplit
 
@@ -230,15 +259,33 @@ for t in data:
     if cp == want_path or cp.startswith(want_path + "/"):
         print("%d\t%d\t%s" % (t["window"], t["tab"], u))
         break
-' "$tabs_json"
+' "$json" 2>/dev/null || true)"
+    if [ -n "$res" ]; then printf '%s\t%s\n' "$app" "$res"; return 0; fi
+  done < <(_surf_running_apps)
 }
 
-# ── find-tab: search open tabs by URL or title (substring, case-insensitive) ──
+# ── find-tab: search open tabs by URL or title (substring, case-insensitive),
+# across EVERY running Chromium-family instance. Rows from other instances
+# carry an "[App]" prefix so refs stay unambiguous; --activate focuses the
+# first match in whichever instance it lives. ──
 cmd_find_tab() {
   [ "${1-}" ] || die "find-tab needs a query (matched against URL or title)"
-  local q="$1" activate=false rows first W T
+  local q="$1" activate=false app json line searched=""
+  local -a rows=()
   [ "${2-}" = "--activate" ] && activate=true
-  rows="$(cmd_tabs --json 2>/dev/null | SURF_Q="$q" python3 -c '
+  while IFS= read -r app; do
+    searched="${searched:+$searched, }$app"
+    json="$(_surf_tabs_json_for "$app" 2>/dev/null || true)"
+    [ -n "$json" ] || continue
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      # line: "wN.tN\turl\ttitle" — prefix foreign-instance rows with the app
+      if [ "$app" != "${_SURF_PICKED_APP:-$APP}" ]; then
+        rows+=("[$app] $line")
+      else
+        rows+=("$line")
+      fi
+    done < <(printf '%s' "$json" | SURF_Q="$q" python3 -c '
 import sys, json, os
 q = os.environ["SURF_Q"].lower()
 try: data = json.load(sys.stdin)
@@ -246,15 +293,27 @@ except Exception: data = []
 for t in data:
     u = t.get("url","") or ""; ti = t.get("title","") or ""
     if q in u.lower() or q in ti.lower():
-        print("%d\t%d\t%s\t%s" % (t["window"], t["tab"], u, ti))
-')"
-  [ -n "$rows" ] || { echo "surf: find-tab: no tab matches \"$q\"" >&2; return 1; }
-  printf '%s\n' "$rows" | awk -F'\t' '{printf "w%d.t%d  %s  |  %s\n", $1, $2, $3, $4}'
+        print("w%d.t%d\t%s\t%s" % (t["window"], t["tab"], u, ti))
+' 2>/dev/null || true)
+  done < <(_surf_running_apps)
+  [ "${#rows[@]}" -gt 0 ] || { echo "surf: find-tab: no tab matches \"$q\" (searched: $searched)" >&2; return 1; }
+  printf '%s\n' "${rows[@]}" | awk -F'\t' '{printf "%s  %s  |  %s\n", $1, $2, $3}'
   if $activate; then
-    first="$(printf '%s\n' "$rows" | head -1)"
-    W="$(printf '%s\n' "$first" | cut -f1)"; T="$(printf '%s\n' "$first" | cut -f2)"
+    local first ref W T
+    first="${rows[0]}"
+    case "$first" in
+      "["*"]"*) APP="$(printf '%s' "$first" | sed -n 's/^\[\([^]]*\)\].*/\1/p')"
+                 first="${first#*] }" ;;
+    esac
+    ref="${first%%$'\t'*}"
+    [[ "$ref" =~ ^w([0-9]+)\.t([0-9]+)$ ]] || { echo "surf: find-tab: bad row \"$first\"" >&2; return 1; }
+    W=${BASH_REMATCH[1]}; T=${BASH_REMATCH[2]}
     _surf_activate_tab "$W" "$T"
-    echo "activated: w$W.t$T" >&2
+    if [ "$APP" != "${_SURF_PICKED_APP:-$APP}" ]; then
+      echo "activated: w$W.t$T  [$APP]" >&2
+    else
+      echo "activated: w$W.t$T" >&2
+    fi
   fi
 }
 

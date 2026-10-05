@@ -4,6 +4,22 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **surf v1.6.0: `open`/`find-tab` attachen über ALLE laufenden Chromium-Instanzen.**
+  Man arbeitet mit mehreren Chromes gleichzeitig (Stable + Beta) — eine Page,
+  die schon irgendwo offen ist, wurde trotzdem neu geöffnet, weil `open` nur
+  den Tabs der EINEN gewählten App suchte. Jetzt: Reuse-Suche (Tier 1 exact,
+  Tier 2 Pfad-Präfix) läuft über jede laufende Instanz der Chromium-Familie
+  (Chrome, Beta, Chromium, Brave, Edge, Arc, Opera, Vivaldi — `$APP` zuerst).
+  Ein Hit in einer anderen Instanz attached dort: der Pin speichert die App
+  (Format v2 `App|W T url`), Start fördert sie zu `$APP` (nur wenn sie läuft —
+  nie wird ein Browser gelauft gestartet), Folgebefehle fahren die Instanz.
+  `find-tab` durchsucht ebenfalls alle Instanzen (`[App]`-Präfix auf fremden
+  Rows, `--activate` schaltet mit). `SURF_APPS="Brave Browser:Vivaldi"`
+  überschreibt die Kandidatenliste; `SURF_APP` bleibt der Single-App-Override.
+  Legacy-Pins (3 Felder) laufen weiter. Suite: 66 Checks (live cross-instance
+  skippt ehrlich, wenn keine zweite Instanz läuft). SKILL.md-Version war
+  draufgedriftet (1.4.7 vs. Code 1.5.0) — beide jetzt 1.6.0.
+
 - **issues: doctor prüft jetzt, ob der Auto-Commit-LaunchAgent wirklich LÄUFT.**
   Fund (Retro 2026-10-05): der LaunchAgent `com.skale.handoffs` war entladen —
   letzter Commit 2026-10-03, während `issues doctor` grün zeigte („versioning:

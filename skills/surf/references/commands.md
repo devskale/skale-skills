@@ -21,7 +21,7 @@ Complete reference for `surf`, the macOS AppleScript CLI for your real Google Ch
 | `surf select [wN.tN\|reset]` | pin a tab to operate it (even in the background, without focus); blank shows the current target |
 | `surf select reset` | back to active tab of front window |
 
-The target is stored in `~/.config/surf/target` as `W T URL` (override with `SURF_TARGET_FILE`). The stored URL makes `select` **drift-resilient**: if window/tab indices shift (reorder/close), the next op verifies the URL and re-pins to the tab's new index (note on stderr); if the pinned tab navigated in place it follows the new URL silently; if the tab is gone it falls back to the active tab. List refs with `surf tabs`.
+The target is stored in `~/.config/surf/target` as `App|W T URL` (v2; override with `SURF_TARGET_FILE`). The app prefix routes later commands to the instance the tab lives in (cross-instance attach via `open`/`find-tab`); surf promotes it at startup when that instance is running, else falls back to the picked app. Legacy `W T URL` lines (no `|`) mean "whatever app surf picked". The stored URL makes `select` **drift-resilient**: if window/tab indices shift (reorder/close), the next op verifies the URL and re-pins to the tab's new index (note on stderr); if the pinned tab navigated in place it follows the new URL silently; if the tab is gone it falls back to the active tab. List refs with `surf tabs`.
 
 ## Navigation & tabs
 
@@ -29,7 +29,7 @@ The target is stored in `~/.config/surf/target` as `W T URL` (override with `SUR
 |---|---|
 | `surf tabs` | every window → tab as `wN.tN  URL  \|  title`. `--json` → `[{window,tab,url,title}]` |
 | `surf here` | `URL \| title` of the target tab. `--json` → `{window,tab,url,title}` |
-| `surf open <url> [--new]` | reuse an open tab **in any Chrome window** (exact URL, then same-origin path-segment prefix) or navigate the target tab; `--new` forces navigation. Reuse pins the target without stealing focus |
+| `surf open <url> [--new]` | reuse an open tab **in any running Chromium-family instance** (Chrome first, then Chrome Beta/Chromium/Brave/Edge/… — exact URL, then same-origin path-segment prefix) or navigate the target tab; `--new` forces navigation. Reuse pins the target without stealing focus; a hit in another instance attaches there (pin records the app, stderr note) |
 | `surf new [<url>]` | new tab in a normal (non-incognito, JS-capable) window (default `about:blank`); pins the new tab as the target |
 | `surf reload` | reload target tab |
 | `surf back` / `surf fwd` | `history.back()` / `history.forward()` |
@@ -133,7 +133,8 @@ Attempts to GUI-click **View → Developer → Allow JavaScript from Apple Event
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SURF_APP` | `Google Chrome` | app name (`Google Chrome Beta`, `Chromium`, …) |
+| `SURF_APP` | `Google Chrome` | app name (`Google Chrome Beta`, `Chromium`, …) — restricts surf to this ONE app (no cross-instance reuse) |
+| `SURF_APPS` | Chrome, Chrome Beta, Chromium, Brave, Edge, Arc, Opera, Vivaldi | candidate list for cross-instance reuse/search, `:`- or `,`-separated |
 | `SURF_TARGET_FILE` | `~/.config/surf/target` | where the pinned tab is stored |
 | `SURF_WAIT_TIMEOUT` | `15` | default `wait*` timeout (seconds) |
 | `SURF_WAIT_INTERVAL` | `0.3`–`0.4` | `wait*` poll interval (seconds) |
@@ -182,7 +183,7 @@ Added in v1.4.2. Each has full per-command help: `surf help <command>`.
 
 | Command | What |
 |---|---|
-| `surf find-tab "<q>" [--activate]` | search open tabs by URL/title substring; `--activate` focuses the first match |
+| `surf find-tab "<q>" [--activate]` | search open tabs by URL/title substring across **all running instances** (foreign rows carry an `[App]` prefix); `--activate` focuses the first match in its instance |
 | `surf bookmarks [query] [--profile NAME] [--json]` | read/search Chrome bookmarks from the profile file (no browser needed) |
 | `surf cookie [name] [--json]` | read JS-visible (non-HttpOnly) cookies — HttpOnly cookies are hidden by design |
 | `surf localstorage [key]` | read window.localStorage; one key's value, or a JSON dump of all (each value capped at 2000 chars) |

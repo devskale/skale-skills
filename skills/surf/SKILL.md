@@ -1,6 +1,6 @@
 ---
 name: surf
-version: "1.4.7"
+version: "1.6.0"
 description: Bash skill — drive the user's real, logged-in Chrome on macOS (AppleScript, no debug port). Use when the user wants to automate, scrape, fill, or screenshot the browser they are already logged into.
 ---
 
@@ -35,8 +35,8 @@ Navigation & tabs
   surf tabs                       list windows → tabs (refs like w1.t3); --json
   surf here                       active/target tab: URL | title; --json
   surf select [wN.tN | reset]     pin a tab (operate background tabs w/o focus); reset to clear
-  surf find-tab "<q>" [--activate]  search tabs by URL/title; --activate focuses first match
-  surf open <url> [--new]         reuse an open tab (exact URL) or navigate; --new forces a fresh nav
+  surf find-tab "<q>" [--activate]  search tabs by URL/title across ALL running instances; --activate focuses first match
+  surf open <url> [--new]         reuse an open tab (exact URL, then path prefix — any running instance) or navigate; --new forces a fresh nav
   surf new [<url>] · reload · back · fwd · close
 
 Read
@@ -99,7 +99,7 @@ Ops: `title`/`url`/`text`/`html`/`attr`/`count`/`list`/`exists`/`visible`/`click
 - **`press` uses real key synthesis** — so Enter submits and `cmd+a` selects all (unlike JS-dispatched events) — and activates the target window first; it cannot press keys on a background tab. Needs **Accessibility** for your terminal.
 - **`eval` returns one stringified value.** For complex shapes, return JSON: `surf eval 'JSON.stringify({...})'`.
 - **Exit codes:** `0` = success · `1` = error / assertion failed / timeout. Not-found is *not* an error for read/interact commands (they return JSON `{ok:false}` with rc 0); assertions and `wait*` return rc 1 on failure.
-- **`open` reuses by default, across ALL Chrome windows.** `surf open <url>` finds an already-open tab in any window instead of navigating — no duplicate tabs. Tier 1: exact URL match (trailing slash ignored). Tier 2: same-origin path-segment prefix — `open localhost:3000/dashboard` reuses a tab at `localhost:3000/dashboard/ai-chat`, landing on the deeper (already logged-in) page. Reuse pins the tab as the target **without stealing focus** (Chrome stays in the background). Pass `--new` to force a fresh navigation of the target tab.
+- **`open` reuses by default, across ALL running instances.** `surf open <url>` finds an already-open tab — in any Chrome window AND any other running Chromium-family instance (Chrome Beta, Chromium, Brave, Edge, Arc, Opera, Vivaldi) — instead of navigating. Tier 1: exact URL match (trailing slash ignored). Tier 2: same-origin path-segment prefix — `open localhost:3000/dashboard` reuses a tab at `localhost:3000/dashboard/ai-chat`, landing on the deeper (already logged-in) page. Reuse pins the tab as the target **without stealing focus** (Chrome stays in the background). A hit in another instance attaches there: the pin records the app (`App|W T url`), later commands drive that instance (stderr note `attached to …`). Pass `--new` to force a fresh navigation of the target tab. `SURF_APPS="Brave Browser:Vivaldi"` overrides the candidate list; `SURF_APP` restricts to a single app.
 - **Parallel sessions: `--session <name>`.** The target pin is one file (`~/.config/surf/target`) — two agents running surf concurrently overwrite each other's pin. `surf --session <name> <cmd>` routes the pin to `~/.config/surf/target-<name>`, so each session owns its target. Combine with the default `open` reuse and parallel sessions converge on already-open tabs instead of opening them N times. Rodeny equivalent: `rodney --session <name>`.
 
 ## References

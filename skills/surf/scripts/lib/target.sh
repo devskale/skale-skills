@@ -7,9 +7,23 @@
 # (zero cost — the default path). Resolution is cached per-process so wait
 # loops pay it once, not per-poll.
 
-_target_raw() {  # "front" | "W T [url]" — raw file contents, no verification
-  if [ -f "$TARGET_FILE" ] && [ -s "$TARGET_FILE" ]; then cat "$TARGET_FILE"
-  else echo "front"; fi
+# Pin-file format v2 (multi-instance): "<App>|<W> <T> <url>" — the app the
+# pinned tab lives in (written by _write_pin; surf.sh promotes it to $APP at
+# startup when that instance is running). Legacy "W T url" lines (no "|")
+# mean "whatever app surf picked" — read unchanged.
+_write_pin() {  # $1=W $2=T $3=url — writes the app-prefixed pin line
+  mkdir -p "$(dirname "$TARGET_FILE")"
+  printf '%s|%s %s %s\n' "$APP" "$1" "$2" "$3" > "$TARGET_FILE"
+  unset _SURF_RESOLVED
+}
+
+_target_raw() {  # "front" | "W T [url]" — pin contents minus the app prefix
+  local raw=""
+  if [ -f "$TARGET_FILE" ] && [ -s "$TARGET_FILE" ]; then raw="$(cat "$TARGET_FILE")"; else echo "front"; return; fi
+  case "$raw" in
+    *"|"*) echo "${raw#*|}" ;;   # v2: strip "App|" (surf.sh already routed $APP)
+    *)     echo "$raw" ;;         # legacy 3-field line
+  esac
 }
 
 # Re-resolve a drifted target by its stored URL.
@@ -33,15 +47,16 @@ PY
 )"
   case "${res%% *}" in
     1) nW=$(printf '%s' "$res" | awk '{print $2}'); nT=$(printf '%s' "$res" | awk '{print $3}')
-       printf '%s %s %s\n' "$nW" "$nT" "$url" > "$TARGET_FILE"
+       _write_pin "$nW" "$nT" "$url"
        echo "surf: target drifted (w$W.t$T → w$nW.t$nT); re-pinned by URL" >&2
        echo "$nW $nT" ;;
     many) echo "surf: target ambiguous — $url open in multiple tabs; using w$W.t$T (re-select to pin)" >&2
-          printf '%s %s %s\n' "$W" "$T" "$cur" > "$TARGET_FILE"; echo "$W $T" ;;
+          _write_pin "$W" "$T" "$cur"
+          echo "$W $T" ;;
     *) # 0 (not found) or parse failure. If the tab still lives at W,T it navigated
        # in place → follow it silently (it's the same tab). Only drop to front if gone.
        if [ -n "$cur" ]; then
-         printf '%s %s %s\n' "$W" "$T" "$cur" > "$TARGET_FILE"; echo "$W $T"
+         _write_pin "$W" "$T" "$cur"; echo "$W $T"
        else
          echo "surf: target tab w$W.t$T is gone and URL not found — re-select" >&2
          rm -f "$TARGET_FILE"; echo "front"
@@ -65,7 +80,7 @@ _resolve_target_once() {
     return
   fi
   if [ -z "$stored" ] || [ "$cur" = "$stored" ]; then
-    [ -z "$stored" ] && printf '%s %s %s\n' "$W" "$T" "$cur" > "$TARGET_FILE"   # adopt url for legacy files
+    [ -z "$stored" ] && _write_pin "$W" "$T" "$cur"   # adopt url for legacy files
     echo "$W $T"; return
   fi
   _repin "$stored" "$W" "$T" "$cur"
@@ -80,13 +95,12 @@ get_target() {
 
 # Pin tab W.T as the target (writes the target file). $3 = url (optional; fetched
 # if omitted). Invalidates the per-process target cache so a later get_target()
-# re-reads. Used by cmd_select and cmd_open's reuse path.
+# re-reads. Used by cmd_select and cmd_open's reuse path. The pin records $APP
+# (v2 prefix) so later invocations drive the instance the tab lives in.
 _surf_pin_target() {
   local W="$1" T="$2" U="${3-}"
   [ -n "$U" ] || U="$(osascript -e "tell application \"$APP\" to get URL of tab $T of window $W" 2>/dev/null || true)"
-  mkdir -p "$(dirname "$TARGET_FILE")"
-  printf '%s %s %s\n' "$W" "$T" "$U" > "$TARGET_FILE"
-  unset _SURF_RESOLVED
+  _write_pin "$W" "$T" "$U"
 }
 
 cmd_select() {
