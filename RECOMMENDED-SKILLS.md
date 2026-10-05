@@ -154,11 +154,32 @@ npx @anthropic-ai/skills add <name>
 
 | Skill | What | Best Source |
 |-------|------|-------------|
+
+### Documents
+
+| Skill | What | Best Source |
+|-------|------|-------------|
 | **docx** | Create/edit Word documents | `npx @anthropic-ai/skills add docx` |
 | **xlsx** | Create/edit Excel spreadsheets | `npx @anthropic-ai/skills add xlsx` |
-| **oebb-scotty** | Austrian rail planner (ÖBB) | [skills.sh](https://skills.sh) (search) |
-| **peep** | X/Twitter — read, search, post, bookmarks, trending | [devskale/peep](https://github.com/devskale/peep) |
+
+### Visual & Design
+
+| Skill | What | Best Source |
+|-------|------|-------------|
+| **hairline-create** | Draws one isometric line figure that answers the pointer, in the Hairline style and on its engine, as a single self-contained HTML file. Give it an idea → it builds a figure to Hairline's ten rules. | [lucasmarkes/hairline](https://github.com/lucasmarkes/hairline) · `npx skills add lucasmarkes/hairline` |
 | **impeccable** | Design skill: shape, critique, harden, polish frontend UI + anti-pattern detector. Cross-harness (pi, Claude, Codex, Cursor, …). Setup guide: [`guides/impeccable-setup.md`](guides/impeccable-setup.md) | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) · `npx impeccable install` |
+
+### Web, Data & Social
+
+| Skill | What | Best Source |
+|-------|------|-------------|
+| **peep** | X/Twitter — read, search, post, bookmarks, trending | [devskale/peep](https://github.com/devskale/peep) |
+| **oebb-scotty** | Austrian rail planner (ÖBB) | [skills.sh](https://skills.sh) (search) |
+
+### Coding rules
+
+| Skill | What | Best Source |
+|-------|------|-------------|
 | **ponytail** | Ruleset that makes your AI coding agent write the **least code that works** — stdlib over custom, native over deps, one line over fifty (YAGNI ladder). “The lazy senior dev for your AI agent.” | [ponytail.dev](https://ponytail.dev) · [GitHub](https://github.com/DietrichGebert/ponytail) |
 
 ### Matt Pocock's Skills (`mattpocock/skills`) — recommended, install globally
@@ -187,11 +208,22 @@ npx skills@latest remove -g -y -s '*'       # all global skills
 
 Only **custom skills** we actively develop:
 
-- **surf** — drive your real, logged-in Chrome via AppleScript (no daemon, no debug port)
+### Visual & Design
+
+- **figure** — hand-drawn architecture/pipeline figures from a small spec
+- **d2** — diagrams as code (D2 language). `openskills install devskale/skale-skills/skills/d2`
+
+### Web & Search
+
 - **web-search** — web search via SearXNG + Duck API
 - **fetch-url** — web content extraction with smart fallback
-- **figure** — hand-drawn architecture/pipeline figures from a small spec
-- **video-transcript-downloader** — yt-dlp wrapper, downloads + transcripts
+
+### Media
+
 - **youtube** — Invidious API video search with auto-fallback
+- **video-transcript-downloader** — yt-dlp wrapper, downloads + transcripts
+
+### Browser Automation
+
+- **surf** — drive your real, logged-in Chrome via AppleScript (no daemon, no debug port)
 - **rodney** — headless Chrome automation
-- **d2** — diagrams as code (D2 language). `openskills install devskale/skale-skills/skills/d2`
