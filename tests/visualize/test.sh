@@ -440,6 +440,16 @@ out="$(env $DEAD_API python3 "$SKILL/scripts/lib/slop_client.py" lint "$SLOP_PAG
 printf '%s' "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["mode"].startswith("offline"), d; assert d["findings"][0]["id"]=="edge_stripe"' \
     && ok || bad "client JSON contract broken: $out"
 
+# gate — eine Interface über alle Gates, parallel innen (deterministisch offline)
+out="$(env $DEAD_API "$SCRIPT" gate "$CLEAN_PAGE" 2>&1)"; rc=$?
+if [ $rc -eq 0 ] && printf '%s' "$out" | grep -q 'all gates pass'; then ok
+else bad "gate clean: all-pass + exit 0 erwartet (rc=$rc: $out)"; fi
+out="$(env $DEAD_API "$SCRIPT" gate "$SLOP_PAGE" 2>&1)"; rc=$?
+if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'gate slop: FAIL' \
+   && printf '%s' "$out" | grep -q 'gate validate: OK'; then ok
+else bad "gate stripe: slop FAIL + validate OK + exit 1 erwartet (rc=$rc: $out)"; fi
+check "gate missing file → exit 2" 2 "$SCRIPT" gate /nonexistent.html
+
 # share still gates (URL-first): hardslop → exit 1 — live only (needs throway)
 slop_live=false
 if [ -n "${SLOP_TOKEN:-}" ] || command -v credgoo >/dev/null 2>&1; then

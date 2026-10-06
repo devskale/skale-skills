@@ -5,6 +5,7 @@
 #   visualize share  <file.html>            # upload to throway, print the URL, slop-lint (findings → exit 1)
 #   visualize share  --update <file>        # share under a STABLE name (create-or-get) — same URL on repeat
 #   visualize share  --dir <dir>            # upload a dir (recursively; nested files flattened)
+#   visualize gate    <file.html>           # ALL gates parallel: validate + slop + chartcheck → exit 1 if any fails
 #   visualize validate <file.html>          # check it's one file (local refs fail, popular CDNs ok)
 #   visualize lint <file.html>              # style taste-gate: flag decorative AI-tells
 #   visualize chartcheck <file.html>        # dataviz integrity gate (evident-charts influence)
@@ -123,6 +124,7 @@ Usage:
   visualize share <file.html>     # upload to the throwaway store, print the URL, slop-lint (findings → exit 1)
   visualize share --update <file> # share under a stable name (create-or-get) — same URL on repeat
   visualize share --dir <dir>     # upload a dir (recursively; nested files flattened)
+  visualize gate <file.html>      # ALL gates parallel: validate + slop + chartcheck → exit 1 if any fails
   visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
   visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
   visualize chartcheck <file.html> # dataviz integrity gate: bar baseline, log scale, process notes, source
@@ -539,6 +541,39 @@ PYEOF
         fi
         # JS quality gate läuft immer mit (befund 2026-09-27)
         "$0" jscheck "$f" || exit 1
+        ;;
+
+    gate)
+        # Eine Interface über alle Gates — parallel innen (jeder Check liest
+        # nur die Datei; Laufzeit ≈ langsamstes Gate, nicht die Summe).
+        # Der Agent ruft EINEN Command statt sich vier zu merken; share
+        # behält seinen URL-first-Slop-Check als letztes Netz.
+        [ $# -eq 1 ] || { echo "visualize gate: expected one file" >&2; exit 2; }
+        f="$1"; [ -f "$f" ] || { echo "visualize gate: not a file: $f" >&2; exit 2; }
+        tmpd="$(mktemp -d)"; trap 'rm -rf "$tmpd"' EXIT
+        "$SELF" validate "$f" >"$tmpd/validate.out" 2>&1 & vpid=$!
+        "$SELF" chartcheck "$f" >"$tmpd/chartcheck.out" 2>&1 & cpid=$!
+        python3 "$SKILL_DIR/scripts/lib/slop_client.py" lint "$f" --human \
+            >"$tmpd/slop.out" 2>&1 & spid=$!
+        wait $vpid; vrc=$?
+        wait $cpid; crc=$?
+        wait $spid; src=$?
+        fails=0
+        for g in validate:$vrc slop:$src chartcheck:$crc; do
+            gname="${g%%:*}"; grc="${g##*:}"
+            if [ "$grc" -eq 0 ]; then
+                echo "gate $gname: OK" >&2
+            else
+                fails=$((fails+1))
+                echo "gate $gname: FAIL (exit $grc)" >&2
+                cat "$tmpd/$gname.out" >&2
+            fi
+        done
+        if [ $fails -gt 0 ]; then
+            echo "visualize gate: $fails gate(s) failed" >&2
+            exit 1
+        fi
+        echo "visualize gate: all gates pass" >&2
         ;;
 
     *)

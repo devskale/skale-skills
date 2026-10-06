@@ -4,6 +4,15 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **visualize 1.13.0: `visualize gate` — eine Interface über alle Gates.**
+  Kandidat 4 des architecture reviews. Vorher: validate/jscheck, lint/slop und
+  chartcheck waren verstreute Einzelbefehle — vergaß der Agent einen, lief er nie.
+  Jetzt: `visualize gate <file>` fächert alle Gates parallel auf (jeder Check liest
+  nur die Datei; Laufzeit ≈ langsamstes Gate ≈ die 300ms slop-API, nicht die Summe),
+  druckt je Gate OK/FAIL + Befund, exit 1 wenn eines fällt. `share` behält seinen
+  URL-first-Slop-Check als letztes Netz. Das Skill-Diagramm (GATES-Gruppe) ist damit
+  wörtlich wahr. 185/0.
+
 - **visualize 1.12.x: pin ledger — der Edit-Loop ist derselbe Befehl.**
   Kandidat 3 des architecture reviews („drei Modi, drei Upload-Pfade“) umgesetzt:
   jeder Share pinnt `realpath → URL` in `~/.config/visualize/shares.tsv`. Re-share
