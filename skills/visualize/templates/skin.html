@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{subject}}</title>
+<!--
+  visualize house skin v3 — FOUR FLAVORS, one file.
+  Copy this file, set <body data-skin="paper|swiss|terminal|blueprint">, build inside.
+  Same components in every flavor — the mood switches wholesale.
+
+  paper      warm editorial — default for reports & explainers
+  swiss      poster grid, one red accent, uppercase — stats, comparisons, punch
+  terminal   dark, mono, phosphor — infra, CLI, ports, logs (like dgx-stack)
+  blueprint  technical drawing, dashed frames, mono labels — architecture
+
+  Banned in all flavors (the gate exits 1): hue on card edges, violet fills,
+  giant circle badges. Character comes from the mood, not from decoration.
+-->
+<style>
+  /* ═══ flavor tokens ═══════════════════════════════════════════════ */
+  :root, body[data-skin="paper"]{
+    --paper:#faf8f5; --card:#fff; --soft:#f2efe9;
+    --ink:#211d19;   --muted:#82796e; --line:#e3ddd2;
+    --cat-1:#0d6e64; --cat-2:#1e4fbf; --cat-3:#a05a12;
+    --ok:#1a7f4b; --warn:#b45309; --bad:#c0262d;
+    --radius:12px; --shadow:0 1px 2px rgba(60,50,30,.05);
+  }
+  body[data-skin="swiss"]{
+    --paper:#f4f4f2; --card:#fff; --soft:#e9e9e6;
+    --ink:#111;      --muted:#666;   --line:#d8d8d4;
+    --cat-1:#d43d2a; --cat-2:#111;   --cat-3:#666;
+    --radius:0px;    --shadow:none;
+  }
+  body[data-skin="terminal"]{
+    --paper:#141210; --card:#1d1a17; --soft:#26221e;
+    --ink:#e9e2d6;   --muted:#96897a; --line:#3a342c;
+    --cat-1:#4ade80; --cat-2:#fbbf24; --cat-3:#7dd3fc;
+    --ok:#4ade80; --warn:#fbbf24; --bad:#f87171;
+    --radius:4px;  --shadow:none;
+  }
+  body[data-skin="blueprint"]{
+    --paper:#f1f3f2; --card:#fbfcfc; --soft:#e6eae8;
+    --ink:#1e2b28;   --muted:#5f7370; --line:#c9d4d0;
+    --cat-1:#0e7490; --cat-2:#7c3aed00; --cat-3:#b45309;
+    --cat-2:#155e75;
+    --radius:2px;  --shadow:none;
+  }
+
+  /* ═══ flavor personalities (component-level tweaks) ═══════════════ */
+  body[data-skin="swiss"] h1{ font-weight:900; letter-spacing:-.03em }
+  body[data-skin="swiss"] h3, body[data-skin="swiss"] .kicker{
+    text-transform:uppercase; letter-spacing:.08em; font-size:12.5px }
+  body[data-skin="swiss"] .card{ border-width:1px; border-color:#c8c8c2 }
+  body[data-skin="terminal"] body, body[data-skin="terminal"]{ }
+  body[data-skin="terminal"] body{
+    font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:14px; line-height:1.7 }
+  body[data-skin="terminal"] .kicker{ color:var(--cat-1) }
+  body[data-skin="terminal"] h2{ border-top-color:var(--line) }
+  body[data-skin="terminal"] code{ background:var(--soft); color:var(--cat-1) }
+  body[data-skin="blueprint"] .card{ border-style:dashed; border-color:#b7c6c0 }
+  body[data-skin="blueprint"] .kicker{ color:var(--cat-1) }
+
+  /* ═══ base ════════════════════════════════════════════════════════ */
+  *{ box-sizing:border-box }
+  html{ -webkit-text-size-adjust:100% }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding:56px 24px 80px;
+  }
+  .wrap{ max-width:920px; margin:0 auto }
+  a{ color:inherit; text-decoration-color:var(--muted); text-underline-offset:2px }
+  ::selection{ background:var(--cat-1); color:var(--paper) }
+
+  /* ═══ type ════════════════════════════════════════════════════════ */
+  h1{ font-size:clamp(30px, 5vw, 40px); line-height:1.08; letter-spacing:-.025em;
+      font-weight:800; margin:10px 0 10px }
+  h2{ font-size:13px; font-weight:700; letter-spacing:.02em; margin:48px 0 14px;
+      display:flex; align-items:baseline; gap:10px;
+      border-top:2px solid var(--ink); padding-top:12px }
+  h2 .idx{ font-family:ui-monospace, Menlo, monospace; font-size:12px;
+           font-weight:700; color:var(--cat-1) }
+  h3{ font-size:15px; font-weight:700; margin:0 0 6px }
+  .sub{ color:var(--muted); font-size:16px; line-height:1.5; max-width:56ch; margin:0 }
+  .kicker{ font-family:ui-monospace, Menlo, monospace; font-size:11.5px; font-weight:700;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--cat-1) }
+  .small{ font-size:12.5px } small{ font-size:12.5px }
+  code,pre{ font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.9em }
+  code{ background:var(--soft); border-radius:4px; padding:.1em .35em }
+  kbd{ background:var(--card); border:1px solid var(--line); border-bottom-width:2px;
+       border-radius:5px; padding:.05em .4em; font-size:.85em }
+  .val{ font-weight:750; font-variant-numeric:tabular-nums }
+
+  /* ═══ header / footer ═════════════════════════════════════════════ */
+  header{ margin-bottom:8px }
+  header::after{ content:""; display:block; height:3px; background:var(--ink);
+                 margin-top:20px }
+  .meta{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted);
+         margin-top:12px }
+  footer{ margin-top:56px; padding-top:14px; border-top:2px solid var(--ink);
+          display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+          font-size:12.5px; color:var(--muted) }
+
+  /* ═══ cards ════════════════════════════════════════════════════════ */
+  .card{ background:var(--card); border:1px solid var(--line);
+         border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow) }
+  .card.hero{ background:var(--ink); color:var(--paper); border-color:var(--ink) }
+  .card.hero .small, .card.hero .muted{ color:var(--muted) }
+  .grid{ display:grid; gap:16px;
+         grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)) }
+  .cols-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px }
+  @media (max-width:640px){ .cols-2{ grid-template-columns:1fr } }
+  .band{ background:var(--soft); border-radius:var(--radius); padding:22px 24px }
+
+  /* ═══ legend / tables / pills / severity ══════════════════════════ */
+  .legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted) }
+  .dot{ width:9px; height:9px; border-radius:50%; display:inline-block;
+        flex:none; position:relative; top:-1px }
+  table{ border-collapse:collapse; width:100%; font-size:13.5px }
+  th{ text-align:left; font-size:11px; font-weight:700; letter-spacing:.07em;
+      text-transform:uppercase; color:var(--muted); padding:9px 12px;
+      background:var(--soft) }
+  td{ padding:9px 12px; border-bottom:1px solid var(--soft);
+      font-variant-numeric:tabular-nums }
+  tr:last-child td{ border-bottom:none }
+  .pill{ display:inline-flex; align-items:center; gap:6px; padding:2px 10px;
+         border-radius:999px; font-size:12px; font-weight:650;
+         background:var(--soft); border:1px solid var(--line) }
+  body[data-skin="swiss"] .pill{ border-radius:0 }
+  .ok{ color:var(--ok) } .warn{ color:var(--warn) } .bad{ color:var(--bad) }
+  .sev{ display:inline-block; width:7px; height:7px; margin-right:6px }
+
+  @media print{ body{ padding:0; background:#fff } .card{ break-inside:avoid } }
+</style>
+</head>
+<body data-skin="paper">
+<div class="wrap">
+
+  <header>
+    <div class="kicker">{{kicker — optional}}</div>
+    <h1>{{title}}</h1>
+    <p class="sub">{{one-line intent}}</p>
+    <div class="meta">{{source · date · scope}}</div>
+  </header>
+
+  <!-- data-skin="swiss" für Stats/Vergleiche, "terminal" für Infra/CLI,
+       "blueprint" für Architektur. -->
+
+  <footer>
+    <span>{{source / generated note}}</span>
+    <span>house skin v3 · data-skin="{{flavor}}"</span>
+  </footer>
+</div>
+</body>
+</html>

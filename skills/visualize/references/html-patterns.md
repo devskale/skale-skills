@@ -5,6 +5,14 @@ Tailwind, chart renderers) may load from a CDN at runtime. No local sibling file
 HTML is the only artifact, so content and layout must render from inline CSS alone, and
 CDN enhancement should degrade gracefully offline.
 
+## Start from the skin — never blank CSS
+
+[`templates/skin.html`](../templates/skin.html) is the canonical base: tokens
+(ink/paper/line/soft + `--ok/--warn/--bad` + category hues), type scale, header/footer,
+cards, dot-legend, kv/table, pills, severity dots — house style by construction. Copy it
+and build inside it. The minimal scaffold below is the fallback when you must inline
+everything (it's the skin, compressed — same tokens, fewer components).
+
 ## Minimal scaffold
 
 ```html

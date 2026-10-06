@@ -4,6 +4,22 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **visualize v1.11.0: house skin v3 mit vier Flavors — Style by construction.**
+  Warum: der Generator hat weiter free-hand CSS geschrieben und dabei regelmäßig
+  Card-Edge-Accents produziert (der Linter fing sie, aber der Loop generate→flag→fix
+  war das Antipattern). Jetzt: `templates/skin.html` ist der verpflichtende Startpunkt —
+  Tokens, Typo-Skala, Card/Legend/KV/Table-Muster, vier Stimmungen per
+  `data-skin="paper|swiss|terminal|blueprint"` (Editorial / Poster-Grid / Infra-Dark /
+  technische Zeichnung). Jeder Flavor ist vor-gevetet: hardslop-Set ist jetzt NUR
+  Card-Edge-Accents (`edge_stripe`, engine-seitig), Pills sind info („pills sind ok"),
+  Violet-Fills inkl. gedämpft (#5a4a8a-Familie, sat ≥ 0.25) bleiben hard. SKILL.md
+  trägt die Hard-Bans jetzt im Generierungspfad (§ Hard style bans) statt 270 Zeilen
+  tief in promptlib; die Regel ist side-agnostisch (border-top zählt genauso wie
+  border-left — der auditflow-Fall). Die Kategorie-Farbe behält ihren Sinn: Fixing
+  heißt Hue auf Content verschieben (Dot/Label/Wert), nicht die Unterscheidung löschen;
+  `terminal`/`blueprint` geben Infra/Architektur-Farben ein Zuhause.
+  Live-Vergleich aller vier: https://skale.dev/throway/d/skin-flavors
+
 - **visualize v1.10.0: slop-Gate auf jedem Share — throw → lint → update.**
   Jede geteilte HTML wird direkt nach dem Upload gegen die slop-API gescannt
   (`amd.skale.dev/api/slop/lint`, 11 fuzzy AI-slop-Detektoren — accent stripes

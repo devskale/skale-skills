@@ -266,10 +266,12 @@ makes the page feel intentional and trustworthy.
   `border-radius:999px` capsules with pastel backgrounds and uppercase text scream "LLM
   slop." **Never use them.** Categories go as plain muted text in the card footer, or as a
   quiet legend — not a colored pill on each item.
-- **Colored left-edge accent on cards** (`border-left: 3-4px solid <hue>`) — the other
-  tell-tale AI-generated look ("that damn left-edge coloured line on a panel"). A card
+- **Colored edge accent on cards** (`border-left/top/right/bottom: 3-4px solid <hue>`) — the
+  tell-tale AI-generated look ("that damn coloured line on a panel"). Any side counts —
+  moving the stripe to the top edge is the same slop (real case: auditflow, `border-top:4px`).
+  Also the muted violet `border`-variants (`#5a4a8a`-family) count. A card
   is a bordered box on paper; its category/severity lives in the content (label text,
-  dot, severity hue on the value) — never as a coloured stripe down the left edge.
+  dot, severity hue on the value) — never as a coloured stripe on any edge.
   Exception: **connectors** — a neutral `--line` border-left that *draws structure*
   (timeline spine, tree indentation, nested-list guides) is layout, not decoration.
 - **Inline-duplicated styles** — the same `style="…"` string copy-pasted onto every
