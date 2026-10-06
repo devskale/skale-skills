@@ -4,6 +4,13 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **Vorfall-Postmortem: trailing comma in package.json brach jeden pi-Start.**
+  Mein deprecated-Move (3723cb2) entfernte die `!skills/deprecated/**`-Zeile, liess
+  aber das Komma des Vorgaengers stehen → invalid JSON → `JSON.parse`-Absturz im
+  pi-ResourceLoader ("Unexpected token ]"). Behoben (d293bf2), der Live-Clone
+  direkt repariert, pi laeuft wieder. **Gate-Nachzug:** `check.sh` parst jetzt
+  jede ge-trackte .json strikt — JSON-Fehler koennen den Gate nie wieder passieren.
+
 - **blockdiagram.html template + README flagship entry für visualize.**
   Das Selbstporträt-Blockdiagramm (blueprint flavor, hand-crafted SVG mit Pfeilen,
   Gate-Fan-out + Edit-Loop) ist jetzt Template: `templates/blockdiagram.html` mit

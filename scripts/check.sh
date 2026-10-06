@@ -56,6 +56,15 @@ else
     echo "  (no python files)"
 fi
 
+banner "JSON files (strict — pi dies on invalid package.json)"
+# Vorfall 2026-10-06: trailing comma in package.json nach einem Hand-Edit brach
+# jeden pi-Start (JSON.parse im ResourceLoader). Jede ge-trackte .json strikt parsen.
+json_bad=0
+while IFS= read -r jf; do
+    python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$jf" 2>/dev/null || { echo "  FAIL: invalid JSON: $jf" >&2; json_bad=1; }
+done < <(git ls-files '*.json')
+[ "$json_bad" -eq 0 ] && echo "ok"
+
 banner "Skill metadata (description hygiene)"
 if bash tests/skill-metadata/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: skill-metadata" >&2; fi
 
