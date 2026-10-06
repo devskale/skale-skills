@@ -45,6 +45,11 @@ SLOP_DIR_MAX=3   # share --dir lints at most this many html files
 # Client: scripts/lib/slop_client.py — SLOP_API_URL ueberschreibt den
 # Endpoint (Tests, Zweitmaschinen).
 
+# Pin-Ledger: realpath → geteilte URL. Der Edit-Loop ist dann derselbe
+# Befehl wie der erste Share: share → edit → share = PUT in place, gleiche
+# URL (throway single uploads sind editable, verifiziert 2026-10).
+SHARES_FILE="${HOME}/.config/visualize/shares.tsv"
+
 # Percent-encode a query-param value (bash-only; keeps the RFC-3986 unreserved set,
 # assumes ASCII filenames — slugs are the norm).
 urlencode() {
@@ -71,6 +76,18 @@ except Exception: pass' 2>/dev/null
 _too_big() {  # _too_big <file> <max> — exit 0 wenn die Datei ueber der Grenze liegt
     [ -n "${2:-}" ] || return 1
     [ "$(wc -c < "$1" | tr -d ' ')" -gt "$2" ]
+}
+
+# ── pin ledger (realpath → url) ────────────────────────────────────────────
+_pin_get() {  # <realpath> → url (leer wenn ungepinnt)
+    [ -f "$SHARES_FILE" ] || return 0
+    awk -F'\t' -v k="$1" '$1 == k { print $2; exit }' "$SHARES_FILE"
+}
+_pin_set() {  # <realpath> <url>
+    mkdir -p "$(dirname "$SHARES_FILE")"
+    [ -f "$SHARES_FILE" ] && grep -vF "$(printf '%s\t' "$1")" "$SHARES_FILE" > "$SHARES_FILE.tmp" || : > "$SHARES_FILE.tmp"
+    mv "$SHARES_FILE.tmp" "$SHARES_FILE"
+    printf '%s\t%s\n' "$1" "$2" >> "$SHARES_FILE"
 }
 
 # _slop_check <file> — slop gate via slop_client (the one seam).
@@ -170,15 +187,31 @@ case "$cmd" in
         ;;
 
     share)
+        # Edit-Loop: der zweite share derselben Datei = PUT in place (pin
+        # ledger, realpath → url). --fresh erzwingt einen neuen Upload,
+        # --update eine stabile /d/<slug>-URL (create-or-get), --dir ein
+        # ganzes Verzeichnis. Slop-Gate läuft in allen Pfaden nach dem
+        # Upload (URL zuerst, Befund danach; exit 0/1/3 durchgereicht).
+        if [ "${1:-}" = "--fresh" ]; then fresh=1; shift; fi
+        if [ -n "${2:-}" ]; then f="${2:-}"; rp="$(cd "$(dirname "$f")" && pwd)/$(basename "$f")"; fi
         # Dir mode: upload a whole directory as a browseable throway dir.
         if [ "${1:-}" = "--dir" ]; then
             d="${2:-}"
             [ -n "$d" ] && [ -d "$d" ] || { echo "visualize share --dir: expected a directory" >&2; exit 2; }
+            rdp="$(cd "$d" && pwd)"
+            # bestehenden dir-share wiederverwenden: gleicher Ordner = gleiche
+            # /d/<id>-URL, Dateien werden per POST aktualisiert (PUT behandelt
+            # throway dirs als replace-by-name — POST add/overwrite reicht)
+            pinned_dir="$(_pin_get "$rdp")"
+            if [ -n "$pinned_dir" ] && [ -z "${fresh:-}" ]; then
+                dirurl="$pinned_dir"
+            else
+                resp="$(curl -sf -X POST "$THROWAWAY/?dir=1")" || { echo "visualize share --dir: create failed" >&2; exit 1; }
+                dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
+                [ -n "${dirurl:-}" ] || { echo "visualize share --dir: could not parse dir URL" >&2; exit 1; }
+            fi
             maxb="$(throway_max_bytes)"
             [ -n "$maxb" ] || echo "visualize: (couldn't read throway contract; proceeding)" >&2
-            resp="$(curl -sf -X POST "$THROWAWAY/?dir=1")" || { echo "visualize share --dir: create failed" >&2; exit 1; }
-            dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
-            [ -n "${dirurl:-}" ] || { echo "visualize share --dir: could not parse dir URL" >&2; exit 1; }
             # Upload every file under $d recursively. throway dirs are flat (files are
             # addressed as <key>/<name>), so nested files get their relative path folded
             # into the filename (sub/dir/f.txt → sub-dir-f.txt); collisions get -2/-3
@@ -226,6 +259,7 @@ case "$cmd" in
             done < <(find "$d" -type f -print0)
             [ "$n" -gt 0 ] || { echo "visualize share --dir: no files uploaded" >&2; exit 1; }
             [ "$failed" -eq 0 ] || echo "visualize: $failed file(s) failed to upload — dir is incomplete" >&2
+            [ -n "${rdp:-}" ] && _pin_set "$rdp" "$dirurl"
             echo "$dirurl"
             echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
             [ "$slop_bad" -gt 0 ] && exit 1
@@ -253,6 +287,7 @@ case "$cmd" in
                 || { echo "visualize share --update: upload failed" >&2; exit 1; }
             dirurl="$(printf '%s' "$resp" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])' 2>/dev/null)"
             [ -n "${dirurl:-}" ] || dirurl="$THROWAWAY/d/$slug"
+            _pin_set "$rp" "$dirurl/$slug.html"
             # PUT replaces the file in place (edit, not re-upload) — history grows, URL stable.
             curl -sf -X PUT "$THROWAWAY/d/$slug/$slug.html" --data-binary @"$f" >/dev/null 2>&1 \
                 || { echo "visualize share --update: edit failed" >&2; exit 1; }
@@ -275,6 +310,20 @@ case "$cmd" in
             echo "visualize share: $name is $(wc -c < "$f" | tr -d ' ') bytes — over the store's max_file_bytes ($maxb). Shrink the page (e.g. drop inline data) and retry." >&2
             exit 1
         fi
+        rp="$(cd "$(dirname "$f")" && pwd)/$(basename "$f")"
+        if [ -z "${fresh:-}" ]; then
+            pinned="$(_pin_get "$rp")"
+            if [ -n "$pinned" ]; then
+                if curl -sf -X PUT "$pinned" --data-binary @"$f" >/dev/null 2>&1; then
+                    echo "$pinned"
+                    echo "visualize: updated in place $f -> $pinned  (same URL, pin: $SHARES_FILE)"
+                    _slop_check "$f"
+                    rc=$?; [ $rc -ne 0 ] && exit $rc
+                    exit 0
+                fi
+                echo "visualize: pin stale ($pinned) — re-uploading fresh" >&2
+            fi
+        fi
         resp="$(curl -sf -X POST "$THROWAWAY/?name=$enc" --data-binary @"$f")" \
             || { echo "visualize share: upload failed" >&2; exit 1; }
         # Extract the url field. Prefer python3 (json) for correctness.
@@ -283,8 +332,9 @@ case "$cmd" in
         fi
         [ -n "${url:-}" ] || url="$(printf '%s' "$resp" | sed -n 's/.*"url":"\([^"]*\)".*/\1/p')"
         [ -n "${url:-}" ] || { echo "visualize share: could not parse URL from response: $resp" >&2; exit 1; }
+        _pin_set "$rp" "$url"
         echo "$url"
-        echo "visualize: shared $name -> $url  (expires in ~4h)"
+        echo "visualize: shared $name -> $url  (expires in ~4h; re-share updates in place, --fresh für neue URL)"
         _slop_check "$f"
         rc=$?; [ $rc -ne 0 ] && exit $rc
         exit 0

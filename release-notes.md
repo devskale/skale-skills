@@ -4,6 +4,15 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **visualize 1.12.x: pin ledger — der Edit-Loop ist derselbe Befehl.**
+  Kandidat 3 des architecture reviews („drei Modi, drei Upload-Pfade“) umgesetzt:
+  jeder Share pinnt `realpath → URL` in `~/.config/visualize/shares.tsv`. Re-share
+  derselben Datei/Ordner = PUT in place („updated in place“, gleiche URL) — kein
+  `--update`-Flag zu merken. `--fresh` erzwingt neue URL, stale pins heilen
+  (Warnung + frischer Upload). `--update` (slug) und `--dir` pinnen mit; `--dir`
+  wiederverwendet das bestehende Verzeichnis statt jedes Mal neu anzulegen.
+  Grundlage: throway single uploads sind PUT-editable (verifiziert).
+
 - **visualize v1.11.0: house skin v3 mit vier Flavors — Style by construction.**
   Warum: der Generator hat weiter free-hand CSS geschrieben und dabei regelmäßig
   Card-Edge-Accents produziert (der Linter fing sie, aber der Loop generate→flag→fix
