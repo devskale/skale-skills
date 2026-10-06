@@ -96,6 +96,26 @@ For **print**, capture at 3× for a clean A4/Letter raster.
 edits it in place, so the URL never changes. This is throway's `&share=` + PUT-edit
 pattern; the local file stays the durable copy.
 
+### The slop gate — throw → lint → update
+
+Every share lints the HTML against the **slop API** (`amd.skale.dev/api/slop/lint` —
+fuzzy static AI-slop detection, 11 detectors) right after the upload:
+
+- **The URL comes first** — the share never blocks on the linter. Fast feedback
+  for the viewer, findings as the to-do.
+- **Hard findings** (confidence ≥ 0.7, e.g. accent stripes, pills, purple fills)
+  print with a fix hint and make `share` **exit 1** — the fix-and-update signal.
+- **Reviews** (0.3–0.7, e.g. numbered steps that may be real process) print as
+  `review … — you decide`. The agent judges, the tool doesn't guess.
+- **Fix loop**: edit the local file → `visualize share --update <file>` — PUT in
+  place, same URL, history grows. Lint runs again automatically.
+
+`share --dir` lints at most 3 html files (one bad page must not turn a 50-file
+dir into a 50-call lint run; the rest is opt-in via `visualize lint`).
+
+Token resolution: `SLOP_TOKEN` env → `credgoo FETCH_URL_BEARER`. Missing token or
+unreachable API skips the check with a note — a share must not die on the linter.
+
 Throway is itself progressive — for the full contract (sliding lifetimes, write-tokens,
 edit history) read its own docs: `curl https://skale.dev/throway/write_for_agents` or
 `/help/markdown` / `/help/dirs`.

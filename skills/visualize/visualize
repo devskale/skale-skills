@@ -2,7 +2,7 @@
 # visualize — render a set of things as ONE self-contained HTML document.
 #
 #   visualize open   <file.html>            # open an HTML file in the browser
-#   visualize share  <file.html>            # upload to throway, print the URL
+#   visualize share  <file.html>            # upload to throway, print the URL, slop-lint (findings → exit 1)
 #   visualize share  --update <file>        # share under a STABLE name (create-or-get) — same URL on repeat
 #   visualize share  --dir <dir>            # upload a dir (recursively; nested files flattened)
 #   visualize validate <file.html>          # check it's one file (local refs fail, popular CDNs ok)
@@ -34,6 +34,15 @@ GIT_ROOT="${GIT_ROOT:-$SKILL_DIR}"
 
 THROWAWAY="https://lubu.skale.dev/throway"
 
+# slop gate — every shared HTML gets linted against the amd slop API
+# (fuzzy static AI-slop linter, /api/slop/lint). Findings after the upload:
+# the URL is out (fast feedback), the findings are the to-do. Fix locally,
+# re-share with --update (PUT in place, URL stable). Reviews are handed back
+# for the agent to decide. Missing token or unreachable API skips the check
+# (a share must never fail on the linter) — but says so.
+SLOP_API="https://amd.skale.dev/api/slop/lint"
+SLOP_DIR_MAX=3   # share --dir lints at most this many html files
+
 # Percent-encode a query-param value (bash-only; keeps the RFC-3986 unreserved set,
 # assumes ASCII filenames — slugs are the norm).
 urlencode() {
@@ -62,6 +71,58 @@ _too_big() {  # _too_big <file> <max> — exit 0 wenn die Datei ueber der Grenze
     [ "$(wc -c < "$1" | tr -d ' ')" -gt "$2" ]
 }
 
+# _slop_check <file> — lint one HTML file against the amd slop API.
+# Prints the report (findings + reviews); returns the number of hard
+# findings via SLOP_FINDINGS (0 = clean). Never hard-fails the caller:
+# a missing token, an unreachable API, or a parse hiccup skips the check
+# with a note — a share must not die on the linter.
+_slop_check() {
+    SLOP_FINDINGS=0
+    local f="$1" tok resp
+    tok="${SLOP_TOKEN:-}"
+    if [ -z "$tok" ] && command -v credgoo >/dev/null 2>&1; then
+        tok="$(credgoo FETCH_URL_BEARER 2>/dev/null)"
+    fi
+    if [ -z "$tok" ]; then
+        echo "visualize slop: check skipped — no token (SLOP_TOKEN or credgoo FETCH_URL_BEARER)" >&2
+        return 0
+    fi
+    resp="$(curl -sf --max-time 20 -X POST "$SLOP_API" \
+        -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' \
+        --data-binary @<(python3 -c 'import json,sys; print(json.dumps({"html": open(sys.argv[1], encoding="utf-8", errors="replace").read()}))' "$f" 2>/dev/null) 2>/dev/null)" \
+        || { echo "visualize slop: check skipped — API unreachable ($SLOP_API)" >&2; return 0; }
+    [ -n "$resp" ] || { echo "visualize slop: check skipped — empty API response" >&2; return 0; }
+    local pycode
+    pycode="$(cat <<'PYEOF'
+import sys, json
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    print(0); sys.exit(0)
+fs, rv = d.get("findings", []), d.get("review", [])
+score, tier = d.get("score"), d.get("tier")
+if not fs and not rv:
+    print(f"visualize slop: Clean (score {score}) — no AI-tells")
+elif not fs:
+    print(f"visualize slop: no hard findings (score {score}, {tier}) — {len(rv)} to review:")
+else:
+    print(f"visualize slop: {len(fs)} finding(s) (score {score}, {tier}) — fix and re-share with --update:")
+for f in fs:
+    print(f"  FINDING {f['id']}: {f['evidence']}")
+    print(f"    fix: {f['fix']}")
+for f in rv:
+    print(f"  review  {f['id']}: {f['evidence']} — you decide")
+print(len(fs))
+PYEOF
+)"
+    SLOP_FINDINGS="$(printf '%s' "$resp" | python3 -c "$pycode" 2>/dev/null)"
+    local report_findings
+    report_findings="$(printf '%s\n' "$SLOP_FINDINGS" | tail -1)"
+    printf '%s\n' "$SLOP_FINDINGS" | sed '$d' >&2
+    SLOP_FINDINGS="${report_findings:-0}"
+    return 0
+}
+
 # ── Auto-update check (non-blocking) ──
 if [ -d "$GIT_ROOT/.git" ]; then
     needs_update=false
@@ -83,7 +144,7 @@ visualize — render a set of things as ONE self-contained HTML document.
 
 Usage:
   visualize open <file.html>      # open the HTML in your browser (macOS / Linux / Windows)
-  visualize share <file.html>     # upload to the throwaway store, print the URL
+  visualize share <file.html>     # upload to the throwaway store, print the URL, slop-lint (findings → exit 1)
   visualize share --update <file> # share under a stable name (create-or-get) — same URL on repeat
   visualize share --dir <dir>     # upload a dir (recursively; nested files flattened)
   visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
@@ -175,7 +236,7 @@ case "$cmd" in
                 done
                 printf '%s' "$cand"
             }
-            n=0; failed=0
+            n=0; failed=0; slop_bad=0; slop_checked=0
             while IFS= read -r -d '' f; do
                 rel="${f#"$d"/}"
                 name="$rel"
@@ -189,6 +250,17 @@ case "$cmd" in
                 fi
                 if curl -sf -X POST "$dirurl" -F "file=@$f;filename=$name" >/dev/null 2>&1; then
                     n=$((n+1))
+                    # slop-gate the html files, capped at SLOP_DIR_MAX (one
+                    # bad page must not turn a 50-file dir share into a
+                    # 50-call lint run — the rest is opt-in via visualize lint)
+                    case "$name" in
+                        *.html|*.htm)
+                            if [ "$slop_checked" -lt "$SLOP_DIR_MAX" ]; then
+                                slop_checked=$((slop_checked+1))
+                                _slop_check "$f"
+                                [ "${SLOP_FINDINGS:-0}" -gt 0 ] && slop_bad=$((slop_bad+1))
+                            fi ;;
+                    esac
                 else
                     failed=$((failed+1))
                     echo "visualize share --dir: upload failed: $rel" >&2
@@ -198,6 +270,7 @@ case "$cmd" in
             [ "$failed" -eq 0 ] || echo "visualize: $failed file(s) failed to upload — dir is incomplete" >&2
             echo "$dirurl"
             echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
+            [ "$slop_bad" -gt 0 ] && exit 1
             exit 0
         fi
         # --update: share under a STABLE name, then edit in place. Uses throway's own
@@ -227,6 +300,8 @@ case "$cmd" in
                 || { echo "visualize share --update: edit failed" >&2; exit 1; }
             echo "$dirurl"
             echo "visualize: shared (update) $f -> $dirurl  (stable URL; edit in place)"
+            _slop_check "$f"
+            [ "${SLOP_FINDINGS:-0}" -gt 0 ] && exit 1
             exit 0
         fi
         [ $# -eq 1 ] || { echo "visualize share: expected one file" >&2; exit 2; }
@@ -252,6 +327,9 @@ case "$cmd" in
         [ -n "${url:-}" ] || { echo "visualize share: could not parse URL from response: $resp" >&2; exit 1; }
         echo "$url"
         echo "visualize: shared $name -> $url  (expires in ~4h)"
+        _slop_check "$f"
+        [ "${SLOP_FINDINGS:-0}" -gt 0 ] && exit 1
+        exit 0
         ;;
 
     lint)

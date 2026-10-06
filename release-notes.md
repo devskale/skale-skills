@@ -4,6 +4,20 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **visualize v1.10.0: slop-Gate auf jedem Share — throw → lint → update.**
+  Jede geteilte HTML wird direkt nach dem Upload gegen die slop-API gescannt
+  (`amd.skale.dev/api/slop/lint`, 11 fuzzy AI-slop-Detektoren — accent stripes
+  auf allen 4 Kanten, var()-Auflösung, pills, purple, glass, glow, slop fonts,
+  stat banners). Die URL kommt zuerst (Share blockiert nie am Linter); harte
+  Findings (confidence ≥ 0.7) drucken Fix-Hints und setzen exit 1 — der
+  Fix-Zyklus ist: lokal editieren → `visualize share --update` (PUT in place,
+  gleiche URL). Reviews (0.3–0.7, z.B. nummerierte Steps, die echter Prozess
+  sein können) gehen als „you decide" an den Agenten. `share --dir` linted max
+  3 HTML-Dateien. Token: `SLOP_TOKEN` env → `credgoo FETCH_URL_BEARER`; ohne
+  Token/API wird der Check mit Note übersprungen (Share stirbt nie am Linter).
+  Gründungsfall: die auditflow-Seite, deren `border-top:4px var(--cat-a)`-
+  Streifen der alte border-left-only-Check unsichtbar ließ.
+
 - **surf v1.6.0: `open`/`find-tab` attachen über ALLE laufenden Chromium-Instanzen.**
   Man arbeitet mit mehreren Chromes gleichzeitig (Stable + Beta) — eine Page,
   die schon irgendwo offen ist, wurde trotzdem neu geöffnet, weil `open` nur

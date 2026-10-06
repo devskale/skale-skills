@@ -10,6 +10,7 @@ PASS=0; FAIL=0
 
 ok()   { PASS=$((PASS+1)); }
 bad()  { FAIL=$((FAIL+1)); echo "  FAIL: $1" >&2; }
+warn() { echo "  WARN: $1" >&2; }
 
 check() { # check <desc> <expected-exit> <cmd...>
     local desc="$1" want="$2"; shift 2
@@ -405,6 +406,37 @@ done
 ok
 "$SCRIPT" --help 2>&1 | grep -q 'chartcheck' && ok || bad "chartcheck missing from --help"
 check "chartcheck rejects a missing file" 2 "$SCRIPT" chartcheck "$TMP/nope.html"
+
+# ── slop gate on share (live API; honest skip without token/network) ──
+SLOP_PAGE="$TMP/slop-stripe.html"
+printf '<!doctype html><html><head><style>.c{border-top:4px solid #e11d48}</style></head><body><div class="c">x</div></body></html>' > "$SLOP_PAGE"
+CLEAN_PAGE="$TMP/slop-clean.html"
+printf '<!doctype html><html><head><style>body{font-family:-apple-system,sans-serif}</style></head><body><p>clean</p></body></html>' > "$CLEAN_PAGE"
+
+slop_live=false
+if [ -n "${SLOP_TOKEN:-}" ] || command -v credgoo >/dev/null 2>&1; then
+    slop_live=true
+fi
+if [ "$slop_live" = true ]; then
+    out="$(SLOP_TOKEN="${SLOP_TOKEN:-}" "$SCRIPT" share "$SLOP_PAGE" 2>&1)"; rc=$?
+    if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'FINDING edge_stripe'; then
+        ok
+    elif printf '%s' "$out" | grep -q 'slop: check skipped'; then
+        warn "share slop-gate skipped (API unreachable)"
+    else
+        bad "share of a stripe page must print FINDING edge_stripe + exit 1 (rc=$rc: $out)"
+    fi
+    out="$(SLOP_TOKEN="${SLOP_TOKEN:-}" "$SCRIPT" share "$CLEAN_PAGE" 2>&1)"; rc=$?
+    if [ $rc -eq 0 ] && printf '%s' "$out" | grep -q 'visualize slop'; then
+        ok
+    elif printf '%s' "$out" | grep -q 'slop: check skipped'; then
+        warn "share slop-gate (clean page) skipped (API unreachable)"
+    else
+        bad "share of a clean page must print a slop line + exit 0 (rc=$rc: $out)"
+    fi
+else
+    warn "slop-gate live tests skipped (no SLOP_TOKEN / credgoo)"
+fi
 
 rm -rf "$TMP"
 
