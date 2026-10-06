@@ -4,6 +4,22 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **Retro 2026-10: fünf Funde aus der Session, alle gebaut.**
+  1. **Pin-Ledger ohne Integrationstest gelandet** (Regelverstoß — nachgeholt):
+     `VISUALIZE_SHARES_FILE` überschreibt das Ledger (Tests sandboxen es statt das
+     echte `~/.config/visualize/shares.tsv` zu verschmutzen), `_pin_set`/`_pin_get`
+     sind direkt aufrufbar, 4 neue Tests (Roundtrip, Replace, Koexistenz, stdout-Vertrag).
+  2. **Share-stdout ist Vertrag:** GENAU EINE Zeile — die URL; slop-Report,
+     Pin-Hinweise und Fehler gehen nach stderr (auch im slop_client `--human`).
+     `share f 2>/dev/null` ist der stabile Agent-Parse.
+  3. **Kommandoliste dedupliziert:** Header-Kommentar verweist auf `usage()` —
+     eine Quelle statt zwei zu pflegender Kopien.
+  4. **CODING_RULES:** Mode-Variablen am Anfang des Command-Zweigs initialisieren
+     (zwei `unbound variable`-Funde im visualize-Launcher, beide vermeidbar).
+  5. **architecture-log.md:** Architektur-Reviews hinterlassen eine dauerhafte
+     Spur (Kandidaten, Entscheidungen, Verworfenes) — der throway-HTML-Report
+     verfällt, die Begründungen nicht mehr.
+
 - **visualize 1.13.0: `visualize gate` — eine Interface über alle Gates.**
   Kandidat 4 des architecture reviews. Vorher: validate/jscheck, lint/slop und
   chartcheck waren verstreute Einzelbefehle — vergaß der Agent einen, lief er nie.

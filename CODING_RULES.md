@@ -351,6 +351,11 @@ Python dependencies & pi package updates.
 - Use `BASH_SOURCE` for script path resolution, not `$0`
 - Validate syntax with `bash -n` before running
 - Avoid nested `$(cd "$(dirname ...)" && pwd)` inside `$(...)` — can break in bash 3.2
+- **Mode-Variablen am Anfang des Command-Zweigs initialisieren** (`fresh=`, `rp=`,
+  `force_update=` …), nicht lazy im ersten Pfad, der sie braucht — unter `set -u`
+  ist ein lazy initialisierter Zweig ein `unbound variable`-Fehler im anderen
+  (zwei Live-Funde im visualize-Launcher 2026-10, beide von `bash -n` + Tests
+  gefangen, beide vermeidbar durch Initialisierung am Zweig-Anfang)
 
 ### Python Style
 

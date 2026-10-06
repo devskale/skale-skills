@@ -239,7 +239,7 @@ def main() -> int:
 
     findings = d.get('findings', [])
     if args.human:
-        print(render_human(d))
+        print(render_human(d), file=sys.stderr)
     else:
         print(json.dumps(d))
 

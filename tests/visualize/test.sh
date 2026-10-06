@@ -345,12 +345,13 @@ if command -v curl >/dev/null 2>&1; then
         echo hi > "$TMP/dir/one.txt"
         echo there > "$TMP/dir/two.txt"
         echo deep > "$TMP/dir/sub/three.md"
-        out="$("$SCRIPT" share --dir "$TMP/dir" 2>/dev/null)"
-        if printf '%s' "$out" | grep -qE '^https://(lubu\.)?skale\.dev/throway/' \
-            && printf '%s' "$out" | grep -q '(3 files'; then
+        "$SCRIPT" share --dir "$TMP/dir" >"$TMP/dir-url.txt" 2>"$TMP/dir-msg.txt"
+        url="$(cat "$TMP/dir-url.txt")"; msg="$(cat "$TMP/dir-msg.txt")"
+        if printf '%s' "$url" | grep -qE '^https://(lubu\.)?skale\.dev/throway/' \
+            && printf '%s' "$msg" | grep -q '(3 files'; then
             ok
         else
-            bad "share --dir did not return a throway dir URL with all 3 files (got: $out)"
+            bad "share --dir did not return a throway dir URL with all 3 files (url: $url, msg: $msg)"
         fi
     else
         echo "  (skipping share test: throway unreachable)"
@@ -439,6 +440,38 @@ out="$(env $DEAD_API "$SCRIPT" lint "$CLEAN_PAGE" 2>&1)"; rc=$?
 out="$(env $DEAD_API python3 "$SKILL/scripts/lib/slop_client.py" lint "$SLOP_PAGE")"
 printf '%s' "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["mode"].startswith("offline"), d; assert d["findings"][0]["id"]=="edge_stripe"' \
     && ok || bad "client JSON contract broken: $out"
+
+# pin ledger — sandboxed via VISUALIZE_SHARES_FILE (never touches ~/.config)
+PIN_LEDGER="$TMP/shares.tsv"; rm -f "$PIN_LEDGER"
+PIN_PAGE="$TMP/pin.html"; printf '<!doctype html><html><body>pin v1</body></html>' > "$PIN_PAGE"
+PIN_ENV="VISUALIZE_SHARES_FILE=$PIN_LEDGER"
+
+# pin ledger roundtrip: set + get (offline, no network needed)
+env $PIN_ENV "$SCRIPT" _pin_set "$PIN_PAGE" https://example.com/x 2>/dev/null
+pinned="$(env $PIN_ENV "$SCRIPT" _pin_get "$PIN_PAGE" 2>/dev/null)"
+[ "$pinned" = "https://example.com/x" ] \
+    && ok || bad "pin ledger roundtrip: _pin_set/_pin_get (got: ${pinned:-none})"
+
+# pin ledger: re-set replaces (one line per realpath, no duplicates)
+env $PIN_ENV "$SCRIPT" _pin_set "$PIN_PAGE" https://example.com/y 2>/dev/null
+n=$(awk -F'\t' -v k="$PIN_PAGE" '$1==k' "$PIN_LEDGER" | wc -l | tr -d ' ')
+[ "$n" -eq 1 ] && ok || bad "pin ledger: re-set must replace, found $n lines for one realpath"
+
+# pin ledger: different realpaths coexist
+env $PIN_ENV "$SCRIPT" _pin_set "$CLEAN_PAGE" https://example.com/z 2>/dev/null
+[ "$(wc -l < "$PIN_LEDGER" | tr -d ' ')" -eq 2 ] \
+    && ok || bad "pin ledger: two realpaths must coexist as two lines"
+
+# share stdout contract: EXACTLY one line — the URL; everything else → stderr
+# (live: needs throway; the contract is what agents parse)
+if [ -n "${LIVE_OK:-}" ]; then
+    out="$(env $PIN_ENV "$SCRIPT" share "$PIN_PAGE" 2>/dev/null)"
+    [ "$(printf '%s' "$out" | wc -l | tr -d ' ')" -eq 1 ] \
+        && printf '%s' "$out" | grep -qE '^https?://' \
+        && ok || bad "share stdout must be exactly one URL line (got: $out)"
+else
+    ok  # offline skip (honest)
+fi
 
 # gate — eine Interface über alle Gates, parallel innen (deterministisch offline)
 out="$(env $DEAD_API "$SCRIPT" gate "$CLEAN_PAGE" 2>&1)"; rc=$?

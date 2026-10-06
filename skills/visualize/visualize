@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
 # visualize — render a set of things as ONE self-contained HTML document.
-#
-#   visualize open   <file.html>            # open an HTML file in the browser
-#   visualize share  <file.html>            # upload to throway, print the URL, slop-lint (findings → exit 1)
-#   visualize share  --update <file>        # share under a STABLE name (create-or-get) — same URL on repeat
-#   visualize share  --dir <dir>            # upload a dir (recursively; nested files flattened)
-#   visualize gate    <file.html>           # ALL gates parallel: validate + slop + chartcheck → exit 1 if any fails
-#   visualize validate <file.html>          # check it's one file (local refs fail, popular CDNs ok)
-#   visualize lint <file.html>              # style taste-gate: flag decorative AI-tells
-#   visualize chartcheck <file.html>        # dataviz integrity gate (evident-charts influence)
-#   visualize --help
+# Commands: see `usage()` (visualize --help) — the single source of truth.
 #
 # The skill itself (see SKILL.md) is what *understands* the request and builds the
 # HTML. This launcher is the plumbing: open locally, share to a URL, validate.
@@ -49,7 +40,7 @@ SLOP_DIR_MAX=3   # share --dir lints at most this many html files
 # Pin-Ledger: realpath → geteilte URL. Der Edit-Loop ist dann derselbe
 # Befehl wie der erste Share: share → edit → share = PUT in place, gleiche
 # URL (throway single uploads sind editable, verifiziert 2026-10).
-SHARES_FILE="${HOME}/.config/visualize/shares.tsv"
+SHARES_FILE="${VISUALIZE_SHARES_FILE:-${HOME}/.config/visualize/shares.tsv}"
 
 # Percent-encode a query-param value (bash-only; keeps the RFC-3986 unreserved set,
 # assumes ASCII filenames — slugs are the norm).
@@ -84,12 +75,17 @@ _pin_get() {  # <realpath> → url (leer wenn ungepinnt)
     [ -f "$SHARES_FILE" ] || return 0
     awk -F'\t' -v k="$1" '$1 == k { print $2; exit }' "$SHARES_FILE"
 }
-_pin_set() {  # <realpath> <url>
+_pin_set() {  # <realpath> <url> — re-set ersetzt (eine Zeile pro realpath)
     mkdir -p "$(dirname "$SHARES_FILE")"
     [ -f "$SHARES_FILE" ] && grep -vF "$(printf '%s\t' "$1")" "$SHARES_FILE" > "$SHARES_FILE.tmp" || : > "$SHARES_FILE.tmp"
     mv "$SHARES_FILE.tmp" "$SHARES_FILE"
     printf '%s\t%s\n' "$1" "$2" >> "$SHARES_FILE"
 }
+
+# _pin_set/_pin_get sind auch direkt aufrufbar (Tests, Debugging):
+#   visualize _pin_set <realpath> <url> · visualize _pin_get <realpath>
+# stdout-Vertrag von share: GENAU EINE Zeile — die URL; alle Meldungen
+# (slop-report, pin-hinweise, fehler) gehen nach stderr.
 
 # _slop_check <file> — slop gate via slop_client (the one seam).
 # Prints the client's --human report; exit codes pass through:
@@ -167,6 +163,13 @@ case "$cmd" in
         echo "  curl:  $(command -v curl >/dev/null 2>&1 && echo yes || echo no)"
         exit 0
         ;;
+
+    _pin_set)
+        [ $# -eq 2 ] || { echo "visualize _pin_set: expected <realpath> <url>" >&2; exit 2; }
+        _pin_set "$1" "$2" ;;
+    _pin_get)
+        [ $# -eq 1 ] || { echo "visualize _pin_get: expected <realpath>" >&2; exit 2; }
+        _pin_get "$1" ;;
 
     open)
         [ $# -eq 1 ] || { echo "visualize open: expected one file" >&2; exit 2; }
@@ -263,7 +266,7 @@ case "$cmd" in
             [ "$failed" -eq 0 ] || echo "visualize: $failed file(s) failed to upload — dir is incomplete" >&2
             [ -n "${rdp:-}" ] && _pin_set "$rdp" "$dirurl"
             echo "$dirurl"
-            echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)"
+            echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)" >&2
             [ "$slop_bad" -gt 0 ] && exit 1
             exit 0
         fi
@@ -294,7 +297,7 @@ case "$cmd" in
             curl -sf -X PUT "$THROWAWAY/d/$slug/$slug.html" --data-binary @"$f" >/dev/null 2>&1 \
                 || { echo "visualize share --update: edit failed" >&2; exit 1; }
             echo "$dirurl"
-            echo "visualize: shared (update) $f -> $dirurl  (stable URL; edit in place)"
+            echo "visualize: shared (update) $f -> $dirurl  (stable URL; edit in place)" >&2
             _slop_check "$f"
             rc=$?; [ $rc -ne 0 ] && exit $rc
             exit 0
@@ -318,7 +321,7 @@ case "$cmd" in
             if [ -n "$pinned" ]; then
                 if curl -sf -X PUT "$pinned" --data-binary @"$f" >/dev/null 2>&1; then
                     echo "$pinned"
-                    echo "visualize: updated in place $f -> $pinned  (same URL, pin: $SHARES_FILE)"
+                    echo "visualize: updated in place $f -> $pinned  (same URL, pin: $SHARES_FILE)" >&2
                     _slop_check "$f"
                     rc=$?; [ $rc -ne 0 ] && exit $rc
                     exit 0
@@ -336,7 +339,7 @@ case "$cmd" in
         [ -n "${url:-}" ] || { echo "visualize share: could not parse URL from response: $resp" >&2; exit 1; }
         _pin_set "$rp" "$url"
         echo "$url"
-        echo "visualize: shared $name -> $url  (expires in ~4h; re-share updates in place, --fresh für neue URL)"
+        echo "visualize: shared $name -> $url  (expires in ~4h; re-share updates in place, --fresh für neue URL)" >&2
         _slop_check "$f"
         rc=$?; [ $rc -ne 0 ] && exit $rc
         exit 0
@@ -548,6 +551,8 @@ PYEOF
         # nur die Datei; Laufzeit ≈ langsamstes Gate, nicht die Summe).
         # Der Agent ruft EINEN Command statt sich vier zu merken; share
         # behält seinen URL-first-Slop-Check als letztes Netz.
+        # stdout-Vertrag: share/gate melden per Gate nach stderr; die URL
+        # (share) bleibt die einzige stdout-Zeile — Agent-Parsing bleibt stabil.
         [ $# -eq 1 ] || { echo "visualize gate: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize gate: not a file: $f" >&2; exit 2; }
         tmpd="$(mktemp -d)"; trap 'rm -rf "$tmpd"' EXIT
