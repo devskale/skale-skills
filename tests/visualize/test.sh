@@ -419,12 +419,12 @@ if [ -n "${SLOP_TOKEN:-}" ] || command -v credgoo >/dev/null 2>&1; then
 fi
 if [ "$slop_live" = true ]; then
     out="$(SLOP_TOKEN="${SLOP_TOKEN:-}" "$SCRIPT" share "$SLOP_PAGE" 2>&1)"; rc=$?
-    if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'FINDING edge_stripe'; then
+    if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'HARDSLOP edge_stripe'; then
         ok
     elif printf '%s' "$out" | grep -q 'slop: check skipped'; then
         warn "share slop-gate skipped (API unreachable)"
     else
-        bad "share of a stripe page must print FINDING edge_stripe + exit 1 (rc=$rc: $out)"
+        bad "share of a stripe page must print HARDSLOP edge_stripe + exit 1 (rc=$rc: $out)"
     fi
     out="$(SLOP_TOKEN="${SLOP_TOKEN:-}" "$SCRIPT" share "$CLEAN_PAGE" 2>&1)"; rc=$?
     if [ $rc -eq 0 ] && printf '%s' "$out" | grep -q 'visualize slop'; then

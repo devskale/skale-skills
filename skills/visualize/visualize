@@ -99,17 +99,19 @@ try:
     d = json.load(sys.stdin)
 except Exception:
     print(0); sys.exit(0)
-fs, rv = d.get("findings", []), d.get("review", [])
+fs, rv, info = d.get("findings", []), d.get("review", []), d.get("info", [])
 score, tier = d.get("score"), d.get("tier")
-if not fs and not rv:
+if not fs and not rv and not info:
     print(f"visualize slop: Clean (score {score}) — no AI-tells")
 elif not fs:
-    print(f"visualize slop: no hard findings (score {score}, {tier}) — {len(rv)} to review:")
+    print(f"visualize slop: no hard slop (score {score}, {tier}) — {len(info)} info, {len(rv)} to review:")
 else:
-    print(f"visualize slop: {len(fs)} finding(s) (score {score}, {tier}) — fix and re-share with --update:")
+    print(f"visualize slop: {len(fs)} hardslop (score {score}, {tier}) — fix and re-share with --update:")
 for f in fs:
-    print(f"  FINDING {f['id']}: {f['evidence']}")
+    print(f"  HARDSLOP {f['id']}: {f['evidence']}")
     print(f"    fix: {f['fix']}")
+for f in info:
+    print(f"  info    {f['id']}: {f['evidence']}")
 for f in rv:
     print(f"  review  {f['id']}: {f['evidence']} — you decide")
 print(len(fs))
