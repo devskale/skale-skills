@@ -25,6 +25,46 @@ for f in skills/*/SKILL.md; do
 
     assert "skills/$name: name matches directory" "[ \"\$(grep -m1 '^name:' '$f' | sed 's/^name:[[:space:]]*//')\" = \"$name\" ]"
 
+    # YAML parseability: invalid frontmatter kills the WHOLE skill load in pi
+    # (visualize broke youtube+vtd with it, 2026-10). Parse with PyYAML when
+    # available; fall back to an unquoted-colon scan otherwise.
+    if python3 -c "import yaml" 2>/dev/null; then
+        if python3 -c "
+import yaml, sys
+f = open('$f').read()
+fm = f.split('---')[1] if f.startswith('---') else ''
+try:
+    yaml.safe_load(fm)
+except yaml.YAMLError as e:
+    print(f'skills/$name: YAML parse error: ' + str(e).replace(chr(10), ' ')[:200]); sys.exit(1)"; then
+            ok
+        else
+            bad "$(python3 -c "
+import yaml
+f = open('$f').read()
+fm = f.split('---')[1] if f.startswith('---') else ''
+try:
+    yaml.safe_load(fm)
+except yaml.YAMLError as e:
+    print(str(e).replace(chr(10), ' ')[:200])")"
+        fi
+    else
+        # no PyYAML: flag unquoted values containing ': ' (the visualize failure mode)
+        if python3 -c "
+import re, sys
+fm = open('$f').read().split('---')[1]
+for line in fm.splitlines():
+    m = re.match(r'^(description|name|version):(.*)$', line)
+    if m and m.group(2).strip() and not m.group(2).strip().startswith(('\"', \"'\")):
+        if ': ' in m.group(2) or m.group(2).rstrip().endswith(':'):
+            print(f'skills/$name: unquoted colon in {m.group(1)}: {m.group(2).strip()[:60]}'); sys.exit(1)
+sys.exit(0)"; then
+            ok
+        else
+            bad "skills/$name: unquoted colon in frontmatter (quote the value)"
+        fi
+    fi
+
     if ! grep -q "^description:" "$f"; then
         bad "skills/$name: no description"
         continue

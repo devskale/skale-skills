@@ -4,6 +4,18 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **Retro 2026-10 (2. Runde): drei Funde, alle gebaut.**
+  1. **YAML-Parse-Check im Skill-Metadata-Gate** (mechanisch): ungültiges
+     SKILL.md-Frontmatter bricht den GESAMTEN Skill-Load in pi (visualize-Bruch
+     riss scheinbar youtube+vtd mit ab). Das Gate parst jetzt jedes Frontmatter
+     mit PyYAML (Fallback: unquoted-colon-Scan) — der exakte visualize-Fehler
+     wird gefangen, verifiziert mit einem Bad-Skill-Fixture.
+  2. **AGENTS.md (global): „Baseline rauchen vor dem Bau"** — bei Feature-Wünschen
+     erst das IST-Verhalten mit einem Aufruf verifizieren (vtd-Runde: Feature
+     gebaut, das schon existierte; vollständiger Revert).
+  3. **AGENTS.md (global): interaktive TUI-Kommandos nie via bash** — `pi config`
+     kippt ANSI-Müll in die Tool-Ausgabe; Config-Datei direkt lesen.
+
 - **Retro 2026-10: fünf Funde aus der Session, alle gebaut.**
   1. **Pin-Ledger ohne Integrationstest gelandet** (Regelverstoß — nachgeholt):
      `VISUALIZE_SHARES_FILE` überschreibt das Ledger (Tests sandboxen es statt das
