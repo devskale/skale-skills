@@ -250,11 +250,24 @@ Filter semantics: omit a key = load **all** of that type · `[]` = load **none**
 
 📖 [docs/installation.md](docs/installation.md) (install + activate + the loose-symlink conflict gotcha)
 
+### One-liners (skale.dev relay)
+
+Every skill installs with one line — the relay picks the right path for the machine (pi-native if pi is there, else the open skills CLI):
+
+```bash
+curl -fsSL https://skale.dev/s/visualize | bash    # one skill (pi → npx fallback)
+curl -fsSL https://skale.dev/s/pi | bash -s visualize                 # one skill, pi whitelist
+curl -fsSL https://skale.dev/s/pi | bash -s fetch-url web-search surf # a subset
+curl -fsSL https://skale.dev/s/pi | bash -s all                       # the whole repo (= pi install)
+curl -fsSL https://skale.dev/s/pi                                      # usage + installable list
+curl -fsSL https://skale.dev/s/available                              # agent-readable slug list
+```
+
 ### Claude Code, Codex, OpenCode
 
 ```bash
-npx skills@latest add devskale/skale-skills        # skills CLI
-openskills install devskale/skale-skills           # OpenSkills
+npx skills@latest add devskale/skale-skills --skill visualize -g   # skills CLI (80+ agents)
+openskills install devskale/skale-skills                           # OpenSkills
 
 # or symlink any single skill (works everywhere)
 ln -s "$PWD/skills/surf" ~/.pi/agent/skills/surf
