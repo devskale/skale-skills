@@ -108,12 +108,13 @@ for t in cards repo-tree system-map report mermaid tailwind-report; do
     [ -f "$SKILL/templates/$t.html" ] && ok || bad "template $t.html missing"
 done
 
-# lint catches Tailwind pill classes (rounded-full + tinted bg in one class attr)
+# lint catches Tailwind pill classes — info now, not a gate (pills sind ok)
 PILLFILE="$(mktemp -d)/pilltest.html"
 cat > "$PILLFILE" <<'PILLEOF'
 <p class="rounded-full bg-emerald-100 px-3 py-1">badge</p>
 PILLEOF
-check "lint Tailwind pill tell -> exit 1" 1 "$SCRIPT" lint "$PILLFILE"
+out="$(env SLOP_API_URL=http://127.0.0.1:1 "$SCRIPT" lint "$PILLFILE" 2>&1)"; rc=$?
+if [ $rc -eq 0 ]; then ok; else bad "Tailwind pills must not gate (rc=$rc: $out)"; fi
 rm -rf "$(dirname "$PILLFILE")"
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
@@ -261,8 +262,12 @@ a{color:#0369a1}.ok{color:#15803d}</style></head>
 <body><a href="#">x</a></body></html>
 EOF
 check "lint clean page → exit 0" 0 "$SCRIPT" lint "$TMP/stylish.html"
-check "lint AI-slop page → exit 1" 1 "$SCRIPT" lint "$TMP/ai-slop.html"
-check "lint missing file → exit 2" 2 "$SCRIPT" lint /nonexistent.html
+# pills + saturated link colors are ALLOWED now (info at most) — the gate is
+# hardslop only: card-edge accents, violet fills, big circle badges
+check "lint pill page → exit 0 (pills sind ok)" 0 "$SCRIPT" lint "$TMP/ai-slop.html"
+# missing file = usage error (exit 2, wie alle visualize-commands); exit 3 wäre
+# "check nicht möglich" (Lesefehler im Client), nicht "Datei existiert nicht"
+check "lint missing file → exit 2 (usage)" 2 "$SCRIPT" lint /nonexistent.html
 
 # lint — structural color is ALLOWED (color as structure: category dots, section
 # accents, semantic .ok/.warn/.bad severity). Only decorative tells fail.
@@ -313,7 +318,7 @@ cat > "$TMP/teal.html" <<'EOF'
 <body><a href="#">x</a></body></html>
 EOF
 check "lint neutral inline link → exit 0" 0 "$SCRIPT" lint "$TMP/neutral.html"
-check "lint saturated teal accent → exit 1" 1 "$SCRIPT" lint "$TMP/teal.html"
+check "lint saturated teal link → exit 0 (hue on text is fine)" 0 "$SCRIPT" lint "$TMP/teal.html"
 
 # open — tested via a stub opener: the suite must never pop a real browser tab.
 # The stub wins `command -v open`, so the launcher's file-check + opener path is covered.
@@ -407,12 +412,35 @@ ok
 "$SCRIPT" --help 2>&1 | grep -q 'chartcheck' && ok || bad "chartcheck missing from --help"
 check "chartcheck rejects a missing file" 2 "$SCRIPT" chartcheck "$TMP/nope.html"
 
-# ── slop gate on share (live API; honest skip without token/network) ──
+# ── slop gate: offline subset (deterministic — dead endpoint, no token needed) ──
 SLOP_PAGE="$TMP/slop-stripe.html"
 printf '<!doctype html><html><head><style>.c{border-top:4px solid #e11d48}</style></head><body><div class="c">x</div></body></html>' > "$SLOP_PAGE"
 CLEAN_PAGE="$TMP/slop-clean.html"
 printf '<!doctype html><html><head><style>body{font-family:-apple-system,sans-serif}</style></head><body><p>clean</p></body></html>' > "$CLEAN_PAGE"
+PILL_PAGE="$TMP/slop-pill.html"
+printf '<!doctype html><html><head><style>.b{border-radius:999px;background:#fde68a}</style></head><body><span class="b">pill</span></body></html>' > "$PILL_PAGE"
+DEAD_API="SLOP_API_URL=http://127.0.0.1:1"
 
+# lint offline: stripe = HARDSLOP exit 1 (the founding case, caught without network)
+out="$(env $DEAD_API "$SCRIPT" lint "$SLOP_PAGE" 2>&1)"; rc=$?
+if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'HARDSLOP edge_stripe'; then ok
+else bad "lint offline: stripe must be HARDSLOP + exit 1 (rc=$rc: $out)"; fi
+
+# lint offline: pills are info, never a gate (Johann: „pills sind ok")
+out="$(env $DEAD_API "$SCRIPT" lint "$PILL_PAGE" 2>&1)"; rc=$?
+if [ $rc -eq 0 ]; then ok
+else bad "lint offline: pills must not gate (rc=$rc: $out)"; fi
+
+# lint offline: clean page exit 0
+out="$(env $DEAD_API "$SCRIPT" lint "$CLEAN_PAGE" 2>&1)"; rc=$?
+[ $rc -eq 0 ] && ok || bad "lint offline: clean page must exit 0 (rc=$rc: $out)"
+
+# client JSON contract: mode flags the offline shadow
+out="$(env $DEAD_API python3 "$SKILL/scripts/lib/slop_client.py" lint "$SLOP_PAGE")"
+printf '%s' "$out" | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["mode"].startswith("offline"), d; assert d["findings"][0]["id"]=="edge_stripe"' \
+    && ok || bad "client JSON contract broken: $out"
+
+# share still gates (URL-first): hardslop → exit 1 — live only (needs throway)
 slop_live=false
 if [ -n "${SLOP_TOKEN:-}" ] || command -v credgoo >/dev/null 2>&1; then
     slop_live=true
@@ -421,21 +449,17 @@ if [ "$slop_live" = true ]; then
     out="$(SLOP_TOKEN="${SLOP_TOKEN:-}" "$SCRIPT" share "$SLOP_PAGE" 2>&1)"; rc=$?
     if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'HARDSLOP edge_stripe'; then
         ok
-    elif printf '%s' "$out" | grep -q 'slop: check skipped'; then
-        warn "share slop-gate skipped (API unreachable)"
     else
         bad "share of a stripe page must print HARDSLOP edge_stripe + exit 1 (rc=$rc: $out)"
     fi
     out="$(SLOP_TOKEN="${SLOP_TOKEN:-}" "$SCRIPT" share "$CLEAN_PAGE" 2>&1)"; rc=$?
     if [ $rc -eq 0 ] && printf '%s' "$out" | grep -q 'visualize slop'; then
         ok
-    elif printf '%s' "$out" | grep -q 'slop: check skipped'; then
-        warn "share slop-gate (clean page) skipped (API unreachable)"
     else
         bad "share of a clean page must print a slop line + exit 0 (rc=$rc: $out)"
     fi
 else
-    warn "slop-gate live tests skipped (no SLOP_TOKEN / credgoo)"
+    warn "slop-gate live share tests skipped (no SLOP_TOKEN / credgoo)"
 fi
 
 rm -rf "$TMP"

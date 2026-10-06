@@ -40,8 +40,10 @@ THROWAWAY="https://lubu.skale.dev/throway"
 # re-share with --update (PUT in place, URL stable). Reviews are handed back
 # for the agent to decide. Missing token or unreachable API skips the check
 # (a share must never fail on the linter) — but says so.
-SLOP_API="https://amd.skale.dev/api/slop/lint"
 SLOP_DIR_MAX=3   # share --dir lints at most this many html files
+# Der slop-API-Vertrag (Endpoint, Auth, Report, Exit-Codes 0/1/3) lebt im
+# Client: scripts/lib/slop_client.py — SLOP_API_URL ueberschreibt den
+# Endpoint (Tests, Zweitmaschinen).
 
 # Percent-encode a query-param value (bash-only; keeps the RFC-3986 unreserved set,
 # assumes ASCII filenames — slugs are the norm).
@@ -71,58 +73,13 @@ _too_big() {  # _too_big <file> <max> — exit 0 wenn die Datei ueber der Grenze
     [ "$(wc -c < "$1" | tr -d ' ')" -gt "$2" ]
 }
 
-# _slop_check <file> — lint one HTML file against the amd slop API.
-# Prints the report (findings + reviews); returns the number of hard
-# findings via SLOP_FINDINGS (0 = clean). Never hard-fails the caller:
-# a missing token, an unreachable API, or a parse hiccup skips the check
-# with a note — a share must not die on the linter.
+# _slop_check <file> — slop gate via slop_client (the one seam).
+# Prints the client's --human report; exit codes pass through:
+# 0 clean · 1 hardslop · 3 unverified. The client owns the API contract,
+# token resolution (SLOP_TOKEN -> credgoo FETCH_URL_BEARER) and the
+# offline hard-ban subset (SLOP_API_URL overrides the endpoint).
 _slop_check() {
-    SLOP_FINDINGS=0
-    local f="$1" tok resp
-    tok="${SLOP_TOKEN:-}"
-    if [ -z "$tok" ] && command -v credgoo >/dev/null 2>&1; then
-        tok="$(credgoo FETCH_URL_BEARER 2>/dev/null)"
-    fi
-    if [ -z "$tok" ]; then
-        echo "visualize slop: check skipped — no token (SLOP_TOKEN or credgoo FETCH_URL_BEARER)" >&2
-        return 0
-    fi
-    resp="$(curl -sf --max-time 20 -X POST "$SLOP_API" \
-        -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' \
-        --data-binary @<(python3 -c 'import json,sys; print(json.dumps({"html": open(sys.argv[1], encoding="utf-8", errors="replace").read()}))' "$f" 2>/dev/null) 2>/dev/null)" \
-        || { echo "visualize slop: check skipped — API unreachable ($SLOP_API)" >&2; return 0; }
-    [ -n "$resp" ] || { echo "visualize slop: check skipped — empty API response" >&2; return 0; }
-    local pycode
-    pycode="$(cat <<'PYEOF'
-import sys, json
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    print(0); sys.exit(0)
-fs, rv, info = d.get("findings", []), d.get("review", []), d.get("info", [])
-score, tier = d.get("score"), d.get("tier")
-if not fs and not rv and not info:
-    print(f"visualize slop: Clean (score {score}) — no AI-tells")
-elif not fs:
-    print(f"visualize slop: no hard slop (score {score}, {tier}) — {len(info)} info, {len(rv)} to review:")
-else:
-    print(f"visualize slop: {len(fs)} hardslop (score {score}, {tier}) — fix and re-share with --update:")
-for f in fs:
-    print(f"  HARDSLOP {f['id']}: {f['evidence']}")
-    print(f"    fix: {f['fix']}")
-for f in info:
-    print(f"  info    {f['id']}: {f['evidence']}")
-for f in rv:
-    print(f"  review  {f['id']}: {f['evidence']} — you decide")
-print(len(fs))
-PYEOF
-)"
-    SLOP_FINDINGS="$(printf '%s' "$resp" | python3 -c "$pycode" 2>/dev/null)"
-    local report_findings
-    report_findings="$(printf '%s\n' "$SLOP_FINDINGS" | tail -1)"
-    printf '%s\n' "$SLOP_FINDINGS" | sed '$d' >&2
-    SLOP_FINDINGS="${report_findings:-0}"
-    return 0
+    python3 "$SKILL_DIR/scripts/lib/slop_client.py" lint "$1" --human
 }
 
 # ── Auto-update check (non-blocking) ──
@@ -259,8 +216,7 @@ case "$cmd" in
                         *.html|*.htm)
                             if [ "$slop_checked" -lt "$SLOP_DIR_MAX" ]; then
                                 slop_checked=$((slop_checked+1))
-                                _slop_check "$f"
-                                [ "${SLOP_FINDINGS:-0}" -gt 0 ] && slop_bad=$((slop_bad+1))
+                                _slop_check "$f" || slop_bad=$((slop_bad+1))
                             fi ;;
                     esac
                 else
@@ -303,7 +259,7 @@ case "$cmd" in
             echo "$dirurl"
             echo "visualize: shared (update) $f -> $dirurl  (stable URL; edit in place)"
             _slop_check "$f"
-            [ "${SLOP_FINDINGS:-0}" -gt 0 ] && exit 1
+            rc=$?; [ $rc -ne 0 ] && exit $rc
             exit 0
         fi
         [ $# -eq 1 ] || { echo "visualize share: expected one file" >&2; exit 2; }
@@ -330,121 +286,17 @@ case "$cmd" in
         echo "$url"
         echo "visualize: shared $name -> $url  (expires in ~4h)"
         _slop_check "$f"
-        [ "${SLOP_FINDINGS:-0}" -gt 0 ] && exit 1
+        rc=$?; [ $rc -ne 0 ] && exit $rc
         exit 0
         ;;
 
     lint)
         [ $# -eq 1 ] || { echo "visualize lint: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize lint: not a file: $f" >&2; exit 2; }
-        if command -v python3 >/dev/null 2>&1; then
-            python3 - "$f" <<'PYEOF'
-import sys, re
-path = sys.argv[1]
-src = open(path, encoding='utf-8', errors='replace').read()
-
-# strip comments so colors inside html/css comments don't count
-src = re.sub(r'<!--.*?-->', '', src, flags=re.S)
-
-warns = []
-
-# Neutral ink/paper/muted palette — links/buttons must stay in this family.
-NEUTRAL = {'0f172a','1a1a1a','fafaf9','f4f4f5','ffffff','e4e4e7','e5e5e5',
-           '6b7280','71717a','a1a1aa','e2e8f0','64748b','f8fafc','cbd5e1',
-           '94a3b8','475569','334155','1e293b'}
-# Backgrounds that never read as "colored badge" (paper/line neutrals).
-BG_NEUTRAL = {'ffffff','fafaf9','f4f4f5','e4e4e7','e5e5e5'}
-
-def add(msg):
-    warns.append(msg)
-
-def bad_bg(decls):
-    m = re.search(r'(?:^|[;\s])background(?:-color)?\s*:\s*#([0-9a-fA-F]{6})\b', decls)
-    return m and m.group(1).lower() not in BG_NEUTRAL
-
-# Parse <style> blocks into (selector, declarations) rules; inline style=""
-# attributes become rules keyed by their element tag.
-rules = []
-for m in re.finditer(r'<style[^>]*>(.*?)</style>', src, flags=re.S):
-    css = re.sub(r'/\*.*?\*/', '', m.group(1), flags=re.S)
-    for rm in re.finditer(r'([^{}]+)\{([^{}]*)\}', css):
-        rules.append((rm.group(1).strip(), rm.group(2)))
-for m in re.finditer(r'<([a-zA-Z][a-zA-Z0-9]*)[^>]*?\sstyle="([^"]*)"', src):
-    rules.append((m.group(1), m.group(2)))
-
-LINK_SEL = re.compile(r'(?:^|[\s,>+~(])(?:a|button)(?=$|[\s,>+~:.{\[])')
-
-def rem_to_px(v):
-    m = re.match(r'([\d.]+)(px|rem)\b', v)
-    if not m:
-        return 0.0
-    return float(m.group(1)) * (16 if m.group(2) == 'rem' else 1)
-
-for sel, decls in rules:
-    # 1. Decorative tell: saturated accent on links/buttons/TOC.
-    if LINK_SEL.search(sel):
-        cm = re.search(r'(?:^|[;\s])color\s*:\s*#([0-9a-fA-F]{6})\b', decls)
-        if cm and cm.group(1).lower() not in NEUTRAL:
-            add(f'saturated accent on a link/button (selector "{sel[:40]}")')
-    # 2. Decorative tell: pastel pill capsule (border-radius:999px + colored bg).
-    if re.search(r'border-radius\s*:\s*99[0-9]px', decls) and bad_bg(decls):
-        add(f'pastel pill capsule (border-radius:999px + colored background, "{sel[:40]}")')
-    # 3. Decorative tell: LARGE colored circle badge. Small category dots
-    #    (<~20px) are structural color and pass.
-    if re.search(r'border-radius\s*:\s*50%', decls) and bad_bg(decls):
-        sizes = [rem_to_px(v) for v in
-                 re.findall(r'(?:^|[;\s])(?:width|height)\s*:\s*([\d.]+(?:px|rem))', decls)]
-        if sizes and max(sizes) >= 20:
-            add(f'large colored circle badge (border-radius:50% + colored background + >=20px, "{sel[:40]}")')
-    # 5. Decorative tell: colored left-edge accent on a card/panel
-    #    (border-left >= 2px in a NON-neutral color). The "left-edge coloured
-    #    line on a panel" is a classic AI tell. Neutral --line-family colors are
-    #    connectors (timeline spine, tree guides) and pass.
-    blm = re.search(r'border-left\s*:\s*([\d.]+)(px|rem)\s+solid\s+(#[0-9a-fA-F]{6}|var\(\s*--[a-z0-9-]+\s*\))', decls)
-    if blm:
-        w = float(blm.group(1)) * (16 if blm.group(2) == 'rem' else 1)
-        color = blm.group(3)
-        neutral = False
-        if color.startswith('#'):
-            neutral = color[1:].lower() in NEUTRAL
-        else:
-            # var(--line)/var(--muted)/var(--soft)/var(--ink) are the connector
-            # neutrals; var(--ok/--warn/--bad/--cat-*/--accent) on an edge is decoration
-            neutral = bool(re.search(r'var\(\s*--(line|muted|soft|ink)\s*\)', color))
-        if w >= 2 and not neutral:
-            add(f'colored left-edge accent on a card (border-left:{blm.group(0)}, "{sel[:40]}") — put the hue on content (label/dot/value), not on the card edge')
-
-# 4. Decorative tell: Tailwind pill classes (rounded-full + tinted bg utility in the
-#    same class attribute). The Tailwind track (templates/tailwind-report.html) uses
-#    utilities, which the style-block parser above never sees — check class="..." too.
-TINTED_BG = re.compile(r'\bbg-(?:emerald|amber|red|rose|blue|sky|indigo|violet|purple|fuchsia|pink|cyan|teal|lime|green|orange|yellow)-\d{2,3}\b')
-for cls in re.findall(r'class="([^"]*)"', src):
-    if re.search(r'\brounded-full\b', cls) and TINTED_BG.search(cls):
-        add(f'Tailwind pill classes (rounded-full + tinted background, "{cls[:50]}") — use a small square dot + severity text instead')
-
-# Structural color (category hues on text/kickers, semantic .ok/.warn/.bad,
-# small dots, tinted grouping) is allowed — it carries meaning, so no check here.
-
-if warns:
-    print('visualize lint: style taste-gate — decorative AI-tells found:')
-    for w in dict.fromkeys(warns):
-        print('  - ' + w)
-    print('Fix before sharing. Structural color (category dots, section accents,')
-    print('semantic .ok/.warn/.bad) is fine — see promptlib.md §1–2.')
-    sys.exit(1)
-else:
-    print('visualize lint: OK — no decorative AI-tells (structural color allowed)')
-PYEOF
-        else
-            # python3-less fallback: a few simple greps
-            bad="$(grep -oE 'border-radius:99[0-9]px[^}]*background:#[0-9a-fA-F]{6}' "$f" | head -5)"
-            if [ -n "$bad" ]; then
-                echo "visualize lint: possible colored pill badges found:" >&2
-                echo "$bad" | sed 's/^/  /' >&2
-                exit 1
-            fi
-            echo "visualize lint: OK (basic check — install python3 for full taste-gate)" >&2
-        fi
+        # slop gate via client: API-first (full engine), offline
+        # faellt auf den hard-ban-Subset zurueck (exit codes 0/1/3).
+        python3 "$SKILL_DIR/scripts/lib/slop_client.py" lint "$f" --human
+        exit $?
         ;;
 
     chartcheck)
