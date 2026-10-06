@@ -6,7 +6,7 @@
 
 [![built for pi](https://img.shields.io/badge/built_for-pi-7c3aed?style=flat-square)](https://pi.dev)
 [![agents](https://img.shields.io/badge/works_with-pi_·_Claude_Code_·_Codex_·_OpenCode-1f6feb?style=flat-square)](#selective--other-agents)
-[![skills](https://img.shields.io/badge/skills-12_·_extensions-4-success?style=flat-square)](#whats-included)
+[![skills](https://img.shields.io/badge/skills-13_·_extensions-5-success?style=flat-square)](#whats-included)
 [![platform](https://img.shields.io/badge/platform-macOS_·_Linux_·_Windows-lightgrey?style=flat-square)](#install)
 [![creds](https://img.shields.io/badge/credentials-credgoo-critical?style=flat-square)](#credentials--credgoo)
 
@@ -45,6 +45,7 @@ Per-skill commands still install standalone: `./skills/web-search/install.sh`.
 | 🤖 **Headless browser** | Scrape, screenshot, PDF, a11y audits, CI assertions on isolated Chrome |
 | 🎬 **YouTube + media** | Search via Invidious; download video/audio/subtitles/transcripts (yt-dlp) |
 | 🎨 **Diagrams & images** | D2 + figure compositing; text→image (Pollinations/TU) the model can see and iterate on |
+| 🖼 **Pages that share themselves** | One self-contained HTML per topic — house skin (4 flavors), parallel quality gates, AI-slop lint (fail-closed), stable share URLs that edit in place |
 | 🔐 **Credential-safe** | All keys flow through [credgoo](#credentials--credgoo) — no `.env` with real tokens |
 | 🧩 **Cross-agent** | Native pi package; also installable into Claude Code, Codex, OpenCode |
 
@@ -64,7 +65,7 @@ Source: [`docs/architecture.d2`](docs/architecture.d2) · edit and re-render wit
 
 ## Flagship skills
 
-Three skills are production-hardened — full docs and flow diagrams (most ship test suites too). Each entry indexes its own sub-site of documentation.
+Five skills are production-hardened — full docs and flow diagrams (most ship test suites too). Each entry indexes its own sub-site of documentation.
 
 ### 🏄 `surf` — drive your real Chrome
 
@@ -124,6 +125,22 @@ Write a small spec (nodes + edges + numbered step badges), get a consistent **ha
 
 📖 [SKILL.md](skills/figure/SKILL.md) · [source](skills/figure)
 
+### 🖼 `visualize` — one self-contained HTML, one stable URL
+
+Turn any set of things into **one self-contained HTML page** — report, comparison, block diagram, timeline — and share it with a URL that **stays valid while you edit**: the pin ledger maps each file to its URL, re-sharing is a PUT in place.
+
+- **House skin v3, four flavors** — `paper` (editorial), `swiss` (poster stats), `terminal` (infra/CLI), `blueprint` (architecture). Style by construction: start from the skin, not blank CSS.
+- **`visualize gate`** — all quality gates in parallel behind one command (self-contained check, slop lint, dataviz integrity); exit 1 if any fails.
+- **AI-slop lint, fail-closed** — card-edge accents and violet fills fail the share (`exit 1`); no API or no token → `exit 3` unverified, never a silent skip.
+- **Templates** — block diagram (SVG arrows, blueprint flavor), before/after, module diff, timeline, report, cards, cheatsheet, barchart.
+
+```bash
+visualize gate page.html      # all gates parallel: validate + slop + chartcheck
+visualize share page.html     # → URL; re-share = same URL (PUT in place)
+```
+
+📖 [SKILL.md](skills/visualize/SKILL.md) · [templates](skills/visualize/templates) · [references](skills/visualize/references) · [source](skills/visualize) · [tests](tests/visualize/test.sh)
+
 ---
 
 ## Quick start
@@ -140,6 +157,9 @@ surf setup && surf tabs
 fetch-url "https://news.ycombinator.com"
 web-search "agentic browser 2026" --max 10
 vtd transcript --url 'https://youtube.com/watch?v=…'
+
+# 4. Turn it into one shareable page (stable URL — re-share edits in place)
+visualize gate page.html && visualize share page.html
 ```
 
 ---
@@ -159,7 +179,7 @@ vtd transcript --url 'https://youtube.com/watch?v=…'
 | **[video-transcript-downloader](skills/video-transcript-downloader)** | Download video/audio/subtitles/transcripts (yt-dlp) |
 | **[d2](skills/d2)** | Diagrams-as-code with the D2 language |
 | ~~**viewimg**~~ | **DEPRECATED** — use `read img.jpg` (canonical) or `read_image`/`/readimg` for VLM analysis. Archived at [`skills/deprecated/viewimg/`](skills/deprecated/viewimg/); [migration guide](docs/image-display-deprecation.md) |
-| **[visualize](skills/visualize)** | Render any set of things as ONE self-contained HTML — locally or via share URL |
+| **[visualize](skills/visualize)** ⭐ | One self-contained HTML per topic — house skin (4 flavors), parallel gates, share with a stable URL (re-share = PUT in place) |
 | **[peep](skills/peep)** | Read X/Twitter via the `peep` CLI (timelines, threads, search, bookmarks) |
 | **[improve-ux](skills/improve-ux)** | UI/UX improvements grounded in curated reference sites, with a rating loop |
 
@@ -173,6 +193,7 @@ _Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, 
 | **[statusline](extensions/statusline.ts)** | Custom footer — machine name, token stats, context usage |
 | **[xmodel](extensions/xmodel.ts)** | Model/thinking fast-switcher + vision pipeline — `read` is display-only (never VLM), understanding is opt-in via `read_image` tool / `/readimg` command |
 | **[imagegen](extensions/imagegen.ts)** | Text→image (any provider/modelid, self-healing defaults) with ASCII preview + `read` for inline display |
+| **[image-slim](extensions/image-slim.ts)** | Strips image payloads from compaction summaries — keeps context lean on image-heavy sessions |
 
 ### Prompts
 

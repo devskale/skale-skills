@@ -4,6 +4,14 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **blockdiagram.html template + README flagship entry für visualize.**
+  Das Selbstporträt-Blockdiagramm (blueprint flavor, hand-crafted SVG mit Pfeilen,
+  Gate-Fan-out + Edit-Loop) ist jetzt Template: `templates/blockdiagram.html` mit
+  Platzhaltern und Filling-Rules im Kommentar (Vokabular behalten, Inhalt tauschen).
+  README: visualize ist jetzt Flagship (fünf Skills production-hardened) mit
+  Skin/Gates/Pin-Ledger-Steckbrief, Quick-Start-Schritt 4, Highlight-Zeile,
+  image-slim in der Extension-Tabelle, Badges (13 Skills · 5 Extensions).
+
 - **Retro 2026-10 (2. Runde): drei Funde, alle gebaut.**
   1. **YAML-Parse-Check im Skill-Metadata-Gate** (mechanisch): ungültiges
      SKILL.md-Frontmatter bricht den GESAMTEN Skill-Load in pi (visualize-Bruch
