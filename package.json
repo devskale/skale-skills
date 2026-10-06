@@ -15,7 +15,6 @@
     ],
     "skills": [
       "./skills",
-      "!skills/deprecated/**"
     ],
     "prompts": [
       "./prompts"

@@ -31,7 +31,7 @@ if command -v shellcheck >/dev/null 2>&1; then
         head -1 "$f" 2>/dev/null | grep -q '^#!.*bash' || continue
         bash -n "$f" || { echo "  ✗ $f: bash -n failed" >&2; sc_fail=1; continue; }
         shellcheck -S error "$f" || sc_fail=1
-    done < <(git ls-files 'skills/' | grep -v '^skills/deprecated/'; git ls-files --others --exclude-standard 'skills/')
+    done < <(git ls-files 'skills/'; git ls-files --others --exclude-standard 'skills/')
     [ "$sc_fail" -eq 0 ] && echo "ok" || { FAIL=1; echo "FAIL: shell scripts" >&2; }
 else
     warn "shellcheck not installed — shell gate skipped"
@@ -41,7 +41,7 @@ banner "Python scripts (ruff F,E9 — the vet tier)"
 # Static bug checks for the skill Python code: pyflakes (F) + syntax (E9).
 # Style rules stay OUT of the gate on purpose (same philosophy as shellcheck
 # -S error). Skipped honestly when neither ruff nor uvx is available.
-PY_FILES=$(git ls-files 'skills/*/scripts/*.py' | grep -v '^skills/deprecated/')
+PY_FILES=$(git ls-files 'skills/*/scripts/*.py')
 if [ -n "$PY_FILES" ]; then
     if command -v ruff >/dev/null 2>&1; then
         # shellcheck disable=SC2086

@@ -178,12 +178,12 @@ visualize gate page.html && visualize share page.html
 | **[youtube](skills/youtube)** | YouTube search via Invidious with auto-fallback |
 | **[video-transcript-downloader](skills/video-transcript-downloader)** | Download video/audio/subtitles/transcripts (yt-dlp) |
 | **[d2](skills/d2)** | Diagrams-as-code with the D2 language |
-| ~~**viewimg**~~ | **DEPRECATED** — use `read img.jpg` (canonical) or `read_image`/`/readimg` for VLM analysis. Archived at [`skills/deprecated/viewimg/`](skills/deprecated/viewimg/); [migration guide](docs/image-display-deprecation.md) |
+| ~~**viewimg**~~ | **DEPRECATED** — use `read img.jpg` (canonical) or `read_image`/`/readimg` for VLM analysis. Archived at [`deprecated/viewimg/`](deprecated/viewimg/); [migration guide](docs/image-display-deprecation.md) |
 | **[visualize](skills/visualize)** ⭐ | One self-contained HTML per topic — house skin (4 flavors), parallel gates, share with a stable URL (re-share = PUT in place) |
 | **[peep](skills/peep)** | Read X/Twitter via the `peep` CLI (timelines, threads, search, bookmarks) |
 | **[improve-ux](skills/improve-ux)** | UI/UX improvements grounded in curated reference sites, with a rating loop |
 
-_Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, improve-skill, readme-write) moved to [`skills/deprecated/`](skills/deprecated/)._
+_Retired: 6 skills (todo, agent-skill-creator, agents-md-init, command-creator, improve-skill, readme-write) moved to [`deprecated/`](deprecated/)._
 
 ### Extensions (pi)
 
@@ -293,7 +293,7 @@ See [`RECOMMENDED-SKILLS.md`](RECOMMENDED-SKILLS.md) for the full list of source
 
 ```
 skills/      → 8 active skills (surf, rodney, fetch-url, web-search, figure, …)
-skills/deprecated/  → 6 retired skills (depth-2; not auto-loaded)
+deprecated/  → 6 retired skills (depth-2; not auto-loaded)
 extensions/  → pi extensions (heartbeat, statusline, xmodel, imagegen)
 prompts/     → prompt templates (learn)
 docs/        → guides + best-practices (browser-use, install, credgoo, …)

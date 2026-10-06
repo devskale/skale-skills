@@ -28,7 +28,6 @@ for f in extensions/*.ts extensions/lib/*.ts \
          skills/*/*.sh skills/*/install.sh skills/*/install.bat; do
     [ -f "$f" ] || continue
     # deprecated/ is not shipped in the package — nothing to drift against
-    case "$f" in skills/deprecated/*) continue ;; esac
     other="$CLONE/$f"
     if [ ! -f "$other" ]; then
         echo "ONLY IN CHECKOUT: $f"

@@ -7,13 +7,13 @@ not merge) live in [LAYOUT.md](../LAYOUT.md); this page is the how-to.
 
 ## Steps
 
-1. **Move** `skills/<name>/` → `skills/deprecated/<name>/`. The exclusion ships with the
-   package: `package.json` → `pi.skills` is `["./skills", "!skills/deprecated/**"]` — the
+1. **Move** `skills/<name>/` → `deprecated/<name>/`. The exclusion ships with the
+   package: `package.json` → `pi.skills` is `["./skills", "!deprecated/**"]` — the
    `!` glob-exclude keeps the whole archive out at the **manifest level**, so every user of
    the package gets it without touching their own settings.
 2. **Move** `tests/<name>/` → `tests/deprecated/<name>/` alongside it (the backward-compat
    suite stays with the code).
-3. **Add a row** to [`skills/deprecated/README.md`](../skills/deprecated/README.md)
+3. **Add a row** to [`deprecated/README.md`](../deprecated/SKILLS-README.md)
    (Skill | Was | Replaced by).
 4. **Fix the `~/.local/bin/<cmd>` symlink** — it points into the old path and silently
    breaks otherwise.
@@ -26,18 +26,18 @@ not merge) live in [LAYOUT.md](../LAYOUT.md); this page is the how-to.
 ## Load-bearing traps
 
 **Never prefix manifest glob-excludes with `./`.** pi matches patterns against
-package-root-relative paths via minimatch, and `!./skills/deprecated/**` silently matches
+package-root-relative paths via minimatch, and `!./deprecated/**` silently matches
 **nothing** — minimatch does not strip the leading `./`. Confirmed against pi's own matcher
-(2026-09-21): `"./skills/deprecated/**"` → false, `"skills/deprecated/**"` → true. The
+(2026-09-21): `"./deprecated/**"` → false, `"deprecated/**"` → true. The
 broken form shipped for weeks while deprecated skills stayed active on fresh installs.
 
 **Use `!` (glob exclude), never `-` (force-exclude), for tree excludes.** `-` does exact
-string matching and silently ignores the `**` glob — `-skills/deprecated/**` is a no-op.
+string matching and silently ignores the `**` glob — `-deprecated/**` is a no-op.
 Exact single-file entries like `-skills/youtube/SKILL.md` are fine as `-`.
 
 **Keep the settings filter as a redundant safety net.** pi discovers `SKILL.md`
 recursively, so directory depth alone does **not** hide a skill — the manifest exclude
-*and* the `!skills/deprecated/**` entry in `~/.pi/agent/settings.json` are what keep the
+*and* the `!deprecated/**` entry in `~/.pi/agent/settings.json` are what keep the
 archive out. Remove both and every archived skill comes back.
 
 **Bump the path depth when moving a test deeper.** Test scripts reach the repo root with
@@ -54,9 +54,9 @@ the package:
 
 ```bash
 scripts/skill-filter.sh list                          # show package filters + MCP servers
-scripts/skill-filter.sh disable skill deprecated      # → !skills/deprecated/**  (whole tree)
-scripts/skill-filter.sh disable skill viewimg         # → -skills/deprecated/viewimg/SKILL.md
-scripts/skill-filter.sh enable  skill viewimg         # → +skills/deprecated/viewimg/SKILL.md
+scripts/skill-filter.sh disable skill deprecated      # → !deprecated/**  (whole tree)
+scripts/skill-filter.sh disable skill viewimg         # → -deprecated/viewimg/SKILL.md
+scripts/skill-filter.sh enable  skill viewimg         # → +deprecated/viewimg/SKILL.md
 scripts/skill-filter.sh disable extension imagegen    # → -extensions/imagegen.ts
 scripts/skill-filter.sh disable mcp chrome-devtools   # remove from ~/.config/mcp/mcp.json
 ```

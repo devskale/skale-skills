@@ -55,5 +55,5 @@ the same reason — the reasoning outlives the code — but they are different s
 | State | Folder | Shipped to users? |
 |-------|--------|-------------------|
 | Idea / sketch | [`ideas/`](.) | No |
-| Deprecated (retired, kept for archaeology) | [`skills/deprecated/`](../skills/deprecated/), [`deprecated/`](../deprecated/) | No |
+| Deprecated (retired, kept for archaeology) | [`skills/deprecated/`](../deprecated/), [`deprecated/`](../deprecated/) | No |
 | Under review | [`under-review/`](../under-review/) | No — see its README |

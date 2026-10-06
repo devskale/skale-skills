@@ -7,7 +7,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/../../.."
 
-SKILL=skills/deprecated/viewimg
+SKILL=deprecated/viewimg
 SCRIPT="$SKILL/viewimg"
 # Generate the fixture on the fly — a committed generated/*.jpg went stale and
 # broke the suite on fresh clones.

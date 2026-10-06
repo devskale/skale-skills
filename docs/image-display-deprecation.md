@@ -173,7 +173,7 @@ read img.jpg              # Dann:
 Die Shell-Kommando-Installation bleibt optional. Falls du `viewimg` als CLI-Befehl weiterhin nutzen willst:
 
 ```bash
-cd skills/deprecated/viewimg && bash install.sh
+cd deprecated/viewimg && bash install.sh
 ```
 
 Die Skript-Logik ändert sich nicht — aber der Skill wird nicht weiterentwickelt.
@@ -187,15 +187,15 @@ Die Skript-Logik ändert sich nicht — aber der Skill wird nicht weiterentwicke
 | Phase | Wann | Status |
 |-------|------|--------|
 | Deprecated | 2026-09-14 | `viewimg` im SKILL.md markiert, Doku aktualisiert |
-| Archived | 2026-09-14 | Nach `skills/deprecated/viewimg/` verschoben; aus dem Package-Discovery entfernt via Manifest-Glob-Filter `!skills/deprecated/**` in `package.json` → `pi.skills` (ships with the package; **ohne** `./`-Präfix — siehe AGENTS.md-Gotcha) plus Settings-Sicherheitsnetz `!skills/deprecated/**`. pi findet `SKILL.md` **rekursiv** — die Tiefe allein versteckt nichts; `!`-Glob nötig, `-`-Force-Exclude expandiert `**` nicht); Tests nach `tests/deprecated/viewimg/` |
-| Entfernt | künftiger Release | `skills/deprecated/viewimg/` wird gelöscht, `~/.local/bin/viewimg` entfernt |
+| Archived | 2026-09-14 | Nach `deprecated/viewimg/` verschoben; aus dem Package-Discovery entfernt via Manifest-Glob-Filter `!deprecated/**` in `package.json` → `pi.skills` (ships with the package; **ohne** `./`-Präfix — siehe AGENTS.md-Gotcha) plus Settings-Sicherheitsnetz `!deprecated/**`. pi findet `SKILL.md` **rekursiv** — die Tiefe allein versteckt nichts; `!`-Glob nötig, `-`-Force-Exclude expandiert `**` nicht); Tests nach `tests/deprecated/viewimg/` |
+| Entfernt | künftiger Release | `deprecated/viewimg/` wird gelöscht, `~/.local/bin/viewimg` entfernt |
 | Breaking Change | — | Alle Referenzen bereinigt, Tests gelöscht |
 
 ---
 
 ## References
 
-- [SKILL.md](../skills/deprecated/viewimg/SKILL.md) — deprecated skill definition (archived)
+- [SKILL.md](../deprecated/viewimg/SKILL.md) — deprecated skill definition (archived)
 - [xmodel.md](../extensions/xmodel.md) → Vision Pipeline & read-protocol
 - [xmodel.ts](../extensions/xmodel.ts) — read handover, view modes, VLM delegation
 - [AGENTS.md](../AGENTS.md) → Agent Protokoll-Notiz im System-Prompt

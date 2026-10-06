@@ -75,7 +75,7 @@ done
 # Root-level .md docs (pi-architecture.md, LAYOUT.md, …) are checked the same way —
 # they were silently skipped until now, because the loop only walked docs/.
 ORPHAN_EXEMPT='\.(svg|png)$|\.d2$|^docs/diagrams/|^docs/images/'
-DOC_FILES=$( { git ls-files docs/ | grep -vE "$ORPHAN_EXEMPT"; git ls-files -- '*.md' ':!docs/**' ':!skills/**' ':!tests/**' ':!deprecated/**' ':!skills/deprecated/**'; } | sort -u )
+DOC_FILES=$( { git ls-files docs/ | grep -vE "$ORPHAN_EXEMPT"; git ls-files -- '*.md' ':!docs/**' ':!skills/**' ':!tests/**' ':!deprecated/**'; } | sort -u )
 for f in $DOC_FILES; do
     base="$(basename "$f")"
     referenced=0
@@ -118,7 +118,7 @@ print(os.path.normpath(os.path.join(sys.argv[1], urllib.parse.unquote(sys.argv[2
             echo "  DEAD LINK in $f: $target" >&2
         fi
     done < <(grep -oE '\]\([^)]+\)' "$f" | sed 's/](//;s/)$//')
-done < <(git ls-files '*.md' | grep -vE '^skills/deprecated/|^testbed/|^node_modules/')
+done < <(git ls-files '*.md' | grep -vE '^deprecated/|^testbed/|^node_modules/')
 if [ "$dead_all" -eq 0 ]; then ok; else bad "$dead_all dead relative link(s) outside the hubs"; fi
 
 echo ""

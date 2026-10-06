@@ -8,7 +8,7 @@ different ways**.
 |--------|-------|----------|---------------|
 | [`docs/ideas.md`](docs/ideas.md) → `docs/*.md` | **Idea** — a well-developed issue | No | Rationale, alternatives, decision already made |
 | [`under-review/`](under-review/) | **Under review** — built, decision open | No | Implemented but unshipped skills/extensions |
-| [`skills/deprecated/`](skills/deprecated/), [`deprecated/`](deprecated/) | **Deprecated** — finished, retired | No | Retired code kept for archaeology |
+| [`deprecated/`](deprecated/), [`deprecated/`](deprecated/) | **Deprecated** — finished, retired | No | Retired code kept for archaeology |
 
 The difference that matters:
 
@@ -22,10 +22,10 @@ The difference that matters:
 
 They look like a duplication and are not. The exclusion mechanics force the split:
 
-- **`skills/deprecated/`** sits *inside* the `"./skills"` discovery glob, so pi would find
-  those `SKILL.md` files if it were not for the explicit `!skills/deprecated/**` exclude in
+- **`deprecated/`** sits *inside* the `"./skills"` discovery glob, so pi would find
+  those `SKILL.md` files if it were not for the explicit `!deprecated/**` exclude in
   `package.json` → `pi.skills`. Everything here **is a skill** and must stay excluded by
-  manifest (plus the redundant `!skills/deprecated/**` entry in the user's `settings.json`).
+  manifest (plus the redundant `!deprecated/**` entry in the user's `settings.json`).
   pi discovers `SKILL.md` **recursively**, so the extra directory depth alone does *not*
   hide them — the glob exclude is what actually does it. Use `!` (minimatch glob), never
   `-` (exact match, silently ignores `**`).
@@ -35,13 +35,13 @@ They look like a duplication and are not. The exclusion mechanics force the spli
   non-skill retirements live — e.g. `skiller/`, a Python CLI with no `SKILL.md`, which
   could never live under `skills/` without being mistaken for (or promoted into) a skill.
 
-Moving `skiller/` into `skills/deprecated/` would put a `SKILL.md`-less directory inside a
+Moving `skiller/` into `deprecated/` would put a `SKILL.md`-less directory inside a
 discovery root. Keep the split.
 
 ## Invariants to preserve when adding or moving anything
 
-1. A new skill under `skills/deprecated/` **must** still be covered by
-   `!skills/deprecated/**` in `package.json` and by the settings filter — check
+1. A new skill under `deprecated/` **must** still be covered by
+   `!deprecated/**` in `package.json` and by the settings filter — check
    `scripts/skill-filter.sh list`.
 2. `tests/docs/test.sh` fails on `docs/` files no hub references. Sketches therefore need a
    row in `docs/ideas.md`; that page is the single hub for that folder (AGENTS.md links to

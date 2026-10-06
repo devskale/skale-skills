@@ -25,7 +25,7 @@ echo "-------------------------"
 # pi matches patterns against package-root-relative paths via minimatch;
 # `!./skills/deprecated/**` silently matches NOTHING (see AGENTS.md gotcha).
 # note: grep -F, not BRE — grep interprets ** as a repetition operator
-grep -Fq '"!skills/deprecated/**"' package.json && ok || bad 'package.json: manifest exclusion !skills/deprecated/** missing'
+# deprecated/ liegt außerhalb ./skills — keine Manifest-Exclusion mehr nötig (npx-skills-Index-Hygiene 2026-10)
 grep -q '"!\./' package.json && bad 'package.json: ./-prefixed glob-exclude silently matches nothing (drop the ./ prefix)' || ok
 
 # ── shellcheck (if available) ──
@@ -85,9 +85,9 @@ if pkg_arr skills | grep -q '"-skills/web-search/SKILL.md"'; then ok; else bad "
 "$TMP_DIR/sf.sh" enable skill web-search >/dev/null 2>&1
 if pkg_arr skills | grep -q '"+skills/web-search/SKILL.md"'; then ok; else bad "enable web-search should store +skills/web-search/SKILL.md"; fi
 
-# ── disable an archived skill (skills/deprecated/<name>) ──
-"$TMP_DIR/sf.sh" disable skill viewimg >/dev/null 2>&1
-if pkg_arr skills | grep -q '"-skills/deprecated/viewimg/SKILL.md"'; then ok; else bad "disable archived viewimg should store -skills/deprecated/viewimg/SKILL.md"; fi
+# ── disable an archived skill (deprecated/ liegt außerhalb ./skills —
+#    der Filter kennt es nicht mehr; das ist korrekt: pi lädt es sowieso nicht) ──
+"$TMP_DIR/sf.sh" disable skill viewimg >/dev/null 2>&1 && bad "disable archived viewimg should fail (outside ./skills)" || ok
 
 # ── extension disable/enable ──
 "$TMP_DIR/sf.sh" disable extension imagegen >/dev/null 2>&1

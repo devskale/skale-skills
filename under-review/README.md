@@ -5,7 +5,7 @@ users — no manifest entry, no settings entry, nothing symlinked by the install
 
 > This folder is currently **empty**. It exists so the state has a name: a decided direction
 > goes to [`docs/ideas.md`](../docs/ideas.md), a retirement goes to
-> [`skills/deprecated/`](../skills/deprecated/), and finished work lands as a PR.
+> [`skills/deprecated/`](../deprecated/), and finished work lands as a PR.
 > See [LAYOUT.md](../LAYOUT.md) for how the three states differ.
 
 ## What "under review" means here
