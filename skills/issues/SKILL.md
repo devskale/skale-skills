@@ -51,6 +51,8 @@ safe fixes (create root, pin `~/.handoff-me`, create missing columns).
 **As a worker:** `issues todo` → `issues start <slug>` → work → `issues review <slug>`.
 **As a requester:** `issues mine review` → review → `issues done <slug>` (sets DONE → archive/).
 
+**Commit referencing an issue ⇒ update the issue in the same session** (check off the step, note the hash). A stale issue claiming "uncommitted" while the work is pushed sends the next session re-verifying done work (retro 2026-10-08: `ai-chat-2b-sse-finish` described a `3fecaff9`-already-landed state as uncommitted).
+
 `issues done <slug>` is the short form of `set <slug> DONE`. `issues archive` does NOT set DONE — it only sweeps stray DONE-state files into `archive/`.
 
 ## Gotchas
