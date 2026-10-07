@@ -77,4 +77,5 @@ pi
 # machine-local kanban board (symlink → ~/code/handoffs/)
 .handoff
 .links
-python-openutilstests/gdocs/output/
+python-openutils
+tests/gdocs/output/
