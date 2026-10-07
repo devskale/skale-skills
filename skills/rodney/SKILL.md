@@ -321,6 +321,7 @@ NOT share your visible Chrome or your logged-in profile.
 - **`open` auto-adds `http://`** — for `https://` URLs, include the scheme explicitly.
 - **Exit codes**: 0 = success, 1 = assertion failed, 2 = error (bad args, timeout, no browser).
 - **Heavy React apps** (booking sites, SPAs with autocomplete dropdowns) may timeout on `click`/`input`. Workaround: use the site's public API directly (most airlines, travel sites have one), or use `rodney js` to set values programmatically.
+- **⚠️ The rod-managed Chromium (`~/.cache/rod/browser/`) is a frozen 2024 Tip-of-Tree dev snapshot, not stable** — go-rod pins revision 1321438 (Chromium 128.0.6568.**0**) and has shipped no update since July 2024. On newer distros this snapshot can be **partially broken**: `text`/`Element.Text()` returns `""`, `type`/`InsertText` never lands, and the HistoryEmbeddings AI feature can SIGABRT the whole browser (see rodney#4, rodney#3 / diskfull 2026-10-07). **Fix: point `ROD_CHROME_BIN` at your system Chrome** (`/opt/google/chrome/chrome` on Linux, or a Chrome-for-Testing stable build) — verified working where the snapshot fails. If `text` hangs or returns empty on a fresh page, suspect the snapshot first.
 
 ## Process visibility & cleanup
 
