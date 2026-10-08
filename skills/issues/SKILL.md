@@ -60,6 +60,11 @@ safe fixes (create root, pin `~/.handoff-me`, create missing columns).
 - **A slug lives in EXACTLY ONE live column.** Duplicates are a broken board
   state — `show`/`set` refuse loudly rather than guess. Merge into one file,
   delete the stray.
+- **Rebase orphans hashes.** Issues cite commit hashes; a `pull --rebase`
+  rewrites them and the next session chases a dead hash (retro 2026-10-08:
+  an issue cited pre-rebase hashes, costing the agent a verification
+  detour). After rebasing, re-check hashes you cited
+  (`git cat-file -e <hash>^{commit}`) and update the issue.
 - **`archive/` + `cancelled/` are history.** Terminal copies may coexist with a
   revived live copy; commands resolve to the LIVE copy. Don't hand-edit
   terminal columns — use `purge` to remove, or move back to a live column to
