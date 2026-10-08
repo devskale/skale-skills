@@ -99,12 +99,16 @@ else
         echo "  FAIL: tsc compile error"; sed 's/^/    /' "$TMP/tsc.out" | head -10
     fi
 
-    # Isolated environment: empty HOME (default delegate mode, no user presets),
     # fake failing curl (deterministic throway failure), repo NODE_PATH for imports.
     TMPHOME="$TMP/home"
     mkdir -p "$TMPHOME/.pi/agent" "$TMP/bin"
     printf '#!/bin/sh\nexit 1\n' > "$TMP/bin/curl"
     chmod +x "$TMP/bin/curl"
+    # fake pi: runChildPi (delegate brief + VLM sub-calls) spawns `pi --mode json -p`;
+    # the stub answers deterministically with one assistant message_end — no network,
+    # no real model, fast. Matrix section (f) drives the delegate path through it.
+    printf '#!/bin/sh\ncat <<\x27JSON\x27\n{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake analysis"}]}}\nJSON\n' > "$TMP/bin/pi"
+    chmod +x "$TMP/bin/pi"
 
     # Locate jiti (the loader pi itself uses for extensions).
     JITI_DIR=""

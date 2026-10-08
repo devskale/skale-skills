@@ -251,6 +251,52 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	}
 }
 
+// ── (f) delegate display contract: analysed images render via display entry, never in the tool result
+// Contract (nutzer 2026-10-08: „ich will bilder inline sehen, aber den context so schlank wie
+// möglich"): delegateVision must move the pixels into an xmodel-view display entry (user sees
+// them inline) and return ONLY the analysis text to the model. Pinned here with a configured
+// VLM and a fake runChildPi path — we drive delegateVision through the MCP-style tool_result
+// (non-read tool with image content), which is the auto-delegate path.
+{
+	// configure a VLM so delegate mode actually delegates (isolated HOME)
+	const home = process.env.HOME;
+	mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+	writeFileSync(join(home, ".pi", "agent", "xmodel.json"), JSON.stringify({ _vision: { mode: "delegate", vlm: "test/vlm-model", keepImage: false } }));
+	await handlers.session_start[0]({}, makeCtx(NON_VISION)); // reload config
+	// fake runChildPi: the matrix harness has no real child-pi; the delegate will fail
+	// per-image and produce the honest "no usable analysis" note — but the display entry
+	// contract is about WHERE the pixels go, which is decided before the VLM call returns.
+	const ctx = makeCtx(NON_VISION);
+	const ev = {
+		type: "tool_result",
+		toolCallId: `t-${seq++}`,
+		toolName: "mcp__fake_screenshot",
+		input: {},
+		content: [{ type: "image", data: PNG_B64, mimeType: "image/png" }],
+		isError: false,
+	};
+	for (const h of handlers.tool_call ?? []) await h(ev, ctx);
+	const res = await handlers.tool_result[0](ev, ctx);
+	check("f: delegate result has NO image blocks for the model", !hasImage(res));
+	check("f: delegate result carries the analysis text", textOf(res).includes("[xmodel vision"));
+	const viewEntries = ctx._entries.filter((e) => e.type === "xmodel-view");
+	check("f: display entry written for the user (inline pixels)", viewEntries.length === 1 && viewEntries[0].display === true);
+	check("f: display entry carries the image in details", (viewEntries[0]?.details?.images ?? []).length === 1);
+	check("f: display entry content has NO image blocks", !(viewEntries[0]?.content ?? []).some((b) => b.type === "image"));
+	// keepImage:true keeps the block in the tool result as well (legacy path)
+	writeFileSync(join(home, ".pi", "agent", "xmodel.json"), JSON.stringify({ _vision: { mode: "delegate", vlm: "test/vlm-model", keepImage: true } }));
+	await handlers.session_start[0]({}, makeCtx(NON_VISION));
+	const ctx2 = makeCtx(NON_VISION);
+	const ev2 = { ...ev, toolCallId: `t-${seq++}` };
+	for (const h of handlers.tool_call ?? []) await h(ev2, ctx2);
+	const res2 = await handlers.tool_result[0](ev2, ctx2);
+	check("f: keepImage:true → image block stays in tool result (legacy)", hasImage(res2));
+	check("f: keepImage:true → no duplicate display entry", ctx2._entries.filter((e) => e.type === "xmodel-view").length === 0);
+	// restore default config for later sections
+	unlinkSync(join(home, ".pi", "agent", "xmodel.json"));
+	await handlers.session_start[0]({}, makeCtx(NON_VISION));
+}
+
 // ── renderer sanity ─────────────────────────────────────────────────────────
 check("renderer registered for xmodel-view", typeof renderers["xmodel-view"] === "function");
 

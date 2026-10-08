@@ -146,14 +146,18 @@ Only analysis-oriented tools (screenshots, MCP captures) still auto-delegate.
 
 ### Seeing the image while delegating (`keepImage`)
 
-By default `delegate` *replaces* the image with the VLM's text analysis (so the TUI shows text
-only). Set **`keepImage: true`** to keep the original image inline in the result **and** append
-the analysis — i.e. you see the picture, the model still gets the text. Toggle it in `/xm settings`
-(→ **Keep image**) or set `"keepImage": true` under `_vision`.
+By default `delegate` moves the pixels into a **session display entry** (`xmodel-view`) — you see
+the image inline in the chat, the model never carries the bytes (display entries render from
+`details` and never steer the LLM; image-slim keeps them out of compaction too). The tool result
+keeps only the VLM's text analysis.
 
-This is safe because pi-ai strips image parts for non-vision models at send time
-(`downgradeUnsupportedImages`) — the main model never receives the image bytes, only the
-analysis. So it costs you nothing on the model side; you just also get to look at the image.
+**`keepImage: true`** additionally keeps the original image block inline in the *tool result*
+(legacy display path) — under `images.blockImages` it is stripped at send time, so the model still
+only ever sees the analysis. Toggle it in `/xm settings` (→ **Keep image**) or set
+`"keepImage": true` under `_vision`.
+
+Either way the model side is identical: analysis text only. `keepImage` only decides whether the
+image rides in the tool result (session file grows) or in the display entry.
 
 ### Two-tier config (global canonical + project override)
 
@@ -169,7 +173,7 @@ analysis. So it costs you nothing on the model side; you just also get to look a
     "vlm": "opencode/claude-sonnet-4-6",   // optional; auto-picks if unset
     "compressor": "zai/glm-5.2",           // optional; uses active model if unset
     "maxBriefChars": 1500,
-    "keepImage": true,            // delegate mode: also show the image inline (see above)
+    "keepImage": true,            // delegate mode: also keep the image in the tool result (legacy; default = display entry)
     "thinkingLevel": "off"       // vision sub-call + compressor thinking (off..xhigh). default = the child model's own default; "off" = fastest. Per-call override: read_image thinking param
   }
 }

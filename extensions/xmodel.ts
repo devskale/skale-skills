@@ -1664,23 +1664,27 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 
 		// Rebuild the tool result: keep non-image blocks; for each analysed image emit the
-		// VLM analysis text. With _vision.keepImage, ALSO keep the original image block inline
-		// so the human can see it — the non-vision main model never receives the image bytes
-		// (pi-ai's downgradeUnsupportedImages strips it at send time, leaving only the analysis).
+		// VLM analysis text. The ORIGINAL image blocks move into a session display entry
+		// (xmodel-view) — the user sees the pixels inline, the model NEVER carries them:
+		// display entries render from details.images and never steer the LLM (triggerTurn:false),
+		// and image-slim keeps them out of compaction payloads too. keepImage:true keeps the
+		// block inline in the tool result as well (legacy display path); under blockImages it
+		// is stripped at send time, so the model still only ever sees the analysis text.
 		const keep = !!visionCfg.keepImage;
+		if (!keep) await writeViewEntry(ctx, images);
 		const newContent: any[] = [];
 		let idx = 0;
 		for (const block of event.content as any[]) {
 			if (block && block.type === "image") {
 				const a = analyses[idx++] ?? "(vision analysis failed)";
-				if (keep) newContent.push(block); // show the original image inline
+				if (keep) newContent.push(block); // legacy: keep inline in the tool result too
 				newContent.push({ type: "text", text: `[xmodel vision · ${vlm}]: ${a}` });
 			} else {
 				newContent.push(block);
 			}
 		}
 		// leftover analyses (e.g. a saved-to-disk screenshot synthesised from a text result,
-		// whose image block isn't in event.content) — also surface that image when keep is on.
+		// whose image block isn't in event.content) — covered by the display entry above.
 		while (idx < analyses.length) {
 			if (keep && images[idx]) newContent.push(images[idx]);
 			newContent.push({ type: "text", text: `[xmodel vision · ${vlm}]: ${analyses[idx++]}` });
