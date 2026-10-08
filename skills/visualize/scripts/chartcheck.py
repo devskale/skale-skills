@@ -128,8 +128,16 @@ def check_process_notes(p: Page, raw: str) -> list[Block]:
         m = PROCESS_NOTE.search(t)
         if m:
             out.append(Block("process-note", "text", f"addressed to the user: {m.group(0)!r} — “{t[:50]}”"))
-    for m in FILE_SOURCE.finditer(p.all_text):
-        out.append(Block("process-note", "source", f"file name standing in for a source: {m.group(0)!r}"))
+    # SRC_CONTEXT: only a file name *standing in for a source* is the finding —
+    # one that shares a text node with a "Source:"/"Data:" line. A file name
+    # mentioned as content (an architecture component like state.json, a config
+    # file) is legitimate text, not a citation (regression: rodney architecture
+    # diagram, 2026-10-08).
+    for t in p.text:
+        if not SOURCE_LINE.search(t):
+            continue
+        for m in FILE_SOURCE.finditer(t):
+            out.append(Block("process-note", "source", f"file name standing in for a source: {m.group(0)!r}"))
     return out
 
 

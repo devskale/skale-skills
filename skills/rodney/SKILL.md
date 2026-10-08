@@ -8,6 +8,10 @@ description: Drive a persistent headless Chrome from the CLI — one process kee
 
 Rodney drives a persistent headless Chrome instance from the terminal. All commands share one long-running Chrome process — cookies, localStorage, and navigation state persist across invocations.
 
+![Rodney architecture — short-lived CLI processes rendezvous via state.json through go-rod at one persistent headless Chrome](assets/rodney-architecture.png)
+
+*How it fits together: every `rodney <cmd>` is a short-lived Go process that reconnects through `state.json` and the [go-rod](https://github.com/go-rod/rod) library to the same long-lived Chrome. Source of truth: [assets/rodney-architecture.html](assets/rodney-architecture.html) (PNG derived from it).*
+
 ## ⚠️ Usage: CLI Only — NOT an MCP Tool
 
 Rodney is a **CLI tool**, not an MCP server. Use it via the **bash** tool only. Never call `mcp("rodney")`.
