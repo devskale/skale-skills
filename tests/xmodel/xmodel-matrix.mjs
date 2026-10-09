@@ -300,4 +300,60 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 // ── renderer sanity ─────────────────────────────────────────────────────────
 check("renderer registered for xmodel-view", typeof renderers["xmodel-view"] === "function");
 
+// ── (g) VLM timeout → one immediate retry (transient API hang, 2026-10-09) ──────
+// zai/glm-5.3-flash hung on ~9% of vision calls (zero tokens in 90s; SAME image
+// succeeded on manual retry in 51–73s). Contract: a timed-out attempt is retried
+// once; only a timeout on the LAST attempt reports TIMED OUT. Driven through the
+// stateful fake pi ($FAKE_PI_STATE, XMODEL_VLM_TIMEOUT_MS=1500 from test.sh).
+{
+	const tool = tools.find((t) => t.name === "read_image");
+	const home = process.env.HOME;
+	mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+	writeFileSync(join(home, ".pi", "agent", "xmodel.json"), JSON.stringify({ _vision: { mode: "delegate", vlm: "test/vlm-model" } }));
+	await handlers.session_start[0]({}, makeCtx(NON_VISION));
+	const state = join(home, "fake-pi-state");
+	process.env.FAKE_PI_STATE = state;
+	const pngPath = join(home, "probe.png");
+	writeFileSync(pngPath, Buffer.from(PNG_B64, "base64"));
+
+	// (g1) read_image path: VLM call 1 times out (1.5s), call 2 answers
+	writeFileSync(state, "timeout_once");
+	const r1 = await tool.execute("t-g1", { path: pngPath }, undefined, () => {}, makeCtx(NON_VISION));
+	const t1 = (r1?.content ?? []).map((b) => b?.text ?? "").join(" ");
+	check("g1: read_image recovers via retry after transient timeout", /retry recovered/.test(t1));
+	check("g1: no TIMED OUT message when the retry succeeds", !/TIMED OUT/.test(t1));
+
+	// (g2) delegate path (tool_result with image, compressor answers normally)
+	writeFileSync(state, "timeout_once"); // counter reset: fresh state file + counter
+	try { unlinkSync(`${state}.n`); } catch {}
+	const ctxg = makeCtx(NON_VISION);
+	const evg = {
+		type: "tool_result",
+		toolCallId: `t-${seq++}`,
+		toolName: "mcp__fake_screenshot",
+		input: {},
+		content: [{ type: "image", data: PNG_B64, mimeType: "image/png" }],
+		isError: false,
+	};
+	for (const h of handlers.tool_call ?? []) await h(evg, ctxg);
+	const r2 = await handlers.tool_result[0](evg, ctxg);
+	const t2 = textOf(r2);
+	check("g2: delegate recovers via retry after transient timeout", /retry recovered/.test(t2));
+	check("g2: delegate result stays text-only (no pixel leak)", !hasImage(r2));
+
+	// (g3) both attempts time out → honest TIMED OUT, no fake analysis
+	writeFileSync(state, "always_timeout");
+	const r3 = await tool.execute("t-g3", { path: pngPath }, undefined, () => {}, makeCtx(NON_VISION));
+	const t3 = (r3?.content ?? []).map((b) => b?.text ?? "").join(" ");
+	check("g3: final timeout after retry → honest TIMED OUT message", /TIMED OUT/.test(t3) && !/fake analysis|retry recovered/.test(t3));
+
+	// cleanup: restore default config + stub state for later sections
+	delete process.env.FAKE_PI_STATE;
+	unlinkSync(state);
+	try { unlinkSync(`${state}.n`); } catch {}
+	unlinkSync(pngPath);
+	unlinkSync(join(home, ".pi", "agent", "xmodel.json"));
+	await handlers.session_start[0]({}, makeCtx(NON_VISION));
+}
+
 process.exit(failures === 0 ? 0 : 1);

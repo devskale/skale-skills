@@ -107,7 +107,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.11";
+const VERSION = "0.5.12";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -1647,7 +1647,13 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 						thinkingLevel: visionCfg.thinkingLevel,
 					});
 					analysis = res.text;
-					if (res.timedOut) { timedOut = true; anyTimeout = true; break; }
+					// Timeout = usually a transient API hang (zai/glm-5.3-flash: ~9% of calls never
+					// deliver a first token — observed 2026-10-09, retry of the SAME image succeeded
+					// in 51–73s). Retry once instead of giving up; only the final attempt counts.
+					if (res.timedOut) {
+						if (attempt === 0 && !res.aborted) { analysis = ""; continue; }
+						timedOut = true; anyTimeout = true; break;
+					}
 					if (res.aborted) { break; }
 				}
 				if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
@@ -1750,7 +1756,12 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					thinkingLevel: thinkLevel,
 				});
 				analysis = res.text;
-				if (res.timedOut) { timedOut = true; break; }
+				// Transient API hang → immediate retry of the same image often succeeds
+				// (observed 2026-10-09). Only report TIMED OUT when the last attempt failed.
+				if (res.timedOut) {
+					if (attempt === 0 && !res.aborted) { analysis = ""; continue; }
+					timedOut = true; break;
+				}
 				if (res.aborted) break;
 			}
 			if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";

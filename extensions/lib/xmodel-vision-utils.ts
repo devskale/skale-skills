@@ -14,8 +14,10 @@ import { tmpdir, homedir } from "node:os";
 import { spawn } from "node:child_process";
 import { isValidImage } from "./image-utils";
 
-/** Default timeout for a child-pi VLM sub-call. */
-export const VLM_TIMEOUT_MS = 90_000;
+/** Default timeout for a child-pi VLM sub-call.
+ * Overridable via XMODEL_VLM_TIMEOUT_MS (ms) — e.g. for slow cloud VLMs or tests. */
+export const VLM_TIMEOUT_MS =
+	Number(process.env.XMODEL_VLM_TIMEOUT_MS) > 0 ? Number(process.env.XMODEL_VLM_TIMEOUT_MS) : 90_000;
 
 /** Forensic log — ALWAYS on (image-data debugging for MCP path). */
 export function forensic(tag: string, data: Record<string, unknown>): void {

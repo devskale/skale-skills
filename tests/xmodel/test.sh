@@ -107,7 +107,38 @@ else
     # fake pi: runChildPi (delegate brief + VLM sub-calls) spawns `pi --mode json -p`;
     # the stub answers deterministically with one assistant message_end — no network,
     # no real model, fast. Matrix section (f) drives the delegate path through it.
-    printf '#!/bin/sh\ncat <<\x27JSON\x27\n{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake analysis"}]}}\nJSON\n' > "$TMP/bin/pi"
+    # Stateful modes via $FAKE_PI_STATE (only affect VLM calls — argv carries the vlm
+    # model id + an @image arg; compressor calls stay honest):
+    #   timeout_once    first VLM call sleeps past the timeout (transient API hang),
+    #                   later calls answer "retry recovered"
+    #   always_timeout  every VLM call sleeps — both attempts die (final TIMED OUT)
+    # Section (g) drives the retry-on-timeout contract through it.
+    cat > "$TMP/bin/pi" <<'STUB'
+#!/bin/sh
+is_vlm=0; has_img=0
+for a in "$@"; do
+    [ "$a" = "test/vlm-model" ] && is_vlm=1
+    case "$a" in @*) has_img=1 ;; esac
+done
+state=""
+[ -n "$FAKE_PI_STATE" ] && [ -f "$FAKE_PI_STATE" ] && state=$(cat "$FAKE_PI_STATE")
+if [ "$is_vlm" = 1 ] && [ "$has_img" = 1 ]; then
+    case "$state" in
+        timeout_once)
+            n=$(cat "$FAKE_PI_STATE.n" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$FAKE_PI_STATE.n"
+            [ "$n" -le 1 ] && exec sleep 30
+            printf '%s\n' '{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"retry recovered: VLM answered on the second attempt"}]}}'
+            exit 0
+            ;;
+        always_timeout)
+            exec sleep 30
+            ;;
+    esac
+fi
+cat <<'JSON'
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"fake analysis"}]}}
+JSON
+STUB
     chmod +x "$TMP/bin/pi"
 
     # Locate jiti (the loader pi itself uses for extensions).
@@ -124,7 +155,7 @@ else
         FAIL=$((FAIL + 1))
         echo "  FAIL: extensions/xmodel.ts not found"
     else
-        MATRIX_OUT=$(cd "$REPO" && HOME="$TMPHOME" PATH="$TMP/bin:$PATH" JITI_DIR="$JITI_DIR" \
+        MATRIX_OUT=$(cd "$REPO" && HOME="$TMPHOME" PATH="$TMP/bin:$PATH" JITI_DIR="$JITI_DIR" XMODEL_VLM_TIMEOUT_MS=1500 \
             node "$HERE/xmodel-matrix.mjs" "$EXT/xmodel.ts" 2>&1) || true
         echo "$MATRIX_OUT" | sed 's/^/    /'
         OK_COUNT=$(echo "$MATRIX_OUT" | grep -c '^CHECK .*: ok$' || true)

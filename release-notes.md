@@ -4,6 +4,18 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel 0.5.12 — Vision-Timeouts: retry statt Aufgeben + lokaler DGX-VLM.**
+  Vorfall 2026-10-09 (Session 01a12257): `zai/glm-5.3-flash` als `_vision.vlm` lief bei
+  ~9% aller Bild-Analysen in einen 90s-Hard-Timeout OHNE ein Token (transienter
+  API-Hang — dasselbe Bild lief beim manuellen Retry in 51–73s durch). Der Code
+  brach die Retry-Schleife bei Timeout just ab (`break`), obwohl genau dieser Fall
+  vom Retry profitiert. **Fix:** Timeout auf Attempt 1 → ein sofortiger Retry;
+  erst ein Timeout beim LETZTEN Versuch meldet `TIMED OUT` (beide Pfade:
+  delegate-Vision + read_image). Neu: `XMODEL_VLM_TIMEOUT_MS`-Env-Override für
+  den 90s-Default. **Zusätzlich** `_vision.vlm` auf `dgxp/nvidia/Qwen3.6-35B-A3B-NVFP4`
+  (lokale DGX, LAN) umgestellt — Smoke: 4–10s statt 50–90s, korrektere Analyse als
+  der tu-Kandidat. Vertrag gepinnt in Matrix-Sektion (g) via stateful Fake-pi
+  (`timeout_once` / `always_timeout`).
 - **Vorfall-Postmortem: trailing comma in package.json brach jeden pi-Start.**
   Mein deprecated-Move (3723cb2) entfernte die `!skills/deprecated/**`-Zeile, liess
   aber das Komma des Vorgaengers stehen → invalid JSON → `JSON.parse`-Absturz im
