@@ -22,7 +22,7 @@
  */
 
 import { createRequire } from "node:module";
-import { forensic } from "./xmodel-vision-utils";
+import { realpathSync } from "node:fs";
 
 /** Long-edge ceiling for the VLM payload. 1568px = Claude's processing ceiling and
  * comfortably above Qwen3-VL's ~576-token budget; every provider sees ≤ this. */
@@ -64,21 +64,33 @@ let cachedPhoton: PhotonModule | null | undefined;
  */
 function loadPhoton(): PhotonModule | null {
 	if (cachedPhoton !== undefined) return cachedPhoton;
-	try {
-		const entry = process.argv[1];
-		forensic("loadPhoton attempt", { entry, cwd: process.cwd(), execPath: process.execPath });
-		if (!entry) {
-			cachedPhoton = null;
-			return null;
+	const candidates: string[] = [];
+	const entry = process.argv[1];
+	if (entry) {
+		candidates.push(entry);
+		// argv[1] is frequently a bin/ SYMLINK (/opt/homebrew/bin/pi -> ../lib/...).
+		// createRequire walks node_modules up from the given path, so a symlink
+		// under bin/ finds nothing — realpath it to the real file first.
+		try {
+			const real = realpathSync(entry);
+			if (real !== entry) candidates.push(real);
+		} catch {
+			/* keep the unresolved path */
 		}
-		// createRequire resolves from the entry file's own node_modules chain,
-		// which is pi's installation root on every platform.
-		const req = createRequire(entry);
-		const mod = req("@silvia-odwyer/photon-node") as unknown as PhotonModule;
-		cachedPhoton = mod && typeof mod.PhotonImage === "function" ? mod : null;
-	} catch {
-		cachedPhoton = null;
 	}
+	for (const base of candidates) {
+		try {
+			const req = createRequire(base);
+			const mod = req("@silvia-odwyer/photon-node") as unknown as PhotonModule;
+			if (mod && typeof mod.PhotonImage === "function") {
+				cachedPhoton = mod;
+				return cachedPhoton;
+			}
+		} catch {
+			/* try the next candidate */
+		}
+	}
+	cachedPhoton = null;
 	return cachedPhoton;
 }
 

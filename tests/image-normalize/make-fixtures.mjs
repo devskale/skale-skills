@@ -8,10 +8,33 @@ import { join } from "node:path";
 const outDir = JSON.parse(process.env.PROBE_ARGS ?? "[]")[0];
 mkdirSync(outDir, { recursive: true });
 
-// photon resolves from THIS file's own node_modules chain (pi's install root).
+// photon resolves from pi's entry — same realpath-aware logic as the lib under
+// test (argv[1] is usually a bin/ symlink, whose node_modules chain is empty).
 const { createRequire } = await import("node:module");
-const req = createRequire(process.argv[1]);
-const photon = req("@silvia-odwyer/photon-node");
+const { realpathSync } = await import("node:fs");
+const bases = [process.argv[1]];
+try {
+	const real = realpathSync(process.argv[1]);
+	if (real !== process.argv[1]) bases.push(real);
+} catch {
+	/* keep the unresolved path */
+}
+let photon;
+for (const base of bases) {
+	try {
+		const mod = createRequire(base)("@silvia-odwyer/photon-node");
+		if (mod?.PhotonImage) {
+			photon = mod;
+			break;
+		}
+	} catch {
+		/* next candidate */
+	}
+}
+if (!photon) {
+	console.error("photon not resolvable from", bases.join(", "));
+	process.exit(1);
+}
 
 /** Solid-ish RGBA raster with a deterministic pattern (gradient + blocks). */
 function raster(w, h) {

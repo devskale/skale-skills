@@ -46,13 +46,19 @@ echo "[2] Real-image behaviour (needs pi's bundled photon) ..."
 # pi's bundled photon resolves from pi's own entry file. We must NOT launch pi
 # (it would open a session); instead we run plain node and hand the probe a
 # shim that sets argv[1] to pi's cli.js — the same seam the lib uses at runtime.
-PI_CLI="/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"
-if [ ! -f "$PI_CLI" ]; then
-    # Linux/Windows: readlink -f $(which pi); if that fails, the probe runs in
-    # degraded mode (argv[1] points at /tmp) and reports WARN — honest skip.
-    PI_BIN="$(command -v pi 2>/dev/null || true)"
-    PI_CLI="$([ -n "$PI_BIN" ] && readlink -f "$PI_BIN" 2>/dev/null || echo /tmp)"
+# Prefer the BIN SYMLINK (e.g. /opt/homebrew/bin/pi), not the resolved file:
+# that is what a real pi run has in argv[1], and the lib must realpath it to
+# find photon. Falling back to the resolved file would skip that regression.
+PI_CLI=""
+PI_BIN="$(command -v pi 2>/dev/null || true)"
+if [ -n "$PI_BIN" ]; then
+    PI_CLI="$PI_BIN"
+elif [ -f "/opt/homebrew/bin/pi" ]; then
+    PI_CLI="/opt/homebrew/bin/pi"
+else
+    PI_CLI="/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js"
 fi
+[ -f "$PI_CLI" ] || PI_CLI="/tmp"
 
 # Run a probe script with argv[1] set to pi's entry so photon resolves.
 run_probe() {
