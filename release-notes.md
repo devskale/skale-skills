@@ -4,6 +4,29 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel 0.5.13 — Vertikal-Tiling mit NEED-MORE-Progression für ultra-lange Seiten.**
+  Auslöser (Nutzer 2026-10-11: „manche Webseiten sind ultralang"): ein Fullpage-
+  Capture 1440×12000 wurde aspect-preserving in das 2MP-Budget gequetscht →
+  188×1568, ein Streifen, in dem das VLM **keine einzige Textzeile** lesen konnte
+  (verifizert). **Lösung:** ab Aspect > 3:1 schneidet `planTiles()` die Seite in
+  überlappende Vertikal-Segmente (1568px hoch, 15% Overlap, EXIF-korrigiert,
+  letztes Segment erreicht den Boden). **Progression nach Nutzer-Regel** („wenn
+  1es tile schon info enthält nicht weiter, nur weiter wenn agent sagt"): der
+  ERSTE Call trägt genau EIN Segment; das VLM muss mit „NEED MORE" + dem Fehlenden
+  antworten, um den nächsten Batch (4 Segmente) zu ziehen. Segment-Frage → 1 Call,
+  Global-Frage („was ist ganz unten?") → alle Segmente. „NO IMAGE" zählt als
+  NEED-MORE-Signal (sonst stoppte die Progression an einem blanken Tile — live
+  beobachtet). Bei Seitenende mit offenem NEED MORE wird `truncated` ehrlich
+  berichtet, damit der Agent nicht selbst slicet.
+  **Drei Live-E2E-Bugs, die nur der Live-Lauf fand:** (1) Tiling wurde auf der
+  bereits normalisierten Temp-Datei entschieden — der Strip hat nichts mehr zu
+  tiling; jetzt Entscheidung auf den ORIGINAL-Bytes. (2) „NO IMAGE" wurde als
+  Antwort gewertet. (3) Das VLM halluzinierte aus Segment 1 eine Antwort auf eine
+  Global-Frage — Prompt gehärtet („Extrapolation ist schlimmer als NEED MORE").
+  **Tests:** 33 Checks inkl. Segment-Geometrie, Overlap, Boden-Abdeckung, Gate,
+  alle drei Progressions-Ausgänge, NO-IMAGE-Pfad. Multi-Image-in-einem-Call
+  vorab gegen den DGX-VLM verifiziert.
+
 - **xmodel 0.5.13 — portable Bild-Normalisierung vor der VLM-Delegation (photon-WASM).**
   Hintergrund (Nutzer-Frage „brauchen Bilder bei komischen Größen eine Normierung?"):
   jeder Provider resized serverseitig stillschweigend (Claude 1568px/~1.15MP, GPT-4o
