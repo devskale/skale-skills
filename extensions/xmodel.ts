@@ -1642,7 +1642,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					let timedOut = false;
 					// Ultra-long page? Tile it and let the VLM pull segments on demand — a
 					// downscaled 1440x12000 strip is unreadable (verified 2026-10-11).
-					const plan = planTiles(readFileSync(tmp), "image/png");
+					// Decide on the ORIGINAL block bytes (writeImageTmp already normalised
+				// the temp file — a squashed strip has nothing left to tile).
+				const plan = planTiles(Buffer.from(typeof img.data === "string" ? img.data : "", "base64"), img.mimeType || "image/png");
 					if (plan?.tiled && plan.tiles.length > 1) {
 						const tiled = await analyzeTiledImage({
 							model: vlm,
@@ -1764,12 +1766,15 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", `👁 ${vlm}`));
 		ctx.ui.notify(`xmodel: analyzing ${filePath} with ${vlm} …`, "info");
+		// Ultra-long page? Decide on the ORIGINAL bytes — normalising first would
+		// squash a 1440x12000 page into one 188x1568 strip and leave nothing to tile.
+		const tilePlanEarly = planTiles(buf, guessMime(buf.toString("base64")));
 		// Normalise before the child-pi handoff: aspect-preserving downscale + JPEG
 		// re-encode (see writeImageTmp for the rationale). The original file on disk
 		// is never touched — the VLM gets a temp copy, and we clean it up below.
 		let vlmFile = filePath;
 		let vlmTmp: string | undefined;
-		if (process.env.XMODEL_VISION_NORMALIZE !== "0") {
+		if (process.env.XMODEL_VISION_NORMALIZE !== "0" && !(tilePlanEarly?.tiled && tilePlanEarly.tiles.length > 1)) {
 			const norm = normalizeImageForVlm(buf, guessMime(buf.toString("base64")), {
 				maxEdge: envInt(process.env.XMODEL_VISION_MAX_EDGE),
 				maxPixels: envInt(process.env.XMODEL_VISION_MAX_PIXELS),
@@ -1795,7 +1800,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		let timedOut = false;
 		try {
 			// Ultra-long page? Tile it; the VLM pulls segments on demand (NEED MORE).
-			const plan = planTiles(readFileSync(vlmFile), "image/png");
+			const plan = tilePlanEarly;
 			if (plan?.tiled && plan.tiles.length > 1) {
 				const tiled = await analyzeTiledImage({
 					model: vlm,
