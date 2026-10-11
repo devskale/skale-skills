@@ -24,6 +24,19 @@ Log of notable changes to skale-skills. Newest first.
   **Tests:** `tests/image-normalize/` (20 Checks, echte Fixtures, inkl. EXIF-6-
   Rotation, Degraded-Mode) + xmodel-Suite grün.
 
+  **Zwei Nachzüge aus dem Live-E2E (beide von der Forensik entlarvt, nicht von Tests):**
+  1. **`analyzeImageFile` (read_image-Pfad) übergab das Roh-File** — die 0.5.13-
+     Normierung sass nur in `writeImageTmp` (Delegate-Pfad). Jetzt normiert auch
+     der explizite read_image-Pfad (Temp-Kopie, Original unberührt, Cleanup im
+     `finally`).
+  2. **`process.argv[1]` ist ein bin-SYMLINK** (`/opt/homebrew/bin/pi` →
+     `../lib/node_modules/.../cli.js`). `createRequire` läuft node_modules vom
+     gegebenen Pfad aufwärts — ein Symlink unter `bin/` findet **nichts**, photon
+     lud nicht, die Normierung war ein stummer No-Op. Fix: `argv[1]` versuchen,
+     dann `realpathSync(argv[1])`. Test fährt jetzt gezielt über das Bin-Symlink.
+  **E2E-Wirkung** (Fullpage-Screenshot 1430×2275, DGX-VLM): 434 KB → 173 KB,
+  Child-Output-Strom 3.4 MB → 722 KB (−79%), Latenz 10.6s → 2.3s.
+
 - **xmodel 0.5.12 — Vision-Timeouts: retry statt Aufgeben + lokaler DGX-VLM.**
   Vorfall 2026-10-09 (Session 01a12257): `zai/glm-5.3-flash` als `_vision.vlm` lief bei
   ~9% aller Bild-Analysen in einen 90s-Hard-Timeout OHNE ein Token (transienter
