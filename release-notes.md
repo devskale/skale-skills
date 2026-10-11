@@ -4,6 +4,24 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **Extension-Evaluation: drei Befunde, zwei gefixt, einer entkräftet.**
+  Evaluation aller fünf Extensions (heartbeat, image-slim, statusline, imagegen,
+  xmodel) — alle Suites grün, Gesamturteil: reif. Befunde:
+  1. **statusline log beim `(auto)`-Marker.** Er wurde UNBEDINGT an den Context-%
+     angehängt, obwohl der built-in Footer ihn bei deaktivierter Auto-Compaction
+     ausblendet — der Code-Kommentar sagte „ExtensionContext expose that flag
+     nicht, können wir nicht replizieren". Stimmt für `ctx.sessionManager`
+     (read-only `Pick` mit 15 Methoden), aber nicht für die Lösung: pi's eigene
+     Quelle der Wahrheit liegt auf Disk (`compaction.enabled` in den User- +
+     Project-Settings, Default `true`). Die Extension liest jetzt dieselbe Datei,
+     cached 60 s. Kein Gelogen mehr im Footer. Doc + 6 neue Checks.
+  2. **imagegen hatte keine `VERSION`.** Einzige Extension ohne — bei 1210 Zeilen
+     und aktiv genutztem Tool genau die Lücke, die ein Bug-Report zuerst braucht.
+     Jetzt `VERSION = "1.0.0"`, sichtbar im Help-Panel und in der Erfolgs-Notify.
+     5 neue Checks (inkl. Parity-Assert über alle Extensions).
+  3. **`heartbeat-parse`/`xmodel-config` ohne try/catch** — ENKRÄFTET: beide Libs
+     werfen nie („null if invalid"), es gibt nichts zu fangen. Korrektes Design.
+
 - **pdf2md 1.4.4 — Size-Guard vor dem Read; `--share` lädt das Markdown im Async-Job nicht mehr.**
   Zum Review-Befund (2026-10-11): (1) `convert()` machte `open().read()` VOR der
   10MB-Prüfung — eine 2-GB-Datei wurde vollständig in den RAM gepuffert, nur um

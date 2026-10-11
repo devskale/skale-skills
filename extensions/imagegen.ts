@@ -59,6 +59,11 @@ function writeEntry(ctx: ExtensionContext, ...args: Parameters<WritableSessionMa
 // interpolation), which also removes any filename-injection surface.
 const execFileAsync = promisify(execFile);
 
+// ── Version ──────────────────────────────────────────────────────────────────
+// Shipped in the notify lines and the /imagegen help so a bug report can name the
+// build. Bump on any behaviour change (same convention as xmodel/image-slim).
+const VERSION = "1.0.0";
+
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const PROXY_BASE =
@@ -941,7 +946,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		const s = getSettings();
 		const effective = s.model || (lastGoodModel(DEFAULT_MODEL.split("@")[0]) ? `${DEFAULT_MODEL.split("@")[0]}@${lastGoodModel(DEFAULT_MODEL.split("@")[0])}` : DEFAULT_MODEL);
 		const lines = [
-			"🖼 imagegen — generate an image directly (no LLM round-trip)",
+			`🖼 imagegen v${VERSION} — generate an image directly (no LLM round-trip)`,
 			"",
 			"Usage:",
 			"  /imagegen <prompt> [--model M] [--size WxH] [--n N] [--seed S]",
@@ -1100,7 +1105,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 								provider: p, model: m2, size: sz2, paths: saved.map((s) => s.path),
 								images: saved.map((s) => ({ b64: s.b64, mime: s.mime })),
 							});
-							ctx.ui.notify(`imagegen: ${saved.length} image${saved.length > 1 ? "s" : ""} → ${saved[0].path}`, "info");
+							ctx.ui.notify(`imagegen v${VERSION}: ${saved.length} image${saved.length > 1 ? "s" : ""} → ${saved[0].path}`, "info");
 							return;
 						}
 					}

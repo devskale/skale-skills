@@ -49,6 +49,33 @@ else
 fi
 
 echo ""
+echo "[4] Auto-compaction flag is read from settings, not hardcoded"
+# Regression (2026-10-11): "(auto)" was appended unconditionally — the doc claimed
+# it could not know better, but pi's own source of truth (settings.compaction.enabled,
+# default true) is on disk and readable. These checks pin the behaviour.
+assert "reads compaction.enabled from settings" \
+    "grep -q 'readAutoCompactionEnabled' extensions/statusline.ts"
+assert "reads the user settings file" \
+    "grep -q 'settings.json' extensions/statusline.ts"
+assert "defaults to enabled when the key is absent (pi's own default)" \
+    "grep -q 'let enabled = true' extensions/statusline.ts"
+assert "caches the read (60s TTL) so the footer stays cheap" \
+    "grep -q 'AUTO_COMPACTION_TTL_MS' extensions/statusline.ts"
+assert "doc no longer claims the flag is unknowable" \
+    "! grep -qi 'does not expose that flag' extensions/statusline.ts"
+assert "doc explains the settings-file source" \
+    "grep -qi 'settings files' extensions/statusline.md"
+
+echo ""
+echo "[5] imagegen carries a VERSION (parity with xmodel/image-slim/heartbeat)"
+assert "imagegen.ts defines VERSION" "grep -q 'const VERSION = ' extensions/imagegen.ts"
+assert "imagegen surfaces the version in help" "grep -q 'imagegen v\${VERSION}' extensions/imagegen.ts"
+assert "imagegen surfaces the version in the success notify" \
+    "grep -q 'imagegen v\${VERSION}:' extensions/imagegen.ts"
+assert "every extension defines a VERSION" \
+    "for f in extensions/imagegen.ts extensions/image-slim.ts extensions/xmodel.ts; do grep -q 'VERSION = ' \$f || exit 1; done"
+
+echo ""
 echo "──────────────────────────────"
 echo "PASS: $PASS  FAIL: $FAIL  WARN: $WARN"
 if [ "$FAIL" -ne 0 ]; then

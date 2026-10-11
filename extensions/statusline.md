@@ -75,4 +75,4 @@ pi -e ./extensions/statusline.ts
 
 ## Caveat
 
-`(auto)` is always appended after the context %. The built-in footer hides it when auto-compaction is disabled (`session.autoCompactionEnabled`), but `ExtensionContext` does not expose that flag, so we cannot replicate it. Compaction is enabled by default, so this is accurate in the common case.
+`(auto)` is appended after the context % only when auto-compaction is actually enabled. `ExtensionContext` does not expose `session.autoCompactionEnabled` (`ReadonlySessionManager` is a read-only `Pick` without settings access), so the extension reads the same source of truth pi's settings manager uses — the merged `compaction.enabled` flag from the **user + project settings files** (`~/.pi/agent/settings.json`, `<cwd>/.pi/settings.json`) — and caches it for 60 s. Absent key means enabled, which is pi's own default.

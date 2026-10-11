@@ -23,13 +23,17 @@
  *   - cache-hit rate (CH), cache read/write (R/W), cost with (sub) indicator
  *   - extension statuses on line 3
  *
- * Caveat: "(auto)" is always appended after the context %. The built-in footer
- * hides it when auto-compaction is disabled (session.autoCompactionEnabled),
- * but ExtensionContext does not expose that flag, so we cannot replicate it.
- * Compaction is enabled by default, so this is accurate in the common case.
+ * "(auto)" is appended after the context % only when auto-compaction is actually
+ * enabled. ExtensionContext does not expose `session.autoCompactionEnabled`
+ * (ReadonlySessionManager is a 15-method Pick without settings access), so we
+ * read the same source of truth the settings manager uses — the merged
+ * `compaction.enabled` flag from the user + project settings files — and cache
+ * it per session. Default is enabled (pi's own default when the key is absent).
  */
 
 import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { hostname } from "node:os";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
@@ -90,6 +94,36 @@ function zaiColor(pct: number): string {
 	if (pct >= 80) return "error";
 	if (pct >= 50) return "warning";
 	return "accent";
+}
+
+// ── Auto-compaction flag (read from the settings files, cached) ───────────────
+// pi's own default is `true` when the key is absent (settingsManager:
+// `compaction?.enabled ?? true`), so an unreadable file means "enabled".
+let autoCompactionCache: { enabled: boolean; at: number } | undefined;
+const AUTO_COMPACTION_TTL_MS = 60_000;
+
+function readAutoCompactionEnabled(cwd: string): boolean {
+	const now = Date.now();
+	if (autoCompactionCache && now - autoCompactionCache.at < AUTO_COMPACTION_TTL_MS) {
+		return autoCompactionCache.enabled;
+	}
+	let enabled = true; // pi's default when the key is missing
+	const home = process.env.HOME || process.env.USERPROFILE || "";
+	const candidates = [
+		home ? join(home, ".pi", "agent", "settings.json") : "",
+		cwd ? join(cwd, ".pi", "settings.json") : "",
+	];
+	for (const file of candidates) {
+		if (!file || !existsSync(file)) continue;
+		try {
+			const parsed = JSON.parse(readFileSync(file, "utf8")) as { compaction?: { enabled?: unknown } };
+			if (typeof parsed.compaction?.enabled === "boolean") enabled = parsed.compaction.enabled;
+		} catch {
+			/* unreadable/invalid settings: keep the previous value */
+		}
+	}
+	autoCompactionCache = { enabled, at: now };
+	return enabled;
 }
 
 // ── Z.ai usage ────────────────────────────────────────────────────────────────
@@ -350,14 +384,13 @@ export default function (pi: ExtensionAPI) {
 					const xpSuffix = isExperimental
 						? ` ${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`
 						: "";
-					const ctxAutoText = ctxColor
-						? theme.fg(ctxColor, `${contextBase} (auto)`)
-						: `${contextBase} (auto)`;
-					const ctxBaseText = ctxColor
-						? theme.fg(ctxColor, contextBase)
-						: contextBase;
-					const ctxWithAuto = ctxAutoText + xpSuffix;
-					const ctxNoAuto = ctxBaseText + xpSuffix;
+					// (auto) only when auto-compaction is actually on — read from the
+					// settings files (ExtensionContext exposes no session flag).
+					const autoOn = readAutoCompactionEnabled(ctx.sessionManager.getCwd());
+					const ctxText = autoOn ? `${contextBase} (auto)` : contextBase;
+					const ctxColored = ctxColor ? theme.fg(ctxColor, ctxText) : ctxText;
+					const ctxWithAuto = ctxColored + xpSuffix;
+					const ctxNoAuto = ctxColored + xpSuffix;
 					mandatory.push(ctxWithAuto);
 
 					const rPart = totalCacheRead ? `R${formatTokens(totalCacheRead)}` : null;
