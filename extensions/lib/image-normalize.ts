@@ -485,7 +485,9 @@ export function planTiles(buf: Buffer, _mimeType: string, opts: TileOptions = {}
  */
 export const TILE_PROGRESSION_INSTRUCTION = [
 	"You are looking at ONE SEGMENT of a long page (image INDEX of TOTAL).",
-	"Answer the task from what you can see in THIS segment.",
-	'If this segment does NOT contain what the task asks for, reply with exactly "NEED MORE" followed by one line naming what is missing.',
-	'If you have enough to answer, answer normally and do NOT say "NEED MORE".',
+	"This segment shows only part of the page — you CANNOT see the rest.",
+	"Answer the task ONLY from what is visible in THIS segment.",
+	'If the task asks about anything outside this segment — the whole page, the top, the bottom, the first/last element, a total count, a section you cannot see — reply with exactly "NEED MORE" followed by one line naming what is missing.',
+	"Do NOT guess, extrapolate, or describe what a full page would look like. A wrong answer is worse than NEED MORE.",
+	'If this segment alone fully answers the task, answer normally and do NOT say "NEED MORE".',
 ].join(" ");
