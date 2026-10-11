@@ -63,6 +63,18 @@ check "--help → exit 0" 0 "$SCRIPT" --help
 check "missing file → exit 1" 1 "$SCRIPT" /nonexistent.pdf
 check "unknown flag → exit 2" 2 "$SCRIPT" --bogus /nonexistent.pdf
 
+# size guard: an oversized file is rejected by stat, not by reading it into RAM
+# (regression: convert() used to open()+read() first — a 2GB file was buffered
+# before the 10MB check fired). Empty files get their own clean error.
+BIG=$(mktemp)
+dd if=/dev/zero of="$BIG" bs=1024 count=11264 2>/dev/null   # 11 MB > 10 MB limit
+check "oversized file → exit 1" 1 "$SCRIPT" "$BIG"
+grep -q "larger than 10MB" /tmp/pdf2md.out && ok || bad "oversized message lacks the limit"
+EMPTY=$(mktemp)
+check "empty file → exit 1" 1 "$SCRIPT" "$EMPTY"
+grep -q "is empty" /tmp/pdf2md.out && ok || bad "empty-file message missing"
+rm -f "$BIG" "$EMPTY"
+
 # path handling: relative paths + ~ expansion resolve against the caller's cwd
 ( cd /tmp && "$ROOT/$SCRIPT" pdf2md-rel-missing.pdf >/tmp/pdf2md.out 2>&1 )
 [ $? -eq 1 ] && ok || bad "missing relative file → exit 1"
@@ -123,6 +135,98 @@ else
         grep -q "retry with a higher --timeout" /tmp/pdf2md.out && ok \
             || bad "timeout message lacks retry hint"
     fi
+fi
+
+# --share on an async job: the URL is printed, the markdown NOT downloaded
+# (regression: wait_job downloaded the shared result before main() could see
+# --share, transferring the whole document for nothing). Mocked API: 202 job ->
+# done with markdown_url; the mock COUNTS downloads of that URL.
+if command -v python3 >/dev/null 2>&1; then
+    # The mock needs a real PDF but NO token — build the fixture independently of
+    # the live-token block above (which only runs when a token exists).
+    if [ ! -s "$FIXPDF" ]; then
+        printf 'Skale pdf2md share-path test\nZeile zwei.\n' > "$FIXTXT"
+        cupsfilter "$FIXTXT" > "$FIXPDF" 2>/dev/null
+    fi
+    if [ ! -s "$FIXPDF" ]; then
+        warn "share-path mock skipped (cannot build PDF fixture)"
+    else
+    MOCKDIR=$(mktemp -d)
+    cat > "$MOCKDIR/mock_api.py" <<'MOCK'
+import http.server, json, sys, threading
+
+PORT = int(sys.argv[1])
+HITS = {"downloads": 0}
+
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0))
+        self.rfile.read(n)
+        body = json.dumps({"job_id": "job-test-123", "status": "queued", "poll": "/pdf/jobs/job-test-123"}).encode()
+        self.send_response(202)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers(); self.wfile.write(body)
+    def do_GET(self):
+        # count ONLY the markdown download, not the job polls
+        if not self.path.startswith("/pdf/jobs/"):
+            HITS["downloads"] += 1
+        if self.path.startswith("/pdf/jobs/"):
+            body = json.dumps({"status": "done", "markdown_url": f"http://127.0.0.1:{PORT}/md", "expires_in": 7200}).encode()
+            self.send_response(200)
+        else:  # the markdown_url itself
+            HITS["downloads"] += 1
+            body = b"# shared markdown that must NOT be fetched with --share"
+            self.send_response(200)
+        self.send_header("Content-Type", "application/json" if self.path.startswith("/pdf/jobs/") else "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers(); self.wfile.write(body)
+
+import signal
+def _bye(*_):
+    print("DOWNLOADS=%d" % HITS["downloads"], file=sys.stderr, flush=True)
+    raise SystemExit(0)
+signal.signal(signal.SIGTERM, _bye)
+srv = http.server.HTTPServer(("127.0.0.1", PORT), H)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+print("ready", flush=True)
+import time, atexit
+atexit.register(lambda: print("DOWNLOADS=%d" % HITS["downloads"], file=sys.stderr, flush=True))
+time.sleep(60)
+MOCK
+    python3 "$MOCKDIR/mock_api.py" 8731 >"$MOCKDIR/ready" 2>&1 &
+    MOCKPID=$!
+    for _ in $(seq 1 40); do grep -q ready "$MOCKDIR/ready" 2>/dev/null && break; sleep 0.25; done
+    if grep -q ready "$MOCKDIR/ready" 2>/dev/null; then
+        # the mock answers 202 -> pdf2md polls -> done with markdown_url.
+        # With --share it must print the URL and NOT download the markdown.
+        PDF2MD_URL="http://127.0.0.1:8731/pdf/to_md" PDF2MD_BEARER="test-token" \
+            "$SCRIPT" "$FIXPDF" --share --no-wait --timeout 30 >"$MOCKDIR/out" 2>&1
+        got=$?
+        [ "$got" -eq 0 ] && ok || bad "--share async job exit (want 0, got $got): $(head -2 "$MOCKDIR/out")"
+        grep -q "http://127.0.0.1:8731/md" "$MOCKDIR/out" && ok || bad "--share did not print the URL"
+        grep -q "shared markdown that must NOT be fetched" "$MOCKDIR/out" && bad "--share downloaded the markdown anyway" || ok
+    else
+        warn "share-path mock could not start — skipped"
+    fi
+    # the mock reports its markdown-download counter on SIGTERM — read it AFTER
+    # the kill, otherwise we grep before the handler flushed.
+    kill -TERM $MOCKPID 2>/dev/null
+    for _ in $(seq 1 20); do grep -q "DOWNLOADS=" "$MOCKDIR/ready" 2>/dev/null && break; sleep 0.1; done
+    if grep -q "DOWNLOADS=0" "$MOCKDIR/ready" 2>/dev/null; then
+        ok "share-path mock ran (download counter available)"
+        ok "--share did not fetch the markdown URL"
+    elif grep -q "DOWNLOADS=[1-9]" "$MOCKDIR/ready" 2>/dev/null; then
+        bad "--share fetched the markdown URL (DOWNLOADS>0)"
+    else
+        warn "share-path mock counter unavailable — download check skipped"
+    fi
+    kill $MOCKPID 2>/dev/null
+    rm -rf "$MOCKDIR"
+    fi
+else
+    warn "python3 missing — share-path mock skipped"
 fi
 
 # scan path (llamaparse) — uploads to LlamaCloud + costs credits; opt-in only

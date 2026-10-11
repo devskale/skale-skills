@@ -13,6 +13,9 @@ API_URL = os.environ.get("PDF2MD_URL", "https://amd.skale.dev/api/pdf/to_md")
 API_BASE = API_URL.rsplit("/pdf/", 1)[0]
 MAX_BYTES = 10 * 1024 * 1024
 AUTO_FALLBACK_CHARS = 20  # less than this from pdfplumber -> scan, go llamaparse
+# Marker for "the markdown exists but was deliberately not downloaded" (--share).
+# main() must not read this as an empty conversion result.
+SHARE_SKIPPED_DOWNLOAD = "\x00SHARE_SKIPPED\x00"
 DEFAULT_TIMEOUTS = {"pdfplumber": 180, "llamaparse": 600}  # OCR scales with pages
 
 
@@ -46,7 +49,7 @@ class ApiError(Exception):
         super().__init__(f"HTTP {status} {detail}".strip())
 
 
-def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int):
+def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int, share: bool = False):
     """Poll an async conversion job (202 answer) until done/failed.
 
     The API forces async beyond ~40 pages; llamaparse processes at ~2s/page.
@@ -80,6 +83,12 @@ def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int):
     if body.get("markdown_url"):
         if verbose:
             print(f"pdf2md: shared via {body['markdown_url']} (4h TTL)", file=sys.stderr)
+        if share:
+            # --share only wants the URL: downloading the markdown here would
+            # transfer the whole document for nothing (megabytes on big scans).
+            # The sentinel keeps main()'s auto-fallback (which treats an empty
+            # markdown as "scan detected") from firing on a deliberate skip.
+            return SHARE_SKIPPED_DOWNLOAD, body
         try:
             body["markdown"] = requests.get(body["markdown_url"], timeout=60).text
         except requests.exceptions.RequestException as e:
@@ -120,9 +129,20 @@ def heartbeat(label: str, enabled: bool, interval: int = 30, hint: str = ""):
 def convert(path: str, method: str, tier: str, language: str, bearer: str,
             timeout: int, verbose: bool = False, no_wait: bool = False,
             share: bool = False):
+    # Size check BEFORE reading: a 2GB file would be buffered in RAM just to be
+    # rejected afterwards. os.path.getsize is a stat call, no read.
+    try:
+        size = os.path.getsize(path)
+    except OSError as e:
+        sys.exit(f"error: cannot read {path}: {e}")
+    if size > MAX_BYTES:
+        sys.exit(f"error: {path} is larger than 10MB (API limit)")
+    if size == 0:
+        sys.exit(f"error: {path} is empty")
     with open(path, "rb") as fh:
         data = fh.read()
     if len(data) > MAX_BYTES:
+        # the file grew between stat and read (or a sparse/odd file) — re-check
         sys.exit(f"error: {path} is larger than 10MB (API limit)")
     params = {"method": method}
     if method == "llamaparse":
@@ -161,7 +181,7 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
         sys.exit("error: 504 job deadline exceeded server-side (default 20 min) — retry with --no-wait")
     if resp.status_code == 202:
         # long document -> async job (forced beyond ~40 pages); poll until done
-        return wait_job(resp.json(), bearer, verbose, timeout)
+        return wait_job(resp.json(), bearer, verbose, timeout, share=share)
     if resp.status_code >= 400:
         raise ApiError(resp.status_code, detail)
     result = resp.json()
@@ -234,7 +254,9 @@ def main():
             sys.exit(f"error: {e}")
         markdown, result = "", {"pages": None}
 
-    if method == "pdfplumber" and args.method == "auto" and len(markdown.strip()) < AUTO_FALLBACK_CHARS:
+    if (method == "pdfplumber" and args.method == "auto"
+            and markdown != SHARE_SKIPPED_DOWNLOAD
+            and len(markdown.strip()) < AUTO_FALLBACK_CHARS):
         if args.verbose:
             print(f"pdf2md: pdfplumber got {len(markdown.strip())} chars -> scan? falling back to llamaparse",
                   file=sys.stderr)
@@ -247,6 +269,10 @@ def main():
 
     if args.share and result.get("markdown_url"):
         print(result["markdown_url"])
+        return
+    if markdown == SHARE_SKIPPED_DOWNLOAD:
+        # --share on a job whose result we did not download: the URL was already
+        # printed above when markdown_url was set; nothing left to write.
         return
 
     if args.out:

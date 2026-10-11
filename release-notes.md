@@ -4,6 +4,21 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **pdf2md 1.4.4 — Size-Guard vor dem Read; `--share` lädt das Markdown im Async-Job nicht mehr.**
+  Zum Review-Befund (2026-10-11): (1) `convert()` machte `open().read()` VOR der
+  10MB-Prüfung — eine 2-GB-Datei wurde vollständig in den RAM gepuffert, nur um
+  dann abgelehnt zu werden. Jetzt `os.path.getsize()` (reines stat) plus ein
+  Re-Check nach dem Read (Datei könnte gewachsen sein) und ein eigener Fehler für
+  leere Dateien. (2) `wait_job()` lud bei `markdown_url` das Markdown **immer**
+  herunter — auch mit `--share`, wo nur die URL gewünscht ist. Bei einem 500-Seiten-
+  Scan waren das Megabyte umsonst übertragen. Jetzt returned `--share` ein Sentinel
+  (`SHARE_SKIPPED_DOWNLOAD`), das main()'s Auto-Fallback nicht als „leeres Ergebnis →
+  Scan?" missversteht — ohne das Sentinel feuerte der llamaparse-Fallback und
+  verdoppelte die Arbeit (im Test als DOWNLOADS=2 sichtbar).
+  **Tests:** Size-Guard-Checks (11MB-Datei, leere Datei) + ein gemockter Async-Job
+  (202 → done mit markdown_url), der beweist, dass `--share` die URL druckt und
+  **nicht** fetched (Zähler im Mock). 48 PASS.
+
 - **xmodel 0.5.13 — Vertikal-Tiling mit NEED-MORE-Progression für ultra-lange Seiten.**
   Auslöser (Nutzer 2026-10-11: „manche Webseiten sind ultralang"): ein Fullpage-
   Capture 1440×12000 wurde aspect-preserving in das 2MP-Budget gequetscht →
