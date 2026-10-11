@@ -50,8 +50,8 @@
  * (clamped to model capabilities automatically)
  */
 
-import { existsSync, mkdirSync, readFileSync, unlinkSync } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { execFile } from "node:child_process";
 import { join, basename } from "node:path";
 import { Type } from "typebox";
@@ -81,6 +81,7 @@ import {
 import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
 import { chafaAvailable, chafaPreview } from "./lib/chafa";
 import { guessMime, isVisionCapable, isValidImage, toDisplayPng } from "./lib/image-utils";
+import { normalizeImageForVlm } from "./lib/image-normalize";
 import {
 	debug,
 	detectSavedScreenshot,
@@ -90,6 +91,7 @@ import {
 	textOf,
 	VLM_TIMEOUT_MS,
 	writeImageTmp,
+	envInt,
 } from "./lib/xmodel-vision-utils";
 import {
 	defaultVision,
@@ -1743,6 +1745,33 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		}
 		ctx.ui.setStatus("xmodel-vision", ctx.ui.theme.fg("accent", `👁 ${vlm}`));
 		ctx.ui.notify(`xmodel: analyzing ${filePath} with ${vlm} …`, "info");
+		// Normalise before the child-pi handoff: aspect-preserving downscale + JPEG
+		// re-encode (see writeImageTmp for the rationale). The original file on disk
+		// is never touched — the VLM gets a temp copy, and we clean it up below.
+		let vlmFile = filePath;
+		let vlmTmp: string | undefined;
+		if (process.env.XMODEL_VISION_NORMALIZE !== "0") {
+			const norm = normalizeImageForVlm(buf, guessMime(buf.toString("base64")), {
+				maxEdge: envInt(process.env.XMODEL_VISION_MAX_EDGE),
+				maxPixels: envInt(process.env.XMODEL_VISION_MAX_PIXELS),
+				jpegQuality: process.env.XMODEL_VISION_JPEG === "0" ? 0 : 80,
+			});
+			if (norm) {
+				vlmTmp = join(tmpdir(), `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${norm.mimeType === "image/jpeg" ? "jpg" : "png"}`);
+				try {
+					writeFileSync(vlmTmp, norm.data);
+					vlmFile = vlmTmp;
+					forensic("analyzeImageFile normalized", {
+						from: { w: norm.originalWidth, h: norm.originalHeight },
+						to: { w: norm.width, h: norm.height },
+						mime: norm.mimeType,
+						bytes: norm.data.length,
+					});
+				} catch {
+					vlmTmp = undefined;
+				}
+			}
+		}
 		let analysis = "";
 		let timedOut = false;
 		try {
@@ -1751,7 +1780,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					model: vlm,
 					systemPrompt: VISION_VLM_SYS,
 					prompt: `${focusPrefix}Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
-					imageFile: filePath,
+					imageFile: vlmFile,
 					signal,
 					thinkingLevel: thinkLevel,
 				});
@@ -1767,6 +1796,11 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
 		} finally {
 			ctx.ui.setStatus("xmodel-vision", undefined);
+			if (vlmTmp) {
+				try {
+					unlinkSync(vlmTmp);
+				} catch {}
+			}
 		}
 		if (timedOut) {
 			ctx.ui.notify(`xmodel: vision model ${vlm} TIMED OUT after ${VLM_TIMEOUT_MS / 1000}s — could not analyse ${filePath}`, "error");

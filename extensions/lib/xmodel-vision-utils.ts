@@ -16,7 +16,7 @@ import { isValidImage } from "./image-utils";
 import { normalizeImageForVlm, type NormalizeResult } from "./image-normalize";
 
 /** Parse a positive int from an env var; undefined when unset/invalid (→ library default). */
-function envInt(v: string | undefined): number | undefined {
+export function envInt(v: string | undefined): number | undefined {
 	const n = Number(v);
 	return v !== undefined && v !== "" && Number.isFinite(n) && n >= 0 ? n : undefined;
 }
