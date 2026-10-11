@@ -1,4 +1,5 @@
 ---
+disable-model-invocation: true
 name: surf
 version: "1.6.0"
 description: Bash skill — drive the user's real, logged-in Chrome on macOS (AppleScript, no debug port). Use when the user wants to automate, scrape, fill, or screenshot the browser they are already logged into.
