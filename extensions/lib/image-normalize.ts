@@ -22,6 +22,7 @@
  */
 
 import { createRequire } from "node:module";
+import { forensic } from "./xmodel-vision-utils";
 
 /** Long-edge ceiling for the VLM payload. 1568px = Claude's processing ceiling and
  * comfortably above Qwen3-VL's ~576-token budget; every provider sees ≤ this. */
@@ -65,6 +66,7 @@ function loadPhoton(): PhotonModule | null {
 	if (cachedPhoton !== undefined) return cachedPhoton;
 	try {
 		const entry = process.argv[1];
+		forensic("loadPhoton attempt", { entry, cwd: process.cwd(), execPath: process.execPath });
 		if (!entry) {
 			cachedPhoton = null;
 			return null;
