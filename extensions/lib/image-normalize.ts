@@ -366,3 +366,126 @@ function scaleTo(w: number, h: number, maxEdge: number): { w: number; h: number 
 	const s = maxEdge / Math.max(w, h);
 	return { w: Math.max(1, Math.round(w * s)), h: Math.max(1, Math.round(h * s)) };
 }
+
+// ── Vertical tiling for ultra-long pages ──────────────────────────────────────
+//
+// A 1440x12000 full-page capture, aspect-preserving scaled into a 2MP budget,
+// becomes 188x1568 — a strip where no text survives (verified 2026-10-11: the
+// VLM could not read a single band). The fix is mechanical, not a guess: cut the
+// page into overlapping vertical segments, each small enough to stay readable,
+// and send them as MULTIPLE images in ONE child call (multi-image verified).
+//
+// Progression is gated by the caller: tiles are only produced when the caller
+// asks for them, and the caller decides how many (see analyzeTiledImage).
+
+/** Aspect ratio above which a page is tiled instead of downscaled. */
+export const DEFAULT_TILE_ASPECT = 3;
+
+/** Segment height for tiles (px). 1568 = the same ceiling as the long-edge rule. */
+export const DEFAULT_TILE_HEIGHT = 1568;
+
+/** Overlap between segments (fraction of segment height) so cut lines survive. */
+export const DEFAULT_TILE_OVERLAP = 0.15;
+
+export interface TileOptions {
+	/** Aspect (long/short) above which tiling kicks in. Default 3. */
+	maxAspect?: number;
+	/** Segment height in px. Default 1568. */
+	tileHeight?: number;
+	/** Overlap fraction 0..0.5. Default 0.15. */
+	overlap?: number;
+}
+
+export interface Tile {
+	data: Buffer;
+	mimeType: string;
+	/** 1-based index for the prompt ("image 2 of 8"). */
+	index: number;
+	total: number;
+	y1: number;
+	y2: number;
+}
+
+export interface TilePlan {
+	tiles: Tile[];
+	originalWidth: number;
+	originalHeight: number;
+	/** True when the image was tiled (vs. a single normalised image). */
+	tiled: boolean;
+}
+
+/**
+ * Decide whether an image needs tiling, and if so cut it into segments.
+ * Returns tiled:false when the aspect ratio is within the limit (the caller then
+ * uses the plain normalisation path) or when photon is unavailable.
+ */
+export function planTiles(buf: Buffer, _mimeType: string, opts: TileOptions = {}): TilePlan | null {
+	const photon = loadPhoton();
+	if (!photon || !buf || buf.length < 32) return null;
+	const maxAspect = opts.maxAspect === undefined ? DEFAULT_TILE_ASPECT : opts.maxAspect;
+	const tileHeight = opts.tileHeight || DEFAULT_TILE_HEIGHT;
+	const overlap = Math.min(0.5, Math.max(0, opts.overlap === undefined ? DEFAULT_TILE_OVERLAP : opts.overlap));
+
+	let img: any;
+	try {
+		img = photon.PhotonImage.new_from_byteslice(new Uint8Array(buf));
+		if (!img) return null;
+		const orientation = readExifOrientation(buf);
+		const oriented = applyOrientation(photon, img, orientation);
+		if (oriented !== img) {
+			try {
+				img.free();
+			} catch {}
+			img = oriented;
+		}
+		const w = img.get_width();
+		const h = img.get_height();
+		if (!w || !h) return null;
+		const aspect = Math.max(w, h) / Math.min(w, h);
+		if (aspect <= maxAspect) return { tiles: [], originalWidth: w, originalHeight: h, tiled: false };
+
+		// Only VERTICAL tiling is needed: ultra-long pages are tall. A very wide
+		// panorama would need horizontal tiles — not implemented (no use case yet).
+		const vertical = h >= w;
+		const segH = Math.min(tileHeight, h);
+		const step = Math.max(1, Math.round(segH * (1 - overlap)));
+		const tiles: Tile[] = [];
+		let y = 0;
+		let idx = 1;
+		while (y < h) {
+			const y2 = Math.min(h, y + segH);
+			const seg = vertical ? photon.crop(img, 0, y, w, y2) : photon.crop(img, y, 0, y2, h);
+			const out = Buffer.from(seg.get_bytes());
+			try {
+				seg.free();
+			} catch {}
+			tiles.push({ data: out, mimeType: "image/png", index: idx, total: 0, y1: y, y2 });
+			idx++;
+			if (y2 >= h) break;
+			y += step;
+		}
+		for (const t of tiles) t.total = tiles.length;
+		return { tiles, originalWidth: w, originalHeight: h, tiled: tiles.length > 1 };
+	} catch {
+		return null;
+	} finally {
+		if (img) {
+			try {
+				img.free();
+			} catch {}
+		}
+	}
+}
+
+/**
+ * Prompt fragment that teaches the VLM the progression contract: it MUST say
+ * "NEED MORE" (and name what it still needs) when the visible segment does not
+ * answer the task, so the caller can send the next segment. Without this the
+ * model happily answers from tile 1 alone and the rest of the page is never seen.
+ */
+export const TILE_PROGRESSION_INSTRUCTION = [
+	"You are looking at ONE SEGMENT of a long page (image INDEX of TOTAL).",
+	"Answer the task from what you can see in THIS segment.",
+	'If this segment does NOT contain what the task asks for, reply with exactly "NEED MORE" followed by one line naming what is missing.',
+	'If you have enough to answer, answer normally and do NOT say "NEED MORE".',
+].join(" ");

@@ -30,8 +30,15 @@ TSC="$HOME/.cache/skale-skills/lint/node_modules/.bin/tsc"
 OUT="$TMP/build"
 mkdir -p "$OUT"
 if [ -x "$TSC" ]; then
-    if "$TSC" "$REPO/extensions/lib/image-normalize.ts" --outDir "$OUT" \
-        --module esnext --target es2022 --moduleResolution bundler --skipLibCheck >"$TMP/tsc.out" 2>&1; then
+    # CommonJS (not ESM): the compiled libs import each other without the .js
+    # extension, which Node-ESM refuses to resolve. CJS + createRequire works.
+    if "$TSC" "$REPO/extensions/lib/image-normalize.ts" "$REPO/extensions/lib/xmodel-vision-utils.ts" --outDir "$OUT" \
+        --module commonjs --target es2022 --moduleResolution node --skipLibCheck --esModuleInterop >"$TMP/tsc.out" 2>&1; then
+        # tsc emits extension-less relative requires (TS style); Node needs the .js.
+        # Rewrite them in the build output so the probe can require() the libs.
+        for f in "$OUT"/*.js; do
+            sed -i.bak 's|require("\./\([a-z-]*\)")|require("./\1.js")|g' "$f" && rm -f "$f.bak"
+        done
         ok "tsc compiled image-normalize.ts"
     else
         bad "tsc compile error"; sed 's/^/    /' "$TMP/tsc.out" | head -10

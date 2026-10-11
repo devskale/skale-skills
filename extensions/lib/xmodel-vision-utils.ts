@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import { spawn } from "node:child_process";
 import { isValidImage } from "./image-utils";
-import { normalizeImageForVlm, type NormalizeResult } from "./image-normalize";
+import { normalizeImageForVlm, type NormalizeResult, TILE_PROGRESSION_INSTRUCTION } from "./image-normalize";
 
 /** Parse a positive int from an env var; undefined when unset/invalid (→ library default). */
 export function envInt(v: string | undefined): number | undefined {
@@ -65,7 +65,16 @@ export interface ChildPiResult {
  * hanging until the timeout — otherwise Esc appears to "not work" while xm is
  * running a vision sub-call.
  */
-export function runChildPi(opts: { model: string; systemPrompt: string; prompt: string; imageFile?: string; timeoutMs?: number; signal?: AbortSignal; thinkingLevel?: string }): Promise<ChildPiResult> {
+export function runChildPi(opts: {
+	model: string;
+	systemPrompt: string;
+	prompt: string;
+	/** One or more image files attached to the child call (multi-image verified 2026-10-11). */
+	imageFile?: string | string[];
+	timeoutMs?: number;
+	signal?: AbortSignal;
+	thinkingLevel?: string;
+}): Promise<ChildPiResult> {
 	return new Promise((resolve) => {
 		// --mode json -p (NOT bare --print): text mode tries TUI init that hangs on piped stdout.
 		// This is the same recipe the official pi-subagents package uses.
@@ -77,7 +86,10 @@ export function runChildPi(opts: { model: string; systemPrompt: string; prompt: 
 			"--system-prompt", opts.systemPrompt,
 		];
 		if (opts.thinkingLevel) args.push("--thinking", opts.thinkingLevel);
-		if (opts.imageFile) args.push(`@${opts.imageFile}`);
+		// Multiple @files are attached in order; the child sees them as image 1..N.
+		for (const f of typeof opts.imageFile === "string" ? [opts.imageFile] : (opts.imageFile ?? [])) {
+			args.push(`@${f}`);
+		}
 		args.push(opts.prompt);
 		const timeoutMs = opts.timeoutMs ?? VLM_TIMEOUT_MS;
 		debug("runChildPi", { model: opts.model, hasImage: !!opts.imageFile, promptLen: opts.prompt.length, timeoutMs });
@@ -241,4 +253,134 @@ export function writeImageTmp(img: any): { path: string; valid: boolean; bytes: 
 	const valid = isValidImage(buf);
 	forensic("writeImageTmp out", { path: p, fileBytes: buf.length, valid, magic: buf.slice(0, 8).toString("hex") });
 	return { path: p, valid, bytes: buf.length };
+}
+
+// ── Progressive tiled vision (ultra-long pages) ───────────────────────────────
+//
+// A full-page capture of a long article/site downscaled into a 2MP budget becomes
+// an unreadable strip (1440x12000 -> 188x1568, verified 2026-10-11). Tiling keeps
+// every segment readable — but sending ALL segments costs N x tokens even when
+// the answer sits in segment 1. Progression: send segment 1, continue only while
+// the VLM says "NEED MORE" (it must name what is missing). One call for the common
+// case, N calls only when the page really needs them.
+
+/** Segments per FOLLOW-UP call — beyond this the context/token cost dominates.
+ * The FIRST call always carries a single segment (maximal progression: if tile 1
+ * answers, the rest of the page is never sent). */
+export const DEFAULT_MAX_TILES_PER_CALL = 4;
+
+export interface TiledAnalysis {
+	/** Concatenated analyses, one entry per consumed segment. */
+	text: string;
+	/** How many segments were sent. */
+	segmentsUsed: number;
+	/** Total segments the plan produced. */
+	segmentsTotal: number;
+	/** True when the VLM asked for more but the caller stopped (budget/limit). */
+	truncated: boolean;
+	timedOut: boolean;
+}
+
+export interface TiledRunOptions {
+	model: string;
+	systemPrompt: string;
+	/** Task prompt WITHOUT the tile instruction (appended automatically). */
+	prompt: string;
+	plan: import("./image-normalize").TilePlan;
+	signal?: AbortSignal;
+	thinkingLevel?: string;
+	/** Segments per call (default 4). */
+	tilesPerCall?: number;
+	/** Hard cap on segments overall (default 12). */
+	maxSegments?: number;
+	/** Injectable for tests; defaults to the real runChildPi. */
+	runChild?: typeof runChildPi;
+}
+
+/** True when the VLM's answer asks for the next segment. */
+export function wantsMoreSegments(text: string): boolean {
+	return /^\s*NEED MORE\b/i.test(text.trim());
+}
+
+/**
+ * Drive the progressive tiled analysis. Returns the merged analysis text plus
+ * bookkeeping. Never throws — a failure in one batch degrades to what we have.
+ */
+export async function analyzeTiledImage(opts: TiledRunOptions): Promise<TiledAnalysis> {
+	const run = opts.runChild ?? runChildPi;
+	const perCall = Math.max(1, opts.tilesPerCall ?? DEFAULT_MAX_TILES_PER_CALL);
+	const maxSegments = Math.max(1, opts.maxSegments ?? 12);
+	const tiles = opts.plan.tiles;
+	const out: TiledAnalysis = {
+		text: "",
+		segmentsUsed: 0,
+		segmentsTotal: tiles.length,
+		truncated: false,
+		timedOut: false,
+	};
+	if (!tiles.length) return out;
+
+	// Write the tiles we may need to temp files lazily (a batch at a time).
+	const dir = mkdtempSync(join(tmpdir(), "xmodel-tiles-"));
+	const paths: string[] = [];
+	try {
+		for (const t of tiles.slice(0, maxSegments)) {
+			const p = join(dir, `tile-${String(t.index).padStart(3, "0")}.png`);
+			writeFileSync(p, t.data);
+			paths.push(p);
+		}
+		let i = 0;
+		while (i < paths.length) {
+			// First call = exactly ONE segment (the user's rule: if tile 1 already
+			// carries the answer, nothing else is sent). Later calls batch up.
+			const size = i === 0 ? 1 : perCall;
+			const batch = paths.slice(i, i + size);
+			const first = tiles[i];
+			const last = tiles[Math.min(i + size, tiles.length) - 1];
+			const res = await run({
+				model: opts.model,
+				systemPrompt: opts.systemPrompt,
+				prompt:
+					`${opts.prompt}\n\n${TILE_PROGRESSION_INSTRUCTION}\n` +
+					`(This call shows image ${first.index} of ${tiles.length}; segments ${first.index}–${last.index} of the page, top to bottom.)`,
+				imageFile: batch,
+				signal: opts.signal,
+				thinkingLevel: opts.thinkingLevel,
+			});
+			out.segmentsUsed += batch.length;
+			if (res.timedOut) {
+				out.timedOut = true;
+				if (out.text) break;
+				// first batch timed out → nothing to build on
+				out.text = "";
+				break;
+			}
+			if (res.text) {
+				const cleaned = res.text.trim();
+				if (wantsMoreSegments(cleaned)) {
+					// Keep the model's own note about what is missing — it is the
+					// signal for the next batch and useful in the final analysis.
+					out.text += (out.text ? "\n\n" : "") + `[segment ${first.index}–${last.index}: ${cleaned}]`;
+					i += size;
+					if (i >= paths.length) {
+						out.truncated = true; // asked for more, but the page ended
+					}
+					continue;
+				}
+				out.text += (out.text ? "\n\n" : "") + cleaned;
+				break; // answered — stop, no further segments
+			}
+			// Empty answer (NO IMAGE / unusable) → try the next batch once.
+			i += size;
+		}
+		if (!out.text && !out.timedOut) out.truncated = true;
+		return out;
+	} catch {
+		out.truncated = true;
+		return out;
+	} finally {
+		try {
+			rmSync(dir, { recursive: true, force: true });
+		} catch {}
+	}
 }

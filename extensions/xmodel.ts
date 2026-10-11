@@ -81,7 +81,7 @@ import {
 import { isStaleCtxError, reconstructLastCustomEntry } from "./lib/session-state";
 import { chafaAvailable, chafaPreview } from "./lib/chafa";
 import { guessMime, isVisionCapable, isValidImage, toDisplayPng } from "./lib/image-utils";
-import { normalizeImageForVlm } from "./lib/image-normalize";
+import { normalizeImageForVlm, planTiles } from "./lib/image-normalize";
 import {
 	debug,
 	detectSavedScreenshot,
@@ -92,6 +92,7 @@ import {
 	VLM_TIMEOUT_MS,
 	writeImageTmp,
 	envInt,
+	analyzeTiledImage,
 } from "./lib/xmodel-vision-utils";
 import {
 	defaultVision,
@@ -1637,27 +1638,45 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 					analyses.push("(xmodel: image data missing/corrupt in tool result — not analysed; the main model cannot see this image)");
 					continue;
 				}
-				let analysis = "";
-				let timedOut = false;
-				for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
-					const res = await runChildPi({
-						model: vlm,
-						systemPrompt: VISION_VLM_SYS,
-						prompt: `Task brief:\n${brief.text}\n\nAnalyze the attached image in service of this task and report concrete findings. If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
-						imageFile: tmp,
-						signal,
-						thinkingLevel: visionCfg.thinkingLevel,
-					});
-					analysis = res.text;
-					// Timeout = usually a transient API hang (zai/glm-5.3-flash: ~9% of calls never
-					// deliver a first token — observed 2026-10-09, retry of the SAME image succeeded
-					// in 51–73s). Retry once instead of giving up; only the final attempt counts.
-					if (res.timedOut) {
-						if (attempt === 0 && !res.aborted) { analysis = ""; continue; }
-						timedOut = true; anyTimeout = true; break;
+					let analysis = "";
+					let timedOut = false;
+					// Ultra-long page? Tile it and let the VLM pull segments on demand — a
+					// downscaled 1440x12000 strip is unreadable (verified 2026-10-11).
+					const plan = planTiles(readFileSync(tmp), "image/png");
+					if (plan?.tiled && plan.tiles.length > 1) {
+						const tiled = await analyzeTiledImage({
+							model: vlm,
+							systemPrompt: VISION_VLM_SYS,
+							prompt: `Task brief:\n${brief.text}\n\nAnalyze the attached page segment(s) in service of this task and report concrete findings. If a segment did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+							plan,
+							signal,
+							thinkingLevel: visionCfg.thinkingLevel,
+						});
+						timedOut = tiled.timedOut;
+						if (timedOut) anyTimeout = true;
+						forensic("delegateVision tiled", { segments: tiled.segmentsUsed, total: tiled.segmentsTotal, truncated: tiled.truncated });
+						analysis = tiled.text;
+					} else {
+						for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
+							const res = await runChildPi({
+								model: vlm,
+								systemPrompt: VISION_VLM_SYS,
+								prompt: `Task brief:\n${brief.text}\n\nAnalyze the attached image in service of this task and report concrete findings. If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+								imageFile: tmp,
+								signal,
+								thinkingLevel: visionCfg.thinkingLevel,
+							});
+							analysis = res.text;
+							// Timeout = usually a transient API hang (zai/glm-5.3-flash: ~9% of calls never
+							// deliver a first token — observed 2026-10-09, retry of the SAME image succeeded
+							// in 51–73s). Retry once instead of giving up; only the final attempt counts.
+							if (res.timedOut) {
+								if (attempt === 0 && !res.aborted) { analysis = ""; continue; }
+								timedOut = true; anyTimeout = true; break;
+							}
+							if (res.aborted) { break; }
+						}
 					}
-					if (res.aborted) { break; }
-				}
 				if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
 				analyses.push(
 					timedOut
@@ -1775,23 +1794,39 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		let analysis = "";
 		let timedOut = false;
 		try {
-			for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
-				const res = await runChildPi({
+			// Ultra-long page? Tile it; the VLM pulls segments on demand (NEED MORE).
+			const plan = planTiles(readFileSync(vlmFile), "image/png");
+			if (plan?.tiled && plan.tiles.length > 1) {
+				const tiled = await analyzeTiledImage({
 					model: vlm,
 					systemPrompt: VISION_VLM_SYS,
-					prompt: `${focusPrefix}Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
-					imageFile: vlmFile,
+					prompt: `${focusPrefix}Analyze the attached page segment(s) and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If a segment did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+					plan,
 					signal,
 					thinkingLevel: thinkLevel,
 				});
-				analysis = res.text;
-				// Transient API hang → immediate retry of the same image often succeeds
-				// (observed 2026-10-09). Only report TIMED OUT when the last attempt failed.
-				if (res.timedOut) {
-					if (attempt === 0 && !res.aborted) { analysis = ""; continue; }
-					timedOut = true; break;
+				timedOut = tiled.timedOut;
+				forensic("analyzeImageFile tiled", { segments: tiled.segmentsUsed, total: tiled.segmentsTotal, truncated: tiled.truncated });
+				analysis = tiled.text;
+			} else {
+				for (let attempt = 0; attempt < 2 && !analysis; attempt++) {
+					const res = await runChildPi({
+						model: vlm,
+						systemPrompt: VISION_VLM_SYS,
+						prompt: `${focusPrefix}Analyze the attached image and report concrete, actionable observations (subject, layout, visible text, colors, any errors or discrepancies). If the image did not reach you or is blank, say exactly "NO IMAGE" and nothing else.`,
+						imageFile: vlmFile,
+						signal,
+						thinkingLevel: thinkLevel,
+					});
+					analysis = res.text;
+					// Transient API hang → immediate retry of the same image often succeeds
+					// (observed 2026-10-09). Only report TIMED OUT when the last attempt failed.
+					if (res.timedOut) {
+						if (attempt === 0 && !res.aborted) { analysis = ""; continue; }
+						timedOut = true; break;
+					}
+					if (res.aborted) break;
 				}
-				if (res.aborted) break;
 			}
 			if (/^(NO IMAGE|no image)/i.test(analysis.trim())) analysis = "";
 		} finally {
