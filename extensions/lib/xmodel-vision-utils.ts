@@ -355,7 +355,11 @@ export async function analyzeTiledImage(opts: TiledRunOptions): Promise<TiledAna
 				out.text = "";
 				break;
 			}
-			if (res.text) {
+			// "NO IMAGE" is the VLM saying the segment reached it blank — that is a
+			// NEED-MORE signal, not an answer (observed 2026-10-11: a synthetic page
+			// whose first segment read as blank, and the driver stopped there).
+			const blank = /^\s*(NO IMAGE|no image)\b/i.test(res.text.trim());
+			if (res.text && !blank) {
 				const cleaned = res.text.trim();
 				if (wantsMoreSegments(cleaned)) {
 					// Keep the model's own note about what is missing — it is the
@@ -370,10 +374,16 @@ export async function analyzeTiledImage(opts: TiledRunOptions): Promise<TiledAna
 				out.text += (out.text ? "\n\n" : "") + cleaned;
 				break; // answered — stop, no further segments
 			}
-			// Empty answer (NO IMAGE / unusable) → try the next batch once.
+			// Empty answer, "NO IMAGE", or unusable text → try the next batch.
 			i += size;
 		}
 		if (!out.text && !out.timedOut) out.truncated = true;
+		// Tell the caller what happened, so the main agent does not hand-slice the
+		// page when our progression already covered it (observed 2026-10-11: the
+		// agent built 10 own slices after seeing only a blank first tile).
+		if (out.truncated && out.segmentsUsed < out.segmentsTotal) {
+			out.text += `\n\n(xmodel: ultra-long page — ${out.segmentsUsed} of ${out.segmentsTotal} segments analysed; the VLM asked for more but the page ended. Ask for a specific region if you need the rest.)`;
+		}
 		return out;
 	} catch {
 		out.truncated = true;

@@ -270,4 +270,31 @@ if (!available) {
 
 }
 
+	// 16. "NO IMAGE" on a segment advances the progression (it is not an answer)
+	{
+		const fakePlan = {
+			tiles: [1, 2, 3].map((i) => ({ index: i, total: 3, y1: (i - 1) * 100, y2: i * 100, data: Buffer.alloc(8), mimeType: "image/png" })),
+			originalWidth: 100,
+			originalHeight: 300,
+			tiled: true,
+		};
+		const calls = [];
+		const res = await (utils ?? mod).analyzeTiledImage({
+			model: "test/vlm-model",
+			systemPrompt: "s",
+			prompt: "p",
+			plan: fakePlan,
+			runChild: async () => {
+				calls.push(1);
+				return calls.length === 1
+					? { text: "NO IMAGE", timedOut: false, aborted: false, reason: "close" }
+					: { text: "Segment 2 shows 15 text bands.", timedOut: false, aborted: false, reason: "close" };
+			},
+		});
+		// call 1 = 1 tile (blank), call 2 = the remaining 2 tiles in one batch
+		if (calls.length === 2 && res.segmentsUsed === 3 && res.text.includes("15 text bands")) {
+			ok("progression: NO IMAGE on a segment pulls the next one");
+		} else FAIL(`progression NO IMAGE: calls=${calls.length} used=${res.segmentsUsed} text=${JSON.stringify(res.text).slice(0, 60)}`);
+	}
+
 for (const line of results) console.log(line);
