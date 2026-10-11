@@ -313,10 +313,12 @@ NOT share your visible Chrome or your logged-in profile.
 | `ROD_CHROME_BIN` | auto | Chrome binary path (go-rod standard) |
 | `ROD_TIMEOUT` | `30` | Element query timeout (seconds, go-rod standard) |
 | `RODNEY_HOME` | `~/.rodney` | Data directory |
+| `RODNEY_ORPHAN_TTL_HOURS` | `24` | Orphan TTL: a session older than this is swept on the next `start` **even while its browser is still alive** (the hung-Chrome case — a live PID with a valid `state.json` used to be protected forever). `0` disables the age sweep. |
+| `RODNEY_MAX_SESSIONS` | `6` | Cap on concurrent named sessions (`~/.rodney-sessions/*`). Beyond it, `start` refuses and names the sessions to stop. `0` disables the cap. |
 
 ## Gotchas
 
-- **Always `rodney stop`** when done — otherwise a Chrome process lingers indefinitely.
+- **Always `rodney stop`** when done — otherwise a Chrome process lingers. The next `start` sweeps orphans (and anything older than `RODNEY_ORPHAN_TTL_HOURS`, default 24h), but "eventually collected" is not "cleaned up now": stop what you start.
 - **`waitstable` is preferred** over `waitload` for SPAs and dynamic pages — `waitload` only fires on initial navigation, not on client-side renders.
 - **`js` results are stringified** — arrays and objects come back as JSON strings. Pipe through `python3 -m json.tool` or use `--json` flags where available.
 - **`js` takes a single string argument** — pass the whole expression as ONE quoted argument, including newlines: `rodney js '1 +\n2'` works. What fails is passing multiple separate args (`rodney js '1' '2'` → SyntaxError, only the first is wrapped). For complex logic, use an IIFE: `rodney js "(function(){ var els = document.querySelectorAll('.item'); return els[0].innerText; })()"`

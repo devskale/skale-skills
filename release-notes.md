@@ -4,6 +4,26 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **rodney 0.11.3 — Orphan-GC mit TTL + Session-Cap (Nutzer: „keine Zombies, TTL, parallel max").**
+  Zwei Lücken im Orphan-Sweep, beide live verifiziert:
+  1. **Kein TTL.** Der Sweep killte nur Browser, deren PID in KEINER live
+     `state.json` stand. Ein **hängender** Chrome (antwortet nie auf den Debug-Port,
+     exited nie) hatte aber eine gültige state.json → sein PID war geschützt,
+     für immer. 100–500 MB RAM + Profile, bis es jemand von Hand merkt.
+     Jetzt: **Alters-Pass** — älter als `RODNEY_ORPHAN_TTL_HOURS` (Default 24h) →
+     killen + State entfernen, auch wenn der PID lebt. Anker: neues
+     `State.StartedAt`. `StartedAt <= 0` (alter State) wird **nie** nach Alter
+     gesweept, und ein Zeitstempel aus der Zukunft (Clock-Skew) gilt nicht als
+     abgelaufen. Entscheidung in der reinen `ttlExpired()`.
+  2. **Kein Cap.** `--session <name> start` war unbegrenzt — jede Session ein
+     voller Chromium. Jetzt `RODNEY_MAX_SESSIONS` (Default 6): darüber verweigert
+     `start` und **nennt die zu stoppenden Sessions**. `0` deaktiviert beides.
+  **Tests:** 8 Unit-Tests für `ttlExpired` (disabled / unknown-age / fresh /
+  Grenzwert / Clock-Skew / Kurz-TTL / Round-Trip / Legacy-State) + E2E in
+  sandbox-HOME mit echten schlafenden PIDs: fresh-live überlebt (inkl. Prozess),
+  old-live wird gekillt+gesweept, die lebende Global-Session bleibt intakt.
+  Volle Suite grün (317s), Skill-Doku + Registry nachgezogen.
+
 - **rodney: Suite-Crash unter `set -e` gefixt (known issue seit 2026-10-01); registry.md drift behoben.**
   Der in `check.sh` dokumentierte Known-Issle war real: **jeder** fehlschlagende
   rodney-Befehl in den Live-Sektionen killte die GANZE Suite mit exit 2 und
