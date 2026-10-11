@@ -14,6 +14,7 @@ Everything about browser automation for AI agents — tools, setups, and Chrome 
 | Set up Vercel agent-browser | [vcl-agent-browser.md](vcl-agent-browser.md) |
 | **Browse in the terminal (w3m, chawan) — when a text browser beats a real one** | [terminal-browsing.md](terminal-browsing.md) |
 | **surf — drive your real Chrome on macOS (AppleScript)** | [surf.md](surf.md) |
+| **Sniff an API without any browser (GET-query filters, Livewire replay, node vm JS-challenge solver)** | [api-sniffing.md](api-sniffing.md) |
 
 ## Tool Decision Flow
 
@@ -24,6 +25,9 @@ For the full tool landscape (Chrome 136 constraints, session reuse, stealth, clo
 
 ```
 Need a browser?
+├── Site has no API? Read the HTML source first — GET-query filters,
+│   Livewire replay, or a node-vm challenge solver often work
+│   without any browser (see api-sniffing.md)
 ├── Reuse real Chrome session (cookies/logins)?
 │   ├── Yes → OpenChrome MCP or Chrome DevTools MCP
 │   │         (see browser-session-reuse.md)
@@ -60,3 +64,4 @@ Key facts:
 | [vcl-agent-browser.md](vcl-agent-browser.md) | Vercel agent-browser — Rust CLI, accessibility-tree snapshots, best Chrome profile reuse |
 | [surf.md](surf.md) | surf — drive your real logged-in Chrome on macOS via AppleScript (skill doc) |
 | [terminal-browsing.md](terminal-browsing.md) | Terminal-based browsing — w3m/chawan intelligence: the agent ladder, verified breakage, text-web endpoints |
+| [api-sniffing.md](api-sniffing.md) | API sniffing without a browser — server-side GET filters, Livewire component replay, node vm-Sandbox JS-challenge solving (FALTER, FirmenABC case studies) |
