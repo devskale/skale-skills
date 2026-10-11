@@ -13,6 +13,13 @@ import { join } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import { spawn } from "node:child_process";
 import { isValidImage } from "./image-utils";
+import { normalizeImageForVlm, type NormalizeResult } from "./image-normalize";
+
+/** Parse a positive int from an env var; undefined when unset/invalid (→ library default). */
+function envInt(v: string | undefined): number | undefined {
+	const n = Number(v);
+	return v !== undefined && v !== "" && Number.isFinite(n) && n >= 0 ? n : undefined;
+}
 
 /** Default timeout for a child-pi VLM sub-call.
  * Overridable via XMODEL_VLM_TIMEOUT_MS (ms) — e.g. for slow cloud VLMs or tests. */
@@ -187,20 +194,49 @@ export function readImageFileBlock(filePath: string): any | undefined {
 	}
 }
 
-/** Write an image block (base64) to a temp file for VLM delegation. Returns the path + validity. */
+/** Write an image block (base64) to a temp file for VLM delegation. Returns the path + validity.
+ *
+ * Normalisation (portable, photon-WASM): images above the ceilings are aspect-
+ * preserving downscaled and re-encoded as JPEG before they hit the child-pi VLM.
+ * Every provider downscales server-side anyway (Claude 1568px, GPT-4o tiles,
+ * Qwen3-VL max_pixels) — sending the full-res original only pays base64 payload
+ * and latency. 2026-10-09 incident: the 434 KB full-page screenshot produced a
+ * 3.4 MB child output stream. JPEG q80 keeps dense text MORE readable than a
+ * same-size PNG (verified against the DGX VLM: job names survived at q80, were
+ * lost at PNG-1568) at ~40% of the bytes. Failure degrades to the original. */
 export function writeImageTmp(img: any): { path: string; valid: boolean; bytes: number } {
 	const mt = (img.mimeType || "image/png") as string;
 	const rawData: string = typeof img.data === "string" ? img.data : "";
 	forensic("writeImageTmp in", { mimeType: mt, dataLen: rawData.length, dataHead: rawData.slice(0, 40), hasData: !!img.data });
 	const sub = (mt.split("/")[1] || "png").toLowerCase();
-	const ext = /^(png|jpe?g|gif|webp|bmp|tiff?)$/.test(sub) ? sub.replace("jpeg", "jpg") : "png";
-	const p = join("/tmp", `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
+	let ext = /^(png|jpe?g|gif|webp|bmp|tiff?)$/.test(sub) ? sub.replace("jpeg", "jpg") : "png";
 	let buf: Buffer;
 	try {
 		buf = rawData.startsWith("data:") ? Buffer.from(rawData.split(",")[1] ?? "", "base64") : Buffer.from(rawData, "base64");
 	} catch {
 		buf = Buffer.alloc(0);
 	}
+	// Normalise for the VLM path. Opt-outs: XMODEL_VISION_NORMALIZE=0 disables;
+	// XMODEL_VISION_MAX_EDGE / XMODEL_VISION_MAX_PIXELS override the ceilings;
+	// XMODEL_VISION_JPEG=0 keeps PNG (pixel-exact tasks) instead of JPEG q80.
+	let norm: NormalizeResult | null = null;
+	if (process.env.XMODEL_VISION_NORMALIZE !== "0") {
+		norm = normalizeImageForVlm(buf, mt, {
+			maxEdge: envInt(process.env.XMODEL_VISION_MAX_EDGE),
+			maxPixels: envInt(process.env.XMODEL_VISION_MAX_PIXELS),
+			jpegQuality: process.env.XMODEL_VISION_JPEG === "0" ? 0 : 80,
+		});
+		if (norm) {
+			buf = norm.data;
+			ext = norm.mimeType === "image/jpeg" ? "jpg" : "png";
+			forensic("writeImageTmp normalized", {
+				from: { w: norm.originalWidth, h: norm.originalHeight },
+				to: { w: norm.width, h: norm.height },
+				mime: norm.mimeType,
+			});
+		}
+	}
+	const p = join("/tmp", `xmodel-vision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`);
 	writeFileSync(p, buf);
 	const valid = isValidImage(buf);
 	forensic("writeImageTmp out", { path: p, fileBytes: buf.length, valid, magic: buf.slice(0, 8).toString("hex") });

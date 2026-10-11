@@ -4,6 +4,26 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel 0.5.13 — portable Bild-Normalisierung vor der VLM-Delegation (photon-WASM).**
+  Hintergrund (Nutzer-Frage „brauchen Bilder bei komischen Größen eine Normierung?"):
+  jeder Provider resized serverseitig stillschweigend (Claude 1568px/~1.15MP, GPT-4o
+  2048-Box→Tiles, Qwen3-VL max_pixels≈576 Tokens, Gemini Token-Budget — recherchiert
+  2026-10-11). Wer größer schickt, zahlt nur Base64-Payload + Latenz: der 434-KB-
+  Fullpage-Screenshot aus dem Timeout-Vorfall erzeugte einen 3.4-MB-Child-Output-Strom.
+  **Fix:** neue Lib `extensions/lib/image-normalize.ts` — decode via
+  `@silvia-odwyer/photon-node` (WASM, bereits in pi gebündelt, **läuft auf mac/Linux/
+  Windows**, kein `sips`/ImageMagick), EXIF-Orientierung wird honoriert, danach
+  aspect-preserving **Downscale only** auf 1568px Long-Edge + 2MP-Pixel-Cap, Re-Encode
+  als JPEG q80. **Warum JPEG:** datenbasiert entschieden — q80 war auf dem echten
+  DGX-VLM *lesbarer* als PNG-1568 (Job-Namen überlebten, bei PNG fielen sie) bei 40%
+  der Bytes; PNG bleibt per `XMODEL_VISION_JPEG=0` opt-in für pixelgenaue Aufgaben.
+  Fail-soft: jedes Problem → `null`, Caller behält das Original. Overrides:
+  `XMODEL_VISION_NORMALIZE=0`, `XMODEL_VISION_MAX_EDGE`, `XMODEL_VISION_MAX_PIXELS`.
+  Nebenbei portabel gemacht: `toDisplayPng` transcoded non-PNG vorher via `sips`
+  (macOS-only) — jetzt photon-first, sips nur noch als Fallback.
+  **Tests:** `tests/image-normalize/` (20 Checks, echte Fixtures, inkl. EXIF-6-
+  Rotation, Degraded-Mode) + xmodel-Suite grün.
+
 - **xmodel 0.5.12 — Vision-Timeouts: retry statt Aufgeben + lokaler DGX-VLM.**
   Vorfall 2026-10-09 (Session 01a12257): `zai/glm-5.3-flash` als `_vision.vlm` lief bei
   ~9% aller Bild-Analysen in einen 90s-Hard-Timeout OHNE ein Token (transienter

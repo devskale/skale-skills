@@ -12,6 +12,7 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { normalizeImageForDisplay } from "./image-normalize";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -75,7 +76,21 @@ export function toDisplayPng(b64: string): string {
 		return b64;
 	}
 
-	// Non-PNG: transcode via sips (ships with macOS — no extra dependency).
+	// Non-PNG: transcode to PNG. Portable path first (photon WASM — ships with pi,
+	// works on mac/Linux/Windows); sips stays as a macOS-only fallback for the rare
+	// case where photon cannot be resolved (e.g. an exotic embedding).
+	try {
+		const raw = b64.startsWith("data:") ? (b64.split(",")[1] ?? "") : b64;
+		const buf = Buffer.from(raw, "base64");
+		if (!isValidImage(buf)) return b64;
+		const norm = normalizeImageForDisplay(buf, guessMime(b64));
+		if (norm) return norm.toString("base64");
+	} catch {
+		/* fall through to the legacy path */
+	}
+
+	// Legacy fallback: sips (macOS only). On Linux/Windows without photon this
+	// returns the input unchanged — same as before the portable path existed.
 	let dir: string | undefined;
 	try {
 		const raw = b64.startsWith("data:") ? (b64.split(",")[1] ?? "") : b64;
