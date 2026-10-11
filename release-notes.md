@@ -4,6 +4,19 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **rodney: Suite-Crash unter `set -e` gefixt (known issue seit 2026-10-01); registry.md drift behoben.**
+  Der in `check.sh` dokumentierte Known-Issle war real: **jeder** fehlschlagende
+  rodney-Befehl in den Live-Sektionen killte die GANZE Suite mit exit 2 und
+  **null Ergebnissen** — ein hängender Chrome, ein frozen Snapshot, und man sah
+  nur „exit 2", keine Ahnung welcher Check rot war. Jetzt sind die 15 Live-
+  Kommandos failure-tolerant (`|| true` / `|| echo ""`): ein fehlschlagender
+  Befehl kostet einen **benannten** FAIL statt Stille. Zusätzlich guard für den
+  `wc -c < file`-Redirect (wirft, wenn die Datei fehlt — vor `|| echo` greift).
+  **Zweiter Fund aus demselben Lauf:** `references/registry.md` war 18 Zeilen
+  stale gegen das Binary — `page <pattern>`, `pages [pattern]` und das erweiterte
+  `open --reuse` waren undokumentiert. Regeneriert (`gen-registry.sh --write`),
+  66 PASS.
+
 - **Extension-Evaluation: drei Befunde, zwei gefixt, einer entkräftet.**
   Evaluation aller fünf Extensions (heartbeat, image-slim, statusline, imagegen,
   xmodel) — alle Suites grün, Gesamturteil: reif. Befunde:

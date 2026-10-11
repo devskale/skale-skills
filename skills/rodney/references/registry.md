@@ -472,7 +472,7 @@ Navigate the active page to a URL. http:// is added if no scheme is given.
 
 Flags:
 
-- `--reuse    switch to an existing page already at that URL instead of navigating the active page away`
+- `--reuse    switch to an existing page at that URL (exact, or same-origin path prefix — /dash attaches to a page at /dash/ai) instead of navigating the active page away`
 
 ```bash
 rodney open https://example.com
@@ -669,18 +669,18 @@ Open a new page/tab and make it active.
 rodney newpage https://example.com
 ```
 
-### `rodney page <index|t:targetID>`
+### `rodney page <index|t:targetID|pattern>`
 
-Switch the active page. t:<id> pins by stable target ID — drift-proof when parallel sessions shift indices.
+Switch the active page. t:<id> pins by stable target ID — drift-proof when parallel sessions shift indices. A pattern (non-numeric, no t:) attaches to the first page whose URL/title contains it; if several match, the output says so.
 
 ```bash
 rodney page 1
 rodney page t:ABC123
 ```
 
-### `rodney pages [--json]`
+### `rodney pages [pattern] [--json]`
 
-List all pages/tabs. * marks the active one.
+List pages/tabs — all, or those whose URL/title contains pattern (case-insensitive). * marks the active one; indices stay original, so a filtered row's [i] works as page <i>.
 
 Flags:
 
@@ -688,17 +688,19 @@ Flags:
 
 ```bash
 rodney pages
-rodney pages --json
+rodney pages dashboard
+rodney pages --json dashboard
 ```
 
 ## Video recording
 
-### `rodney start-video`
+### `rodney start-video [--max-mib N]`
 
-Start recording the page as video frames (saved on stop-video).
+Start recording the page as video frames (saved on stop-video). Caps total frame bytes at N MiB (default 2048; 0 = unlimited).
 
 ```bash
 rodney start-video
+rodney start-video --max-mib 512
 ```
 
 ### `rodney stop-video [file]`

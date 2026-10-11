@@ -99,29 +99,29 @@ cat > "$FIXTURE" <<'HTML'
 <body><h1>Fixture Head</h1><p>one</p></body></html>
 HTML
 
-rodney start 2>&1 | tail -1
+rodney start 2>&1 | tail -1 || true
 sleep 1
 
-rodney open "file://$FIXTURE" 2>&1 | tail -1
-rodney waitstable 2>&1 | tail -1
+rodney open "file://$FIXTURE" 2>&1 | tail -1 || true
+rodney waitstable 2>&1 | tail -1 || true
 
-TITLE=$(rodney title 2>&1)
+TITLE=$(rodney title 2>&1 || echo "")
 assert "title is 'Rodney Fixture'" "[ '$TITLE' = 'Rodney Fixture' ]"
 
-H1=$(rodney text "h1" 2>&1)
+H1=$(rodney text "h1" 2>&1 || echo "")
 assert "h1 text found" "[ '$H1' = 'Fixture Head' ]"
 
-URL=$(rodney url 2>&1)
+URL=$(rodney url 2>&1 || echo "")
 assert "url contains fixture" "echo '$URL' | grep -q 'rodney-test-fixture'"
 
 # Screenshot test
 SCREENSHOT_PATH="/tmp/rodney-test.png"
-rodney screenshot "$SCREENSHOT_PATH" 2>&1 | tail -1
+rodney screenshot "$SCREENSHOT_PATH" 2>&1 | tail -1 || true
 assert "screenshot file exists" "[ -f \"$SCREENSHOT_PATH\" ]"
-assert "screenshot has content" "[ \$(wc -c < \"$SCREENSHOT_PATH\") -gt 1000 ]"
+assert "screenshot has content" "[ -f \"$SCREENSHOT_PATH\" ] && [ \$(wc -c < \"$SCREENSHOT_PATH\" 2>/dev/null || echo 0) -gt 1000 ]"
 
 # Stop
-rodney stop 2>&1 | tail -1
+rodney stop 2>&1 | tail -1 || true
 
 # Cleanup
 rm -f "$SCREENSHOT_PATH"
@@ -134,13 +134,13 @@ assert "--session without name errors" "! rodney --session status >/dev/null 2>&
 SESS_DIR="$HOME/.rodney-sessions/rodney-test"
 rm -rf "$SESS_DIR"
 # named session: start, verify isolated state dir, stop (kills only its own)
-rodney --session rodney-test start >/dev/null 2>&1
+rodney --session rodney-test start >/dev/null 2>&1 || true
 assert "session state dir created"    "[ -f "$SESS_DIR/state.json" ]"
 assert "session has own chrome pid"  "python3 -c \"import json; d=json.load(open('$SESS_DIR/state.json')); exit(0 if d['chrome_pid']>0 else 1)\""
 assert "session status works"        "rodney --session rodney-test status 2>&1 | grep -q 'Browser running'"
 # stop can race the booting browser (devskale/rodney#3): verify with retry,
 # and treat a surviving chrome as FAIL only if it outlives the retry window.
-rodney --session rodney-test stop >/dev/null 2>&1
+rodney --session rodney-test stop >/dev/null 2>&1 || true
 STOP_OK=0
 for i in 1 2 3 4 5; do
     pgrep -f 'user-data-dir=.*rodney-sessions/rodney-test' >/dev/null 2>&1 || { STOP_OK=1; break; }
@@ -165,9 +165,9 @@ cat > "$FIXTURE2" <<'HTML'
 </body></html>
 HTML
 S="--session fork-feature-test"
-rodney $S start >/dev/null 2>&1
-rodney $S open "file://$FIXTURE2" >/dev/null 2>&1
-rodney $S waitload >/dev/null 2>&1
+rodney $S start >/dev/null 2>&1 || true
+rodney $S open "file://$FIXTURE2" >/dev/null 2>&1 || true
+rodney $S waitload >/dev/null 2>&1 || true
 
 # real keyboard events: type into focused element, press combos
 rodney $S js 'document.getElementById("q").focus()' >/dev/null 2>&1
@@ -204,7 +204,7 @@ HTTP_PORT=18923
 ( cd "$TMPDIR" && python3 -m http.server $HTTP_PORT >/dev/null 2>&1 & echo $! > "$TMPDIR/http.pid" )
 sleep 0.5
 rodney $S open "http://localhost:$HTTP_PORT/rodney-fork-test.html" >/dev/null 2>&1
-rodney $S waitload >/dev/null 2>&1
+rodney $S waitload >/dev/null 2>&1 || true
 rodney $S cookie-set skale yes --domain "localhost" >/dev/null 2>&1
 COOKIE_OUT=$(rodney $S cookie-get --json 2>/dev/null)
 assert "cookie-set with --domain works"     "echo '$COOKIE_OUT' | grep -q localhost"
@@ -221,7 +221,7 @@ else
     echo "  WARN: timezone override known-broken (devskale/rodney#2): page reports $TZ_OUT"
 fi
 
-rodney $S stop >/dev/null 2>&1
+rodney $S stop >/dev/null 2>&1 || true
 sleep 1
 rm -rf "$HOME/.rodney-sessions/fork-feature-test"
 assert "fork session cleaned up"           "[ ! -d "$HOME/.rodney-sessions/fork-feature-test" ]"

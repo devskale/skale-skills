@@ -111,8 +111,9 @@ if [ "${1:-}" = "--full" ]; then
     banner "Per-skill suites"
     # Live-browser suites drive the user's real desktop Chrome — not a machine-independent
     # gate. Include with LIVE_OK=1 when you actually want them (Chrome open, visible desktop).
-    # Known issue: rodney's suite crashes (exit 2, no results) when `rodney title` fails in
-    # its live section — `TITLE=$(rodney title)` under set -e. Found 2026-10-01, unfixed.
+    # rodney's live section used to crash the whole suite (exit 2, no results) when a single
+    # `rodney title` failed under set -e — fixed 2026-10-11: every live command fails soft
+    # and the assert below reports it, so a broken browser costs named FAILs, not silence.
     LIVE_SUITES=" rodney surf "
     for t in tests/*/test.sh; do
         name=$(basename "$(dirname "$t")")
