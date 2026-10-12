@@ -18,6 +18,7 @@
 # a leaked session — same binary (~/.cache/rod/browser), same cleanup.
 
 set -euo pipefail
+TMPDIR="${TMPDIR:-/tmp}"
 
 SCRIPT_NAME="$(basename "$0")"
 
@@ -169,7 +170,15 @@ report() {
         n_leak=$(wc -l <<<"$tmp_leak" | tr -d ' ')
         echo ""
         echo "--- stale rod temp profile dirs ($n_leak, no live process) ---"
-        du -sh ${TMPDIR%/}/rod/user-data 2>/dev/null | awk '{print "  " $0}'
+        # NB: the leak set can be all rodney-test-* dirs while $TMPDIR/rod/user-data
+        # doesn't exist — du would then fail the pipeline under set -o pipefail
+        # and take the whole script down (exit 1, "runs" asserts in test.sh).
+        local _rod_ud="${TMPDIR%/}/rod/user-data"
+        if [[ -d "$_rod_ud" ]]; then
+            du -sh "$_rod_ud" | awk '{print "  " $0}'
+        else
+            echo "  (no $TMPDIR/rod/user-data — leaks are rodney-test-* dirs)"
+        fi
     fi
     echo ""
     echo "Total: $total rod-family Chromium process(es); $orphans orphan(s)"

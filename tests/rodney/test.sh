@@ -5,6 +5,22 @@ set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/rodney"
 
+# TMPDIR is unset on some systems (this Linux box); fall back to /tmp like
+# tests/image-normalize/test.sh does. Without this the fixtures land in
+# "/rodney-test-fixture.html" (root-owned) and the suite dies on write.
+export TMPDIR="${TMPDIR:-/tmp}"
+
+# The rod-managed Chromium (~/.cache/rod/browser) is a frozen 2024 ToT snapshot
+# that is partially broken on newer distros: el.Text() returns "" and
+# InsertText never lands (devskale/rodney#4 — the documented SKILL.md gotcha).
+# Prefer the system Chrome when present, so the suite tests rodney, not the
+# snapshot. An explicit ROD_CHROME_BIN always wins.
+if [ -z "${ROD_CHROME_BIN:-}" ]; then
+    for _c in /opt/google/chrome/chrome /usr/bin/google-chrome /usr/bin/google-chrome-stable /usr/bin/chromium; do
+        if [ -x "$_c" ]; then export ROD_CHROME_BIN="$_c"; break; fi
+    done
+fi
+
 PASS=0
 FAIL=0
 
@@ -257,10 +273,13 @@ echo "[12] Binary commands all documented..."
 # release). Every command the binary knows must appear in references/ —
 # otherwise docs lag and agents misroute. A new binary feature FAILS here
 # until documented (or the registry regenerated).
-BIN_CMDS=$(rodney --help 2>/dev/null | grep -oE '^  rodney [a-z][a-z-]*' | awk '{print $2}' | sort -u || true)
-DOC_CMDS=$(grep -hoE 'rodney [a-z][a-z-]*' SKILL.md references/commands.md 2>/dev/null | awk '{print $2}' | sort -u || true)
+BIN_CMDS=$(rodney --help 2>/dev/null | grep -oE '^  rodney [a-z][a-z-]*' | awk '{print $2}' | LC_ALL=C sort -u || true)
+DOC_CMDS=$(grep -hoE 'rodney [a-z][a-z-]*' SKILL.md references/commands.md 2>/dev/null | awk '{print $2}' | LC_ALL=C sort -u || true)
 if [ -n "$BIN_CMDS" ]; then
-    MISSING=$(comm -23 <(echo "$BIN_CMDS") <(echo "$DOC_CMDS"))
+    # LC_ALL=C on both sides: en_US.UTF-8 collation sorts hyphens differently
+    # than comm expects ("stop-video" disorder) — comm then exits 1 and set -e
+    # kills the whole suite before the summary.
+    MISSING=$(LC_ALL=C comm -23 <(echo "$BIN_CMDS") <(echo "$DOC_CMDS") || true)
     if [ -z "$MISSING" ]; then
         PASS=$((PASS+1)); echo "  ✓ all $(echo "$BIN_CMDS" | wc -l | tr -d ' ') binary commands documented"
     else
