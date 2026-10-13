@@ -6,6 +6,7 @@ Supports private Duck API and SearXNG with credentials for better results.
 """
 
 import argparse
+import base64
 import io
 import json
 import os
@@ -279,16 +280,18 @@ def search_duck(
         if resp.status_code == 502:
             # All upstream backends failed or the box-wide ddgs queue is
             # saturated — retrying immediately just deepens the queue.
-            return [{"error": "Search backend temporarily unavailable "
-                             "(all backends failed or queue saturated). "
-                             "Retry in a few seconds."}]
+            return [{"error": "Duck API error 502 (all upstream backends "
+                              "failed or the ddgs queue is saturated). "
+                              "Retry in a few seconds."}]
         resp.raise_for_status()
         return filter_ads(resp.json().get("results", []))
     except requests.RequestException as e:
         safe_msg = str(e).split("Authorization")[0].rstrip(": ,")
-        return [{"error": f"Search failed: {safe_msg}"}]
+        host = urllib.parse.urlparse(get_duck_search_url()).netloc
+        return [{"error": f"Duck API request failed ({host}): {safe_msg}"}]
     except Exception as e:
-        return [{"error": f"Unexpected error: {e}"}]
+        return [{"error": f"Duck API unexpected error "
+                         f"({type(e).__name__}): {e}"}]
 
 
 def search_duck_news(
@@ -337,16 +340,19 @@ def search_duck_news(
         if resp.status_code == 404:
             return []
         if resp.status_code == 502:
-            return [{"error": "News backend temporarily unavailable "
-                             "(all backends failed or queue saturated). "
-                             "Retry in a few seconds."}]
+            return [{"error": "Duck news API error 502 (all upstream backends "
+                              "failed or the ddgs queue is saturated). "
+                              "Retry in a few seconds."}]
         resp.raise_for_status()
         return filter_ads(resp.json().get("results", []))
     except requests.RequestException as e:
         safe_msg = str(e).split("Authorization")[0].rstrip(": ,")
-        return [{"error": f"News search failed: {safe_msg}"}]
+        host = urllib.parse.urlparse(get_duck_news_url()).netloc
+        return [{"error": f"Duck news API request failed ({host}): "
+                         f"{safe_msg}"}]
     except Exception as e:
-        return [{"error": f"Unexpected error: {e}"}]
+        return [{"error": f"Duck news API unexpected error "
+                         f"({type(e).__name__}): {e}"}]
 
 
 # =============================================================================
@@ -413,8 +419,81 @@ def search_searxng(
             last_error = f"{instance}: {exc}"
             continue
 
-    detail = f" ({last_error})" if last_error else ""
-    return {"error": f"All SearXNG instances failed (tried {len(instances_to_try)}).{detail}"}
+    detail = f" — last error: {last_error}" if last_error else ""
+    return {"error": f"SearXNG error: all {len(instances_to_try)} instances "
+                     f"failed{detail}"}
+
+
+# =============================================================================
+# SearXNG invocation + Duck fallback
+# =============================================================================
+
+def _duck_only_flags(args: argparse.Namespace) -> List[str]:
+    """Flags only the Duck API supports (SearXNG ignores them)."""
+    return [f for f, v in (
+        ("--site", args.site), ("--filetype", args.filetype),
+        ("--inurl", args.inurl), ("--exclude", args.exclude),
+        ("--exact", args.exact),
+    ) if v]
+
+
+def _run_searxng_search(args: argparse.Namespace) -> Dict[str, Any]:
+    """One SearXNG pass: private instance (if configured) first, then the
+    public instance list. Serves as the primary SearXNG path and as the
+    fallback when the Duck API errors (issue 2026-10-13: public SearXNG is
+    the LAST resort, never the default)."""
+    creds = get_searxng_credentials()
+    instance_url = creds["url"] if creds else None
+    auth = None
+    if creds and creds.get("user") and creds.get("pass"):
+        auth = base64.b64encode(
+            f"{creds['user']}:{creds['pass']}".encode()
+        ).decode()
+    return search_searxng(
+        query=args.query,
+        max_results=args.max,
+        categories=args.categories,
+        engines=args.engines,
+        time_range=args.time_range or (args.timelimit[0] if args.timelimit else None),
+        language=args.language,
+        instance_url=instance_url,
+        auth=auth,
+    )
+
+
+def _searxng_fallback(
+    args: argparse.Namespace, results: List[Dict[str, Any]],
+) -> tuple:
+    """Fall back from a failed Duck API call to SearXNG (one attempt).
+
+    A Duck error row is a backend OUTAGE, not "no results" — retry the query
+    via SearXNG instead of giving up. Every error names its origin (Duck API
+    vs SearXNG) so the failure trail stays readable.
+
+    Returns (results, fell_back). results is None when both backends failed
+    (both errors already printed to stderr, origin-labeled).
+    """
+    if not (results and isinstance(results[0], dict) and "error" in results[0]):
+        return results, False
+
+    duck_error = results[0]["error"]
+    print(f"Warning: {duck_error}", file=sys.stderr)
+
+    is_news = bool(args.categories and args.categories.strip() == "news")
+    if not is_news:
+        unsupported = _duck_only_flags(args)
+        if unsupported:
+            print(f"Warning: {', '.join(unsupported)} cannot carry over to "
+                  f"SearXNG (Duck-only filters).", file=sys.stderr)
+    print("Warning: falling back to SearXNG (private instance first, then "
+          "public instances)...", file=sys.stderr)
+
+    sx = _run_searxng_search(args)
+    if isinstance(sx, dict) and "error" in sx:
+        print(f"Error: Duck API failed first: {duck_error}", file=sys.stderr)
+        print(f"Error: SearXNG fallback failed too: {sx['error']}", file=sys.stderr)
+        return None, True
+    return sx, True
 
 
 # =============================================================================
@@ -549,13 +628,9 @@ Backends:
         # text-search operators (site/filetype/inurl/exclude/exact) don't
         # apply there.
         if args.categories and args.categories.strip() == "news":
-            duck_only_flags = [f for f, v in (
-                ("--site", args.site), ("--filetype", args.filetype),
-                ("--inurl", args.inurl), ("--exclude", args.exclude),
-                ("--exact", args.exact),
-            ) if v]
-            if duck_only_flags:
-                print(f"Warning: {', '.join(duck_only_flags)} ignored "
+            news_flags = _duck_only_flags(args)
+            if news_flags:
+                print(f"Warning: {', '.join(news_flags)} ignored "
                       f"(not supported for news).", file=sys.stderr)
             results = search_duck_news(
                 topic=args.query,
@@ -580,40 +655,21 @@ Backends:
                 backend=args.backend,
                 bearer=bearer,
             )
+
+        # Backend outage (error row) → one SearXNG attempt before giving up.
+        results, fell_back = _searxng_fallback(args, results)
+        if results is None:
+            sys.exit(1)
+        if fell_back:
+            backend = "searxng"
+            if args.verbose:
+                print("# Backend: searxng (fallback)", file=sys.stderr)
     else:
-        creds = get_searxng_credentials()
-        instance_url = creds["url"] if creds else None
-        auth = None
-        if creds and creds.get("user") and creds.get("pass"):
-            auth = __import__("base64").b64encode(
-                f"{creds['user']}:{creds['pass']}".encode()
-            ).decode()
+        duck_only = _duck_only_flags(args)
+        if duck_only:
+            print(f"Warning: {', '.join(duck_only)} ignored (Duck API only). Use --api to force Duck backend.", file=sys.stderr)
 
-        # Warn about Duck-only flags used with SearXNG
-        duck_only_flags = []
-        if args.site:
-            duck_only_flags.append("--site")
-        if args.filetype:
-            duck_only_flags.append("--filetype")
-        if args.inurl:
-            duck_only_flags.append("--inurl")
-        if args.exclude:
-            duck_only_flags.append("--exclude")
-        if args.exact:
-            duck_only_flags.append("--exact")
-        if duck_only_flags:
-            print(f"Warning: {', '.join(duck_only_flags)} ignored (Duck API only). Use --api to force Duck backend.", file=sys.stderr)
-
-        results = search_searxng(
-            query=args.query,
-            max_results=args.max,
-            categories=args.categories,
-            engines=args.engines,
-            time_range=args.time_range or (args.timelimit[0] if args.timelimit else None),
-            language=args.language,
-            instance_url=instance_url,
-            auth=auth,
-        )
+        results = _run_searxng_search(args)
 
     # Check for errors
     if isinstance(results, dict) and "error" in results:

@@ -4,6 +4,25 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **web-search 2.4.0 — Duck→SearXNG Client-Fallback + beschreibende Fehlermeldungen (Issue 2026-10-13, StreamReset).**
+  Der Skill brach ab, wenn die Duck API selbst unerreichbar war — kein zweiter
+  Versuch, Error-Message ohne Urheber. Jetzt:
+  1. **Fallback:** eine Duck-Fehler-Row (nicht: leere Liste) triggert genau
+     einen SearXNG-Versuch — private Instanz zuerst, öffentliche zuletzt
+     („public = last resort, never default“). Beide-Backend-Tod → exit 1 mit
+     BEIDEN Fehlern, jede origin-labeliert.
+  2. **Ursprungs-Labels:** jede Fehlermeldung nennt ihren Absender —
+     `Duck API error 502 (…)`, `Duck API request failed (host): …`,
+     `Duck news API …`, `SearXNG error: all N instances failed — last error: …`.
+     Kein „tu error“-Rätselraten mehr, welcher Backend gekippt ist.
+  3. Refactor: `_duck_only_flags()`, `_run_searxng_search()`,
+     `_searxng_fallback()` extrahiert; der SearXNG-Pfad nutzt sie primär UND
+     als Fallback (keine credgoo/auth-Duplizierung mehr, `import base64`
+     statt `__import__`).
+  **Tests:** 17 neue Unit-Checks (Fallback-Matrix: success/both-failed/
+  passthrough, genau ein Versuch, Origin-Labels im Source) + Integrationstest
+  `[7d]` mit deterministisch toter Duck-URL (Port 1). Suite: 63 pass, ein
+  erwarteter Version-Drift bis zum package-clone-Update.
 - **rodney 0.11.3 — Orphan-GC mit TTL + Session-Cap (Nutzer: „keine Zombies, TTL, parallel max").**
   Zwei Lücken im Orphan-Sweep, beide live verifiziert:
   1. **Kein TTL.** Der Sweep killte nur Browser, deren PID in KEINER live

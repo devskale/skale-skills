@@ -115,6 +115,29 @@ fi
 echo ""
 
 # ── 8. Code quality ──────────────────────────────────────────────────────
+# ── 7d. Duck API failure → SearXNG fallback (issue 2026-10-13) ──
+echo "[7d] Duck→SearXNG fallback..."
+# Deterministic duck failure: port 1 is never open. Runs the CHECKOUT's
+# script (uv run scripts/search.py) — the installed command may lag behind
+# until the package clone updates.
+FB_ERR=$(DUCK_API_URL=http://127.0.0.1:1 WEB_SEARCH_BEARER=x \
+    uv run --quiet python scripts/search.py "python tutorial" --max 2 2>&1 1>/dev/null) || true
+assert "duck error names its origin (Duck API ...)" \
+    "echo \"\$FB_ERR\" | grep -q 'Duck API'"
+assert "fallback warning shown" \
+    "echo \"\$FB_ERR\" | grep -q 'falling back to SearXNG'"
+FB_ALL=$(DUCK_API_URL=http://127.0.0.1:1 WEB_SEARCH_BEARER=x \
+    uv run --quiet python scripts/search.py "python tutorial" --max 2 2>&1) || true
+if echo "$FB_ALL" | grep -q "Results for"; then
+    PASS=$((PASS + 1)); echo "  ✓ fallback served results via SearXNG"
+elif echo "$FB_ALL" | grep -q 'SearXNG fallback failed too'; then
+    PASS=$((PASS + 1)); echo "  ✓ both-failed path reports both origins"
+else
+    echo "  WARN: fallback outcome unclear (network?)"
+    WARN=$((WARN + 1))
+fi
+echo ""
+
 echo "[8] Code quality..."
 assert "type hints"       "grep -q 'from typing import' scripts/search.py"
 assert "docstrings (>=6)" "[ $(grep -c '\"\"\"' scripts/search.py) -ge 6 ]"
@@ -128,6 +151,9 @@ assert "ad filter present"  "grep -q '_AD_URL_MARKERS' scripts/search.py"
 assert "news endpoint used" "grep -q '/duck/news' scripts/search.py"
 assert "backend passthrough" "grep -q 'params\[\"backend\"\]' scripts/search.py"
 assert "502 handled"        "grep -q 'status_code == 502' scripts/search.py"
+assert "duck→searxng fallback present" "grep -q '_searxng_fallback' scripts/search.py"
+assert "errors origin-labeled"  "grep -q 'Duck API error 502' scripts/search.py"
+assert "no stale unlabeled errors" "! grep -q 'Search backend temporarily unavailable' scripts/search.py"
 echo ""
 
 # ── 9. SKILL.md ──────────────────────────────────────────────────────────

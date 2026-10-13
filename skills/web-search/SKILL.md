@@ -1,6 +1,6 @@
 ---
 name: web-search
-version: "2.3.1"
+version: "2.4.0"
 description: "Bash skill — run `web-search \"query\"` in your shell (not an MCP tool). Search the web; returns text, image, news, or video results. Use when the user wants to search or look something up."
 ---
 
@@ -100,6 +100,7 @@ web-search "query" --time-range day           # last 24h
 
 - Server chain: query cache (12h) → ddgs/yahoo → private SearXNG fallback — repeat queries are fast.
 - `404` from the API means *no results* (not an error); `502` means all backends failed or the queue is saturated — retry in a few seconds.
+- **Client-side fallback:** if the Duck API itself errors (unreachable, 502, timeout), the skill retries once via SearXNG (private instance first, public instances last) instead of giving up. Errors from both backends are reported, each labeled with its origin (`Duck API ...` / `SearXNG ...`).
 - Ad-click redirect URLs (`bing.com/aclick`, `doubleclick.net`, ...) are filtered out client-side.
 
 ## Configure backends (optional)
@@ -137,7 +138,8 @@ uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#
 - `--time-range` values are **lowercase**: `day`, `week`, `month`, `year`
 - `-v, --verbose` output goes to **stderr** — safe to pipe stdout
 - Duck-only filters are ignored on SearXNG (warning printed). Use `--api` to force Duck.
-- `502 backend unavailable` → box is busy; wait a few seconds and retry, don't switch flags
+- `502 backend unavailable` → box is busy; wait a few seconds and retry, don't switch flags. If the Duck API stays unreachable, the search falls back to SearXNG automatically.
+- Error messages name their origin (`Duck API ...` / `SearXNG ...`) — no guessing which backend failed.
 - Exit codes: `0` = success, `1` = search error
 
 ## Troubleshooting

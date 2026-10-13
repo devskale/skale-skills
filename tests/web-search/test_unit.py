@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Unit tests for credgoo lookup in search.py (_key_with_refresh).
+"""Unit tests for search.py — no network, no credgoo store.
 
-Cache-first; one refetch from the source on a miss or a fetch error. Freshness
-is credgoo's job (its cache carries a 7-day TTL), so there is deliberately no
-refresh gate here — the tests below pin that decision, including the
-multi-key sequence that a per-skill gate used to starve.
+Covers the credgoo lookup (_key_with_refresh): cache-first; one refetch from
+the source on a miss or a fetch error. Freshness is credgoo's job (its cache
+carries a 7-day TTL), so there is deliberately no refresh gate here — the
+tests below pin that decision, including the multi-key sequence that a
+per-skill gate used to starve.
 
-Runs under the skill venv's python (monkeypatches get_api_key → no network, no
-credgoo store). Invoked by tests/web-search/test.sh.
+Also covers the Duck→SearXNG fallback helpers (_duck_only_flags,
+_searxng_fallback): monkeypatches _run_searxng_search, pins that a Duck
+error row triggers exactly one SearXNG attempt, that both-failed reports
+None, and that clean results pass through untouched.
+
+Runs under the skill venv's python. Invoked by tests/web-search/test.sh.
 """
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -116,6 +122,56 @@ url = search.get_duck_api_url()
 check("env wins over credgoo", url == "https://env.example/api/duck")
 check("env short-circuits (0 credgoo calls)", len(calls) == 0)
 del os.environ["DUCK_API_URL"]
+
+# ── Duck→SearXNG fallback helpers (issue 2026-10-13) ──────────────────
+# _run_searxng_search is monkeypatched → these run fully offline.
+
+FB_ARGS = argparse.Namespace(
+    site=None, filetype=None, inurl=None, exclude=None, exact=False,
+    categories=None)
+
+# 7. _duck_only_flags detects only the set flags
+FLAG_ARGS = argparse.Namespace(
+    site="x.com", filetype=None, inurl=None, exclude=None, exact=True,
+    categories=None)
+check("duck-only flags detected",
+      search._duck_only_flags(FLAG_ARGS) == ["--site", "--exact"])
+check("no duck-only flags → empty list",
+      search._duck_only_flags(FB_ARGS) == [])
+
+# 8. Duck error row → exactly one SearXNG attempt, its results win
+attempts = []
+search._run_searxng_search = lambda a: (attempts.append(1) or {
+    "results": [{"title": "t", "url": "u"}]})
+res, fell_back = search._searxng_fallback(
+    FB_ARGS, [{"error": "Duck API error 502: outage"}])
+check("fallback serves searxng results",
+      isinstance(res, dict) and res.get("results") == [{"title": "t", "url": "u"}])
+check("fallback flag set", fell_back is True)
+check("exactly one searxng attempt", len(attempts) == 1)
+
+# 9. both backends failed → None (caller exits; errors already printed)
+attempts.clear()
+search._run_searxng_search = lambda a: (attempts.append(1) or {
+    "error": "SearXNG error: all 5 instances failed"})
+res, fell_back = search._searxng_fallback(
+    FB_ARGS, [{"error": "Duck API error 502: outage"}])
+check("both failed → None", res is None and fell_back is True)
+check("both failed still made one attempt", len(attempts) == 1)
+
+# 10. clean results (no error row) pass through untouched, no attempt
+attempts.clear()
+clean = [{"title": "t", "url": "u"}]
+res, fell_back = search._searxng_fallback(FB_ARGS, clean)
+check("clean results pass through", res is clean and fell_back is False)
+check("no searxng attempt without error", len(attempts) == 0)
+
+# 11. error rows name their origin (descriptive messages, issue §5.3)
+src = Path(search.__file__).read_text(encoding="utf-8")
+check("duck 502 labeled", '"Duck API error 502' in src)
+check("duck request errors labeled", 'f"Duck API request failed' in src)
+check("duck news errors labeled", 'f"Duck news API request failed' in src)
+check("searxng errors labeled", 'f"SearXNG error: all' in src)
 
 print("")
 print(f"PASS={PASS} FAIL={FAIL}")
