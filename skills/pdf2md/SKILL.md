@@ -1,6 +1,6 @@
 ---
 name: pdf2md
-version: "1.4.4"
+version: "1.4.5"
 description: Bash skill — run `pdf2md <file.pdf>` in your shell (not an MCP tool). Convert PDFs to clean Markdown — local extraction, cloud-OCR fallback for scans. Use when the user wants a PDF as Markdown.
 disable-model-invocation: true
 ---

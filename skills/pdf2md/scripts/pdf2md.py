@@ -178,10 +178,18 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
             sys.exit("error: 503 throway transfer disabled server-side (or llamaparse key missing)")
         sys.exit("error: 503 llamaparse key not configured server-side")
     if resp.status_code == 504:
+        if method == "pdfplumber":
+            sys.exit("error: 504 local conversion exceeded the server-side "
+                     "watchdog (60s) — pathological PDF; try --method llamaparse "
+                     "(cloud OCR) or split the file")
         sys.exit("error: 504 job deadline exceeded server-side (default 20 min) — retry with --no-wait")
     if resp.status_code == 202:
-        # long document -> async job (forced beyond ~40 pages); poll until done
-        return wait_job(resp.json(), bearer, verbose, timeout, share=share)
+        # long document -> async job (forced beyond ~40 pages); poll until
+        # done. Async conversions outlive the sync timeout by design (local:
+        # ~0.5-0.8s/page on the server box) — the poll budget is therefore at
+        # least 600s, however small the request timeout was.
+        return wait_job(resp.json(), bearer, verbose,
+                        max(timeout, 600), share=share)
     if resp.status_code >= 400:
         raise ApiError(resp.status_code, detail)
     result = resp.json()

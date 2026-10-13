@@ -4,6 +4,16 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **pdf2md 1.4.5 — große PDFs funktionieren wieder (Server-Fix-Kombination, Issue web_apis 2026-10-13).**
+  Drei Server-Ursachen behoben (mp.Queue-Deadlock, RLIMIT-Bremse, Sync-Watchdog
+  zu knapp auf amd — Details: web_apis/docs/issues). Skill-Seite:
+  1. **504-Meldung pro Methode:** pdfplumber-504 sagt jetzt ehrlich „server
+     watchdog (60s)“ statt des falschen llamaparse-Job-Hinweises.
+  2. **Async-Poll-Budget:** bei 202-Antworten pollt der Client jetzt mindestens
+     600s statt des Sync-Defaults (149 Seiten ≈ 2 min auf amd).
+  Große Text-PDFs (>30 Seiten) laufen automatisch als Server-Job — Client
+  braucht keinen neuen Flag, das Polling existierte schon. Live validiert:
+  149-Seiten-Thesis 1m48s / 347k chars (vorher: deterministischer 504).
 - **xmodel: tsc-Fix für pi-SDK-Union (`BeforeAgentStartEvent`).**
   Der SDK-Typ ist jetzt `user | custom` — `images` existiert nur noch auf der
   user-Variante. Zugriff ohne Narrowing → `TS2339: Property 'images' does not
