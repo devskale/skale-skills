@@ -996,7 +996,10 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	pi.on("before_agent_start", async (event, ctx) => {
 		// auto-vision (switch mode only): user attached images to this prompt. Only worth a
 		// model switch when the pixels can actually arrive — blockImages placeholders them.
-		if (visionCfg.mode === "switch" && modelSeesPixels(ctx) && event.images && event.images.length > 0) await ensureVision(ctx, "before_agent_start");
+		// BeforeAgentStartEvent is a union (user | custom): images exist only on
+	// user prompts — custom triggerTurn messages carry none, so narrow first.
+	const hasUserImages = event.messageType === "user" && (event.images?.length ?? 0) > 0;
+	if (visionCfg.mode === "switch" && modelSeesPixels(ctx) && hasUserImages) await ensureVision(ctx, "before_agent_start");
 		let systemPrompt = `${event.systemPrompt}\n\n${READ_PROTOCOL}`;
 		if (activePreset?.instructions) {
 			systemPrompt = `${systemPrompt}\n\n${activePreset.instructions}`;

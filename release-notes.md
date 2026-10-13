@@ -4,6 +4,13 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **xmodel: tsc-Fix für pi-SDK-Union (`BeforeAgentStartEvent`).**
+  Der SDK-Typ ist jetzt `user | custom` — `images` existiert nur noch auf der
+  user-Variante. Zugriff ohne Narrowing → `TS2339: Property 'images' does not
+  exist` (blockierte Gate & Pre-Push für ALLE, auch unberührte Commits).
+  Fix: `event.messageType === "user" && (event.images?.length ?? 0) > 0` vor
+  dem auto-vision-Switch. Verhalten unverändert — custom triggerTurn-Nachrichten
+  tragen per Definition keine Bilder.
 - **web-search 2.4.0 — Duck→SearXNG Client-Fallback + beschreibende Fehlermeldungen (Issue 2026-10-13, StreamReset).**
   Der Skill brach ab, wenn die Duck API selbst unerreichbar war — kein zweiter
   Versuch, Error-Message ohne Urheber. Jetzt:
