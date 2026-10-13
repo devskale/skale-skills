@@ -1,67 +1,30 @@
-# Browser Automation Docs
+# Browser Automation Docs — Index
 
-Everything about browser automation for AI agents — tools, setups, and Chrome 136+ constraints.
+Pick by task. Every doc is one click away; each topic has exactly one source of truth.
 
-## Quick Navigation
+## Drive by task
 
 | I want to… | Read this |
 |------------|-----------|
-| **Choose between surf / rodney / chrome-devtools-mcp** | [which-browser-tool.md](which-browser-tool.md) |
-| Compare all browser tools (feature matrix, token costs) | [browser-tools-comparison.md](browser-tools-comparison.md) |
-| Reuse my real Chrome session (cookies, logins) | [browser-session-reuse.md](browser-session-reuse.md) |
-| Set up OpenChrome MCP | [openchrome-usage.md](openchrome-usage.md) |
+| **Pick surf vs rodney vs chrome-devtools-mcp** (the everyday choice) | [which-browser-tool.md](which-browser-tool.md) |
+| **Browse as me** — reuse my real Chrome session (cookies, logins, incl. OpenChrome cookie sync) | [browser-session-reuse.md](browser-session-reuse.md) |
+| Compare the full tool landscape (matrix, benchmarks, token costs, graveyard) | [browser-tools-comparison.md](browser-tools-comparison.md) |
 | Set up Chrome DevTools MCP | [chrome-dev.md](chrome-dev.md) |
 | Set up Vercel agent-browser | [vcl-agent-browser.md](vcl-agent-browser.md) |
-| **Browse in the terminal (w3m, chawan) — when a text browser beats a real one** | [terminal-browsing.md](terminal-browsing.md) |
-| **surf — drive your real Chrome on macOS (AppleScript)** | [surf.md](surf.md) |
-| **Sniff an API without any browser (GET-query filters, Livewire replay, node vm JS-challenge solver)** | [api-sniffing.md](api-sniffing.md) |
+| **surf** — drive my real Chrome on macOS (AppleScript) | [surf.md](surf.md) |
+| Browse in the terminal (w3m, chawan) | [terminal-browsing.md](terminal-browsing.md) |
+| Sniff an API without any browser | [api-sniffing.md](api-sniffing.md) |
 
-## Tool Decision Flow
+## The one load-bearing rule
 
-For the **surf vs rodney vs chrome-devtools-mcp** choice, see
-[which-browser-tool.md](which-browser-tool.md) — it's the single source of truth.
+> ⚠️ **Chrome 136+ (March 2025):** `--remote-debugging-port=9222` is **silently ignored** on the default profile; `--user-data-dir` gives a blank profile; App-Bound Encryption blocks copied-profile cookies (macOS excepted — verified). Never cite pre-March-2025 tutorials.
+>
+> What still reaches your real session: DevTools MCP `--autoConnect`, extension bridges, cookie sync/extraction. Details → [browser-session-reuse.md](browser-session-reuse.md).
 
-For the full tool landscape (Chrome 136 constraints, session reuse, stealth, cloud):
+## Decision in one line
 
-```
-Need a browser?
-├── Site has no API? Read the HTML source first — GET-query filters,
-│   Livewire replay, or a node-vm challenge solver often work
-│   without any browser (see api-sniffing.md)
-├── Reuse real Chrome session (cookies/logins)?
-│   ├── Yes → OpenChrome MCP or Chrome DevTools MCP
-│   │         (see browser-session-reuse.md)
-│   └── No ↓
-├── Need MCP integration?
-│   ├── Yes → OpenChrome, Chrome DevTools MCP, or Playwright MCP
-│   └── No ↓
-├── Just need headless automation?
-│   ├── Yes → rodney (rodney start/open/stop)
-│   └── No ↓
-└── Need stealth/anti-detect?
-    └── CloakBrowser (testbed)
-```
-
-## Chrome 136+ Constraints
-
-> ⚠️ Chrome 136+ (March 2025) broke `--remote-debugging-port=9222` on the default profile.
-> **Never assume it works.** See [browser-tools-comparison.md](browser-tools-comparison.md) for the full breakdown.
-
-Key facts:
-- `--remote-debugging-port=9222` is **silently ignored** on the default profile
-- `--user-data-dir` requires a separate (empty) profile
-- App-Bound Encryption prevents copying cookies from the default profile
-- Chrome 146+ `--autoConnect` via `chrome://inspect/#remote-debugging` still works
-
-## Files
-
-| File | Description |
-|------|-------------|
-| [browser-tools-comparison.md](browser-tools-comparison.md) | 10+ tools compared — rodney, OpenChrome, agent-browser, Playwright MCP, Puppeteer MCP, browser-use, CloakBrowser, Browserbase, Cloudflare Browser Run, Claude Computer Use |
-| [browser-session-reuse.md](browser-session-reuse.md) | Strategies for reusing real Chrome sessions — cookie sync, profile mounting, App-Bound Encryption workarounds |
-| [openchrome-usage.md](openchrome-usage.md) | OpenChrome MCP server setup, cookie sync, smoke test results |
-| [chrome-dev.md](chrome-dev.md) | Chrome DevTools Protocol MCP setup — inspect, debug, automate live Chrome |
-| [vcl-agent-browser.md](vcl-agent-browser.md) | Vercel agent-browser — Rust CLI, accessibility-tree snapshots, best Chrome profile reuse |
-| [surf.md](surf.md) | surf — drive your real logged-in Chrome on macOS via AppleScript (skill doc) |
-| [terminal-browsing.md](terminal-browsing.md) | Terminal-based browsing — w3m/chawan intelligence: the agent ladder, verified breakage, text-web endpoints |
-| [api-sniffing.md](api-sniffing.md) | API sniffing without a browser — server-side GET filters, Livewire component replay, node vm-Sandbox JS-challenge solving (FALTER, FirmenABC case studies) |
+- Real session on macOS, zero setup → **surf**
+- Real session, any OS, or read console/perf → **chrome-devtools-mcp**
+- Clean headless browser (scraping, CI, assertions) → **rodney**
+- Everything else (stealth, cloud, frameworks, matrices) → [browser-tools-comparison.md](browser-tools-comparison.md)
+- No browser needed at all? Try [api-sniffing.md](api-sniffing.md) first

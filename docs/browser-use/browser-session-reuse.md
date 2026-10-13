@@ -1,274 +1,138 @@
 ---
 name: browser-session-reuse
-description: "Free/open-source tools that reuse your real browser session (cookies, logins, tabs) for agentic browsing. Smoke test results, setup guides, and recommendations."
-version: 0.1.0
-date: 2026-06-06
+description: "Reuse your real Chrome session (cookies, logins, tabs) for agentic browsing: Chrome DevTools MCP autoConnect, OpenChrome cookie sync, agent-browser profile copy, sweet-cookie extraction. Chrome 136+ constraints, verified smoke tests."
+version: 0.2.0
+date: 2026-10-11
 ---
 
-# Browser Session Reuse — Free & Open Source
+# Browser Session Reuse — Your Real Chrome, Agent-Driven
 
-> How to let AI agents browse the web **as you** — using your existing Chrome logins, cookies, and tabs.
-> No paid services. No cloud browsers. Your machine, your browser, your data.
+> The single source of truth for "browse as me". Free/open-source tools only.
+> Tool landscape → [browser-tools-comparison.md](browser-tools-comparison.md).
 
-## The Problem
+## The Problem (Chrome 136+)
 
-Chrome 136+ (March 2025) killed `--remote-debugging-port` on the default profile. The old `chrome --remote-debugging-port=9222` trick silently fails. App-Bound Encryption prevents copying cookies to a new profile directory. This means most Puppeteer/Playwright-based tools **cannot access your real sessions** anymore.
+Since March 2025, `--remote-debugging-port` on the default profile is **silently ignored**, and App-Bound Encryption blocks decrypting cookies copied to a new profile directory. Most Puppeteer/Playwright tools therefore **cannot reach your real sessions**. What still works, by tier:
 
-## Solutions That Actually Work (Free & Open Source)
+| Tier | Method | Tools |
+|------|--------|-------|
+| **1 — controls your actual running Chrome** | DevTools MCP `--autoConnect` (Chrome 146+); extension-based bridges | Chrome DevTools MCP, Playwright MCP Bridge, Nanobrowser, livemcp |
+| **2 — imports your cookies/profile into own browser** | cookie sync, profile copy, cookie decryption | OpenChrome, agent-browser `--profile`, browser-use `from_system_chrome()`, sweet-cookie |
+| **3 — own browser only** | no session attachment | rodney, CloakBrowser, cloud browsers |
 
-### TIER 1 — Controls Your ACTUAL Running Chrome
+**macOS exception (verified):** Chrome on macOS encrypts cookies with a Keychain key tied to the *user account*, not the profile path — so cookie sync into a different `--user-data-dir` **works on macOS** (OpenChrome proved it). Windows DPAPI + App-Bound v20 blocks it.
 
-These connect to Chrome you already have open. Your tabs, your cookies, your logins. No new browser launched.
+## Tier 1 — Control Your Running Chrome
 
-| # | Tool | Method | Install | MCP? | Chrome Web Store? |
-|---|------|--------|---------|:----:|:-----------------:|
-| 1 | **Chrome DevTools MCP** | Native Chrome toggle (`--autoConnect`, Chrome 144+) | `npx chrome-devtools-mcp@latest` | ✅ | N/A (built-in) |
-| 2 | **OpenChrome** (`openchrome-mcp`) | CDP direct to real Chrome, persistent profiles, parallel | `npx openchrome-mcp` | ✅ | N/A |
-| 3 | **Real Browser MCP** 🧟 | Chrome extension + WebSocket MCP server | `npm i real-browser-mcp` + extension | ✅ | ✅ Yes |
-| 4 | **Nanobrowser** | Chrome extension, multi-agent planner→navigator→validator | Chrome Web Store | No (extension) | ✅ Yes |
-| 5 | **mcp-chrome** (hangwin) 🧟 | Chrome extension + HTTP bridge, 23+ tools | `npm i mcp-chrome` + extension | ✅ | ❌ Sideload |
-| 6 | **livemcp** (was chrome-mcp, DeepakSilaych — repo renamed) | Chrome extension exposes tabs/cookies to MCP | GitHub: Magi-Labs/livemcp | ✅ | ❌ Sideload |
-| 7 | **Playwright MCP Bridge** (Microsoft) | Official extension, human authorizes per tab | `npx @playwright/mcp@latest --extension` | ✅ | ✅ Yes |
-| 8 | **Browserfly** | Chrome extension, bring-your-own-keys AI agent | Chrome Web Store | No (extension) | ✅ Yes |
-
-### TIER 2 — Imports Your Cookies/Profile (launches own browser)
-
-These copy or decrypt your Chrome auth and use it in a fresh browser instance.
-
-| # | Tool | Method | Install | Gets real cookies? | Speed |
-|---|------|--------|---------|:------------------:|------:|
-| 9 | **agent-browser** (`--profile Default`) | Copies Chrome profile to temp dir | `brew install agent-browser` | ✅ (most) | 2.2s ⚡ |
-| 10 | **browser-use** (`from_system_chrome()`) | Copies Chrome profile (Python/Playwright) | `pip install browser-use` | ✅ (most) | 28s |
-| 11 | **agentauth-py** 🧟 | Decrypts Chrome cookies (defeats App-Bound Encryption) | `pip install agentauth-py` | ✅ all | fast |
-| 12 | **sweet-cookie** | Reads cookie DBs (Chrome/Edge/Firefox/Safari) | `npx @steipete/sweet-cookie` | ✅ most | fast |
-
----
-
-## Smoke Tests
-
-> Run date: 2026-06-06 · macOS arm64 · Chrome stable v149
-
-### Test Plan
-
-For each tool, we test:
-1. **Install** — does it install cleanly?
-2. **Connect** — does it see your real Chrome session?
-3. **Navigate** — can it open a page?
-4. **Read** — can it extract page content?
-5. **Auth** — does it see your cookies/logins on a protected site (e.g., GitHub)?
-
-### Results
-
-| Tool | Install | Connect to real Chrome | Navigate | Read content | Click/Interact | Screenshot | Verdict |
-|------|:-------:|:----------------------:|:--------:|:------------:|:--------------:|:----------:|---------|
-| **OpenChrome** v1.12.7 | ✅ `npm i -g` | ✅ CDP on port 9333 | ✅ title + stats | ✅ DOM + a11y refs | ✅ 12ms click | ✅ 21KB PNG | ✅ **PASS** |
-| Chrome DevTools MCP | | | | | | | ⏳ |
-| Real Browser MCP | | | | | | | ⏳ |
-| Nanobrowser | | | | | | | ⏳ |
-| mcp-chrome (hangwin) | | | | | | | ⏳ |
-| agent-browser --profile | | | | | | | ⏳ |
-| agentauth-py | | | | | | | ⏳ |
-| sweet-cookie | | | | | | | ⏳ |
-
----
-
-## Detailed Setup & Notes
-
-### 1. Chrome DevTools MCP
+### Chrome DevTools MCP `--autoConnect` (simplest)
 
 ```json
-{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "chrome-autoallow",
-      "args": ["run", "--autoConnect", "--channel=beta"]
-    }
-  }
-}
+{ "mcpServers": { "chrome-devtools": {
+    "command": "chrome-autoallow",
+    "args": ["run", "--autoConnect", "--channel=beta"] } } }
 ```
 
-**Prerequisites:** Chrome 144+ (Beta or Stable — must match `--channel`). Enable once: `chrome://inspect/#remote-debugging` → toggle on. The `chrome-autoallow` wrapper ([setup](chrome-dev.md#2-add-the-mcp-server-config)) auto-clicks the "Allow remote debugging?" consent dialog; without it, click **Allow** manually on connect.
+Enable once: `chrome://inspect/#remote-debugging` → toggle on. The `chrome-autoallow` wrapper auto-clicks the consent dialog. Sees everything — tabs, cookies, localStorage. Headed only, no parallel sessions. Setup → [chrome-dev.md](chrome-dev.md).
 
-**Pros:** Built into Chrome. Zero extension install. Sees everything.
-**Cons:** Headed only. Chrome 144+ required. No parallel sessions.
+### Playwright MCP Bridge Extension (Microsoft, human-in-loop)
 
-### 2. OpenChrome ✅ SMOKE TESTED
+`npx @playwright/mcp@latest --extension` — sideload the extension from GitHub releases; each session requires a manual "Connect" authorize click. Perfect identity preservation, enterprise-friendly, one tab at a time.
+
+### Nanobrowser (agent in your browser)
+
+Chrome Web Store extension, bring-your-own LLM key, planner→navigator→validator multi-agent. Runs in the browser, not an MCP server.
+
+### OpenChrome ✅ smoke-tested (2026-06-06)
+
+MCP server + CLI driving real Chrome via CDP, with **atomic cookie sync** into a persistent profile (`~/.openchrome/profile/`). **GitHub login verified as @devskale** — cookies synced from the real profile decrypt correctly on macOS (see exception above). Killer features: parallel authenticated sessions, contract assertions (`oc_assert`), hint engine, 118 tools.
+
+**Three-tier profile strategy:** ① real profile (Chrome fully closed) · ② persistent profile + cookie sync (default — works while Chrome runs) · ③ `--restart-chrome` (kills your Chrome — avoid).
 
 ```bash
-# Install globally
-npm install -g openchrome-mcp
-openchrome --version  # 1.12.7
-```
-
-**For MCP clients (Claude Code, Cursor, etc.):**
-```bash
-openchrome setup                    # auto-configures Claude Code
-openchrome setup --client codex     # Codex CLI
-```
-
-**Manual MCP config:**
-```json
-{
-  "mcpServers": {
-    "openchrome": {
-      "command": "openchrome",
-      "args": ["serve", "--auto-launch"]
-    }
-  }
-}
-```
-
-**CLI one-shots (via HTTP daemon):**
-```bash
-# 1. Start the daemon (one time)
+npm i -g openchrome-mcp
+openchrome setup                    # auto-configures Claude Code / Cursor / Codex
+# CLI one-shots need the HTTP daemon (oc run uses a headless temp profile — NOT your cookies):
 export OPENCHROME_ALLOW_UNAUTHENTICATED_HTTP=1
 openchrome serve --port 9333 --auto-launch --http 3101 &
-
-# 2. Navigate
 OPENCHROME_HTTP_PORT=3101 openchrome navigate "https://example.com" --reuse --json
-
-# 3. Read page (DOM or a11y)
 OPENCHROME_HTTP_PORT=3101 openchrome run read_page --arg tabId=TAB_ID --arg mode=ax --reuse --json
-
-# 4. Click (needs fresh refs from read_page)
-OPENCHROME_HTTP_PORT=3101 openchrome run interact --arg ref=ref_10 --arg action=click --reuse --json
-
-# 5. Screenshot
-OPENCHROME_HTTP_PORT=3101 openchrome run page_screenshot --arg tabId=TAB_ID --arg path=/tmp/screenshot.png --reuse --json
+OPENCHROME_HTTP_PORT=3101 openchrome run interact --arg ref=ref_10 --arg action=click --arg tabId=TAB_ID --reuse --json
 ```
 
-#### Smoke Test Results (2026-06-06)
+Smoke results: connect ✅ (CDP 9333) · navigate ✅ · DOM+a11y read ✅ (9ms) · click ✅ (12ms) · screenshot ✅ · cookie sync ✅.
 
-| Test | Result | Detail |
-|------|:------:|--------|
-| Install | ✅ | `npm i -g openchrome-mcp` — 119 packages, 6s |
-| Connect to Chrome (CDP) | ✅ | Found existing Chrome on port 9333, connected |
-| Navigate | ✅ | example.com → title "Example Domain", 11 elements |
-| Read page (DOM) | ✅ | Full DOM tree with `[ref_N]` IDs, 9ms |
-| Read page (a11y) | ✅ | Accessibility tree with `ref_N @eN` IDs |
-| Click (interact) | ✅ | Clicked "Learn more" → navigated to iana.org, 12ms |
-| Screenshot | ✅ | 21KB PNG, 1920×1080, 66ms |
-| Hint engine | ✅ | Auto-detected stale refs, suggested recovery |
-| Doctor | ✅ | Ran diagnostic, found port 9222 conflict with Chrome Beta |
-
-#### ✅ Cookie Sync WORKS — GitHub Login Verified
-
-OpenChrome's atomic SQLite cookie sync successfully copied session cookies from the real Chrome profile to `~/.openchrome/profile/`. GitHub showed **"logged-in"**, avatar for **@devskale** (Skale.io Developer Account), and the **Dashboard** with Top repositories. **No App-Bound Encryption issue** — cookies decrypted correctly in the persistent profile.
-
-The workflow that works:
-1. OpenChrome syncs cookies from `~/Library/Application Support/Google/Chrome/Default/Cookies` → `~/.openchrome/profile/Default/Cookies` via `sqlite3 .backup`
-2. Chrome launches with `--user-data-dir=~/.openchrome/profile/`
-3. Cookies are readable because the persistent profile dir is treated as a legitimate Chrome profile by the OS keychain
-
-**Key insight:** App-Bound Encryption ties the key to the OS user account + profile *path type*, not the exact path string. A `--user-data-dir` pointing to `~/.openchrome/profile/` can decrypt cookies that were synced from the real Chrome profile on the same macOS account.
-
-#### Gotchas
-
-1. **Port 9222 conflict:** If Chrome Beta (or any Chrome) is already on port 9222 but not serving CDP, OpenChrome can't auto-launch. Use `--port 9333` and launch Chrome manually with `--user-data-dir=~/.openchrome/profile/`.
-2. **Auto-launch may fail:** If Chrome stable is already running (without debug port), `--auto-launch` can't start a second instance. Workaround: manually launch Chrome with `--user-data-dir=~/.openchrome/profile/ --remote-debugging-port=9333`, then run `openchrome serve --port 9333 --http 3102`.
-3. **HTTP mode needs auth:** Set `OPENCHROME_ALLOW_UNAUTHENTICATED_HTTP=1` for local dev, or `OPENCHROME_AUTH_TOKEN=xyz` for production.
-4. **Stale refs:** After page navigation, refs from `read_page` are invalidated. Must re-read before clicking.
-5. **`oc run` (CLI one-shots) uses --server-mode** which launches its own headless Chrome — not your real profile. Use the HTTP daemon + `--reuse` for real-session access.
-6. **118 tools registered** — massive surface. Hint engine helps guide agents.
-
-**Pros:** Real Chrome CDP. Persistent profiles. **Cookie sync actually works** (GitHub login verified). Parallel sessions. WAF fallback. Context export/import. Hint engine. Stale-ref detection. 118 tools. Contract assertions. Evidence bundles. Skill recording. Declarative playbooks.
-**Cons:** Complex setup for CLI one-shots (need HTTP daemon). Auto-launch fragile when Chrome already running (manual Chrome launch needed as workaround).
-
-**→ Full usage guide: [openchrome-usage.md](openchrome-usage.md)**
-
-### 3. Real Browser MCP 🧟 (walking dead)
-
-0-star repo, last push 2026-03, no releases. Kept here for the record — see the
-[graveyard appendix](browser-tools-comparison.md#appendix-dead--walking-dead-verified-2026-10-04).
-
-### 4. Nanobrowser
-
-Install from Chrome Web Store: [Nanobrowser](https://chromewebstore.google.com/detail/nanobrowser-ai-web-agent/imbddededgmcgfhfpcjmijokokekbkal)
-
-Bring your own LLM API key (Gemini, GPT-4, etc.). Multi-agent: planner → navigator → validator.
-
-**Pros:** Mature extension. Chrome Web Store. Multi-agent architecture. No backend needed.
-**Cons:** Not an MCP server — runs in browser only. Needs your own LLM key.
-
-### 5. mcp-chrome (hangwin) 🧟 (walking dead)
-
-12.4k stars but stagnant: last commit 2026-01, last release 2025-12. See the
-[graveyard appendix](browser-tools-comparison.md#appendix-dead--walking-dead-verified-2026-10-04).
-
-### 6. agent-browser (profile reuse)
+**When Chrome is already running** (the common case — `--auto-launch` can't start a second instance), launch Chrome manually against the synced profile:
 
 ```bash
-brew install agent-browser
-agent-browser install
-agent-browser --profile Default open https://github.com
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --remote-debugging-port=9333 --user-data-dir="$HOME/.openchrome/profile" \
+  --profile-directory="Default" --no-first-run --no-default-browser-check "about:blank" &
+openchrome serve --port 9333 --http 3101   # connects to that instance
 ```
 
-**Pros:** 2.2s profile load. Rust binary. Token-efficient a11y snapshots. State persistence.
-**Cons:** Doesn't control your running Chrome — copies profile to temp dir. Some cookies may fail with App-Bound Encryption.
+**Cookie sync internals:** atomic `sqlite3 .backup` of the Cookies DB + file copy of localStorage/IndexedDB (passwords, extensions, history are NOT synced). Sync runs on serve startup when stale (mtime hash of source DB) — restart serve to re-sync. Short-lived tokens (OAuth nonces, CSRF) go stale; long-lived sessions (GitHub, Google) are fine.
 
-### 7. agentauth-py 🧟 (walking dead)
+**Troubleshooting:** port 9222 conflict with Chrome Beta → use `--port 9333` · `STALE_REF` on click → `read_page` first, refs die on navigation · HTTP mode refuses unauthenticated → `OPENCHROME_ALLOW_UNAUTHENTICATED_HTTP=1` · cookies stale → restart serve · `sqlite3` missing (Linux) → `apt install sqlite3` · Windows v20 App-Bound cookies don't survive sync (macOS v10 does).
 
-Defeats App-Bound Encryption, but: no visible source repo (GitHub org dead since
-2025-03, 3 stars), PyPI orphaned since 2026-01. For cookie extraction use
-**sweet-cookie** instead (actively maintained). See the
-[graveyard appendix](browser-tools-comparison.md#appendix-dead--walking-dead-verified-2026-10-04).
+**Don't use it when:** you just need your already-running Chrome → DevTools MCP is simpler; quick scrape → rodney/agent-browser.
 
-### 8. sweet-cookie
+**Walking dead (avoid):** mcp-chrome (hangwin) — 12.4k★ but silent since 2026-01 · Real Browser MCP — 0★. See the [graveyard](browser-tools-comparison.md#graveyard-verified-2026-10-04-via-githubnpmpypi).
+
+## Tier 2 — Import Cookies/Profile into Own Browser
+
+| Tool | Method | Gets real cookies? | Speed |
+|------|--------|:-----------------:|------:|
+| **agent-browser** `--profile Default` | copies profile to temp dir | ✅ most | **2.2s** ⚡ |
+| **browser-use** `from_system_chrome()` | copies profile (Playwright) | ✅ most | 28s, 4 GB+ disk |
+| **sweet-cookie** | reads cookie DBs (Chrome/Edge/Firefox/Safari) | ✅ most | fast |
+
+### agent-browser
 
 ```bash
-npx @steipete/sweet-cookie github.com
-# Prints cookies as header string
+brew install agent-browser && agent-browser install
+agent-browser --profile Default open https://github.com   # read-only snapshot of your profile
+agent-browser --auto-connect state save ./auth.json        # export auth from running Chrome
+agent-browser --state ./auth.json open https://app.example.com
+agent-browser --session-name myapp open https://example.com   # auto persist from now on
 ```
 
-**Pros:** Multi-browser (Chrome/Edge/Firefox/Safari). Zero native addons. CLI + library. Battle-tested (used in peep, willhaben skills).
-**Cons:** Extract-only. Node ≥22 or Bun required. Some v20 App-Bound cookies skipped.
+Caveat: `--profile` may hit App-Bound Encryption on some cookies; `--auto-connect state save` + `--state` is the reliable path. State can be AES-256-GCM encrypted via `AGENT_BROWSER_ENCRYPTION_KEY`.
 
----
+### sweet-cookie (cookies for scripts — no browser at all)
+
+```bash
+npx @steipete/sweet-cookie github.com                 # prints cookie header
+npx @steipete/sweet-cookie x.com --browser chrome --format header
+```
+
+Zero native addons (`node:sqlite` + OS keychain), Node ≥22/Bun, battle-tested in the peep and willhaben skills. Extract-only — inject into `fetch()`/requests yourself. v20 App-Bound cookies are skipped with a warning.
+
+🧟 **agentauth-py** (the old answer) is walking dead — no source since 2025-03. Use sweet-cookie.
 
 ## Decision Flow
 
 ```
-I want my AI coding agent (Claude/Cursor/etc) to browse as me:
-│
-├─► Chrome 146+? ──► Chrome DevTools MCP + --autoConnect (simplest)
-├─► Want parallel sessions? ──► OpenChrome
-├─► Prefer extension? ──► Nanobrowser or Playwright MCP Bridge
-│                      (mcp-chrome & Real Browser MCP: walking dead)
-└─► Enterprise/security? ──► Playwright MCP Bridge Extension
-```
+Browse as me:
+├─ Chrome 146+? ──────────► Chrome DevTools MCP --autoConnect (simplest)
+├─ Parallel sessions? ────► OpenChrome (cookie sync, verified)
+├─ Prefer extension? ─────► Playwright MCP Bridge (human-in-loop) or Nanobrowser
+└─ CLI with my profile? ──► agent-browser --profile Default (2.2s)
 
+Cookies in scripts (no browser):
+└─ Node/Bun ─────────────► sweet-cookie
 ```
-I want an AI agent IN my browser (side panel):
-│
-└─► Nanobrowser (bring your own LLM key)
-```
-
-```
-I need cookies in scripts (no browser automation needed):
-│
-├─► Node/Bun ──► sweet-cookie (actively maintained)
-└─► Python ──► agentauth-py 🧟 (unmaintained — no source since 2025-03)
-```
-
-```
-I want CLI automation with my profile:
-│
-└─► agent-browser --profile Default (2.2s, best CLI)
-```
-
----
 
 ## References
 
-- [Chrome Blog: remote-debugging-port changes](https://developer.chrome.com/blog/remote-debugging-port) — the breaking change
-- [Webfuse: Top 5 MCP Servers for Browser Automation 2026](https://www.webfuse.com/blog/the-top-5-best-mcp-servers-for-ai-agent-browser-automation)
-- [OpenChrome GitHub](https://github.com/shaun0927/openchrome)
-- [Real Browser MCP GitHub](https://github.com/iflow-mcp/ofershap-real-browser-mcp)
-- [Nanobrowser](https://nanobrowser.ai/) · [GitHub](https://github.com/nanobrowser/nanobrowser)
-- [mcp-chrome (hangwin)](https://github.com/hangwin/mcp-chrome)
-- [livemcp (was chrome-mcp)](https://github.com/Magi-Labs/livemcp)
-- [Playwright MCP Bridge Extension](https://github.com/microsoft/playwright-mcp)
-- [agent-browser](https://github.com/vercel-labs/agent-browser)
-- [agentauth-py](https://pypi.org/project/agentauth-py/)
-- [sweet-cookie](https://github.com/steipete/sweet-cookie)
-- [Full comparison: browser-tools-comparison.md](browser-tools-comparison.md)
+- [Chrome blog: remote-debugging-port changes](https://developer.chrome.com/blog/remote-debugging-port) — the breaking change
+- [OpenChrome](https://github.com/shaun0927/openchrome) · [auto-connect docs](https://github.com/shaun0927/openchrome/blob/main/docs/auto-connect.md) · [CLI docs](https://github.com/shaun0927/openchrome/blob/main/docs/cli.md)
+- [Playwright MCP Bridge](https://github.com/microsoft/playwright-mcp) · [Nanobrowser](https://nanobrowser.ai/) · [livemcp](https://github.com/Magi-Labs/livemcp)
+- [agent-browser](https://github.com/vercel-labs/agent-browser) · [sweet-cookie](https://github.com/steipete/sweet-cookie)
+- Full tool landscape → [browser-tools-comparison.md](browser-tools-comparison.md)
+
+## Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 0.2.0 | 2026-10-11 | Compacted; absorbed the session-connect section + session-tool catalog from browser-tools-comparison.md (single source of truth). **v0.2.1: folded openchrome-usage.md in** (tier strategy, Chrome-already-running workaround, sync internals, troubleshooting) and deleted the file. Walking-dead tools reduced to one-liners. |
+| 0.1.0 | 2026-06-06 | Initial: tiers, smoke tests, setup notes. |
