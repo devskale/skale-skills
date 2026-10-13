@@ -1,11 +1,13 @@
 # pdf2md.py - Convert PDFs to Markdown via the skale pdf API.
 # pdfplumber (local, text-layer) by default; llamaparse (cloud OCR) for scans.
 import argparse
+import json
 import os
 import sys
 import threading
 import time
 from contextlib import contextmanager
+from typing import Optional
 
 import requests
 
@@ -49,13 +51,86 @@ class ApiError(Exception):
         super().__init__(f"HTTP {status} {detail}".strip())
 
 
+def _poll_wait(job_id: str, poll_url: str, headers: dict, deadline: float,
+               verbose: bool) -> dict:
+    """Klassisches 3s-Polling bis terminal/Deadline (der bewährte Pfad).
+
+    Exits selbst bei 401/HTTP-Fehler/Deadline (mit poll-manual-Hinweis) —
+    wie historisch wait_job.
+    """
+    while True:
+        r = requests.get(poll_url, headers=headers, timeout=30)
+        if r.status_code == 401:
+            sys.exit("error: 401 authentication failed while polling. Check the token: credgoo FETCH_URL_BEARER")
+        if r.status_code >= 400:
+            sys.exit(f"error: job status HTTP {r.status_code}")
+        body = r.json()
+        status = body.get("status")
+        if status == "done":
+            return body
+        if status in ("failed", "error"):
+            sys.exit(f"error: job failed: {body.get('error', 'unknown')}")
+        if time.monotonic() > deadline:
+            sys.exit(f"error: job {job_id} not done after poll budget — poll manually "
+                     f"(result kept ~2h):\n"
+                     f"  curl -s -H 'Authorization: Bearer <token>' {poll_url}")
+        time.sleep(3)
+
+
+def _sse_wait(job_id: str, headers: dict, deadline: float,
+              verbose: bool) -> Optional[dict]:
+    """Auf den SSE-Stream warten (/pdf/jobs/{id}/events): ein Event pro
+    Statuswechsel statt 3s-Poll-Raster — das Warteerlebnis.
+
+    Liefert den finalen Snapshot (done/failed) oder None, wenn SSE nicht
+    nutzbar ist (älterer Server → 404/405, Proxy frisst den Stream,
+    PDF2MD_NO_SSE=1 gesetzt, Stream endet ohne Terminal-Event): der Caller
+    fällt dann automatisch aufs Polling zurück — SSE ist ein Accelerator,
+    kein Pflicht-Contract.
+    """
+    if os.environ.get("PDF2MD_NO_SSE"):
+        return None
+    events_url = f"{API_BASE}/pdf/jobs/{job_id}/events"
+    try:
+        with requests.get(events_url, headers=headers, stream=True,
+                          timeout=(5, 30)) as resp:
+            if resp.status_code != 200:
+                return None
+            if verbose:
+                print(f"pdf2md: streaming events for {job_id[:8]}…",
+                      file=sys.stderr)
+            event_name = None
+            data_line = None
+            for line in resp.iter_lines(decode_unicode=True):
+                if time.monotonic() > deadline:
+                    return None
+                if line == "":  # Event-Grenze
+                    if event_name == "status" and data_line:
+                        data = json.loads(data_line)
+                        if data.get("status") == "failed":
+                            return data  # Fehler-Snapshot, Caller exittet
+                        if data.get("status") == "done":
+                            return data
+                    event_name, data_line = None, None
+                elif line.startswith("event: "):
+                    event_name = line[len("event: "):]
+                elif line.startswith("data: "):
+                    data_line = line[len("data: "):]
+                # `: ping` Heartbeat-Kommentare: halten den Stream offen,
+                # brauchen keine Verarbeitung
+    except (requests.RequestException, json.JSONDecodeError):
+        return None
+    return None  # Stream endete ohne Terminal-Event → Poll-Fallback
+
+
 def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int, share: bool = False):
-    """Poll an async conversion job (202 answer) until done/failed.
+    """Warten auf einen async-Job: SSE-first (Statuswechsel-Push, TTL in
+    jedem Event), Polling als Fallback — der CLI kann keine Callbacks
+    empfangen, aber ein offener Stream ist billiger und schneller als ein
+    3s-Poll-Raster.
 
     The API forces async beyond ~40 pages; llamaparse processes at ~2s/page.
-    `timeout` is the total poll budget — results stay retrievable ~2h, so a
-    timeout exits with the manual poll command. If the result was transferred
-    to throway, download it so the caller still gets markdown.
+    `timeout` is the total wait budget — results stay retrievable ~2h.
     """
     job_id = queued["job_id"]
     poll_url = f"{API_BASE}/pdf/jobs/{job_id}"
@@ -63,23 +138,11 @@ def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int, share: bool
     deadline = time.monotonic() + timeout
     with heartbeat(f"polling job {job_id[:8]}…", verbose,
                    hint="results are kept ~2h"):
-        while True:
-            r = requests.get(poll_url, headers=headers, timeout=30)
-            if r.status_code == 401:
-                sys.exit("error: 401 authentication failed while polling. Check the token: credgoo FETCH_URL_BEARER")
-            if r.status_code >= 400:
-                sys.exit(f"error: job status HTTP {r.status_code}")
-            body = r.json()
-            status = body.get("status")
-            if status == "done":
-                break
-            if status in ("failed", "error"):
-                sys.exit(f"error: job failed: {body.get('error', 'unknown')}")
-            if time.monotonic() > deadline:
-                sys.exit(f"error: job {job_id} not done after {timeout}s — poll manually "
-                         f"(result kept ~2h):\n"
-                         f"  curl -s -H 'Authorization: Bearer <token>' {poll_url}")
-            time.sleep(3)
+        body = _sse_wait(job_id, headers, deadline, verbose)
+        if body is None:
+            body = _poll_wait(job_id, poll_url, headers, deadline, verbose)
+        if body.get("status") in ("failed", "error"):
+            sys.exit(f"error: job failed: {body.get('error', 'unknown')}")
     if body.get("markdown_url"):
         if verbose:
             print(f"pdf2md: shared via {body['markdown_url']} (4h TTL)", file=sys.stderr)

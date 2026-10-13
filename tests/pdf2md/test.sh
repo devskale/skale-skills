@@ -229,6 +229,22 @@ else
     warn "python3 missing — share-path mock skipped"
 fi
 
+# SSE unit tests (no network): _sse_wait contract — every failure mode
+# returns None so polling takes over; SSE never breaks a conversion.
+if command -v python3 &>/dev/null && [ -f "tests/pdf2md/test_unit.py" ]; then
+    if OUT=$(python3 "tests/pdf2md/test_unit.py" 2>&1); then
+        check "sse unit tests (FAIL=0)" 0 true
+    else
+        check "sse unit tests" 1 false
+        echo "$OUT" | sed 's/^/    /' >&2
+    fi
+    check "sse helper present" 0 grep -q "_sse_wait" "$PY"
+    check "poll fallback kept" 0 grep -q "_poll_wait" "$PY"
+    check "kill switch documented" 0 grep -q "PDF2MD_NO_SSE" "$PY"
+else
+    warn "python3 or test_unit.py missing — SSE unit tests skipped"
+fi
+
 # scan path (llamaparse) — uploads to LlamaCloud + costs credits; opt-in only
 if [ "${PDF2MD_TEST_SCAN:-0}" = "1" ]; then
     if [ "$TOKEN" != no ] && [ -s "$FIXPDF" ]; then

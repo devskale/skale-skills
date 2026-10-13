@@ -30,6 +30,7 @@ Expected durations: text-layer PDFs convert in seconds; scans via llamaparse sca
 - Raise the budget explicitly if needed: `--timeout 900`.
 - Above the API cap (10 MB / 500 pages): split the PDF, convert per part, concatenate the Markdown in order (no client-side chunking in this skill by design).
 - 429/504: no automatic retries by design — 429 means quota (wait), 504 on sync llamaparse means the server-side sync budget ran out: **retry with `--no-wait`** (async job, pdf2md polls). Verified on real lecture scans: 4×504 sync → 4× success async in 11–38 s. 504 on pdfplumber instead means the 60s server watchdog hit a pathological PDF (large *text* PDFs no longer trigger this — server-side queue fix 2026-10-13).
+- **Job-Warten via SSE** (seit 1.5.0): sobald die Konvertierung als Job läuft (202), öffnet pdf2md den Event-Stream `GET /pdf/jobs/{id}/events` — ein Event pro Statuswechsel (queued → running → done), jedes mit `expires_in` (wie lange das Ergebnis abholbar bleibt). Fällt der Stream weg (älterer Server, Proxy), wechselt der Client automatisch auf 3s-Polling. Abschaltbar: `PDF2MD_NO_SSE=1`.
 - With `-v` a heartbeat prints elapsed seconds to stderr every 30 s so a long wait is distinguishable from a hang.
 
 ## Async jobs (the API forces them for long documents)

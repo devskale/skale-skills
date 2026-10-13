@@ -4,6 +4,26 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **pdf2md 1.5.0 + web_apis: SSE für Job-Warten — das Warteerlebnis (Folge der
+  Webhook-Diskussion: Client kann keine Callbacks empfangen, aber ein Stream
+  schlägt das 3s-Poll-Raster).**
+  - **Server** `GET /pdf/jobs/{id}/events`: ein Event pro Statuswechsel
+    (queued→running→done/failed), jedes mit vollem Snapshot **inkl.
+    expires_in (TTL)** — Ergebnis-Haltbarkeit immer sichtbar. Terminaler Job
+    → sofortiges Event + Stream-Ende. `: ping` alle 15s hält Proxys offen;
+    Stream-Cap = Job-TTL. Poll- und SSE-Pfad teilen `_job_snapshot()` (nie
+    driftende Semantik). nginx: `proxy_http_version 1.1` + `Connection ""`
+    für /api/ (SSE/chunked), Live-Config in ~/configs versioniert gespiegelt.
+  - **Client** (1.5.0): SSE-first mit **automatischem Polling-Fallback** —
+    älterer Server, Proxy-Ausfall, malformed Event: alles fällt still auf
+    das bewährte Polling zurück; SSE ist Accelerator, nie Contract.
+    Kill-Switch: `PDF2MD_NO_SSE=1`.
+  - **Queue-Hygiene**: `out_q.close()+join_thread()` nach jedem pdfplumber-
+    Child — offene mp.Queues ließen den Test-Prozess am Exit hängen
+    (resource_tracker stallte auf Feeder-Threads/Pipe-FDs).
+  - Tests: 5 SSE-Endpoint-Tests (Transitionen+TTL, Terminal-sofort, 404,
+    Auth), 12 Client-Unit-Tests (_sse_wait: jede Failure-Mode → None →
+    Fallback). Suite 52/0/1, web_apis 25/25.
 - **pdf2md 1.4.5 — große PDFs funktionieren wieder (Server-Fix-Kombination, Issue web_apis 2026-10-13).**
   Drei Server-Ursachen behoben (mp.Queue-Deadlock, RLIMIT-Bremse, Sync-Watchdog
   zu knapp auf amd — Details: web_apis/docs/issues). Skill-Seite:
