@@ -4,6 +4,29 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+- **web_apis pdf-API gehärtet + pdf2md 1.5.1 — Backend-Abort, Client-Cancel,
+  nie abgeholte Ergebnisse** (SOTA-Recherche 2026-10-13: Job-Queue-Playbook
+  + FastAPI-Disconnect-Patterns; umgesetzt wurde, was zur 1-GB-File-Queue
+  passt — Idempotency-Keys bewusst geskippt, kein Client retried Submits):
+  - **Orphan-Sweep** (= Visibility-Timeout-Reclaim): queued/running-Jobs, die
+    älter als der Prozess sind, sind per Definition verwaist (Threads sterben
+    mit dem Boot) → beim ersten Read `failed`, statt 20 min „running“.
+  - **Worker-Crash = First-Class-Event** (DLQ-Regel): Catch-all in beiden
+    Workern flippt JETZT mit Exception-Name — nie still → Deadline.
+    Nebenbei eine echte alte Race enthüllt & gefixt: `_purge_jobs` unlinkte
+    frische `.tmp`-Writes → `os.replace` flog → Worker starb still. Jetzt:
+    nur >60s-alte `.tmp` reappen + `_save_job`-Retry.
+  - **`DELETE /pdf/jobs/{id}`** (Client-Abort): queued/running → `cancelled`
+    (Worker verwerfen an Checkpoints), done/failed → sofortige Purge
+    (= manuelle TTL-Kontrolle für Ergebnisse, die niemand abholt).
+  - **Queue-Cap zählt nur aktive Jobs**: nie abgeholte done-Ergebnisse
+    blockieren (2h TTL lang!) keine neuen Submits mehr.
+  - **LlamaParse-Retry-Policy**: 1 Retry mit Backoff bei Retryable
+    (502/504/Netzwerk), Permanent (429 Quota / 503 Key) failt fast.
+  - Client 1.5.1: `cancelled` ist terminal (SSE + Poll) mit klarem Hinweis
+    statt 20-min-Totpollen.
+  - Tests: 8 neue Hardening-Tests (Sweep, Crash, Cancel-Discard, Purge,
+    Active-Cap, Retry/Permanent) — 33/33 pdf-Suite, 52/0/1 Skill-Suite.
 - **pdf2md 1.5.0 + web_apis: SSE für Job-Warten — das Warteerlebnis (Folge der
   Webhook-Diskussion: Client kann keine Callbacks empfangen, aber ein Stream
   schlägt das 3s-Poll-Raster).**

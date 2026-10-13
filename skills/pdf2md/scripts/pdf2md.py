@@ -70,6 +70,9 @@ def _poll_wait(job_id: str, poll_url: str, headers: dict, deadline: float,
             return body
         if status in ("failed", "error"):
             sys.exit(f"error: job failed: {body.get('error', 'unknown')}")
+        if status == "cancelled":
+            sys.exit("error: job was cancelled (DELETE) — submit again if you "
+                     "still want the conversion")
         if time.monotonic() > deadline:
             sys.exit(f"error: job {job_id} not done after poll budget — poll manually "
                      f"(result kept ~2h):\n"
@@ -107,8 +110,8 @@ def _sse_wait(job_id: str, headers: dict, deadline: float,
                 if line == "":  # Event-Grenze
                     if event_name == "status" and data_line:
                         data = json.loads(data_line)
-                        if data.get("status") == "failed":
-                            return data  # Fehler-Snapshot, Caller exittet
+                        if data.get("status") in ("failed", "cancelled"):
+                            return data  # Fehler-/Cancel-Snapshot, Caller exittet
                         if data.get("status") == "done":
                             return data
                     event_name, data_line = None, None
@@ -141,6 +144,9 @@ def wait_job(queued: dict, bearer: str, verbose: bool, timeout: int, share: bool
         body = _sse_wait(job_id, headers, deadline, verbose)
         if body is None:
             body = _poll_wait(job_id, poll_url, headers, deadline, verbose)
+        if body.get("status") == "cancelled":
+            sys.exit("error: job was cancelled (DELETE) — submit again if you "
+                     "still want the conversion")
         if body.get("status") in ("failed", "error"):
             sys.exit(f"error: job failed: {body.get('error', 'unknown')}")
     if body.get("markdown_url"):
