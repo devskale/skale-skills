@@ -3,12 +3,13 @@
 #
 # One synced root (default ~/code/handoffs/). Inside it, one dir per project;
 # each project has an issues/ kanban (backlog/active/review/archive/cancelled)
-# plus any other shared subfolders (docs/, etc.). Per-repo `.handoff` symlink
-# points at the project dir.
+# plus any other shared subfolders (docs/, etc.). Per-repo container symlink
+# (default `.work`, configurable — see link_name()) points at the project dir.
 #
-# The container dir keeps the historical name `.handoff` (preserves every
-# existing symlink across machines); this tool manages only the `issues/`
-# subfolder of the current project.
+# The synced root keeps its historical name (~/code/handoffs); the REPO-side
+# container link is `.work` (configurable via ISSUES_LINK_NAME; legacy
+# `.handoff` links keep resolving via ISSUES_LEGACY_LINK_NAMES). This tool
+# manages only the `issues/` subfolder of the current project.
 #
 # Identity ("me"):  $HANDOFF_ME  →  ~/.handoff-me  →  hostname -s
 #   Put your machine name in ~/.handoff-me (e.g. "mac", "pi5") and sync it
@@ -98,26 +99,38 @@ module() {
   echo unknown
 }
 
-# Resolve the current project dir by walking up to `.handoff`: a symlink → its
-# target (shared board); a real dir → itself (issues init --local, degraded).
+# Container link name — CONFIG, never hardcoded at call sites.
+#   ISSUES_LINK_NAME (default .work)          — the name init creates + walk-up prefers
+#   ISSUES_LEGACY_LINK_NAMES (default .handoff) — space-separated; walk-up still honors these
+# Deliberately env-only, NOT via cfg(): cfg resolves the project dir through
+# the link itself — the walk-up name must be knowable BEFORE any project is
+# found. Project-level override is impossible by design (the link IS the resolver).
+link_name()          { echo "${ISSUES_LINK_NAME:-.work}"; }
+legacy_link_names()  { echo "${ISSUES_LEGACY_LINK_NAMES:-.handoff}"; }
+
+# Resolve the current project dir by walking up to the container link: a
+# symlink → its target (shared board); a real dir → itself (issues init
+# --local, degraded). Primary name first, then legacy aliases.
 project_dir() {
-  local d="$PWD"
+  local d="$PWD" name
   while [ "$d" != "/" ]; do
-    if [ -L "$d/.handoff" ]; then
-      readlink "$d/.handoff"
-      return 0
-    fi
-    if [ -d "$d/.handoff" ]; then
-      echo "$d/.handoff"
-      return 0
-    fi
+    for name in "$(link_name)" $(legacy_link_names); do
+      if [ -L "$d/$name" ]; then
+        readlink "$d/$name"
+        return 0
+      fi
+      if [ -d "$d/$name" ]; then
+        echo "$d/$name"
+        return 0
+      fi
+    done
     d=$(dirname "$d")
   done
   return 1
 }
 
 issues_dir() {   # echoes <project>/issues, the kanban root
-  local p; p=$(project_dir) || die "no .handoff found walking up from $PWD (run: issues init <project>)"
+  local p; p=$(project_dir) || die "no $(link_name) (or legacy $(legacy_link_names)) found walking up from $PWD (run: issues init <project>)"
   echo "$p/issues"
 }
 
@@ -178,11 +191,11 @@ column_for_state() {
   esac
 }
 
-need_issues_dir() { local d; d=$(issues_dir 2>/dev/null) || die "no issues dir (run from a repo with .handoff)"; [ -d "$d" ] || die "missing $d"; }
+need_issues_dir() { local d; d=$(issues_dir 2>/dev/null) || die "no issues dir (run from a repo with $(link_name))"; [ -d "$d" ] || die "missing $d"; }
 
 # ---- init ---------------------------------------------------------------
 # init_repo_root — nearest enclosing repo root (.git dir / pyproject.toml /
-# package.json — same heuristic as module()), else $PWD. The .handoff link
+# package.json — same heuristic as module()), else $PWD. The container link
 # belongs at the repo root, not in whatever subdirectory you ran init from.
 init_repo_root() {
   local d="$PWD"
@@ -226,10 +239,10 @@ init_migrate_flat() {
 #   1. root check ($ISSUES_DIR/$HANDOFF_DIR/~/code/handoffs — missing → mkdir)
 #   2. <root>/<project>/issues/{backlog,active,review,archive,cancelled}
 #      idempotent
-#   3. .handoff symlink at the repo root → <root>/<project>
+#   3. container symlink (default .work) at the repo root → <root>/<project>
 #   4. report state: ok (already linked) / fix (re-pointed) / SKIP+die (exists,
 #      not a symlink)
-# --local: EXPLICIT degraded mode — .handoff/ as a real dir in the repo,
+# --local: EXPLICIT degraded mode — container/ as a real dir in the repo,
 # self-gitignored + README "local-only, not shared", loud warning. Never a
 # silent fallback. Idempotent; bash 3.2-safe (no set -e break on re-run).
 cmd_init() {
@@ -253,7 +266,7 @@ cmd_init() {
   # --local: board lives IN the repo, not shared. Loud, never silent.
   if [ "$local_mode" -eq 1 ]; then
     local repo; repo=$(init_repo_root)
-    local lh="$repo/.handoff"
+    local lh="$repo/$(link_name)"
     if [ -L "$lh" ]; then
       die "--local: $lh is already a symlink → $(readlink "$lh") — remove it first if you really want a local board"
     fi
@@ -272,11 +285,11 @@ cmd_init() {
       cat > "$lh/README.md" <<EOF2
 # local-only, not shared
 
-This .handoff/ is a REAL directory (created by \`issues init --local\`), not a
+This $(link_name)/ is a REAL directory (created by \`issues init --local\`), not a
 symlink into the shared root — the kanban here is clone-local and NOT synced.
 
 To switch to the shared board (from this repo root):
-  rm -rf .handoff && issues init $project
+  rm -rf $(link_name) && issues init $project
 EOF2
     fi
     echo "  ok   $lh/issues (local board, 5 columns, gitignored)"
@@ -298,20 +311,29 @@ EOF2
   done
   echo "board: $target/issues ($new new, $existing existing columns)"
 
-  local link="$repo/.handoff"
+  local link="$repo/$(link_name)"
+  # Legacy migration: an old-name symlink moves to the configured name
+  # (mv preserves the target; the walk-up would find either, this is hygiene).
+  local legacy name2
+  for name2 in $(legacy_link_names); do
+    if [ "$name2" != "$(link_name)" ] && [ -L "$repo/$name2" ] && [ ! -e "$link" ]; then
+      mv "$repo/$name2" "$link"
+      echo "  fix  ${repo}/${name2} → ${link##*/} (legacy link migrated)"
+    fi
+  done
   if [ -L "$link" ]; then
     local cur; cur=$(readlink "$link")
     if [ "$cur" = "$target" ]; then
-      echo "  ok   ${repo}/.handoff (already → $project)"
+      echo "  ok   ${repo}/${link##*/} (already → $project)"
     else
       rm "$link"; ln -s "$target" "$link"
-      echo "  fix  ${repo}/.handoff (was → $cur, now → $target)"
+      echo "  fix  ${repo}/${link##*/} (was → $cur, now → $target)"
     fi
   elif [ -e "$link" ]; then
-    die "SKIP $repo/.handoff exists but is not a symlink — resolve manually (or use --local for an explicit local dir)"
+    die "SKIP $repo/${link##*/} exists but is not a symlink — resolve manually (or use --local for an explicit local dir)"
   else
     ln -s "$target" "$link"
-    echo "  new  ${repo}/.handoff → $target"
+    echo "  new  ${repo}/${link##*/} → $target"
   fi
   echo "Try: issues board"
 }
@@ -1039,15 +1061,17 @@ CARDEOF
 
 cmd_help() {
   cat <<'EOF'
-issues — multi-project kanban (lives in .handoff/<project>/issues/)
+issues — multi-project kanban (shared root, one dir per project;
+repo-side container link: .work, configurable)
 
   issues init <project> [--local] bootstrap a project board in ONE command:
-                                   root + 5 columns (idempotent) + .handoff
+                                   root + 5 columns (idempotent) + container link
+                                   (.work; migrates legacy .handoff links)
                                    symlink at the repo root. --local = real
                                    local dir, gitignored + WARN (not synced)
   issues doctor [--fix]          setup check (pocock-style): synced root, transport
                                    (Syncthing/throway), versioning, identity,
-                                   .handoff link, board columns. --fix = apply
+                                   container link, board columns. --fix = apply
                                    safe fixes (mkdir root, pin ~/.handoff-me,
                                    create missing columns)
   issues board                    one-line-per-column overview (live board)
@@ -1085,11 +1109,14 @@ Columns: backlog / active / review / archive / cancelled
 State flow: OPEN(backlog) → WIP(active) → FOR_REVIEW(review) → DONE(archive)
                                                            ↘ CANCELLED(cancelled)
 
-Container dir keeps the name `.handoff` (preserves existing symlinks). This
+Container link name: `.work` (config: ISSUES_LINK_NAME; legacy `.handoff`
+still honored via ISSUES_LEGACY_LINK_NAMES). The synced root keeps
+its historical name (~/code/handoffs, env ISSUES_DIR). This
 tool manages only `<project>/issues/`. Other shared subfolders (docs/, …) are
 just files — manage them with plain mv/ls.
 
-Project is resolved from cwd by walking up to the `.handoff` symlink.
+Project is resolved from cwd by walking up to the container link (`.work`,
+or a legacy name).
 Env: ISSUES_DIR (default ~/code/handoffs/). Identity: HANDOFF_ME → ~/.handoff-me → hostname.
 
 CONFIG — project-specific values live in <project>/.issues/config, not the
@@ -1101,10 +1128,15 @@ Keys (key = value, one per line; ~ expands to $HOME):
   triage            space-separated label vocabulary; new stamps the first
                     (default: needs-triage needs-info ready-for-agent ready-for-human wontfix)
   Config file: ~/code/handoffs/<project>/.issues/config
-  Per-call override: ISSUES_VERSION_CMD=…, ISSUES_MODULE_CMD=…, ISSUES_TRIAGE=…
+  link_name         repo-side container link name (default: .work). ENV-ONLY
+                    (ISSUES_LINK_NAME) — a project-config value would be
+                    circular: the link is what RESOLVES the project config.
+  legacy_link_names space-separated legacy link names the walk-up still
+                    honors (default: .handoff). ENV-ONLY, same reason.
+  Per-call override: ISSUES_VERSION_CMD=…, ISSUES_MODULE_CMD=…, ISSUES_TRIAGE=…, ISSUES_LINK_NAME=…, ISSUES_LEGACY_LINK_NAMES=…
 
 TROUBLESHOOTING
-  no issues dir / no .handoff symlink  → run: issues init <project> (from the repo root;
+  no issues dir / no container link  → run: issues init <project> (from the repo root;
                                           on kontext.one: ./k.sh setup-issues)
   issues not on PATH                   → run ./k.sh setup-issues (installs ~/.local/bin/issues)
   version: unknown on new              → add version_cmd/version_default to project config
@@ -1120,7 +1152,7 @@ EOF
 # doctor — pocock-style setup check: explore → report → propose fix → confirm.
 #   issues doctor          check this machine's issues setup, report + advice
 #   issues doctor --fix     apply safe fixes (mkdir root, write ~/.handoff-me,
-#                           create missing .handoff symlink if project dir exists)
+#                           create missing container link if project dir exists)
 # Checks: synced root, transport (Syncthing / local-git versioning / throway
 # config), identity (~/.handoff-me), .handoff link resolution, board columns.
 # Exit 0 = all ok, 1 = something needs attention (report says what).
@@ -1249,22 +1281,29 @@ cmd_doctor() {
     fi
   fi
 
-  # 5. .handoff link (only if we're inside a repo)
+  # 5. container link (only if we're inside a repo)
   local repo=""
   repo=$(init_repo_root 2>/dev/null || true)
   if [ -n "$repo" ] && [ "$repo" != "$CENTRAL" ]; then
-    local link="$repo/.handoff"
-    if [ -L "$link" ]; then
-      local tgt; tgt=$(readlink "$link")
+    local name2 found="" primary="$repo/$(link_name)"
+    for name2 in "$(link_name)" $(legacy_link_names); do
+      { [ -e "$repo/$name2" ] || [ -L "$repo/$name2" ]; } && { found="$repo/$name2"; break; }
+    done
+    if [ -n "$found" ] && [ -L "$found" ]; then
+      local tgt; tgt=$(readlink "$found")
       if [ -d "$tgt" ]; then
-        doc_ok ".handoff → $tgt"
+        if [ "$found" = "$primary" ]; then
+          doc_ok "$(basename "$found") → $tgt"
+        else
+          doc_ok "$(basename "$found") → $tgt (legacy name — issues init migrates it to $(link_name))"
+        fi
       else
-        doc_warn ".handoff → $tgt but target missing — run: issues init <project>"
+        doc_warn "$(basename "$found") → $tgt but target missing — run: issues init <project>"
       fi
-    elif [ -e "$link" ]; then
-      doc_warn "$link exists but is not a symlink — resolve manually (or: rm it && issues init <project>)"
+    elif [ -n "$found" ]; then
+      doc_warn "$(basename "$found") exists but is not a symlink — resolve manually (or: rm it && issues init <project>)"
     else
-      doc_warn "no .handoff in $repo — run: issues init <project> (from the repo root)"
+      doc_warn "no $(link_name) in $repo — run: issues init <project> (from the repo root)"
     fi
   fi
 

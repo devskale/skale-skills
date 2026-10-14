@@ -43,10 +43,10 @@ export ISSUES_DIR="$TEST_ROOT/handoffs"
 REPO="$TEST_ROOT/repo"
 mkdir -p "$REPO"
 
-# init: 5 columns + .handoff symlink (idempotent)
+# init: 5 columns + container link (idempotent; default name .work)
 echo "$(run_in "$REPO" init testproj)" | grep -q "board:" && ok || bad "init did not report board"
 [ -d "$TEST_ROOT/handoffs/testproj/issues/backlog" ] && ok || bad "backlog column missing after init"
-[ -L "$REPO/.handoff" ] && ok || bad ".handoff symlink missing after init"
+[ -L "$REPO/.work" ] && ok || bad ".work symlink missing after init"
 run_in "$REPO" init testproj >/dev/null && ok || bad "init not idempotent (2nd run failed)"
 
 # happy path: new → start → review → done
@@ -120,7 +120,7 @@ out=$(run_in "$REPO" board-html --out "$TEST_ROOT/board.html" --title '<script>x
 [ -f "$TEST_ROOT/board.html" ] && ok || bad "board-html did not write output"
 grep -q '<script>x</script>' "$TEST_ROOT/board.html" && bad "board-html title not HTML-escaped (XSS)" || ok
 
-# doctor: fresh nonexistent root, no .handoff → problems reported, exit 1
+# doctor: fresh nonexistent root, no container link → problems reported, exit 1
 # (ISSUES_DIR points at a path that does NOT exist yet — the suite's own root
 # was already created by init, so use a fresh subdir)
 DOCTOR_DIR="$TEST_ROOT/doctor-cwd"
@@ -131,6 +131,23 @@ out=$(ISSUES_DIR="$DOCTOR_ROOT" run_in "$DOCTOR_DIR" doctor); rc=$?
 echo "$out" | grep -q "synced root missing" && ok || bad "doctor must warn about missing root"
 echo "$out" | grep -q "no git history in root" && ok || bad "doctor must warn about missing versioning"
 echo "$out" | grep -q "problem(s)" && ok || bad "doctor must report problem count"
+# legacy compat: a repo with only an old-name .handoff link still resolves
+LEGACY_RE="$TEST_ROOT/legacy-repo"; mkdir -p "$LEGACY_RE"
+ln -s "$TEST_ROOT/handoffs/testproj" "$LEGACY_RE/.handoff"
+out=$(run_in "$LEGACY_RE" board)
+echo "$out" | grep -q "project: testproj" && ok || bad "legacy .handoff link must still resolve (got: $out)"
+
+# init migrates a legacy link to the configured name
+out=$(run_in "$LEGACY_RE" init testproj)
+[ -L "$LEGACY_RE/.work" ] && [ ! -e "$LEGACY_RE/.handoff" ] && ok || bad "init must migrate legacy .handoff → .work"
+
+# ISSUES_LINK_NAME env: init creates the configured name
+ENVNAME_RE="$TEST_ROOT/envname-repo"; mkdir -p "$ENVNAME_RE"
+out=$(ISSUES_LINK_NAME=.tasks run_in "$ENVNAME_RE" init testproj)
+[ -L "$ENVNAME_RE/.tasks" ] && ok || bad "ISSUES_LINK_NAME must drive the created link name"
+out=$(ISSUES_LINK_NAME=.tasks run_in "$ENVNAME_RE" board)
+echo "$out" | grep -q "project: testproj" && ok || bad "walk-up must honor ISSUES_LINK_NAME"
+
 # --fix: creates missing columns + pins identity (HANDOFF_ME unset, ~/.handoff-me absent → hostname)
 # run inside REPO after removing one column
 rmdir "$TEST_ROOT/handoffs/testproj/issues/review"

@@ -4,6 +4,23 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
+### issues 1.3.0 — Container-Link heißt `.work` (konfigurierbar, kein Hardcode)
+- Repo-seitiger Container-Link: `.handoff` → **`.work`** — benennt den Container
+  nach seiner Klasse statt nach einem Mechanismus (`.git`-Prinzip: drin heißen
+  die Teile konkret — `issues/`, `docs/`).
+- **Kein Hardcode:** `ISSUES_LINK_NAME` (default `.work`) +
+  `ISSUES_LEGACY_LINK_NAMES` (default `.handoff`), dokumentiert in `--help`
+  §CONFIG. Env-only mit Begründung: eine Projekt-Config-Override wäre zirkulär
+  (der Link resolvT die Config).
+- Walk-up findet primären + Legacy-Namen; `issues init` migriert alte Links
+  (`.handoff` → `.work`, mv erhält das Ziel); doctor meldet Legacy-Links als ok
+  mit Migrations-Hinweis.
+- Root (`~/code/handoffs`), Identity (`~/.handoff-me`), LaunchAgent, fstab,
+  sync-handoffs: unberührt — der Rename ist reichweitenarm auf den Repo-Link
+  beschränkt.
+- 4 neue Tests: Legacy-Resolve, Legacy-Migration, `ISSUES_LINK_NAME`-Steuerung
+  für init + walk-up (67/67).
+
 - **web_apis pdf-API gehärtet + pdf2md 1.5.1 — Backend-Abort, Client-Cancel,
   nie abgeholte Ergebnisse** (SOTA-Recherche 2026-10-13: Job-Queue-Playbook
   + FastAPI-Disconnect-Patterns; umgesetzt wurde, was zur 1-GB-File-Queue

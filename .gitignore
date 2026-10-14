@@ -79,3 +79,7 @@ pi
 .links
 python-openutils
 tests/gdocs/output/
+
+# issues container link (repo-local, points into ~/code/handoffs)
+.work
+.handoff
