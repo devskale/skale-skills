@@ -67,7 +67,7 @@ if [ -d "$GIT_ROOT/.git" ]; then
     fi
 fi
 
-CENTRAL="${ISSUES_DIR:-${HANDOFF_DIR:-$HOME/code/handoffs}}"
+CENTRAL="${ISSUES_DIR:-${HANDOFF_DIR:-$HOME/code/skaleshare/works}}"   # the shared works root (was: ~/code/handoffs, renamed 2026-10-14)
 LIVE_COLS=(backlog active review)
 ALL_COLS=(backlog active review archive cancelled)
 ARCHIVE_DIR_NAME="archive"
@@ -105,14 +105,14 @@ module() {
 # Deliberately env-only, NOT via cfg(): cfg resolves the project dir through
 # the link itself — the walk-up name must be knowable BEFORE any project is
 # found. Project-level override is impossible by design (the link IS the resolver).
-# Work bundle dir — the canonical navigation hub inside the share.
-#   ISSUES_WORK_DIR (default ~/code/skaleshare/work)
-# One relative symlink per project (<project> → ../handoffs/<project>), so the
-# bundle travels via sync and resolves on every machine. Repo container links
-# (.work) point HERE (<work_dir>/<project>), not directly into handoffs/ —
-# the bundle is the one canonical mother dir for all boards.
+# Works root — THE canonical mother dir in the share (renamed 2026-10-14:
+# handoffs → works; the separate work/ bundle indirection fell away — the
+# works root IS the bundle). Repo container links (.work) point directly at
+# <works_dir>/<project>.
+#   ISSUES_WORK_DIR (default ~/code/skaleshare/works) — legacy env name kept
+#   ISSUES_DIR / HANDOFF_DIR still address the same root (CENTRAL).
 # Env-only (not cfg()) for the same circularity reason as link_name().
-work_dir() { echo "${ISSUES_WORK_DIR:-$HOME/code/skaleshare/work}"; }
+works_dir() { echo "${ISSUES_WORK_DIR:-${ISSUES_DIR:-$HOME/code/skaleshare/works}}"; }
 
 # throway base for the work-bundle bootstrap (env: ISSUES_THROWAY_BASE).
 # Used ONLY when no shared work dir exists on this machine (no Syncthing,
@@ -121,41 +121,39 @@ work_dir() { echo "${ISSUES_WORK_DIR:-$HOME/code/skaleshare/work}"; }
 throway_base() { echo "${ISSUES_THROWAY_BASE:-https://skale.dev/throway}"; }
 WORK_BUNDLE_KEY="issues-work"   # named throway dir (create-or-get)
 
-# work_shared — 0 if work_dir is missing or empty (nothing to walk into)
-work_shared() {
-  local wd; wd="$(work_dir)"
+# works_shared — 0 if works_dir is missing or empty (nothing to walk into)
+works_shared() {
+  local wd; wd="$(works_dir)"
   [ -d "$wd" ] || return 1
   [ -n "$(ls -A "$wd" 2>/dev/null)" ] || return 1
   return 0
 }
 
-# work_bootstrap — PULL only: machine without a shared work dir fetches the
-# snapshot zip from throway (full bundle, all projects). Best-effort.
-work_bootstrap() {
+# works_bootstrap — PULL only: machine without a shared works root fetches the
+# snapshot zip from throway (full works tree, all projects). Best-effort.
+works_bootstrap() {
   local wd tmp
-  work_shared && return 0
-  wd="$(work_dir)"; tmp=$(mktemp -d)
+  works_shared && return 0
+  wd="$(works_dir)"; tmp=$(mktemp -d)
   if curl -sf -m 60 "$(throway_base)/d/$WORK_BUNDLE_KEY/work.zip?download=1" -o "$tmp/work.zip" 2>/dev/null \
      && [ -s "$tmp/work.zip" ] \
      && mkdir -p "$wd" && unzip -qo "$tmp/work.zip" -d "$wd" 2>/dev/null; then
     echo "  work  snapshot pulled ← $(throway_base)/d/$WORK_BUNDLE_KEY → $wd"
-    echo "  NOTE  snapshot links are plain files — work_link recreates the" >&2
-    echo "        relative bundle links on the next init of each project" >&2
   else
-    echo "  NOTE  no shared work dir and no snapshot on throway — starting empty." >&2
-    echo "        A machine WITH the bundle must run 'issues init <project>' once." >&2
+    echo "  NOTE  no shared works dir and no snapshot on throway — starting empty." >&2
+    echo "        A machine WITH the works root must run 'issues init <project>' once." >&2
     mkdir -p "$wd"
   fi
   rm -rf "$tmp"
 }
 
-# work_push — refresh the throway snapshot from the local bundle (sliding 7d).
-# Best-effort: failures are reported, never fatal.
-work_push() {
-  work_shared || return 0
+# works_push — refresh the throway snapshot from the local works root
+# (sliding 7d). Best-effort: failures are reported, never fatal.
+works_push() {
+  works_shared || return 0
   local tmp
   tmp=$(mktemp -d)
-  if (cd "$(work_dir)" && zip -qr "$tmp/work.zip" . -x '*.DS_Store') 2>/dev/null \
+  if (cd "$(works_dir)" && zip -qr "$tmp/work.zip" . -x '*.DS_Store' -x '.git/*') 2>/dev/null \
      && curl -sf -m 60 -F "file=@$tmp/work.zip;type=application/zip" \
           "$(throway_base)/?dir=1&name=$WORK_BUNDLE_KEY&ttl=7d" >/dev/null 2>&1; then
     echo "  work  snapshot pushed → $(throway_base)/d/$WORK_BUNDLE_KEY (ttl 7d, sliding)"
@@ -165,22 +163,8 @@ work_push() {
   rm -rf "$tmp"
 }
 
-# work_link <project> — ensure <work_dir>/<project> → ../handoffs/<project>
-# (relative, so it survives the sync to every machine). Idempotent.
-work_link() {
-  local project="$1" wd link
-  wd="$(work_dir)"; link="$wd/$project"
-  mkdir -p "$wd"
-  if [ -L "$link" ] && [ "$(readlink "$link")" = "../handoffs/$project" ]; then
-    return 0
-  fi
-  if [ -e "$link" ] && [ ! -L "$link" ]; then
-    echo "  NOTE  $link exists and is not a symlink — left in place" >&2
-    return 0
-  fi
-  ln -sfn "../handoffs/$project" "$link"
-  echo "  work  $link → ../handoffs/$project"
-}
+# (work_link was removed 2026-10-14 — with the works/ rename the bundle
+#  indirection fell away: repo links point directly at <works_dir>/<project>)
 
 link_name()          { echo "${ISSUES_LINK_NAME:-.work}"; }
 legacy_link_names()  { echo "${ISSUES_LEGACY_LINK_NAMES:-.handoff}"; }
@@ -384,6 +368,9 @@ EOF2
   local repo; repo=$(init_repo_root)
   [ -n "$repo" ] || die "no repo root found walking up from $PWD (.git/pyproject.toml/package.json) — cd into a repo first (a link outside a repo becomes a walk-up trap)"
   [ "$repo" = "$target" ] && die "init run inside the shared project dir itself ($target) — run from a repo checkout"
+  # works bootstrap FIRST — before the board makes the root non-empty,
+  # or the pull would never trigger on a fresh machine
+  works_bootstrap
   init_migrate_flat "$root" "$project"
   local col new=0 existing=0
   mkdir -p "$target/issues"
@@ -393,16 +380,12 @@ EOF2
   done
   echo "board: $target/issues ($new new, $existing existing columns)"
 
-  # work bundle: bootstrap FIRST (pull a full snapshot if this machine has
-  # no shared work dir at all — before work_link makes it non-empty), then
-  # ensure our project's entry, then refresh the throway snapshot (push).
-  work_bootstrap
-  work_link "$project"
-  work_push
+  # works root: refresh the throway snapshot (push) after the board exists
+  works_push
 
-  # Repo container links point at the WORK BUNDLE entry, not directly into
-  # handoffs/ — the bundle is the canonical mother dir (ISSUES_WORK_DIR).
-  local wtarget; wtarget="$(work_dir)/$project"
+  # Repo container links point directly at the works root entry:
+  # <works_dir>/<project> (ISSUES_WORK_DIR — the canonical mother dir).
+  local wtarget; wtarget="$(works_dir)/$project"
 
   local link="$repo/$(link_name)"
   # Legacy migration: an old-name symlink moves to the configured name
@@ -417,16 +400,16 @@ EOF2
   if [ -L "$link" ]; then
     local cur; cur=$(readlink "$link")
     if [ "$cur" = "$wtarget" ]; then
-      echo "  ok   ${repo}/${link##*/} (already → work/$project)"
+      echo "  ok   ${repo}/${link##*/} (already → works/$project)"
     else
       rm "$link"; ln -s "$wtarget" "$link"
-      echo "  fix  ${repo}/${link##*/} (was → $cur, now → work/$project)"
+      echo "  fix  ${repo}/${link##*/} (was → $cur, now → works/$project)"
     fi
   elif [ -e "$link" ]; then
     die "SKIP $repo/${link##*/} exists but is not a symlink — resolve manually (or use --local for an explicit local dir)"
   else
     ln -s "$wtarget" "$link"
-    echo "  new  ${repo}/${link##*/} → work/$project"
+    echo "  new  ${repo}/${link##*/} → works/$project"
   fi
   echo "Try: issues board"
 }
@@ -1234,10 +1217,10 @@ Keys (key = value, one per line; ~ expands to $HOME):
                     circular: the link is what RESOLVES the project config.
   legacy_link_names space-separated legacy link names the walk-up still
                     honors (default: .handoff). ENV-ONLY, same reason.
-  work_dir          work bundle dir — the canonical mother dir bundling one
-                    relative link per project (default: ~/code/skaleshare/work).
-                    Repo container links point at <work_dir>/<project>.
-                    ENV-ONLY (ISSUES_WORK_DIR), same circularity reason.
+  works_dir         works root — THE canonical mother dir in the share
+                    (default: ~/code/skaleshare/works). Repo container links
+                    point at <works_dir>/<project>. ENV-ONLY
+                    (ISSUES_WORK_DIR), same circularity reason.
   Per-call override: ISSUES_VERSION_CMD=…, ISSUES_MODULE_CMD=…, ISSUES_TRIAGE=…, ISSUES_LINK_NAME=…, ISSUES_LEGACY_LINK_NAMES=…, ISSUES_WORK_DIR=…
 
 TROUBLESHOOTING
@@ -1249,7 +1232,7 @@ TROUBLESHOOTING
   duplicate slug across columns        → merge into one file, delete the stray
   purge deleted too much               → recovery: local git history in the root
                                           (auto-commit hourly, per-machine) —
-                                          git -C ~/code/handoffs log / show
+                                          git -C ~/code/skaleshare/works log / show
 EOF
 }
 
@@ -1337,12 +1320,12 @@ cmd_doctor() {
     doc_ok "transport: Syncthing detected"
   elif [ -n "$(netmount_of "$CENTRAL")" ]; then
     doc_ok "transport: network mount ($(netmount_of "$CENTRAL")) — root lives on the sharing box, mounts see the same files"
-  elif work_shared; then
-    doc_ok "transport: shared work bundle at $(work_dir) (see issues init <project> to push a throway snapshot)"
+  elif works_shared; then
+    doc_ok "transport: shared works root at $(works_dir) (see issues init <project> to push a throway snapshot)"
   elif [ -n "$(cfg throway_dir "")" ]; then
     doc_ok "transport: throway dir configured (see project config throway_dir)"
   else
-    doc_warn "no transport detected (no Syncthing, no shared work bundle, no throway_dir) — the root is machine-local; boards will NOT sync. Install Syncthing, or run 'issues init <project>' (bootstraps the work bundle via throway)"
+    doc_warn "no transport detected (no Syncthing, no shared works root, no throway_dir) — the root is machine-local; boards will NOT sync. Install Syncthing, or run 'issues init <project>' (bootstraps the works root via throway)"
   fi
 
   # 3. versioning — honest report (docs used to claim 'no git here'). The

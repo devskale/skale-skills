@@ -39,32 +39,31 @@ bash -n "$SCRIPT" && ok || bad "bash -n syntax check failed"
 # ── sandbox board (isolated ISSUES_DIR + fake repo with .handoff) ──────────
 TEST_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
-export ISSUES_DIR="$TEST_ROOT/handoffs"
-export ISSUES_WORK_DIR="$TEST_ROOT/work"
+export ISSUES_DIR="$TEST_ROOT/works"            # the shared works root (single dir — no separate bundle since 1.4.0)
+export ISSUES_WORK_DIR="$TEST_ROOT/works"
 export ISSUES_THROWAY_BASE="https://invalid.invalid"   # tests stay offline — bootstrap pull/push must fail into their NOTE branches
 REPO="$TEST_ROOT/repo"
 mkdir -p "$REPO/.git"                     # repo marker — init refuses non-repo roots (walk-up trap guard)
 
 # init: 5 columns + container link (idempotent; default name .work)
 echo "$(run_in "$REPO" init testproj)" | grep -q "board:" && ok || bad "init did not report board"
-[ -d "$TEST_ROOT/handoffs/testproj/issues/backlog" ] && ok || bad "backlog column missing after init"
+[ -d "$TEST_ROOT/works/testproj/issues/backlog" ] && ok || bad "backlog column missing after init"
 [ -L "$REPO/.work" ] && ok || bad ".work symlink missing after init"
-# work bundle: canonical entry + repo link points THROUGH the bundle
-[ -L "$TEST_ROOT/work/testproj" ] && [ "$(readlink "$TEST_ROOT/work/testproj")" = "../handoffs/testproj" ] && ok || bad "work bundle entry missing/wrong after init"
-[ "$(readlink "$REPO/.work")" = "$TEST_ROOT/work/testproj" ] && ok || bad "repo .work must point at the work bundle entry"
-ls "$TEST_ROOT/work/testproj/issues/backlog" >/dev/null 2>&1 && ok || bad "work bundle entry must resolve to the board"
+# works root: repo link points DIRECTLY at the works entry (no bundle indirection since 1.4.0)
+[ "$(readlink "$REPO/.work")" = "$TEST_ROOT/works/testproj" ] && ok || bad "repo .work must point at the works entry"
+ls "$TEST_ROOT/works/testproj/issues/backlog" >/dev/null 2>&1 && ok || bad "works entry must resolve to the board"
 run_in "$REPO" init testproj >/dev/null && ok || bad "init not idempotent (2nd run failed)"
 
 # happy path: new → start → review → done
 echo "$(run_in "$REPO" new happy-path)" | grep -q "backlog/happy-path.md" && ok || bad "new did not create in backlog"
-grep -q "^state: OPEN" "$TEST_ROOT/handoffs/testproj/issues/backlog/happy-path.md" && ok || bad "new must stamp state OPEN"
+grep -q "^state: OPEN" "$TEST_ROOT/works/testproj/issues/backlog/happy-path.md" && ok || bad "new must stamp state OPEN"
 echo "$(run_in "$REPO" start happy-path)" | grep -q "WIP" && ok || bad "start did not set WIP"
-[ -f "$TEST_ROOT/handoffs/testproj/issues/active/happy-path.md" ] && ok || bad "start did not move to active/"
+[ -f "$TEST_ROOT/works/testproj/issues/active/happy-path.md" ] && ok || bad "start did not move to active/"
 echo "$(run_in "$REPO" review happy-path)" | grep -q "FOR_REVIEW" && ok || bad "review did not set FOR_REVIEW"
 echo "$(run_in "$REPO" done happy-path)" | grep -q "DONE" && ok || bad "done did not set DONE"
-[ -f "$TEST_ROOT/handoffs/testproj/issues/archive/happy-path.md" ] && ok || bad "done did not move to archive/"
+[ -f "$TEST_ROOT/works/testproj/issues/archive/happy-path.md" ] && ok || bad "done did not move to archive/"
 # regression: done <slug> must SET DONE, not list archive
-grep -q "^state: DONE" "$TEST_ROOT/handoffs/testproj/issues/archive/happy-path.md" && ok || bad "done <slug> must set state DONE (regression: was 'ls archive')"
+grep -q "^state: DONE" "$TEST_ROOT/works/testproj/issues/archive/happy-path.md" && ok || bad "done <slug> must set state DONE (regression: was 'ls archive')"
 
 # board / ls / show (live issue present so ls has something to list)
 run_in "$REPO" new live-one >/dev/null
@@ -91,14 +90,14 @@ for slug in "test|pipe" "test space" "test/slash" "$(printf 'test\ttab')"; do
     [ "$rc" -eq 1 ] && echo "$out" | grep -q "bad slug" && ok || bad "new must reject slug '$slug' (regression: pipe/tab/space/slash break rows)"
 done
 # no stray files created by rejected slugs (happy-path is archived; live-one is the only live .md)
-n=$(find "$TEST_ROOT/handoffs/testproj/issues" -name "*.md" | wc -l | tr -d ' ')
+n=$(find "$TEST_ROOT/works/testproj/issues" -name "*.md" | wc -l | tr -d ' ')
 [ "$n" -eq 2 ] && ok || bad "rejected slugs must not create files (found $n .md files)"
 
 # duplicate slug in LIVE columns → loud refusal (archive/ + live may coexist by design)
-cp "$TEST_ROOT/handoffs/testproj/issues/backlog/live-one.md" "$TEST_ROOT/handoffs/testproj/issues/active/live-one.md"
+cp "$TEST_ROOT/works/testproj/issues/backlog/live-one.md" "$TEST_ROOT/works/testproj/issues/active/live-one.md"
 out=$(run_in "$REPO" show live-one); rc=$?
 [ "$rc" -eq 1 ] && echo "$out" | grep -q "duplicate slug" && ok || bad "duplicate live slug must die loudly (live_dup_guard)"
-rm "$TEST_ROOT/handoffs/testproj/issues/active/live-one.md"
+rm "$TEST_ROOT/works/testproj/issues/active/live-one.md"
 
 # set with bad state
 out=$(run_in "$REPO" set happy-path BLOED); rc=$?
@@ -107,19 +106,19 @@ out=$(run_in "$REPO" set happy-path BLOED); rc=$?
 # cancel without a reason must still exit 0 (regression: trailing `[ $# -gt 0 ] && {…}` returned 1)
 run_in "$REPO" new cancel-noreason >/dev/null
 run_in "$REPO" cancel cancel-noreason >/dev/null && ok || bad "cancel <slug> without reason must exit 0 (regression: function returned 1)"
-grep -q "^state: CANCELLED" "$TEST_ROOT/handoffs/testproj/issues/cancelled/cancel-noreason.md" && ok || bad "cancel-noreason not in cancelled/ with CANCELLED"
+grep -q "^state: CANCELLED" "$TEST_ROOT/works/testproj/issues/cancelled/cancel-noreason.md" && ok || bad "cancel-noreason not in cancelled/ with CANCELLED"
 # cancel with reason: reason appended, exit 0
 run_in "$REPO" new cancel-reason >/dev/null
 run_in "$REPO" cancel cancel-reason "duplicate of other" >/dev/null && ok || bad "cancel <slug> <reason> must exit 0"
-grep -q "duplicate of other" "$TEST_ROOT/handoffs/testproj/issues/cancelled/cancel-reason.md" && ok || bad "cancel reason not appended"
+grep -q "duplicate of other" "$TEST_ROOT/works/testproj/issues/cancelled/cancel-reason.md" && ok || bad "cancel reason not appended"
 
 # purge: interactive abort (n) and forced (-y)
 run_in "$REPO" new purge-me >/dev/null
 run_in "$REPO" done purge-me >/dev/null
 echo "n" | run_in "$REPO" purge >/dev/null
-[ -f "$TEST_ROOT/handoffs/testproj/issues/archive/purge-me.md" ] && ok || bad "purge aborted (n) must keep the file"
+[ -f "$TEST_ROOT/works/testproj/issues/archive/purge-me.md" ] && ok || bad "purge aborted (n) must keep the file"
 echo "$(run_in "$REPO" purge -y purge-me)" | grep -q "1 purged" && ok || bad "purge -y did not purge"
-[ ! -f "$TEST_ROOT/handoffs/testproj/issues/archive/purge-me.md" ] && ok || bad "purged file still exists"
+[ ! -f "$TEST_ROOT/works/testproj/issues/archive/purge-me.md" ] && ok || bad "purged file still exists"
 
 # board-html: renders + escapes (live issue present so it has something to render)
 out=$(run_in "$REPO" board-html --out "$TEST_ROOT/board.html" --title '<script>x</script>')
@@ -139,7 +138,7 @@ echo "$out" | grep -q "no git history in root" && ok || bad "doctor must warn ab
 echo "$out" | grep -q "problem(s)" && ok || bad "doctor must report problem count"
 # legacy compat: a repo with only an old-name .handoff link still resolves
 LEGACY_RE="$TEST_ROOT/legacy-repo"; mkdir -p "$LEGACY_RE/.git"
-ln -s "$TEST_ROOT/handoffs/testproj" "$LEGACY_RE/.handoff"
+ln -s "$TEST_ROOT/works/testproj" "$LEGACY_RE/.handoff"
 out=$(run_in "$LEGACY_RE" board)
 echo "$out" | grep -q "project: testproj" && ok || bad "legacy .handoff link must still resolve (got: $out)"
 
@@ -156,9 +155,9 @@ echo "$out" | grep -q "project: testproj" && ok || bad "walk-up must honor ISSUE
 
 # --fix: creates missing columns + pins identity (HANDOFF_ME unset, ~/.handoff-me absent → hostname)
 # run inside REPO after removing one column
-rmdir "$TEST_ROOT/handoffs/testproj/issues/review"
+rmdir "$TEST_ROOT/works/testproj/issues/review"
 out=$(run_in "$REPO" doctor --fix); rc=$?
-[ -d "$TEST_ROOT/handoffs/testproj/issues/review" ] && ok || bad "doctor --fix must recreate missing column"
+[ -d "$TEST_ROOT/works/testproj/issues/review" ] && ok || bad "doctor --fix must recreate missing column"
 echo "$out" | grep -q "created missing columns" && ok || bad "doctor --fix must report created columns"
 # unknown flag dies cleanly
 out=$(run_in "$REPO" doctor --bogus); rc=$?
@@ -175,15 +174,14 @@ echo
 echo "PASS: $PASS  FAIL: $FAIL"
 [ "$FAIL" -eq 0 ]
 
-# ── work bootstrap: no shared work dir → pull attempt (offline → NOTE, not fatal) ──
+# ── works bootstrap: no shared works dir → pull attempt (offline → NOTE, not fatal) ──
 BOOT_RE="$TEST_ROOT/boot-repo"; mkdir -p "$BOOT_RE/.git"
-rm -rf "$TEST_ROOT/work"                      # simulate: no shared bundle on this machine
+rm -rf "$TEST_ROOT/works"                      # simulate: no shared works root on this machine
 out=$(ISSUES_THROWAY_BASE="https://invalid.invalid" run_in "$BOOT_RE" init bootproj); rc=$?
 [ "$rc" -eq 0 ] && ok || bad "init must survive a failed bootstrap pull (rc=$rc)"
-[ -d "$TEST_ROOT/work" ] && ok || bad "init must create the work dir even without a snapshot"
+[ -d "$TEST_ROOT/works" ] && ok || bad "init must create the works dir even without a snapshot"
 echo "$out" | grep -q "no snapshot\|starting empty" && ok || bad "init must report the empty-bootstrap NOTE"
-# ── work bootstrap: bundle present → push attempt (offline → NOTE, not fatal) ──
-mkdir -p "$TEST_ROOT/work/bootproj"; ln -sfn "../handoffs/bootproj" "$TEST_ROOT/work/bootproj"
+# ── works bootstrap: works dir present → push attempt (offline → NOTE, not fatal) ──
 out=$(ISSUES_THROWAY_BASE="https://invalid.invalid" run_in "$BOOT_RE" init bootproj); rc=$?
 [ "$rc" -eq 0 ] && ok || bad "init must survive a failed bootstrap push (rc=$rc)"
 echo "$out" | grep -q "could not push" && ok || bad "init must report the failed push NOTE"
