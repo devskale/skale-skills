@@ -114,6 +114,57 @@ module() {
 # Env-only (not cfg()) for the same circularity reason as link_name().
 work_dir() { echo "${ISSUES_WORK_DIR:-$HOME/code/skaleshare/work}"; }
 
+# throway base for the work-bundle bootstrap (env: ISSUES_THROWAY_BASE).
+# Used ONLY when no shared work dir exists on this machine (no Syncthing,
+# no mount): push a snapshot there from a machine that has the bundle,
+# pull it on a machine that has none. Not a sync — a 7d-sliding snapshot.
+throway_base() { echo "${ISSUES_THROWAY_BASE:-https://skale.dev/throway}"; }
+WORK_BUNDLE_KEY="issues-work"   # named throway dir (create-or-get)
+
+# work_shared — 0 if work_dir is missing or empty (nothing to walk into)
+work_shared() {
+  local wd; wd="$(work_dir)"
+  [ -d "$wd" ] || return 1
+  [ -n "$(ls -A "$wd" 2>/dev/null)" ] || return 1
+  return 0
+}
+
+# work_bootstrap — PULL only: machine without a shared work dir fetches the
+# snapshot zip from throway (full bundle, all projects). Best-effort.
+work_bootstrap() {
+  local wd tmp
+  work_shared && return 0
+  wd="$(work_dir)"; tmp=$(mktemp -d)
+  if curl -sf -m 60 "$(throway_base)/d/$WORK_BUNDLE_KEY/work.zip?download=1" -o "$tmp/work.zip" 2>/dev/null \
+     && [ -s "$tmp/work.zip" ] \
+     && mkdir -p "$wd" && unzip -qo "$tmp/work.zip" -d "$wd" 2>/dev/null; then
+    echo "  work  snapshot pulled ← $(throway_base)/d/$WORK_BUNDLE_KEY → $wd"
+    echo "  NOTE  snapshot links are plain files — work_link recreates the" >&2
+    echo "        relative bundle links on the next init of each project" >&2
+  else
+    echo "  NOTE  no shared work dir and no snapshot on throway — starting empty." >&2
+    echo "        A machine WITH the bundle must run 'issues init <project>' once." >&2
+    mkdir -p "$wd"
+  fi
+  rm -rf "$tmp"
+}
+
+# work_push — refresh the throway snapshot from the local bundle (sliding 7d).
+# Best-effort: failures are reported, never fatal.
+work_push() {
+  work_shared || return 0
+  local tmp
+  tmp=$(mktemp -d)
+  if (cd "$(work_dir)" && zip -qr "$tmp/work.zip" . -x '*.DS_Store') 2>/dev/null \
+     && curl -sf -m 60 -F "file=@$tmp/work.zip;type=application/zip" \
+          "$(throway_base)/?dir=1&name=$WORK_BUNDLE_KEY&ttl=7d" >/dev/null 2>&1; then
+    echo "  work  snapshot pushed → $(throway_base)/d/$WORK_BUNDLE_KEY (ttl 7d, sliding)"
+  else
+    echo "  NOTE  could not push work snapshot to throway (offline? zip missing?)" >&2
+  fi
+  rm -rf "$tmp"
+}
+
 # work_link <project> — ensure <work_dir>/<project> → ../handoffs/<project>
 # (relative, so it survives the sync to every machine). Idempotent.
 work_link() {
@@ -337,8 +388,12 @@ EOF2
   done
   echo "board: $target/issues ($new new, $existing existing columns)"
 
-  # work bundle: one canonical entry per project (relative link, sync-safe)
+  # work bundle: bootstrap FIRST (pull a full snapshot if this machine has
+  # no shared work dir at all — before work_link makes it non-empty), then
+  # ensure our project's entry, then refresh the throway snapshot (push).
+  work_bootstrap
   work_link "$project"
+  work_push
 
   # Repo container links point at the WORK BUNDLE entry, not directly into
   # handoffs/ — the bundle is the canonical mother dir (ISSUES_WORK_DIR).
@@ -1270,10 +1325,12 @@ cmd_doctor() {
     doc_ok "transport: Syncthing detected"
   elif [ -n "$(netmount_of "$CENTRAL")" ]; then
     doc_ok "transport: network mount ($(netmount_of "$CENTRAL")) — root lives on the sharing box, mounts see the same files"
+  elif work_shared; then
+    doc_ok "transport: shared work bundle at $(work_dir) (see issues init <project> to push a throway snapshot)"
   elif [ -n "$(cfg throway_dir "")" ]; then
     doc_ok "transport: throway dir configured (see project config throway_dir)"
   else
-    doc_warn "no transport detected (no Syncthing, no throway_dir in project config) — the root is machine-local; boards will NOT sync. Install Syncthing, or set throway_dir in <project>/.issues/config"
+    doc_warn "no transport detected (no Syncthing, no shared work bundle, no throway_dir) — the root is machine-local; boards will NOT sync. Install Syncthing, or run 'issues init <project>' (bootstraps the work bundle via throway)"
   fi
 
   # 3. versioning — honest report (docs used to claim 'no git here'). The

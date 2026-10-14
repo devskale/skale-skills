@@ -173,3 +173,16 @@ out=$(run_in "$REPO" --selfcheck); echo "$out" | grep -q "selfcheck" && ok || ba
 echo
 echo "PASS: $PASS  FAIL: $FAIL"
 [ "$FAIL" -eq 0 ]
+
+# ── work bootstrap: no shared work dir → pull attempt (offline → NOTE, not fatal) ──
+BOOT_RE="$TEST_ROOT/boot-repo"; mkdir -p "$BOOT_RE"
+rm -rf "$TEST_ROOT/work"                      # simulate: no shared bundle on this machine
+out=$(ISSUES_THROWAY_BASE="https://invalid.invalid" run_in "$BOOT_RE" init bootproj); rc=$?
+[ "$rc" -eq 0 ] && ok || bad "init must survive a failed bootstrap pull (rc=$rc)"
+[ -d "$TEST_ROOT/work" ] && ok || bad "init must create the work dir even without a snapshot"
+echo "$out" | grep -q "no snapshot\|starting empty" && ok || bad "init must report the empty-bootstrap NOTE"
+# ── work bootstrap: bundle present → push attempt (offline → NOTE, not fatal) ──
+mkdir -p "$TEST_ROOT/work/bootproj"; ln -sfn "../handoffs/bootproj" "$TEST_ROOT/work/bootproj"
+out=$(ISSUES_THROWAY_BASE="https://invalid.invalid" run_in "$BOOT_RE" init bootproj); rc=$?
+[ "$rc" -eq 0 ] && ok || bad "init must survive a failed bootstrap push (rc=$rc)"
+echo "$out" | grep -q "could not push" && ok || bad "init must report the failed push NOTE"
