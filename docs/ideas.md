@@ -19,7 +19,7 @@ answer recorded, and nobody is waiting on it.
 
 That makes this folder the *slow lane* of the issue tracker:
 
-| | Issue board (`.handoff/`) | `docs/` (here) |
+| | Issue board (`.work/`) | `docs/` (here) |
 |---|---|---|
 | State | open, being worked | settled direction, not being worked |
 | Needs a decision | yes | no — the decision is written down |

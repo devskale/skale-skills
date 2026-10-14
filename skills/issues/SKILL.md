@@ -1,7 +1,7 @@
 ---
 disable-model-invocation: true
 name: issues
-description: Manage the cross-machine shared issue kanban (.handoff/<project>/issues/). Create, triage, start, review, cancel, archive, or purge work items. One synced dir per project (.handoff/ → ~/code/handoffs/<project>/), shared across machines and repos. Use when creating, reading, picking up, triaging, cleaning up, or asking about tickets, tasks, issues, the backlog, kanban, or the board — or when handing work off / passing tasks to another machine, repo, or person. Triggers on mentions of issue, ticket, task, backlog, kanban, board, triage, assign to, pass to, hand off, cleanup done tasks.
+description: Manage the cross-machine shared issue kanban (.work/<project>/issues/). Create, triage, start, review, cancel, archive, or purge work items. One synced dir per project (.work/ → ~/code/handoffs/<project>/), shared across machines and repos. Use when creating, reading, picking up, triaging, cleaning up, or asking about tickets, tasks, issues, the backlog, kanban, or the board — or when handing work off / passing tasks to another machine, repo, or person. Triggers on mentions of issue, ticket, task, backlog, kanban, board, triage, assign to, pass to, hand off, cleanup done.
 metadata:
   author: skale
   version: "1.3.0"
@@ -25,7 +25,7 @@ link (`.work`, or a legacy name). Setting up a NEW project board is one
 command, from any repo checkout:
 
 ```bash
-issues init <project>          # board (5 columns) + .handoff symlink, idempotent
+issues init <project>          # board (5 columns) + .work container link, idempotent
 issues init <project> --local  # degraded: real local dir, gitignored + WARN
 ```
 
