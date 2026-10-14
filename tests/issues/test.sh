@@ -41,6 +41,7 @@ TEST_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 export ISSUES_DIR="$TEST_ROOT/handoffs"
 export ISSUES_WORK_DIR="$TEST_ROOT/work"
+export ISSUES_THROWAY_BASE="https://invalid.invalid"   # tests stay offline — bootstrap pull/push must fail into their NOTE branches
 REPO="$TEST_ROOT/repo"
 mkdir -p "$REPO/.git"                     # repo marker — init refuses non-repo roots (walk-up trap guard)
 
