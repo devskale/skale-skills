@@ -1130,6 +1130,31 @@ doc_ok()   { echo "  ok    $1"; }
 doc_warn() { echo "  WARN  $1"; DOCTOR_PROBLEMS=$((DOCTOR_PROBLEMS+1)); }
 doc_fix()  { echo "  fix   $1"; }
 
+# netmount_of <path> — echo the network mount covering <path> ("" if none).
+# A network mount (CIFS/SMB/NFS/SSHFS) IS the transport: the root lives on
+# the sharing box and every mount sees the same files (pi5 mounts lubu's
+# skaleshare via CIFS — same git history, no Syncthing needed).
+# Linux: /proc/mounts (dev mountpoint fstype, space-separated, fstab order).
+# macOS: mount(8) output — "//server/share on /Volumes/x (smbfs, ...)" — no
+# "type" keyword, fstype sits in the parenthesized option list.
+netmount_of() {
+  local p="$1" dev mp fs line best=""
+  if [ -r /proc/mounts ]; then
+    while read -r dev mp fs _; do
+      case "$fs" in cifs|smbfs|smb2|nfs|nfs4|sshfs|afpfs) ;; *) continue ;; esac
+      case "$p" in "$mp"|"$mp"/*) [ ${#mp} -gt ${#best} ] && best="$mp" ;; esac
+    done < /proc/mounts
+  else
+    while IFS= read -r line; do
+      case "$line" in *" (smbfs,"*|*" (cifs,"*|*" (nfs,"*|*" (sshfs,"*) ;; *) continue ;; esac
+      mp=$(printf '%s\n' "$line" | sed 's/^.* on \([^()]*\) (.*/\1/')
+      [ -n "$mp" ] || continue
+      case "$p" in "$mp"|"$mp"/*) [ ${#mp} -gt ${#best} ] && best="$mp" ;; esac
+    done < <(mount 2>/dev/null)
+  fi
+  [ -n "$best" ] && printf '%s\n' "$best"
+}
+
 doctor_syncthing() {
   # transport detection: any signal that the synced root is Syncthing-shared
   [ -d "$CENTRAL/.stfolder" ] && return 0
@@ -1173,6 +1198,8 @@ cmd_doctor() {
   # 2. transport — how does the root travel between machines?
   if doctor_syncthing; then
     doc_ok "transport: Syncthing detected"
+  elif [ -n "$(netmount_of "$CENTRAL")" ]; then
+    doc_ok "transport: network mount ($(netmount_of "$CENTRAL")) — root lives on the sharing box, mounts see the same files"
   elif [ -n "$(cfg throway_dir "")" ]; then
     doc_ok "transport: throway dir configured (see project config throway_dir)"
   else
@@ -1184,8 +1211,13 @@ cmd_doctor() {
   # unloaded LaunchAgent silently never runs (found 2026-10-05: last commit
   # Oct 3 while doctor said ok).
   if doctor_versioning; then
-    local autocommit_loaded=0
-    if [ -x "$CENTRAL/.autocommit.sh" ] && ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
+    local autocommit_loaded=0   # 0=none, 1=loaded, 2=shared-via-netmount
+    if [ -n "$(netmount_of "$CENTRAL")" ] && ! doctor_syncthing; then
+      # net-mounted root: the .git travels with the share — whoever owns the
+      # mount (or syncs into it) commits; a second local auto-commit would
+      # race two committers onto one network repo (pi5 via CIFS from lubu).
+      autocommit_loaded=2
+    elif [ -x "$CENTRAL/.autocommit.sh" ] && ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
       # macOS: verify the LaunchAgent is actually loaded (launchctl list)
       if command -v launchctl >/dev/null 2>&1 && launchctl list 2>/dev/null | grep -q handoffs; then
         autocommit_loaded=1
@@ -1193,13 +1225,15 @@ cmd_doctor() {
         autocommit_loaded=1  # not macOS — plist presence is all we can check
       fi
     fi
-    if [ "$autocommit_loaded" -eq 1 ]; then
-      doc_ok "versioning: local git + auto-commit loaded (recovery net; history is per-machine, not synced)"
-    elif [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
-      doc_warn "auto-commit installed but NOT loaded (launchctl) — recovery net is not running. Fix: launchctl load ~/Library/LaunchAgents/com.skale.handoffs.plist"
-    else
-      doc_warn "local git in root but no auto-commit found — commits happen only by hand"
-    fi
+    case "$autocommit_loaded" in
+      2) doc_ok "versioning: shared git over network mount (committed on the sharing/syncing box)" ;;
+      1) doc_ok "versioning: local git + auto-commit loaded (recovery net; history is per-machine, not synced)" ;;
+      *) if [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
+           doc_warn "auto-commit installed but NOT loaded (launchctl) — recovery net is not running. Fix: launchctl load ~/Library/LaunchAgents/com.skale.handoffs.plist"
+         else
+           doc_warn "local git in root but no auto-commit found — commits happen only by hand"
+         fi ;;
+    esac
   else
     doc_warn "no git history in root — 'purge' is FINAL (no recovery). Consider git init + hourly auto-commit in $CENTRAL"
   fi
