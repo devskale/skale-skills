@@ -40,6 +40,7 @@ bash -n "$SCRIPT" && ok || bad "bash -n syntax check failed"
 TEST_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 export ISSUES_DIR="$TEST_ROOT/handoffs"
+export ISSUES_WORK_DIR="$TEST_ROOT/work"
 REPO="$TEST_ROOT/repo"
 mkdir -p "$REPO"
 
@@ -47,6 +48,10 @@ mkdir -p "$REPO"
 echo "$(run_in "$REPO" init testproj)" | grep -q "board:" && ok || bad "init did not report board"
 [ -d "$TEST_ROOT/handoffs/testproj/issues/backlog" ] && ok || bad "backlog column missing after init"
 [ -L "$REPO/.work" ] && ok || bad ".work symlink missing after init"
+# work bundle: canonical entry + repo link points THROUGH the bundle
+[ -L "$TEST_ROOT/work/testproj" ] && [ "$(readlink "$TEST_ROOT/work/testproj")" = "../handoffs/testproj" ] && ok || bad "work bundle entry missing/wrong after init"
+[ "$(readlink "$REPO/.work")" = "$TEST_ROOT/work/testproj" ] && ok || bad "repo .work must point at the work bundle entry"
+ls "$TEST_ROOT/work/testproj/issues/backlog" >/dev/null 2>&1 && ok || bad "work bundle entry must resolve to the board"
 run_in "$REPO" init testproj >/dev/null && ok || bad "init not idempotent (2nd run failed)"
 
 # happy path: new → start → review → done
