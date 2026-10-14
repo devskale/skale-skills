@@ -19,10 +19,12 @@ manages everything:
 issues --help      # ← all detail functions, config keys, troubleshooting
 ```
 
-`issues` is a **machine-global** command (on PATH). It works from any repo
-because it resolves the project by walking up from `$PWD` to the container
-link (`.work`, or a legacy name). Setting up a NEW project board is one
-command, from any repo checkout:
+`issues` is a **machine-global** command (on PATH). It resolves the project by
+**walking up** from `$PWD`: at each directory level it checks for the container
+link — `.work` first (configurable via `ISSUES_LINK_NAME`), then legacy names
+(`.handoff`) — until it finds one. A symlink target is the shared project dir;
+a real dir is a local board (`init --local`). Nothing found → run `issues init`.
+Setting up a NEW project board is one command, from any repo checkout:
 
 ```bash
 issues init <project>          # board (5 columns) + .work container link, idempotent

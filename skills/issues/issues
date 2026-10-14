@@ -282,7 +282,10 @@ init_repo_root() {
     fi
     d=$(dirname "$d")
   done
-  echo "$PWD"
+  # no repo marker found — refuse to plant the link at $PWD (or worse, $HOME):
+  # a .work at a non-repo root becomes a walk-up trap for everything below it
+  # (found 2026-10-14: init in a scratch dir linked ~/.work)
+  echo ""
 }
 
 # init_migrate_flat <root> <project> — one-time legacy: flat column dirs
@@ -343,6 +346,7 @@ cmd_init() {
   # --local: board lives IN the repo, not shared. Loud, never silent.
   if [ "$local_mode" -eq 1 ]; then
     local repo; repo=$(init_repo_root)
+    [ -n "$repo" ] || die "no repo root found walking up from $PWD (.git/pyproject.toml/package.json) — cd into a repo first (a link outside a repo becomes a walk-up trap)"
     local lh="$repo/$(link_name)"
     if [ -L "$lh" ]; then
       die "--local: $lh is already a symlink → $(readlink "$lh") — remove it first if you really want a local board"
@@ -378,6 +382,7 @@ EOF2
   # shared mode
   mkdir -p "$root"                             # cheap, no degrading
   local repo; repo=$(init_repo_root)
+  [ -n "$repo" ] || die "no repo root found walking up from $PWD (.git/pyproject.toml/package.json) — cd into a repo first (a link outside a repo becomes a walk-up trap)"
   [ "$repo" = "$target" ] && die "init run inside the shared project dir itself ($target) — run from a repo checkout"
   init_migrate_flat "$root" "$project"
   local col new=0 existing=0
@@ -1204,8 +1209,15 @@ its historical name (~/code/handoffs, env ISSUES_DIR). This
 tool manages only `<project>/issues/`. Other shared subfolders (docs/, …) are
 just files — manage them with plain mv/ls.
 
-Project is resolved from cwd by walking up to the container link (`.work`,
-or a legacy name).
+Project is resolved from cwd by WALKING UP the directory tree:
+  1. at each level, check the container link — configured name first
+     (.work, ISSUES_LINK_NAME), then legacy aliases (.handoff)
+  2. a SYMLINK → its target is the project dir (shared board)
+  3. a REAL DIR  → itself is the project dir (issues init --local)
+  4. nothing found up to / → error: run 'issues init <project>' first
+init only plants the link at a REPO ROOT (.git / pyproject.toml /
+package.json) — a link at a non-repo root would be a walk-up trap for
+everything below it.
 Env: ISSUES_DIR (default ~/code/handoffs/). Identity: HANDOFF_ME → ~/.handoff-me → hostname.
 
 CONFIG — project-specific values live in <project>/.issues/config, not the

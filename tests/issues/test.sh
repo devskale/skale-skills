@@ -42,7 +42,7 @@ trap 'rm -rf "$TEST_ROOT"' EXIT
 export ISSUES_DIR="$TEST_ROOT/handoffs"
 export ISSUES_WORK_DIR="$TEST_ROOT/work"
 REPO="$TEST_ROOT/repo"
-mkdir -p "$REPO"
+mkdir -p "$REPO/.git"                     # repo marker — init refuses non-repo roots (walk-up trap guard)
 
 # init: 5 columns + container link (idempotent; default name .work)
 echo "$(run_in "$REPO" init testproj)" | grep -q "board:" && ok || bad "init did not report board"
@@ -137,7 +137,7 @@ echo "$out" | grep -q "synced root missing" && ok || bad "doctor must warn about
 echo "$out" | grep -q "no git history in root" && ok || bad "doctor must warn about missing versioning"
 echo "$out" | grep -q "problem(s)" && ok || bad "doctor must report problem count"
 # legacy compat: a repo with only an old-name .handoff link still resolves
-LEGACY_RE="$TEST_ROOT/legacy-repo"; mkdir -p "$LEGACY_RE"
+LEGACY_RE="$TEST_ROOT/legacy-repo"; mkdir -p "$LEGACY_RE/.git"
 ln -s "$TEST_ROOT/handoffs/testproj" "$LEGACY_RE/.handoff"
 out=$(run_in "$LEGACY_RE" board)
 echo "$out" | grep -q "project: testproj" && ok || bad "legacy .handoff link must still resolve (got: $out)"
@@ -147,7 +147,7 @@ out=$(run_in "$LEGACY_RE" init testproj)
 [ -L "$LEGACY_RE/.work" ] && [ ! -e "$LEGACY_RE/.handoff" ] && ok || bad "init must migrate legacy .handoff → .work"
 
 # ISSUES_LINK_NAME env: init creates the configured name
-ENVNAME_RE="$TEST_ROOT/envname-repo"; mkdir -p "$ENVNAME_RE"
+ENVNAME_RE="$TEST_ROOT/envname-repo"; mkdir -p "$ENVNAME_RE/.git"
 out=$(ISSUES_LINK_NAME=.tasks run_in "$ENVNAME_RE" init testproj)
 [ -L "$ENVNAME_RE/.tasks" ] && ok || bad "ISSUES_LINK_NAME must drive the created link name"
 out=$(ISSUES_LINK_NAME=.tasks run_in "$ENVNAME_RE" board)
@@ -175,7 +175,7 @@ echo "PASS: $PASS  FAIL: $FAIL"
 [ "$FAIL" -eq 0 ]
 
 # ── work bootstrap: no shared work dir → pull attempt (offline → NOTE, not fatal) ──
-BOOT_RE="$TEST_ROOT/boot-repo"; mkdir -p "$BOOT_RE"
+BOOT_RE="$TEST_ROOT/boot-repo"; mkdir -p "$BOOT_RE/.git"
 rm -rf "$TEST_ROOT/work"                      # simulate: no shared bundle on this machine
 out=$(ISSUES_THROWAY_BASE="https://invalid.invalid" run_in "$BOOT_RE" init bootproj); rc=$?
 [ "$rc" -eq 0 ] && ok || bad "init must survive a failed bootstrap pull (rc=$rc)"
@@ -186,3 +186,10 @@ mkdir -p "$TEST_ROOT/work/bootproj"; ln -sfn "../handoffs/bootproj" "$TEST_ROOT/
 out=$(ISSUES_THROWAY_BASE="https://invalid.invalid" run_in "$BOOT_RE" init bootproj); rc=$?
 [ "$rc" -eq 0 ] && ok || bad "init must survive a failed bootstrap push (rc=$rc)"
 echo "$out" | grep -q "could not push" && ok || bad "init must report the failed push NOTE"
+
+# ── init outside a repo: refuse (a link at a non-repo root is a walk-up trap) ──
+NOREPO="$TEST_ROOT/no-repo"; mkdir -p "$NOREPO"
+out=$(run_in "$NOREPO" init testproj 2>&1); rc=$?
+[ "$rc" -ne 0 ] && ok || bad "init outside a repo must fail (rc=$rc)"
+[ ! -e "$NOREPO/.work" ] && ok || bad "init outside a repo must not plant .work"
+echo "$out" | grep -q "no repo root" && ok || bad "init must explain the repo-root refusal"
