@@ -6,6 +6,9 @@ cd "$(dirname "$0")/../.."
 
 SKILL=skills/visualize
 SCRIPT="$SKILL/visualize"
+# Run-private assert file: check() writes, later greps read. A fixed /tmp path
+# let two concurrent suites (two agent sessions) clobber each other's asserts.
+OUTDIR="$(mktemp -d)"; OUT="$OUTDIR/visualize.out"
 PASS=0; FAIL=0
 
 ok()   { PASS=$((PASS+1)); }
@@ -14,7 +17,7 @@ warn() { echo "  WARN: $1" >&2; }
 
 check() { # check <desc> <expected-exit> <cmd...>
     local desc="$1" want="$2"; shift 2
-    "$@" >/tmp/visualize.out 2>&1
+    "$@" >"$OUT" 2>&1
     local got=$?
     if [ "$got" -eq "$want" ]; then ok; else bad "$desc (want exit $want, got $got)"; fi
 }
@@ -118,11 +121,19 @@ if [ $rc -eq 0 ]; then ok; else bad "Tailwind pills must not gate (rc=$rc: $out)
 rm -rf "$(dirname "$PILLFILE")"
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
-# templates must pass their own gates (house style + self-contained)
+# templates must pass their own gates (house style + self-contained + JS parses)
 for t in cards repo-tree system-map report mermaid tailwind-report timeline before-after cheatsheet barchart; do
     check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
     check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
+    check "jscheck template $t.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/templates/$t.html"
 done
+
+# pyproject is required for Python skills (CODING_RULES) and its version must match SKILL.md
+[ -f "$SKILL/pyproject.toml" ] && ok || bad "pyproject.toml missing"
+SKILL_V=$(grep -m1 '^version:' "$SKILL/SKILL.md" | grep -o '[0-9][0-9.]*')
+TOML_V=$(grep -m1 '^version' "$SKILL/pyproject.toml" | grep -o '[0-9][0-9.]*')
+[ -n "$SKILL_V" ] && [ "$SKILL_V" = "$TOML_V" ] \
+    && ok || bad "version mismatch SKILL.md($SKILL_V) vs pyproject($TOML_V)"
 # --- validate must not flag documentation of an import as a dependency -----------
 # Regression: `validate` scanned the whole file for `import ... from '...'`, so a page
 # that merely *shows* an import in <code> (e.g. explaining a refactor) was rejected —
@@ -176,10 +187,10 @@ check "--help → exit 0" 0 "$SCRIPT" --help
 
 # launcher flags (convention: --update/--selfcheck)
 check "--selfcheck → exit 0" 0 "$SCRIPT" --selfcheck
-grep -q "visualize v" /tmp/visualize.out && ok || bad "selfcheck shows version"
-grep -q "dir:" /tmp/visualize.out && ok || bad "selfcheck shows dir"
+grep -q "visualize v" "$OUT" && ok || bad "selfcheck shows version"
+grep -q "dir:" "$OUT" && ok || bad "selfcheck shows dir"
 check "--update → exit 0" 0 "$SCRIPT" --update
-grep -q "Updated" /tmp/visualize.out && ok || bad "--update reports Updated"
+grep -q "Updated" "$OUT" && ok || bad "--update reports Updated"
 [ -f "$SKILL/.last-update" ] && ok || bad "stamp file created"
 
 # build a self-contained file and validate it
@@ -326,7 +337,7 @@ STUB_BIN="$(mktemp -d)"
 printf '#!/bin/sh\necho "stub-open: $*"\n' > "$STUB_BIN/open"
 chmod +x "$STUB_BIN/open"
 check "open real file (stubbed) → exit 0" 0 env PATH="$STUB_BIN:$PATH" "$SCRIPT" open "$TMP/good.html"
-grep -q "stub-open: $TMP/good.html" /tmp/visualize.out && ok || bad "open passed the file to the opener"
+grep -q "stub-open: $TMP/good.html" "$OUT" && ok || bad "open passed the file to the opener"
 check "open missing file (stubbed) → exit 2" 2 env PATH="$STUB_BIN:$PATH" "$SCRIPT" open /nonexistent.html
 rm -rf "$STUB_BIN"
 
@@ -400,18 +411,66 @@ do
 done
 
 # a data maximum is not an axis floor (regression: false positive on the
-# barchart template, whose note legitimately says "max = 120")
-ok
+# barchart template, whose note legitimately says "max = 120" — a denominator,
+# not a scale origin). The template sweep below only proves "no finding"; this
+# proves the specific number does not trip the check.
+MAXPAGE="$TMP/max-note.html"
+printf '<!doctype html><html><body><p>Sales by region</p><p>max = 120</p>\n<p>Source: Internal ledger, 2025</p><div class="bar" style="width:90%%"></div></body></html>' > "$MAXPAGE"
+check "chartcheck: 'max = N' is a denominator, not an axis floor" 0 "$SCRIPT" chartcheck "$MAXPAGE"
 # own templates must stay clean — the gate is a gate, not noise
 for tpl in "$SKILL"/templates/*.html; do
     out="$("$SCRIPT" chartcheck "$tpl" 2>&1)"
     if [ $? -eq 0 ]; then ok; else bad "chartcheck false positive on $(basename "$tpl"): $out"; fi
 done
 
-# help + guard rails
-ok
-"$SCRIPT" --help 2>&1 | grep -q 'chartcheck' && ok || bad "chartcheck missing from --help"
+# help + guard rails: every command in usage() must be reachable and listed
+for c in open share gate validate lint chartcheck jscheck; do
+    "$SCRIPT" --help 2>&1 | grep -q "visualize $c " && ok || bad "$c missing from --help"
+done
 check "chartcheck rejects a missing file" 2 "$SCRIPT" chartcheck "$TMP/nope.html"
+
+# ── jscheck: every inline <script> must parse (regression 2026-10-15) ──────────
+# The old gate had TWO definitions of "script block" — <script[[:space:]]*> for
+# the syntax pass, <script[^>]*> for TDZ — so every attributed tag was skipped:
+# <script type="module">, the tag in our own mermaid.html, was never checked and
+# a page with a real syntax error passed validate + gate. These cases pin the one
+# definition (plus the line-based parse holes) so it cannot narrow again.
+JS="$(mktemp -d)"
+jsfail() { printf '%s' "$2" > "$JS/$1.html"; check "jscheck: $3 → exit 1" 1 "$SCRIPT" jscheck "$JS/$1.html"; }
+check "jscheck: clean module + JSON-LD + src-block → exit 0" 0 "$SCRIPT" jscheck "$SKILL/templates/mermaid.html"
+jsfail attrscript '<!doctype html><html><head><meta charset="utf-8">
+<script type="module">
+const a = ;
+</script></head><body>x</body></html>' \
+    'attributed <script type="module"> syntax error (was silently skipped)'
+jsfail sameline '<!doctype html><html><head><meta charset="utf-8">
+<script>const a = ;</script></head><body>x</body></html>' \
+    'error on the same line as <script>'
+printf '<!doctype html><html><head><meta charset="utf-8">\n<script>\nconst a = ;\n</script></head><body>x</body></html>' > "$JS/nonl.html"
+check "jscheck: </script> on a final line without trailing newline → exit 1" 1 "$SCRIPT" jscheck "$JS/nonl.html"
+printf '%s' '<!doctype html><html><body><script type="application/ld+json">{"a": 1, }</script><script src="https://cdn.jsdelivr.net/x.js">const = ;</script></body></html>' > "$JS/skip.html"
+check "jscheck: JSON-LD + src= blocks are not inline JS → exit 0" 0 "$SCRIPT" jscheck "$JS/skip.html"
+printf '%s' '<!doctype html><html><body><!--
+<script>
+const a = ;
+</script>
+--></body></html>' > "$JS/commented.html"
+check "jscheck: commented-out script does not run → exit 0" 0 "$SCRIPT" jscheck "$JS/commented.html"
+printf '%s' '<!doctype html><html><body><script>const ok = 1;</script>
+<script>const b = ;</script></body></html>' > "$JS/second.html"
+out="$("$SCRIPT" jscheck "$JS/second.html" 2>&1)"
+if [ $? -eq 1 ] && printf '%s' "$out" | grep -q 'script-block #2'; then ok
+else bad "jscheck must report script-block #2 for the second block (got: $out)"; fi
+printf '%s' '<!doctype html><html><body><script>w.on("x"); const w = 1;</script></body></html>' > "$JS/tdz.html"
+check "jscheck: TDZ (use before const) → exit 1" 1 "$SCRIPT" jscheck "$JS/tdz.html"
+printf '%s' '<!doctype html><html><body><script>
+function init(){ el.text("x"); }
+const el = document.createElement("div");
+init();
+</script></body></html>' > "$JS/fnscope.html"
+check "jscheck: use inside a function body runs later → exit 0 (scope-aware TDZ)" 0 "$SCRIPT" jscheck "$JS/fnscope.html"
+check "jscheck rejects a missing file" 2 "$SCRIPT" jscheck "$JS/nope.html"
+rm -rf "$JS"
 
 # ── slop gate: offline subset (deterministic — dead endpoint, no token needed) ──
 SLOP_PAGE="$TMP/slop-stripe.html"
@@ -482,6 +541,16 @@ if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'gate slop: FAIL' \
    && printf '%s' "$out" | grep -q 'gate validate: OK'; then ok
 else bad "gate stripe: slop FAIL + validate OK + exit 1 erwartet (rc=$rc: $out)"; fi
 check "gate missing file → exit 2" 2 "$SCRIPT" gate /nonexistent.html
+# gate must label a JS failure as jscheck, not validate (it ran as a silent
+# tail of validate before — the agent went looking for a dependency problem)
+GJS="$(mktemp -d)"
+printf '%s' '<!doctype html><html><head><script type="module">const a = ;</script></head><body>x</body></html>' > "$GJS/e.html"
+check "validate is decoupled from jscheck (one-file rule only)" 0 "$SCRIPT" validate "$GJS/e.html"
+out="$(env SLOP_API_URL=http://127.0.0.1:1 "$SCRIPT" gate "$GJS/e.html" 2>&1)"; rc=$?
+if [ $rc -eq 1 ] && printf '%s' "$out" | grep -q 'gate jscheck: FAIL' \
+   && printf '%s' "$out" | grep -q 'gate validate: OK'; then ok
+else bad "gate must label a JS error as jscheck, not validate (rc=$rc: $out)"; fi
+rm -rf "$GJS"
 
 # share still gates (URL-first): hardslop → exit 1 — live only (needs throway)
 slop_live=false
@@ -505,7 +574,7 @@ else
     warn "slop-gate live share tests skipped (no SLOP_TOKEN / credgoo)"
 fi
 
-rm -rf "$TMP"
+rm -rf "$TMP" "$OUTDIR"
 
 echo "---------------"
 echo "PASS: $PASS  FAIL: $FAIL"

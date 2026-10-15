@@ -70,7 +70,7 @@
   </header>
 
   <figure>
-    <svg viewBox="0 0 880 400" role="img" aria-label="visualize flow: request, build, parallel gate, share, pin ledger with edit loop">
+    <svg viewBox="0 0 880 452" role="img" aria-label="visualize flow: request, build, parallel gate, share, pin ledger with edit loop">
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5"
                 markerHeight="6.5" orient="auto-start-reverse">
@@ -117,7 +117,7 @@
       <text class="sm" x="436" y="16" fill="#b45309">visualize gate — parallel fan-out</text>
       <rect class="blk" x="436" y="28" width="176" height="56"/>
       <text class="lab" x="448" y="50" fill="#1e2b28">validate</text>
-      <text class="sm" x="448" y="68">one file · jscheck</text>
+      <text class="sm" x="448" y="68">one file · CDNs ok</text>
 
       <rect class="blk" x="436" y="100" width="176" height="80"/>
       <text class="lab" x="448" y="120" fill="#1e2b28">slop</text>
@@ -129,8 +129,12 @@
       <text class="lab" x="448" y="218" fill="#1e2b28">chartcheck</text>
       <text class="sm" x="448" y="236">dataviz integrity</text>
 
-      <text class="sm" x="436" y="272">exit 0 pass · 1 hardslop</text>
-      <text class="sm" x="436" y="288">3 unverified (fail-closed)</text>
+      <rect class="blk" x="436" y="260" width="176" height="56"/>
+      <text class="lab" x="448" y="282" fill="#1e2b28">jscheck</text>
+      <text class="sm" x="448" y="300">every &lt;script&gt; parses · TDZ</text>
+
+      <text class="sm" x="436" y="336">exit 0 pass · 1 hardslop</text>
+      <text class="sm" x="436" y="352">3 unverified (fail-closed)</text>
 
       <!-- SHARE -->
       <rect class="blk" x="650" y="88" width="222" height="104"/>
@@ -141,12 +145,12 @@
       <text class="sm" x="662" y="168">slop: last net, URL-first</text>
 
       <!-- PIN LEDGER -->
-      <rect class="blk-solid" x="196" y="296" width="676" height="64"/>
-      <circle cx="208" cy="316" r="4" fill="#b45309"/>
-      <text class="lab" x="218" y="320" fill="#b45309">PIN LEDGER</text>
-      <text class="sm" x="208" y="342">~/.config/visualize/shares ledger</text>
-      <text class="sm" x="862" y="316" text-anchor="end">re-share = PUT in place — same URL</text>
-      <text class="sm" x="862" y="340" text-anchor="end">--fresh = new URL · stale pins heal</text>
+      <rect class="blk-solid" x="196" y="364" width="676" height="64"/>
+      <circle cx="208" cy="384" r="4" fill="#b45309"/>
+      <text class="lab" x="218" y="388" fill="#b45309">PIN LEDGER</text>
+      <text class="sm" x="208" y="410">~/.config/visualize/shares ledger</text>
+      <text class="sm" x="862" y="384" text-anchor="end">re-share = PUT in place — same URL</text>
+      <text class="sm" x="862" y="408" text-anchor="end">--fresh = new URL · stale pins heal</text>
 
       <!-- flow arrows -->
       <path class="arr" d="M148 140 H192" marker-end="url(#ah)"/>
@@ -154,17 +158,19 @@
       <path class="arr" d="M416 140 L432 60"  marker-end="url(#ah)"/>
       <path class="arr" d="M416 140 H432"    marker-end="url(#ah)"/>
       <path class="arr" d="M416 140 L432 220" marker-end="url(#ah)"/>
+      <path class="arr" d="M416 140 L432 282" marker-end="url(#ah)"/>
       <path class="arr" d="M612 60 L628 140"  marker-end="none"/>
       <path class="arr" d="M612 140 H628"      marker-end="none"/>
       <path class="arr" d="M612 220 L628 140"  marker-end="none"/>
+      <path class="arr" d="M612 282 L628 140"  marker-end="none"/>
       <path class="arr" d="M632 140 H646" marker-end="url(#ah)"/>
 
       <!-- edit loop (the star) -->
-      <path class="loop" d="M761 192 V292" marker-end="url(#ahAmber)"/>
-      <text class="sm" x="753" y="246" text-anchor="end" fill="#b45309">pin: realpath → URL</text>
-      <path class="loop" d="M230 296 V208" marker-end="url(#ahAmber)"/>
-      <text class="sm" x="238" y="252" fill="#b45309">edit → re-share</text>
-      <text class="sm" x="238" y="268" fill="#b45309">same URL</text>
+      <path class="loop" d="M761 192 V360" marker-end="url(#ahAmber)"/>
+      <text class="sm" x="753" y="278" text-anchor="end" fill="#b45309">pin: realpath → URL</text>
+      <path class="loop" d="M230 364 V208" marker-end="url(#ahAmber)"/>
+      <text class="sm" x="238" y="276" fill="#b45309">edit → re-share</text>
+      <text class="sm" x="238" y="292" fill="#b45309">same URL</text>
     </svg>
     <figcaption>Fig. 1 — solid arrows: the share pipeline (request → build → parallel gate → share).
     Dashed amber: the edit loop — the pin ledger maps each file to its URL, so re-sharing an

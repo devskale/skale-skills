@@ -4,6 +4,35 @@ Dauerhafte Spur der Architektur-Reviews (Kandidaten, Entscheidungen, Verworfenen
 Der HTML-Report (before/after-Diagramme) lebt auf throway (~4h); diese Datei ist
 die Wahrheit, die überlebt. Neue Reviews oben anfügen.
 
+## Review 2026-10-15 (Gate-Integrität — jscheck)
+
+**Ausgangslage:** jscheck hatte zwei Definitionen von „Script-Block" (Syntax-Pass
+`<script[[:space:]]*>`, TDZ-Pass `<script[^>]*>`) — jedes attributierte Tag wurde still
+übersprungen, inkl. `type="module"` im eigenen mermaid-Template. Und: jscheck lief als
+stiller Anhang in validate, ein JS-Fehler hieß im gate „validate: FAIL".
+
+| # | Kandidat | Empfehlung | Status |
+|---|----------|-----------|--------|
+| 1 | Eine Extraktion (`scripts/jscheck.py`) für beide Pässe | Top | ✅ gebaut (1.13.1) |
+| 2 | jscheck als eigener gate-Zweig mit eigenem Label; validate entkoppelt | Top | ✅ gebaut |
+| 3 | TDZ scope-bewusst (Brace-Tiefe statt Textposition) | Worth exploring | ✅ gebaut |
+
+### Entscheidungen
+
+- **validate = nur die One-File-Regel** (das dokumentierte Contract), jscheck = eigenes
+  Gate. Grund: Label-Integrität — ein als „validate" gemeldeter JS-Fehler sucht der
+  Agent als Dependency-Problem.
+- **Nebenbefund beim Entkoppeln:** `[ $? -ne 0 ] && exit 1` in validate liefert auf dem
+  Erfolgspfad Status 1 (der Test selbst schlägt fehl) — jahrelang maskierte der
+  jscheck-Anhang ihn auf 0. Jetzt explizites `if`.
+- **TDZ bleibt Heuristik, dokumentiert:** Brace-Tiefe; klammungslose Arrow-Callbacks
+  (`setTimeout(() => el.text())`) bleiben falsch-positiv. stdlib reicht, kein Parser.
+
+### Verworfen
+
+- **Voller JS-Scope-Parser für TDZ** — Aufwand/Nutzen: die Tiefen-Heuristik deckt die
+  beobachteten Muster (Funktionskörper, geklammerte Callbacks).
+
 ## Review 2026-10-06 (improve-codebase-architecture skill)
 
 **Ausgangslage:** visualize 1.11.0 — drei share-Modi mit drei Upload-Pfaden, zwei

@@ -103,18 +103,24 @@ fuzzy static AI-slop detection, 11 detectors) right after the upload:
 
 - **The URL comes first** — the share never blocks on the linter. Fast feedback
   for the viewer, findings as the to-do.
-- **Hard findings** (confidence ≥ 0.7, e.g. accent stripes, pills, purple fills)
-  print with a fix hint and make `share` **exit 1** — the fix-and-update signal.
+- **Hard findings** (confidence ≥ 0.7, e.g. accent stripes, violet fills) print with a
+  fix hint and make `share` **exit 1** — the fix-and-update signal. Pills are reported as
+  *info*, not a hard finding: the gate does not fail on them.
 - **Reviews** (0.3–0.7, e.g. numbered steps that may be real process) print as
   `review … — you decide`. The agent judges, the tool doesn't guess.
 - **Fix loop**: edit the local file → `visualize share --update <file>` — PUT in
   place, same URL, history grows. Lint runs again automatically.
+- **No API, no token?** The client falls back to a local **hard-ban subset** (the three
+  SKILL.md bans, mirrored: edge stripes, violet fills, ≥20px circle badges) tagged
+  `offline (hard-bans only)`. A share is never blocked by a missing linter — but the
+  report always names the mode, so "clean" is never silently an unchecked page.
+  `exit 3` is reserved for "could not check at all" (file unreadable, client bug).
 
 `share --dir` lints at most 3 html files (one bad page must not turn a 50-file
 dir into a 50-call lint run; the rest is opt-in via `visualize lint`).
 
-Token resolution: `SLOP_TOKEN` env → `credgoo FETCH_URL_BEARER`. Missing token or
-unreachable API skips the check with a note — a share must not die on the linter.
+Token resolution: `SLOP_TOKEN` env → `credgoo FETCH_URL_BEARER`. A missing token or
+an unreachable API is the offline-subset path above — a share must not die on the linter.
 
 Throway is itself progressive — for the full contract (sliding lifetimes, write-tokens,
 edit history) read its own docs: `curl https://skale.dev/throway/write_for_agents` or

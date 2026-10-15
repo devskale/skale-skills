@@ -130,12 +130,12 @@ Write a small spec (nodes + edges + numbered step badges), get a consistent **ha
 Turn any set of things into **one self-contained HTML page** — report, comparison, block diagram, timeline — and share it with a URL that **stays valid while you edit**: the pin ledger maps each file to its URL, re-sharing is a PUT in place.
 
 - **House skin v3, four flavors** — `paper` (editorial), `swiss` (poster stats), `terminal` (infra/CLI), `blueprint` (architecture). Style by construction: start from the skin, not blank CSS.
-- **`visualize gate`** — all quality gates in parallel behind one command (self-contained check, slop lint, dataviz integrity); exit 1 if any fails.
-- **AI-slop lint, fail-closed** — card-edge accents and violet fills fail the share (`exit 1`); no API or no token → `exit 3` unverified, never a silent skip.
+- **`visualize gate`** — all quality gates in parallel behind one command (self-contained check, slop lint, dataviz integrity, JS syntax); exit 1 if any fails.
+- **AI-slop lint, fail-closed** — card-edge accents and violet fills fail the share (`exit 1`). No API or no token? The gate degrades to a local hard-ban subset (the same three bans, still `exit 1` on a hit) and reports the mode — it never silently skips. `exit 3` is the residual "could not check at all".
 - **Templates** — block diagram (SVG arrows, blueprint flavor), before/after, module diff, timeline, report, cards, cheatsheet, barchart.
 
 ```bash
-visualize gate page.html      # all gates parallel: validate + slop + chartcheck
+visualize gate page.html      # all gates parallel: validate + slop + chartcheck + jscheck
 visualize share page.html     # → URL; re-share = same URL (PUT in place)
 ```
 

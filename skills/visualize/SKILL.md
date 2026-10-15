@@ -1,8 +1,8 @@
 ---
 disable-model-invocation: true
 name: visualize
-version: "1.13.0"
-description: "Explain or present with the smallest view that makes the point — inline code forms or one self-contained HTML page with a shareable URL. Hard style bans (enforced by the share gate): no colored card-edge accents (any side), no violet fills, no pills. Use when the user wants to visualize, compare, explain, or turn data/code into a page, diagram, or report."
+version: "1.13.1"
+description: "Explain or present with the smallest view that makes the point — inline code forms or one self-contained HTML page with a shareable URL. Hard style bans (enforced by the share gate): no colored card-edge accents (any side), no violet fills. Use when the user wants to visualize, compare, explain, or turn data/code into a page, diagram, or report."
 ---
 
 # visualize — one self-contained HTML for any set of things
@@ -25,7 +25,7 @@ matched-shape diff often answers better and smaller ([code-forms.md](references/
    swiss = Stats/Vergleiche, terminal = Infra/CLI, blueprint = Architektur) and build
    inside it (tokens, type scale, card/legend/table patterns are already right — never
    blank CSS). Then set the output target, compose, and run `visualize gate <file>` —
-   one command, all gates parallel (validate + slop + chartcheck; exit 1 if any fails).
+   one command, all gates parallel (validate + slop + chartcheck + jscheck; exit 1 if any fails).
    ([output.md](references/output.md) · [modules.md](references/modules.md) ·
    [html-patterns.md](references/html-patterns.md))
 3. **Deliver** — open it and give the URL. ([output.md](references/output.md) → Sharing)

@@ -76,8 +76,9 @@ section h2 .n{font-weight:650;color:var(--cat-1);margin-right:.5rem}
 > paper + hairlines, TOC/links as ink). On top of that, colour carries meaning: the
 > kicker and section numbers take one category hue (`--cat-1`); findings and
 > recommendation priorities get severity hues (`--ok/--warn/--bad`) — in a report, that
-> colour IS the data. What stays banned: pastel pill capsules, colored numbered-circle
-> badges (~20px+), saturated link/TOC text — the decorative tells.
+> colour IS the data. Pills are a taste call — the gate reports them as *info*, never
+> a fail. What still reads as a tell: colored numbered-circle badges (~20px+),
+> saturated link/TOC text.
 
 Findings/priorities in practice:
 

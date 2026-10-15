@@ -106,10 +106,10 @@ The template's essentials:
   (`text-ink`, `bg-paper`, `text-ok`), and two pages drift apart slower.
 - A tiny critical CSS (`html{background:#fafaf9}` + font on body) keeps the first paint
   on warm paper — no white flash before the CDN compiles.
-- **House rules apply unchanged:** categories as small square dot + muted text (never
-  pills — `visualize lint` also flags Tailwind pill classes like
-  `rounded-full bg-emerald-100`), colour is structure, severity hues only where the
-  colour IS the data.
+- **House rules apply unchanged:** categories as small square dot + muted text, colour is
+  structure, severity hues only where the colour IS the data. Pills are allowed (a small
+  `border-radius:999px` chip is a taste call) — but a pill used as the *only* category
+  carrier is the AI-tell the references warn about.
 - Mix freely with Mermaid (the scaffold keeps `.seam`/`.leak` classDef helpers) and with
   hand-built divs + inline SVG — same mix-media rule as above.
 

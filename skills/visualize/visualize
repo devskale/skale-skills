@@ -30,8 +30,8 @@ THROWAWAY="https://lubu.skale.dev/throway"
 # (fuzzy static AI-slop linter, /api/slop/lint). Findings after the upload:
 # the URL is out (fast feedback), the findings are the to-do. Fix locally,
 # re-share with --update (PUT in place, URL stable). Reviews are handed back
-# for the agent to decide. Missing token or unreachable API skips the check
-# (a share must never fail on the linter) — but says so.
+# for the agent to decide. Missing token or unreachable API falls back to the
+# offline hard-ban subset (never a silent skip) — a share must not die on the linter.
 SLOP_DIR_MAX=3   # share --dir lints at most this many html files
 # Der slop-API-Vertrag (Endpoint, Auth, Report, Exit-Codes 0/1/3) lebt im
 # Client: scripts/lib/slop_client.py — SLOP_API_URL ueberschreibt den
@@ -120,10 +120,11 @@ Usage:
   visualize share <file.html>     # upload to the throwaway store, print the URL, slop-lint (findings → exit 1)
   visualize share --update <file> # share under a stable name (create-or-get) — same URL on repeat
   visualize share --dir <dir>     # upload a dir (recursively; nested files flattened)
-  visualize gate <file.html>      # ALL gates parallel: validate + slop + chartcheck → exit 1 if any fails
+  visualize gate <file.html>      # ALL gates parallel: validate + slop + chartcheck + jscheck → exit 1 if any fails
   visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
   visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
   visualize chartcheck <file.html> # dataviz integrity gate: bar baseline, log scale, process notes, source
+  visualize jscheck <file.html>   # JS gate: node --check on every inline <script> + TDZ heuristic
   visualize --help                # this help
 
 The agent builds the HTML (see SKILL.md). This launcher only opens, shares, validates, lints, chartchecks.
@@ -267,7 +268,7 @@ case "$cmd" in
             [ -n "${rdp:-}" ] && _pin_set "$rdp" "$dirurl"
             echo "$dirurl"
             echo "visualize: shared dir '$d' -> $dirurl  ($n files, expires ~4h after last add)" >&2
-            [ "$slop_bad" -gt 0 ] && exit 1
+            if [ "$slop_bad" -gt 0 ]; then exit 1; fi
             exit 0
         fi
         # --update: share under a STABLE name, then edit in place. Uses throway's own
@@ -372,80 +373,28 @@ case "$cmd" in
     jscheck)
         [ $# -eq 1 ] || { echo "visualize jscheck: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize jscheck: not a file: $f" >&2; exit 2; }
-        # JS quality gate: node --check auf jeden <script>-block + TDZ-heuristik
-        # (befund 2026-09-27: 'Cannot access node before initialization' —
-        # ein .on() vor der const-declaration lief unentdeckt durch validate)
+        # JS quality gate: node --check auf jeden inline <script>-block +
+        # TDZ-heuristik (befund 2026-09-27: 'Cannot access node before
+        # initialization' — ein .on() vor der const-declaration lief
+        # unentdeckt durch validate).
+        #
+        # Die Extraktion lebt in scripts/jscheck.py, nicht hier: die alte
+        # bash-Variante hatte ZWEI Definitionen von 'script-block'
+        # (<script[[:space:]]*> fuer syntax, <script[^>]*> fuer TDZ) — die
+        # engere uebersprang still jedes <script type="module">, also das
+        # mermaid-Template. Dazu zwei Zeilen-Parsing-Loecher (code auf der
+        # <script>-Zeile; </script> in der letzten Zeile ohne trailing newline).
+        # Eine Definition, ein Gate. node fehlt = kein blocking
+        # (best-effort, wie chartcheck ohne python3).
         if ! command -v node >/dev/null 2>&1; then
             echo "visualize jscheck: node not found — install nodejs for the JS gate" >&2
-            exit 0   # kein node = kein blocking (best-effort)
+            exit 0
         fi
-        tmpdir="$(mktemp -d)"
-        trap 'rm -rf "$tmpdir"' EXIT
-        found_err=0
-        block=0
-        # extrahiere inline <script>-blöcke (ohne src=)
-        while IFS= read -r line; do
-            if echo "$line" | grep -q '<script[[:space:]]*>'; then
-                block=$((block+1))
-                rm -f "$tmpdir/block.js"; touch "$tmpdir/block.js"
-                in_block=1
-                continue
-            fi
-            if echo "$line" | grep -q '</script>'; then
-                in_block=0
-                if [ -s "$tmpdir/block.js" ]; then
-                    if ! node --check "$tmpdir/block.js" 2>/dev/null; then
-                        echo "visualize jscheck: ✗ script-block #$block has a syntax error:" >&2
-                        node --check "$tmpdir/block.js" 2>&1 | head -5 | sed 's/^/    /' >&2
-                        found_err=1
-                    fi
-                fi
-                continue
-            fi
-            [ -n "${in_block:-}" ] && [ "$in_block" = "1" ] && echo "$line" >> "$tmpdir/block.js"
-        done < "$f"
-
-        # TDZ-heuristik: variablen-nutzung vor const/let-declaration
-        # (muster: `.on(` oder `.attr(` oder `.style(` auf eine variable
-        #  die erst später als const/let deklariert wird)
-        if command -v python3 >/dev/null 2>&1; then
-            python3 - "$f" <<'JSEOF'
-import sys, re
-src = open(sys.argv[1], encoding='utf-8', errors='replace').read()
-scripts = re.findall(r'<script[^>]*>(.*?)</script>', src, re.DOTALL)
-js = '\n'.join(s for s in scripts if 'src=' not in s[:50])
-issues = []
-# finde alle const/let deklarationen mit ihrer position
-decls = {}
-for m in re.finditer(r'\b(?:const|let)\s+([a-zA-Z_$][\w$]*)', js):
-    name = m.group(1)
-    if name not in decls:
-        decls[name] = m.start()
-# prüfe: wird die variable VOR ihrer deklaration mit .on(/.attr(/.style( genutzt?
-for name, pos in decls.items():
-    # suche nutzungen wie `name.on(`, `name.attr(`, `name.style(` vor pos
-    for m in re.finditer(re.escape(name) + r'\.(?:on|attr|style|text|join|call)\s*\(', js[:pos]):
-        # ist diese nutzung in einem anderen script-block oder kommentar?
-        line_start = js.rfind('\n', 0, m.start()) + 1
-        line = js[line_start:js.find('\n', m.start())]
-        if '//' not in line[:m.start() - line_start]:
-            issues.append(f'  TDZ: "{name}" used at pos {m.start()} before declaration at pos {pos}')
-            issues.append(f'    line: {line.strip()[:80]}')
-if issues:
-    print('visualize jscheck: ✗ temporal-dead-zone violations:')
-    for i in issues[:10]:
-        print(i)
-    sys.exit(1)
-JSEOF
-            [ $? -ne 0 ] && found_err=1
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo "visualize jscheck: python3 not found — install python3 for the JS gate" >&2
+            exit 0
         fi
-
-        if [ $found_err -eq 0 ]; then
-            echo "visualize jscheck: OK — $block script blocks, no syntax errors, no TDZ violations"
-        else
-            echo "visualize jscheck: FAILED — fix the errors above" >&2
-            exit 1
-        fi
+        exec python3 "$SKILL_DIR/scripts/jscheck.py" "$f"
         ;;
 
     validate)
@@ -518,10 +467,13 @@ if bad:
 else:
     print(f'visualize validate: OK — one file ({len(src)} bytes; content inline, CDN deps allowed)')
 PYEOF
-            # propagate the gate's verdict: without this the script fell through
-            # to the jscheck run below, whose success reset the exit code to 0,
-            # so a dependency violation exited clean (4 red validate tests).
-            [ $? -ne 0 ] && exit 1
+            # Propagate the gate's verdict EXPLICITLY. The old form
+            # `[ $? -ne 0 ] && exit 1` returns status 1 on the success path
+            # too (the test itself fails) — for a year the jscheck chain
+            # that followed masked it back to 0. An `if` is the only form
+            # that is 0 on success and 1 on failure without a masking crutch.
+            vrc=$?
+            if [ "$vrc" -ne 0 ]; then exit 1; fi
         else
             # python3-less fallback: basic grep for local + non-allowlisted deps
             KNOWNS='https?://(cdn\.tailwindcss\.com|cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|esm\.sh|cdn\.skypack\.dev|fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.plot\.ly)'
@@ -542,13 +494,15 @@ PYEOF
             fi
             echo "visualize validate: OK — one file (basic check — install python3 for the full gate)"
         fi
-        # JS quality gate läuft immer mit (befund 2026-09-27)
-        "$0" jscheck "$f" || exit 1
         ;;
 
     gate)
         # Eine Interface über alle Gates — parallel innen (jeder Check liest
         # nur die Datei; Laufzeit ≈ langsamstes Gate, nicht die Summe).
+        # jscheck ist ein eigener Zweig mit eigenem Label: früher lief es
+        # als stiller Anhang in validate, und ein JS-Fehler hieß dann
+        # "gate validate: FAIL" — falsches Label, der Agent suchte ein
+        # Dependency-Problem. Ein Gate, ein Contract, ein Label.
         # Der Agent ruft EINEN Command statt sich vier zu merken; share
         # behält seinen URL-first-Slop-Check als letztes Netz.
         # stdout-Vertrag: share/gate melden per Gate nach stderr; die URL
@@ -558,13 +512,15 @@ PYEOF
         tmpd="$(mktemp -d)"; trap 'rm -rf "$tmpd"' EXIT
         "$SELF" validate "$f" >"$tmpd/validate.out" 2>&1 & vpid=$!
         "$SELF" chartcheck "$f" >"$tmpd/chartcheck.out" 2>&1 & cpid=$!
+        "$SELF" jscheck "$f" >"$tmpd/jscheck.out" 2>&1 & jpid=$!
         python3 "$SKILL_DIR/scripts/lib/slop_client.py" lint "$f" --human \
             >"$tmpd/slop.out" 2>&1 & spid=$!
         wait $vpid; vrc=$?
         wait $cpid; crc=$?
+        wait $jpid; jrc=$?
         wait $spid; src=$?
         fails=0
-        for g in validate:$vrc slop:$src chartcheck:$crc; do
+        for g in validate:$vrc slop:$src chartcheck:$crc jscheck:$jrc; do
             gname="${g%%:*}"; grc="${g##*:}"
             if [ "$grc" -eq 0 ]; then
                 echo "gate $gname: OK" >&2

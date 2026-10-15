@@ -1,0 +1,13 @@
+[project]
+name = "visualize-skill"
+version = "1.13.1"
+description = "Render a set of things as one self-contained HTML page and share a URL"
+readme = "SKILL.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "skale"},
+]
+# Standard library only: the gates (slop_client, chartcheck, jscheck) are
+# deliberately dependency-free so a share never depends on a venv being warm.
+dependencies = []

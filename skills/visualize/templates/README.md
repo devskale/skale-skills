@@ -30,8 +30,8 @@ in [../references/scaffolds.md](../references/scaffolds.md).
   per-page layout is irregular enough that utilities beat the inline module catalog
   (Tailwind). The Tailwind track keeps the house tokens as semantic classes
   (`text-ink`, `bg-paper`, `text-ok`) via its inline `tailwind.config` — the house rules
-  (dot + muted text categories, severity only where colour IS the data, no pills) apply
-  unchanged; `visualize lint` also checks Tailwind pill classes.
+  (dot + muted text categories, severity only where colour IS the data) apply
+  unchanged. Pills are a taste call, not a gate (the linter reports them as info).
 - `mermaid.html` is adapted from the Pocock `improve-codebase-architecture` HTML-report
   scaffold; `tailwind-report.html` adopts its Tailwind scaffold directly.
 
