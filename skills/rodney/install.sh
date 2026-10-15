@@ -13,6 +13,21 @@ mkdir -p "$BIN_DIR"
 
 REPO="devskale/rodney"
 
+# Minimum required binary version — single source of truth: skills/rodney/MIN_VERSION
+# (read by install.sh, install.bat and tests/rodney/test.sh).
+# Bump it when a release carries a fix downstream must not run without.
+MIN_VERSION_FILE="$SKILL_DIR/MIN_VERSION"
+if [ ! -f "$MIN_VERSION_FILE" ]; then
+    echo "ERROR $MIN_VERSION_FILE missing — the skill ships it; reinstall the skill"
+    exit 1
+fi
+MIN_VERSION="$(tr -d ' \t\r\n' < "$MIN_VERSION_FILE")"
+[ -n "$MIN_VERSION" ] || { echo "ERROR $MIN_VERSION_FILE is empty"; exit 1; }
+
+ver_ge() { # ver_ge <installed> <min> — semantic compare, true if installed >= min
+    [ "$(printf '%s\n' "$1" "$2" | sort -V | head -1)" = "$2" ]
+}
+
 # ── 1. Detect platform ────────────────────────────────────────────────────
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"   # darwin | linux
 ARCH="$(uname -m)"
@@ -23,10 +38,9 @@ case "$ARCH" in
 esac
 echo "  Platform: $OS/$ARCH"
 
-# ── 2. Download the latest release binary ──────────────────────────────────
-# Prefer an installed binary only if it's already current — otherwise refresh.
+# ── 2. Current version (info only) ────────────────────────────────────────
 if command -v rodney >/dev/null 2>&1 && rodney --version >/dev/null 2>&1; then
-    echo "  Current: $(rodney --version) at $(command -v rodney)"
+    echo "  Current: $(rodney --version) at $(command -v rodney)  (required: >= $MIN_VERSION)"
 fi
 
 ASSET="rodney-$OS-$ARCH.tar.gz"
@@ -38,7 +52,7 @@ trap 'rm -rf "$TMP"' EXIT
 echo "  Downloading $URL ..."
 if curl -fsSL "$URL" -o "$TMP/$ASSET"; then
     tar -xzf "$TMP/$ASSET" -C "$TMP"
-    BIN="$(find "$TMP" -type f -name rodney -perm +111 | head -1)"
+    BIN="$(find "$TMP" -type f -name rodney -perm -u+x | head -1)"
     [ -n "$BIN" ] || BIN="$(find "$TMP" -type f -name rodney | head -1)"
     if [ -n "$BIN" ]; then
         mv "$BIN" "$LAUNCHER"
@@ -66,8 +80,14 @@ fi
 
 # ── 4. Verify ──────────────────────────────────────────────────────────────
 echo "  Verifying..."
-"$LAUNCHER" --version
-echo "  ✓ rodney installed at $LAUNCHER"
+INSTALLED=$("$LAUNCHER" --version)
+echo "  $INSTALLED"
+if ! ver_ge "$INSTALLED" "$MIN_VERSION"; then
+    echo "ERROR installed rodney $INSTALLED is older than required $MIN_VERSION"
+    echo "      the release asset may be stale — check https://github.com/$REPO/releases"
+    exit 1
+fi
+echo "  ✓ rodney $INSTALLED (>= $MIN_VERSION) at $LAUNCHER"
 
 case ":$PATH:" in
     *":$HOME/.local/bin:"*) ;;

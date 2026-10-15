@@ -39,6 +39,7 @@ echo ""
 # ── 1. File structure ──────────────────────────────────────────────────
 echo "[1] File structure..."
 assert "SKILL.md"                       "[ -f SKILL.md ]"
+assert "MIN_VERSION"                   "[ -f MIN_VERSION ]"
 assert ".gitignore"                     "[ -f .gitignore ]"
 assert "references/commands.md"         "[ -f references/commands.md ]"
 assert "references/debugging.md"        "[ -f references/debugging.md ]"
@@ -81,9 +82,22 @@ echo ""
 
 # ── 5. Version ───────────────────────────────────────────────────────
 echo "[5] Version..."
+assert "MIN_VERSION file readable" "[ -s MIN_VERSION ]"
+MIN_VERSION="$(tr -d ' \t\r\n' < MIN_VERSION 2>/dev/null || true)"
+assert "MIN_VERSION parses" "[ -n '\$MIN_VERSION' ]"
 VER=$(rodney --version 2>&1 || true)
 assert "has version" "[ -n '$VER' ]"
-echo "  version: $VER"
+echo "  version: $VER (required: >= $MIN_VERSION)"
+# minimum version gate: older binaries fail the suite outright. The skill
+# installer pulls the latest release, so the fix is always: re-run install.sh
+if [ -n "$VER" ] && [ -n "$MIN_VERSION" ]; then
+    OLDEST=$(printf '%s\n' "$VER" "$MIN_VERSION" | sort -V | head -1)
+    assert "binary >= $MIN_VERSION" "[ '$OLDEST' = '$MIN_VERSION' ]"
+    [ "$OLDEST" = "$MIN_VERSION" ] || cat >&2 <<HINT
+  ── binary is outdated ($VER < $MIN_VERSION) ──
+  Fix: bash skills/rodney/install.sh   # downloads the latest release
+HINT
+fi
 echo ""
 
 # ── 6. SKILL.md content quality ──────────────────────────────────────

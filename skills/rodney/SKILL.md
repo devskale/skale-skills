@@ -42,15 +42,17 @@ rodney stop                               # 5. ALWAYS stop when done
 
 ## Use the Latest Rodney
 
-Rodney ships as release binaries built by CI (not on PyPI). **Before relying on it,
-make sure you're on the latest version** — new commands and flags land all the time and
-`--help` only reflects what's installed.
+Rodney ships as release binaries built locally (not on PyPI). **Minimum version: see
+[`MIN_VERSION`](MIN_VERSION)** (currently `0.12.1` — the about:blank panic fix). Older
+binaries panic on `rodney open about:blank` with a bare Go panic (exit 1). The gate is
+enforced by scripts, not prose: `install.sh`/`install.bat` read `MIN_VERSION` and fail
+the install if the downloaded asset is older, and `tests/rodney/test.sh` fails the suite.
 
 ```bash
-rodney --version          # what's installed now
+rodney --version          # must satisfy MIN_VERSION
 ```
 
-To refresh: re-run the skill's installer (downloads the latest release binary,
+If older — refresh via the skill's installer (downloads the latest release binary,
 no Go toolchain needed):
 
 ```bash
@@ -86,8 +88,8 @@ cd rodney
 go build -ldflags="-s -w" -o ~/.local/bin/rodney .   # put it on your PATH
 ```
 
-Verify with `rodney --version` (expect `0.7.0` or newer — don't rely on a hardcoded
-version).
+Verify with `rodney --version` against [`MIN_VERSION`](MIN_VERSION) — the skill requires
+that version or newer, and the installers refuse to leave an older binary in place.
 
 ## Project Setup
 
@@ -143,7 +145,7 @@ matrix, see **[docs/browser-use/which-browser-tool.md](../../docs/browser-use/wh
 ### Navigation & Waiting
 
 ```bash
-rodney open <url>           # Navigate (auto-adds http://)
+rodney open <url>           # Navigate (auto-adds http://; about:/data:/blob:/javascript: never prefixed — v0.12.1)
 rodney open <url> --reuse   # Switch to an existing page at that URL instead
                             #   of navigating the active page away (parallel
                             #   sessions converge on ONE page)
@@ -326,7 +328,7 @@ NOT share your visible Chrome or your logged-in profile.
 - **Selectors are CSS only** — no XPath. Use `rodney js` for complex queries.
 - **`start` while already running is NOT a no-op** — it launches a *second* Chrome process (new PID, new debug URL) and overwrites `state.json`, orphaning the old Chrome (which keeps running). Check first with `rodney status`, or `rodney stop` before re-`start`. In scripts, guard with `rodney status || rodney start`.
 - **Clean up stale/orphan processes** with the bundled utilities (below).
-- **`open` auto-adds `http://`** — for `https://` URLs, include the scheme explicitly.
+- **`open` auto-adds `http://`** — for `https://` URLs, include the scheme explicitly. Special URLs (`about:`, `data:`, `blob:`, `javascript:`) are never prefixed (v0.12.1) — `rodney open about:blank` works.
 - **Exit codes**: 0 = success, 1 = assertion failed, 2 = error (bad args, timeout, no browser).
 - **Heavy React apps** (booking sites, SPAs with autocomplete dropdowns) may timeout on `click`/`input`. Workaround: use the site's public API directly (most airlines, travel sites have one), or use `rodney js` to set values programmatically.
 - **⚠️ The rod-managed Chromium (`~/.cache/rod/browser/`) is a frozen 2024 Tip-of-Tree dev snapshot, not stable** — go-rod pins revision 1321438 (Chromium 128.0.6568.**0**) and has shipped no update since July 2024. On newer distros this snapshot can be **partially broken**: `text`/`Element.Text()` returns `""`, `type`/`InsertText` never lands, and the HistoryEmbeddings AI feature can SIGABRT the whole browser (see rodney#4, rodney#3 / diskfull 2026-10-07). **Since v0.12.0 rodney auto-prefers the system browser** (`launcher.LookPath()`: Chrome/Chromium/Edge) over the snapshot — `ROD_CHROME_BIN` is only needed as an explicit override or on boxes without a system browser. On older binaries: point `ROD_CHROME_BIN` at your system Chrome (`/opt/google/chrome/chrome` on Linux). If `text` hangs or returns empty on a fresh page, suspect the snapshot first (`rodney doctor` shows which browser is in use).

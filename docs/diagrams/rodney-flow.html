@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rodney — how the skill works</title>
+<!--
+  visualize house skin v3 · flavor: blueprint (architecture)
+  Subject: the rodney skill — agent → rodney CLI → one persistent headless Chrome,
+  state dir keeps cookies across calls, named sessions isolate.
+  Hand-crafted SVG block diagram. Source of truth: this file; PNG exports are derived.
+-->
+<style>
+  :root, body[data-skin="blueprint"]{
+    --paper:#f1f3f2; --card:#fbfcfc; --soft:#e6eae8;
+    --ink:#1e2b28;   --muted:#5f7370; --line:#c9d4d0;
+    --cat-1:#0e7490; --cat-2:#155e75; --cat-3:#b45309;
+    --ok:#1a7f4b; --warn:#b45309; --bad:#c0262d;
+    --radius:2px;  --shadow:none;
+  }
+  *{ box-sizing:border-box }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding:48px 24px 64px;
+  }
+  .wrap{ max-width:960px; margin:0 auto }
+  h1{ font-size:clamp(26px, 5vw, 34px); line-height:1.08; letter-spacing:-.025em;
+      font-weight:800; margin:10px 0 10px }
+  .sub{ color:var(--muted); font-size:15.5px; line-height:1.5; max-width:62ch; margin:0 }
+  .kicker{ font-family:ui-monospace, Menlo, monospace; font-size:11.5px; font-weight:700;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--cat-1) }
+  .meta{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-top:12px }
+  header{ margin-bottom:8px }
+  header::after{ content:""; display:block; height:3px; background:var(--ink); margin-top:18px }
+  footer{ margin-top:44px; padding-top:14px; border-top:2px solid var(--ink);
+          display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+          font-size:12.5px; color:var(--muted) }
+  .legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted);
+           align-items:center; margin:16px 0 0 }
+  .legend .it{ display:inline-flex; align-items:center; gap:7px }
+  .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; flex:none }
+  .dashline{ width:26px; height:0; border-top:2px dashed var(--cat-3); display:inline-block }
+  figure{ margin:32px 0 0 }
+  figcaption{ font-size:12.5px; color:var(--muted); margin-top:10px }
+  svg{ width:100%; height:auto; display:block }
+
+  /* svg block-diagram vocabulary */
+  .blk{ fill:var(--card); stroke:#b7c6c0; stroke-width:1.2; stroke-dasharray:5 3 }
+  .blk-solid{ fill:var(--card); stroke:#b7c6c0; stroke-width:1.2 }
+  .lab{ font-family:ui-monospace, Menlo, monospace; font-size:12px; font-weight:700;
+        letter-spacing:.06em }
+  .sm{ font-family:ui-monospace, Menlo, monospace; font-size:10.5px; fill:var(--muted) }
+  .arr{ stroke:#1e2b28; stroke-width:1.6; fill:none }
+  .loop{ stroke:#b45309; stroke-width:1.6; fill:none; stroke-dasharray:6 4 }
+  .gridln{ stroke:#c9d4d0; stroke-width:.5; opacity:.45 }
+</style>
+</head>
+<body data-skin="blueprint">
+<div class="wrap">
+
+  <header>
+    <div class="kicker">skill diagram · rodney</div>
+    <h1>One persistent headless Chrome, driven from the shell</h1>
+    <p class="sub">Every <code>rodney</code> command talks to the <em>same</em> long-running
+    headless Chrome — cookies, localStorage, and navigation state survive from call to call.</p>
+    <div class="meta">
+      <span>scope: skills/rodney</span>
+      <span>source: SKILL.md · references/</span>
+    </div>
+  </header>
+
+  <figure>
+    <svg viewBox="0 0 880 420" role="img" aria-label="rodney flow: agent bash calls, rodney CLI, state.json, one persistent headless Chrome, session dir, results">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5"
+                markerHeight="6.5" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#1e2b28"/>
+        </marker>
+        <marker id="ahAmber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5"
+                markerHeight="6.5" orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill="#b45309"/>
+        </marker>
+        <pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse">
+          <path d="M22 0 H0 V22" fill="none" class="gridln"/>
+        </pattern>
+      </defs>
+
+      <rect x="0" y="0" width="880" height="420" fill="url(#grid)"/>
+
+      <!-- AGENT (bash calls, one per invocation) -->
+      <rect class="blk" x="8" y="60" width="160" height="180"/>
+      <circle cx="20" cy="80" r="4" fill="#0e7490"/>
+      <text class="lab" x="30" y="84" fill="#0e7490">AGENT</text>
+      <text class="sm" x="20" y="104">one bash call per cmd</text>
+      <g font-family="ui-monospace, Menlo, monospace" font-size="10" fill="#5f7370">
+        <text x="20" y="126">rodney start</text>
+        <text x="20" y="142">rodney open &lt;url&gt;</text>
+        <text x="20" y="158">rodney waitstable</text>
+        <text x="20" y="174">… interact / scrape</text>
+        <text x="20" y="190">rodney stop</text>
+      </g>
+      <text class="sm" x="20" y="206">exit 0 ok · 1 assert</text>
+      <text class="sm" x="20" y="222">2 error (don't retry)</text>
+
+      <!-- RODNEY CLI (stateless per call) -->
+      <rect class="blk" x="216" y="60" width="180" height="120"/>
+      <circle cx="228" cy="80" r="4" fill="#155e75"/>
+      <text class="lab" x="238" y="84" fill="#155e75">RODNEY CLI</text>
+      <text class="sm" x="228" y="106">Go binary (release)</text>
+      <text class="sm" x="228" y="122">stateless per call</text>
+      <text class="sm" x="228" y="138">connects via state file</text>
+      <text class="sm" x="228" y="162">83 cmds · --help = truth</text>
+
+      <!-- STATE.JSON -->
+      <rect class="blk-solid" x="216" y="212" width="180" height="56"/>
+      <text class="lab" x="228" y="234" fill="#1e2b28">STATE FILE</text>
+      <text class="sm" x="228" y="252">debug URL · active page</text>
+
+      <!-- HEADLESS CHROME (persistent) -->
+      <rect class="blk" x="456" y="52" width="200" height="216"/>
+      <circle cx="468" cy="72" r="4" fill="#0e7490"/>
+      <text class="lab" x="478" y="76" fill="#0e7490">HEADLESS CHROME</text>
+      <text class="sm" x="468" y="96">one process, stays up</text>
+      <text class="sm" x="468" y="112">between ALL rodney calls</text>
+      <g font-family="ui-monospace, Menlo, monospace" font-size="10" fill="#5f7370">
+        <text x="468" y="138">cookies</text>
+        <text x="468" y="154">localStorage</text>
+        <text x="468" y="170">navigation state</text>
+        <text x="468" y="186">tabs (t:&lt;id&gt; targets)</text>
+      </g>
+      <text class="sm" x="468" y="212">CDP · own user-data-dir</text>
+      <text class="sm" x="468" y="230">never your real profile</text>
+      <text class="sm" x="468" y="252">start --show = visible mode</text>
+
+      <!-- SESSION DIR -->
+      <rect class="blk-solid" x="490" y="300" width="176" height="84"/>
+      <circle cx="502" cy="320" r="4" fill="#b45309"/>
+      <text class="lab" x="512" y="324" fill="#b45309">SESSION DIR</text>
+      <text class="sm" x="502" y="344">~/.rodney/ (global)</text>
+      <text class="sm" x="502" y="360">./.rodney/ (--local)</text>
+      <text class="sm" x="502" y="376">--session = own Chrome</text>
+
+      <!-- RESULTS -->
+      <rect class="blk" x="716" y="88" width="156" height="144"/>
+      <circle cx="728" cy="108" r="4" fill="#0e7490"/>
+      <text class="lab" x="738" y="112" fill="#0e7490">RESULTS</text>
+      <g font-family="ui-monospace, Menlo, monospace" font-size="10" fill="#5f7370">
+        <text x="728" y="134">text / html / attr</text>
+        <text x="728" y="150">screenshot / pdf</text>
+        <text x="728" y="166">video (gif/mp4)</text>
+        <text x="728" y="182">a11y tree</text>
+        <text x="728" y="198">console / requests</text>
+        <text x="728" y="214">assert exit 1 on fail</text>
+      </g>
+
+      <!-- flow arrows -->
+      <path class="arr" d="M168 120 H212" marker-end="url(#ah)"/>
+      <path class="arr" d="M396 120 H452" marker-end="url(#ah)"/>
+      <path class="arr" d="M306 180 V208" marker-end="url(#ah)"/>
+      <text class="sm" x="316" y="198">writes</text>
+      <path class="arr" d="M656 160 H712" marker-end="url(#ah)"/>
+
+      <!-- persistence loop: Chrome stays up across calls -->
+      <path class="loop" d="M556 268 V296" marker-end="url(#ahAmber)"/>
+      <text class="sm" x="566" y="288" fill="#b45309">state persists here</text>
+      <path class="loop" d="M490 330 H306 V274" marker-end="url(#ahAmber)"/>
+      <text class="sm" x="250" y="304" fill="#b45309">next rodney call reconnects —</text>
+      <text class="sm" x="250" y="320" fill="#b45309">no restart, no lost login</text>
+
+      <!-- stop warning -->
+      <path class="loop" d="M84 240 V408 H470 V274" marker-end="url(#ahAmber)"/>
+      <text class="sm" x="94" y="392" fill="#b45309">rodney stop — or Chrome runs forever (orphan)</text>
+    </svg>
+    <figcaption>Fig. 1 — solid arrows: a command's path (agent → CLI → state file → persistent
+    Chrome → results). Dashed amber: what persists across calls — the session dir keeps state,
+    the next call reconnects, and only <code>rodney stop</code> tears Chrome down.</figcaption>
+  </figure>
+
+  <div class="legend">
+    <span class="it"><span class="dot" style="background:#0e7490"></span>agent surface</span>
+    <span class="it"><span class="dot" style="background:#155e75"></span>rodney CLI</span>
+    <span class="it"><span class="dot" style="background:#b45309"></span>persistence · lifecycle</span>
+    <span class="it"><span class="dashline"></span>dashed = persists / teardown</span>
+  </div>
+
+  <footer>
+    <span>source: skills/rodney/SKILL.md · references/registry.md</span>
+    <span>house skin v3 · data-skin="blueprint"</span>
+  </footer>
+</div>
+</body>
+</html>

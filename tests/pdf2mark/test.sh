@@ -90,11 +90,53 @@ check "--update → exit 0" 0 "$SCRIPT" --update
 grep -q "Updated" /tmp/pdf2mark.out && ok || bad "--update reports Updated"
 [ -f "$SKILL/.last-update" ] && ok || bad "stamp file created"
 
+# default output: md/<name>.pdf.md next to the PDF (no --out, no --stdout)
+# offline-safe: the file check fires before token resolve, so a missing file
+# still exits 1 — and default_out_path is pure path logic, unit-testable.
+if command -v python3 >/dev/null 2>&1; then
+    OUT=$(python3 -c "
+import sys; sys.path.insert(0, '$ROOT/skills/pdf2mark/scripts')
+from pdf2mark import default_out_path
+print(default_out_path('$ROOT/skills/pdf2mark/abd.pdf'))" 2>&1)
+    [ "$OUT" = "$ROOT/skills/pdf2mark/md/abd.pdf.md" ] && ok \
+        || bad "default out path wrong: $OUT"
+    # --out and --stdout must still exist as flags
+    grep -q '"--stdout"' "$PY" && ok || bad "--stdout flag missing"
+    grep -q 'default_out_path' "$PY" && ok || bad "default_out_path not used"
+    grep -q 'os.makedirs' "$PY" && ok || bad "md/ dir is not created (os.makedirs)"
+else
+    warn "python3 missing — default-output checks skipped"
+fi
+
+make_fixture() { # make_fixture <out.pdf> — text-layer PDF via cupsfilter, ps2pdf fallback
+    printf 'Skale pdf2mark Funktionstest\nZeile zwei mit Umlauten: Aoeuess.\n' > /tmp/pdf2mark-fixture.txt
+    cupsfilter /tmp/pdf2mark-fixture.txt > "$1" 2>/dev/null
+    if [ ! -s "$1" ] && command -v ps2pdf >/dev/null 2>&1; then
+        cat > /tmp/pdf2mark-fixture.ps <<'PS'
+%!PS
+/Helvetica findfont 12 scalefont setfont
+72 720 moveto (Skale pdf2mark Funktionstest) show
+72 700 moveto (Zeile zwei mit Umlauten: Aoeuess.) show
+showpage
+PS
+        ps2pdf /tmp/pdf2mark-fixture.ps "$1" 2>/dev/null
+    fi
+}
+
 # token available? (env wins, then credgoo)
 TOKEN=no
 [ -n "${PDF2MD_BEARER:-}" ] || [ -n "${FETCH_URL_BEARER:-}" ] && TOKEN=env
-if [ "$TOKEN" = no ] && command -v credgoo >/dev/null 2>&1; then
-    [ -n "$(credgoo FETCH_URL_BEARER 2>/dev/null | head -1)" ] && TOKEN=credgoo
+if [ "$TOKEN" = no ] && command -v credgoo >/dev/null 2>&1 \
+        && [ -n "$(credgoo FETCH_URL_BEARER 2>/dev/null | head -1)" ]; then
+    TOKEN=credgoo
+fi
+# the global credgoo CLI can be broken while the skill's own venv credgoo works
+# (the launcher installs it via uv sync) — probe the venv the same way the CLI does
+if [ "$TOKEN" = no ] && [ -x "$HOME/.cache/skale-skills/pdf2mark/bin/python" ]; then
+    if "$HOME/.cache/skale-skills/pdf2mark/bin/python" -c \
+        "from credgoo import get_api_key; import sys; sys.exit(0 if get_api_key('FETCH_URL_BEARER') else 1)" 2>/dev/null; then
+        TOKEN=credgoo
+    fi
 fi
 
 # live smoke: text-layer PDF via pdfplumber (no cloud OCR cost)
@@ -103,10 +145,9 @@ FIXPDF=/tmp/pdf2mark-fixture.pdf
 if [ "$TOKEN" = no ]; then
     warn "live conversion skipped (no token: PDF2MD_BEARER/FETCH_URL_BEARER/credgoo)"
 else
-    printf 'Skale pdf2mark Funktionstest\nZeile zwei mit Umlauten: Aoeuess.\n' > "$FIXTXT"
-    cupsfilter "$FIXTXT" > "$FIXPDF" 2>/dev/null
+    make_fixture "$FIXPDF"
     if [ ! -s "$FIXPDF" ]; then
-        warn "live conversion skipped (cannot build PDF fixture via cupsfilter)"
+        warn "live conversion skipped (cannot build PDF fixture)"
     else
         check "live convert → exit 0" 0 "$SCRIPT" "$FIXPDF" --out /tmp/pdf2mark-out.md
         if [ -s /tmp/pdf2mark-out.md ]; then
@@ -117,6 +158,20 @@ else
         fi
         check "live convert --method pdfplumber → exit 0" 0 \
             "$SCRIPT" "$FIXPDF" --method pdfplumber --out /tmp/pdf2mark-out2.md
+
+        # default output: no --out → md/<name>.pdf.md next to the PDF
+        DEFDIR=$(mktemp -d)
+        cp "$FIXPDF" "$DEFDIR/abd.pdf"
+        ( cd "$DEFDIR" && "$ROOT/$SCRIPT" abd.pdf ) >/tmp/pdf2mark.out 2>&1
+        [ -s "$DEFDIR/md/abd.pdf.md" ] && ok \
+            || bad "default output md/abd.pdf.md not written (stderr: $(head -2 /tmp/pdf2mark.out))"
+        grep -q "Funktionstest" "$DEFDIR/md/abd.pdf.md" 2>/dev/null && ok \
+            || bad "default output lacks fixture text"
+        # --stdout restores the old behavior
+        ( cd "$DEFDIR" && "$ROOT/$SCRIPT" abd.pdf --stdout ) >/tmp/pdf2mark-stdout.out 2>/dev/null
+        grep -q "Funktionstest" /tmp/pdf2mark-stdout.out && ok \
+            || bad "--stdout did not write markdown to stdout"
+        rm -rf "$DEFDIR"
 
         # relative in+out resolve against the caller's cwd, not the skill dir
         TESTCWD=$(mktemp -d)
@@ -145,8 +200,7 @@ if command -v python3 >/dev/null 2>&1; then
     # The mock needs a real PDF but NO token — build the fixture independently of
     # the live-token block above (which only runs when a token exists).
     if [ ! -s "$FIXPDF" ]; then
-        printf 'Skale pdf2mark share-path test\nZeile zwei.\n' > "$FIXTXT"
-        cupsfilter "$FIXTXT" > "$FIXPDF" 2>/dev/null
+        make_fixture "$FIXPDF"
     fi
     if [ ! -s "$FIXPDF" ]; then
         warn "share-path mock skipped (cannot build PDF fixture)"

@@ -265,6 +265,17 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
     return result.get("markdown", ""), result
 
 
+def default_out_path(pdf_path: str) -> str:
+    """Default output location: md/<name>.pdf.md next to the PDF.
+
+    abd.pdf -> ./md/abd.pdf.md — one PDF, one markdown twin, a predictable
+    place. The .pdf.md suffix keeps the pair adjacent in listings and makes
+    the origin obvious.
+    """
+    pdf_dir = os.path.dirname(os.path.abspath(pdf_path))
+    return os.path.join(pdf_dir, "md", os.path.basename(pdf_path) + ".md")
+
+
 def convert_or_exit(args, method: str, bearer: str, timeout: int):
     """convert() with a -v heartbeat and clean network-error exits."""
     try:
@@ -299,7 +310,11 @@ def main():
                         choices=["fast", "cost_effective", "agentic", "agentic_plus"],
                         help="llamaparse tier (default: fast)")
     parser.add_argument("--language", default="de", help="OCR language hint (default: de)")
-    parser.add_argument("--out", metavar="FILE", help="write markdown to FILE instead of stdout")
+    parser.add_argument("--out", metavar="FILE",
+                        help="write markdown to FILE (default: md/<name>.pdf.md "
+                             "next to the PDF)")
+    parser.add_argument("--stdout", action="store_true",
+                        help="write markdown to stdout instead of a file")
     parser.add_argument("--timeout", type=int, default=None,
                         help="request timeout in seconds (default: 180, 600 for llamaparse)")
     parser.add_argument("--no-wait", action="store_true",
@@ -354,6 +369,11 @@ def main():
 
     if args.out:
         args.out = os.path.expanduser(args.out)
+    elif not args.stdout:
+        args.out = default_out_path(args.pdf)
+    if args.out:
+        out_dir = os.path.dirname(os.path.abspath(args.out))
+        os.makedirs(out_dir, exist_ok=True)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(markdown)
         print(f"✓ {os.path.abspath(args.out)}  (pages={result.get('pages')}, chars={result.get('chars')}, "
