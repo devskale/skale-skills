@@ -20,7 +20,7 @@ base, no inline-duplicated styles).
 
 | # | Prompt (verbatim) | Expect | Pass when |
 |---|---|---|---|
-| P1 | "Visualize the skills in this repo as a card grid, grouped by category." | visualize · cards · **`cards.html`** | `header` + `legend` + `card-grid` + `footer`; real skills; categories as plain muted text |
+| P1 | "Visualize the skills in this repo as a card grid, grouped by category." | visualize · cards · **`cards.html`** | `header` + `legend` + `card-grid` + `footer`; real skills; categories as plain muted text · **automated**: the suite runs this prompt live with `LIVE_OK=1` (gate must pass on the produced page) |
 | P2 | "Show me what's in this repo as an annotated tree." | visualize · hierarchy · **`repo-tree.html`** | `tree` rows annotated (name + one-line + kind); deep dirs collapsed |
 | P3 | "Map this platform: orchestrator repo, its sub-repos, the pipeline, and the fleet." | visualize · system-map · **`system-map.html`** | multi-panel (topology, pipeline, fleet, tree) — only panels that fit |
 | P4 | "Write a report on test coverage in this repo: findings and prioritized recommendations." | **report** · **`report.html`** | `exec-summary` first, numbered `section`s, `recommendations` with priorities |

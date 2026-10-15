@@ -22,6 +22,23 @@
 
 ## Unreleased
 
+### visualize 1.13.2 — live agent path as a check (and what it caught)
+- **`LIVE_OK=1` runs prompts.md P1 verbatim through `pi --print --skill`:** a
+  real agent session builds the page; the suite asserts file + `visualize gate`
+  exit 0 + card-grid + real skill names. The product path (agent + prompt →
+  passing page) is now executable proof, opt-in like rodney/surf live (tokens,
+  ~1–2 min). Offline: honest WARN.
+- **First catch: chartcheck false-positived on a quoted command.** Same run,
+  same prompt — one page passed, another put `issues board/new/todo/…` in a
+  card's command chip and failed its own gate: the process-note regex matched
+  the literal lowercase "todo". Fix follows the file-source precedent — shouted
+  markers (TODO/FIXME/XXX) case-sensitive, whispered phrases (confirm,
+  inferred, …) insensitive. Regression fixture in the suite; verified against
+  the caught page.
+- **Second catch: the live stdout-contract test was broken at birth** — `$()`
+  strips the trailing newline, so `printf '%s' | wc -l` was always 0 for a
+  lone URL. Nobody had run `LIVE_OK=1` since it landed; one `%s\n` fixes it.
+
 ### check.sh: four gates from the visualize retro (2026-10-15)
 - **Bash status-leak pattern:** `[ … ] && exit 1` returns 1 on success too —
   visualize's `validate` shipped that for a year, masked by a trailing command

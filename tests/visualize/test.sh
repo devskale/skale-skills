@@ -410,6 +410,12 @@ do
     fi
 done
 
+# a quoted CLI subcommand is content, not a process note — regression
+# (found live 2026-10-15: the P1 agent run put `issues board/new/todo/…` in a
+# card's command chip and the gate failed on the literal "todo")
+printf '%s' '<!doctype html><html><body><p>Sales by region</p><p>Source: Internal ledger, 2025</p><span class="cmd">issues board/new/todo/…</span></body></html>' > "$TMP/cc-cmd.html"
+check "chartcheck: quoted 'todo' subcommand is content, not a process note" 0 "$SCRIPT" chartcheck "$TMP/cc-cmd.html"
+
 # a data maximum is not an axis floor (regression: false positive on the
 # barchart template, whose note legitimately says "max = 120" — a denominator,
 # not a scale origin). The template sweep below only proves "no finding"; this
@@ -522,10 +528,11 @@ env $PIN_ENV "$SCRIPT" _pin_set "$CLEAN_PAGE" https://example.com/z 2>/dev/null
     && ok || bad "pin ledger: two realpaths must coexist as two lines"
 
 # share stdout contract: EXACTLY one line — the URL; everything else → stderr
-# (live: needs throway; the contract is what agents parse)
+# (live: needs throway; the contract is what agents parse. $() strips the
+# trailing newline — append one before counting, or a lone URL counts 0.)
 if [ -n "${LIVE_OK:-}" ]; then
     out="$(env $PIN_ENV "$SCRIPT" share "$PIN_PAGE" 2>/dev/null)"
-    [ "$(printf '%s' "$out" | wc -l | tr -d ' ')" -eq 1 ] \
+    [ "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" -eq 1 ] \
         && printf '%s' "$out" | grep -qE '^https?://' \
         && ok || bad "share stdout must be exactly one URL line (got: $out)"
 else
@@ -575,6 +582,31 @@ else
 fi
 
 rm -rf "$TMP" "$OUTDIR"
+
+# ── live: the agent path (LIVE_OK=1) — the product, not the plumbing ────────
+# prompts.md P1, verbatim, through a real `pi --print` session with this skill.
+# Proves the claim every other test only assumes: agent + prompt → a page that
+# passes its own gates. Opt-in (tokens, ~1–2 min): LIVE_OK=1 bash tests/visualize/test.sh
+if [ "${LIVE_OK:-0}" = "1" ]; then
+    if command -v pi >/dev/null 2>&1; then
+        LP="$(mktemp -d)"
+        out=$(timeout 420 pi --print --skill ./skills/visualize \
+            "Visualize the skills in this repo as a card grid, grouped by category. Write the page to $LP/p1.html — a single self-contained HTML file. Do not share or upload it." 2>&1); rc=$?
+        if [ $rc -eq 0 ] && [ -s "$LP/p1.html" ]; then
+            env SLOP_API_URL=http://127.0.0.1:1 "$SCRIPT" gate "$LP/p1.html" >/dev/null 2>&1 && ok \
+                || bad "live P1: page produced but its own gate fails"
+            grep -q 'class="card' "$LP/p1.html" && ok || bad "live P1: not a card grid (no .card)"
+            grep -qi 'fetch-url' "$LP/p1.html" && ok || bad "live P1: no real skill names — did the agent read the repo?"
+        else
+            bad "live P1: pi --print exit=$rc — $(printf '%s' "$out" | head -c 200)"
+        fi
+        rm -rf "$LP"
+    else
+        warn "live agent path skipped: pi not on PATH"
+    fi
+else
+    warn "live agent path (P1 through pi --print) skipped — LIVE_OK=1 to run"
+fi
 
 echo "---------------"
 echo "PASS: $PASS  FAIL: $FAIL"

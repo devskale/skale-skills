@@ -1,6 +1,6 @@
 [project]
 name = "visualize-skill"
-version = "1.13.1"
+version = "1.13.2"
 description = "Render a set of things as one self-contained HTML page and share a URL"
 readme = "SKILL.md"
 requires-python = ">=3.9"

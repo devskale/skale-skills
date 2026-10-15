@@ -69,10 +69,15 @@ class Page(HTMLParser):
 
 
 # ── text patterns (sourced from evident-charts SRC-2 / TI-1) ──────────────
+# Process notes SHOUT (TODO:, FIXME:); CLI subcommands whisper
+# (`issues board/new/todo/…` as card content). The shouted markers are
+# case-sensitive, the whispered phrases stay insensitive — a quoted command
+# containing "todo" is content, not a note to the user (found live
+# 2026-10-15: a P1 agent run quoted the issues command and the gate failed on it).
 PROCESS_NOTE = re.compile(
-    r"\b(todo|fixme|confirm|verify this|check this|inferred|implied|placeholder|"
-    r"note to self|don'?t forget|xxx)\b",
-    re.I,
+    r"\b(?-i:TODO|FIXME|XXX)\b"
+    r"|\b(?i:confirm|verify this|check this|inferred|implied|placeholder|"
+    r"note to self|don'?t forget)\b"
 )
 # a bare file name standing in for a publisher/dataset
 FILE_SOURCE = re.compile(r"\b\w+\.(csv|tsv|xlsx?|json|parquet|py|r)\b", re.I)

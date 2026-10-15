@@ -1,7 +1,7 @@
 ---
 disable-model-invocation: true
 name: visualize
-version: "1.13.1"
+version: "1.13.2"
 description: "Explain or present with the smallest view that makes the point — inline code forms or one self-contained HTML page with a shareable URL. Hard style bans (enforced by the share gate): no colored card-edge accents (any side), no violet fills. Use when the user wants to visualize, compare, explain, or turn data/code into a page, diagram, or report."
 ---
 
