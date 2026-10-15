@@ -104,7 +104,7 @@ echo "── pi ──"
 if command -v pi >/dev/null 2>&1; then
     if pi install git:github.com/devskale/skale-skills >/tmp/skale-install-pi.log 2>&1; then
         echo "· package installed/updated   (activate skills: pi config)"
-        # Seed the minimal default activation (web-search + fetch-url + pdf2md-lite)
+        # Seed the minimal default activation (web-search + fetch-url + pdf2mark)
         # on fresh installs — pi checks ALL skills by default otherwise. No-op when
         # a skills filter already exists (respects your customization).
         bash scripts/skill-filter.sh seed-defaults || true

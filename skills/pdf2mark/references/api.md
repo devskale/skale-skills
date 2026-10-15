@@ -1,4 +1,4 @@
-# pdf2md API Reference
+# pdf2mark API Reference
 
 Loaded on demand — SKILL.md keeps only the 90% path.
 
@@ -25,17 +25,17 @@ PDF ≤ 10MB and ≤ 500 pages. Scans need `llamaparse` — `pdfplumber` returns
 
 Expected durations: text-layer PDFs convert in seconds; scans via llamaparse scale with page count — **expect minutes**, more on higher tiers. Large jobs are an agent-workflow concern, not a CLI one:
 
-- Always write to a file: `pdf2md big.pdf --out result.md -v` — megabyte stdout blobs help no one.
+- Always write to a file: `pdf2mark big.pdf --out result.md -v` — megabyte stdout blobs help no one.
 - **Run it in the background** from the agent shell, then poll `result.md` / the process — don't block a tool call that harnesses kill after a few minutes.
 - Raise the budget explicitly if needed: `--timeout 900`.
 - Above the API cap (10 MB / 500 pages): split the PDF, convert per part, concatenate the Markdown in order (no client-side chunking in this skill by design).
-- 429/504: no automatic retries by design — 429 means quota (wait), 504 on sync llamaparse means the server-side sync budget ran out: **retry with `--no-wait`** (async job, pdf2md polls). Verified on real lecture scans: 4×504 sync → 4× success async in 11–38 s. 504 on pdfplumber instead means the 60s server watchdog hit a pathological PDF (large *text* PDFs no longer trigger this — server-side queue fix 2026-10-13).
-- **Job-Warten via SSE** (seit 1.5.0): sobald die Konvertierung als Job läuft (202), öffnet pdf2md den Event-Stream `GET /pdf/jobs/{id}/events` — ein Event pro Statuswechsel (queued → running → done), jedes mit `expires_in` (wie lange das Ergebnis abholbar bleibt). Fällt der Stream weg (älterer Server, Proxy), wechselt der Client automatisch auf 3s-Polling. Abschaltbar: `PDF2MD_NO_SSE=1`.
+- 429/504: no automatic retries by design — 429 means quota (wait), 504 on sync llamaparse means the server-side sync budget ran out: **retry with `--no-wait`** (async job, pdf2mark polls). Verified on real lecture scans: 4×504 sync → 4× success async in 11–38 s. 504 on pdfplumber instead means the 60s server watchdog hit a pathological PDF (large *text* PDFs no longer trigger this — server-side queue fix 2026-10-13).
+- **Job-Warten via SSE** (seit 1.5.0): sobald die Konvertierung als Job läuft (202), öffnet pdf2mark den Event-Stream `GET /pdf/jobs/{id}/events` — ein Event pro Statuswechsel (queued → running → done), jedes mit `expires_in` (wie lange das Ergebnis abholbar bleibt). Fällt der Stream weg (älterer Server, Proxy), wechselt der Client automatisch auf 3s-Polling. Abschaltbar: `PDF2MD_NO_SSE=1`.
 - With `-v` a heartbeat prints elapsed seconds to stderr every 30 s so a long wait is distinguishable from a hang.
 
 ## Async jobs (the API forces them for long documents)
 
-Beyond ~40 pages the API answers the POST with **202** instead of markdown: `{job_id, status: queued, poll, auto_async}`. pdf2md follows automatically — it polls `GET /pdf/jobs/{job_id}` every 3 s until `status: done` and extracts `markdown`. Same output file, same exit codes, no flags needed.
+Beyond ~40 pages the API answers the POST with **202** instead of markdown: `{job_id, status: queued, poll, auto_async}`. pdf2mark follows automatically — it polls `GET /pdf/jobs/{job_id}` every 3 s until `status: done` and extracts `markdown`. Same output file, same exit codes, no flags needed.
 
 - `--timeout` doubles as the **total poll budget** (default 600 s for llamaparse). 500-page scans run at ~2 s/page — raise it explicitly, e.g. `--timeout 1800`.
 - On budget exhaustion the error prints the job id and the manual poll command — **results stay retrievable for ~2 h** (`expires_in` in the job status).
@@ -44,7 +44,7 @@ Beyond ~40 pages the API answers the POST with **202** instead of markdown: `{jo
 
 ## Transfer (throway)
 
-`transfer=throway` — CLI: **`--share`**. The result is uploaded to skale.dev/throway with a **4 h TTL** and only `markdown_url` is returned. With `--share` pdf2md prints just the URL; without it, pdf2md downloads the markdown transparently and — at `-v` — tells you the shared link. The status line then shows `converter=done` (job answers carry no `converter` field).
+`transfer=throway` — CLI: **`--share`**. The result is uploaded to skale.dev/throway with a **4 h TTL** and only `markdown_url` is returned. With `--share` pdf2mark prints just the URL; without it, pdf2mark downloads the markdown transparently and — at `-v` — tells you the shared link. The status line then shows `converter=done` (job answers carry no `converter` field).
 
 ## Errors
 

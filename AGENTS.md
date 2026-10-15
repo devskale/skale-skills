@@ -19,7 +19,7 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
 | issues | `issues board/new/todo/…` | 52 | Cross-machine shared issue kanban (`.work/<project>/issues/`, legacy `.handoff` resolves) — one markdown file per issue, synced dir per project |
 | ~~viewimg~~ | ~~`viewimg img.jpg [--open]`~~ | ~~~16~~ | **DEPRECATED** — use `read img.jpg` instead. Archived to `skills/deprecated/viewimg/`. [Migration guide](docs/image-display-deprecation.md) |
-| pdf2md | `pdf2md document.pdf` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
+| pdf2mark | `pdf2mark <file.pdf>` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
 | improve-ux | `improve-ux discover/add/rate/ledger` | ~96 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
 
 Counts are approximate (`~`); suites include honest network-skip counters — a WARN
@@ -45,8 +45,8 @@ pi config                                          # activate only the skills yo
 
 Note: pi reads skills from its **package copy** at `~/.pi/agent/git/github.com/devskale/skale-skills/` (a full clone made by `pi install`) — not from a working checkout. Skill launchers auto-update that clone in the background every 7 days; `pi install` updates it on demand.
 
-Default activation: **`web-search` + `fetch-url` + `pdf2md`** skills (extensions: heartbeat, xmodel,
-statusline, imagegen). pdf2md ships `disable-model-invocation: true` — executable as a pi skill,
+Default activation: **`web-search` + `fetch-url` + `pdf2mark`** skills (extensions: heartbeat, xmodel,
+statusline, imagegen). pdf2mark ships `disable-model-invocation: true` — executable as a pi skill,
 never auto-loaded into context.
 `./install.sh` seeds this default right after `pi install` (`scripts/skill-filter.sh seed-defaults`) —
 pi checks ALL shipped skills by default otherwise. The seed is a whitelist
@@ -198,7 +198,7 @@ bash tests/video-transcript-downloader/test.sh
 bash tests/rodney/test.sh
 bash tests/surf/test.sh              # live checks skip off-macOS
 bash tests/deprecated/viewimg/test.sh  # DEPRECATED — archived, tests for backward-compat only
-bash tests/pdf2md/test.sh             # live conversion skips without token
+bash tests/pdf2mark/test.sh             # live conversion skips without token
 bash tests/improve-ux/test.sh         # structure, router, add; live discover WARNs offline
 bash tests/visualize/test.sh
 bash tests/d2/test.sh

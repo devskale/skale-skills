@@ -1,5 +1,5 @@
 [project]
-name = "pdf2md-skill"
+name = "pdf2mark-skill"
 version = "1.5.1"
 description = "Convert PDFs to Markdown via the skale pdf API (pdfplumber local, llamaparse for scans)"
 readme = "SKILL.md"
@@ -24,4 +24,4 @@ build-backend = "hatchling.build"
 packages = ["scripts"]
 
 [project.scripts]
-pdf2md = "scripts.pdf2md:main"
+pdf2mark = "scripts.pdf2mark:main"

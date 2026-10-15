@@ -7,7 +7,7 @@ set "SKILL_DIR=%~dp0"
 if "%SKILL_DIR:~-1%"=="\" set "SKILL_DIR=%SKILL_DIR:~0,-1%"
 cd /d "%SKILL_DIR%"
 
-echo Installing pdf2md skill...
+echo Installing pdf2mark skill...
 echo   Skill dir: %SKILL_DIR%
 
 :: ── 1. Ensure uv is available ──
@@ -31,18 +31,18 @@ uv sync
 :: ── 3. Create global launcher ──
 :: Write a .bat launcher that embeds SKILL_DIR
 set "BIN_DIR=%USERPROFILE%\.local\bin"
-set "LAUNCHER=%BIN_DIR%\pdf2md.bat"
+set "LAUNCHER=%BIN_DIR%\pdf2mark.bat"
 if not exist "%BIN_DIR%" mkdir "%BIN_DIR%"
 
 > "%LAUNCHER%" (
     echo @echo off
-    echo uv run --project "%SKILL_DIR%" "%SKILL_DIR%\scripts\pdf2md.py" %%*
+    echo uv run --project "%SKILL_DIR%" "%SKILL_DIR%\scripts\pdf2mark.py" %%*
 )
-echo   Created launcher: %LAUNCHER% -^> %SKILL_DIR%\scripts\pdf2md.py
+echo   Created launcher: %LAUNCHER% -^> %SKILL_DIR%\scripts\pdf2mark.py
 
 :: ── 3b. Create bash launcher (for git-bash users) ──
-set "BASH_LAUNCHER=%BIN_DIR%\pdf2md"
-copy /y "%SKILL_DIR%\pdf2md" "%BASH_LAUNCHER%" >nul
+set "BASH_LAUNCHER=%BIN_DIR%\pdf2mark"
+copy /y "%SKILL_DIR%\pdf2mark" "%BASH_LAUNCHER%" >nul
 chmod +x "%BASH_LAUNCHER%" 2>nul
 if errorlevel 1 (
     echo   ! Could not set execute bit. For bash: chmod +x "%BASH_LAUNCHER%"
@@ -50,16 +50,16 @@ if errorlevel 1 (
 if exist "%BASH_LAUNCHER%" (
     echo   Created bash launcher: %BASH_LAUNCHER%
 ) else (
-    echo   ! Could not create bash launcher; pdf2md will only be available in CMD.
+    echo   ! Could not create bash launcher; pdf2mark will only be available in CMD.
 )
 
 :: ── 4. Verify installation ──
 echo   Verifying...
 call "%LAUNCHER%" --selfcheck >nul 2>&1
 if not errorlevel 1 (
-    echo   + pdf2md works
+    echo   + pdf2mark works
 ) else (
-    echo   ! pdf2md installed but verification failed. Try running manually:
+    echo   ! pdf2mark installed but verification failed. Try running manually:
     echo     %LAUNCHER% --selfcheck
 )
 
@@ -70,13 +70,13 @@ echo.
 echo + Installation complete!
 echo.
 echo Usage:
-echo   pdf2md document.pdf                    # auto: pdfplumber, llamaparse fallback
-echo   pdf2md scan.pdf --method llamaparse    # force cloud OCR
-echo   pdf2md doc.pdf --out doc.md            # write file instead of stdout
+echo   pdf2mark document.pdf                    # auto: pdfplumber, llamaparse fallback
+echo   pdf2mark scan.pdf --method llamaparse    # force cloud OCR
+echo   pdf2mark doc.pdf --out doc.md            # write file instead of stdout
 echo.
 echo Update:
-echo   pdf2md --update
-echo   pdf2md --selfcheck
+echo   pdf2mark --update
+echo   pdf2mark --selfcheck
 echo.
 echo Credentials (bearer token for the pdf API - same as fetch-url's api tool):
 echo   credgoo FETCH_URL_BEARER

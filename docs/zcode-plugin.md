@@ -53,17 +53,17 @@ zcode's five resource types (see `zcode-configuration-guide`):
 ```
 
 - `skills: "./skills"` — the WHOLE catalog ships with the plugin (d2, peep,
-  youtube, pdf2md, …). No per-skill symlinks needed anymore.
+  youtube, pdf2mark, …). No per-skill symlinks needed anymore.
 - Minimal valid manifest needs only `name` (regex `^[a-z0-9][a-z0-9._-]{0,127}$`).
 
 ### Example command (`zcode/commands/skale-laws.md`)
 
 ```markdown
 ---
-description: Convert a PDF (e.g. a Firmenbuch Jahresabschluss) to Markdown via pdf2md
+description: Convert a PDF (e.g. a Firmenbuch Jahresabschluss) to Markdown via pdf2mark
 argument-hint: <pdf-path>
 ---
-Convert the PDF at $ARGUMENTS with the pdf2md skill (auto mode). Write the
+Convert the PDF at $ARGUMENTS with the pdf2mark skill (auto mode). Write the
 markdown next to the input file and summarize the three key figures.
 ```
 
@@ -138,7 +138,7 @@ shadows it (order #1) and should be removed after migrating.
    `skills: "./skills"`. Test via a local-directory marketplace. Deprecate
    the installer's zcode-symlink section once validated.
 2. **Phase 2 — commands + a first hook.** A few `/skale-*` commands
-   (pdf2md, firmenindex lookup, heartbeat-setup) and one SessionStart hook.
+   (pdf2mark, firmenindex lookup, heartbeat-setup) and one SessionStart hook.
 3. **Phase 3 — MCP + subagents.** Only if something genuinely needs a
    dynamic tool in zcode that a skill cannot do (so far: nothing — skills
    + built-ins cover our workflows).

@@ -25,7 +25,7 @@
 | ⚪ available | **d2** | Draw architecture, sequence, flowchart, or ER diagrams as code with the D2 CLI. Use when the user... |
 | ⚪ available | **fetch-url** | Bash skill — run `fetch-url \"url\"` in your shell (not an MCP tool). Fetch and extract readable ... |
 | ⚪ available | **figure** | Draw hand-drawn-style architecture or workflow figures (sketchy Excalidraw look) as SVG + PNG fro... |
-| ⚪ available | **pdf2md** | Bash skill — run `pdf2md <file.pdf>` in your shell (not an MCP tool). Convert PDFs to clean Markd... |
+| ⚪ available | **pdf2mark** | Bash skill — run `pdf2mark <file.pdf>` in your shell (not an MCP tool). Convert PDFs to clean Markd... |
 | ⚪ available | **rodney** | Drive a persistent headless Chrome from the CLI — one process keeps cookies and state across call... |
 | ⚪ available | **surf** | Bash skill — drive the user's real, logged-in Chrome on macOS (AppleScript, no debug port). Use w... |
 | ⚪ available | **video-transcript-downloader** | Bash skill — download videos, audio, subtitles, or clean transcripts from YouTube and any yt-dlp-... |

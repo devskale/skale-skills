@@ -7,9 +7,9 @@ cd "$SKILL_DIR"
 # Same as the launcher: pi's package update runs `git clean -fdx`, which wipes
 # any `.venv/` inside the package. Point uv at a cache dir so the skill stays
 # pristine and updates never delete the virtualenv.
-export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/skale-skills/pdf2md}"
+export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-$HOME/.cache/skale-skills/pdf2mark}"
 
-echo "Installing pdf2md skill..."
+echo "Installing pdf2mark skill..."
 
 # Check for uv
 if ! command -v uv &> /dev/null; then
@@ -24,19 +24,19 @@ uv sync
 
 # Create symlink to launcher (not hardcoded path)
 BIN_DIR="$HOME/.local/bin"
-SYMLINK="$BIN_DIR/pdf2md"
+SYMLINK="$BIN_DIR/pdf2mark"
 mkdir -p "$BIN_DIR"
 
 if [ -L "$SYMLINK" ] || [ -f "$SYMLINK" ]; then
-    if [ "$(readlink "$SYMLINK" 2>/dev/null)" != "$SKILL_DIR/pdf2md" ]; then
+    if [ "$(readlink "$SYMLINK" 2>/dev/null)" != "$SKILL_DIR/pdf2mark" ]; then
         echo "  Removing old wrapper at $SYMLINK"
         rm -f "$SYMLINK"
     fi
 fi
 
 if [ ! -L "$SYMLINK" ]; then
-    ln -sf "$SKILL_DIR/pdf2md" "$SYMLINK"
-    echo "  Created symlink: $SYMLINK → $SKILL_DIR/pdf2md"
+    ln -sf "$SKILL_DIR/pdf2mark" "$SYMLINK"
+    echo "  Created symlink: $SYMLINK → $SKILL_DIR/pdf2mark"
 fi
 
 # Write update timestamp
@@ -46,13 +46,13 @@ echo ""
 echo "✓ Installation complete!"
 echo ""
 echo "Usage:"
-echo "  pdf2md document.pdf"
-echo "  pdf2md scan.pdf --method llamaparse"
-echo "  pdf2md doc.pdf --out doc.md"
+echo "  pdf2mark document.pdf"
+echo "  pdf2mark scan.pdf --method llamaparse"
+echo "  pdf2mark doc.pdf --out doc.md"
 echo ""
 echo "Update:"
-echo "  pdf2md --update"
-echo "  pdf2md --selfcheck"
+echo "  pdf2mark --update"
+echo "  pdf2mark --selfcheck"
 echo ""
 echo "Credentials (bearer token for the pdf API — same as fetch-url's api tool):"
 echo "  credgoo FETCH_URL_BEARER"

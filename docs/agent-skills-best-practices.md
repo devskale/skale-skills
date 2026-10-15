@@ -142,7 +142,7 @@ Platform-specific extensions (not in open spec):
     Still installed and reachable: the user's explicit /skill:name
     command loads it, and its shell command (if any) always works.
     Use for skills whose instructions should enter context only on
-    explicit request -- e.g. shell-CLI wrappers (pdf2md, peep) or
+    explicit request -- e.g. shell-CLI wrappers (pdf2mark, peep) or
     skills with side effects the user must control (cloud uploads).
 
 Invocation modes (canonical table -- pi semantics, same idea elsewhere):

@@ -1,5 +1,10 @@
 ## Unreleased
 
+### pdf2md → pdf2mark (rename)
+- Skill dir `skills/pdf2md-lite/` → `skills/pdf2mark/`, command `pdf2md` → `pdf2mark`
+  (launcher `~/.local/bin/pdf2mark`, script `scripts/pdf2mark.py`, venv cache
+  `~/.cache/skales-skills/pdf2mark`). Old launcher/venv removed on install.
+  Tests moved to `tests/pdf2mark/` (52/0/1). Historical entries keep the old name.
 ### issues 1.5.0 — every repo can kanban: legacy migration + throway-virtual mode
 - `issues init` / `doctor --fix` migrate a legacy `handoffs` root found next to
   `works`: renamed when works is missing/empty, merged (unique entries moved,
