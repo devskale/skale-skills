@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-# s2m-meta — Generate metadata for a single file via AI
-# Usage:
-#   s2m-meta PROJECT@BIDDER@FILE       # Bidder document
-#   s2m-meta PROJECT@FILE               # Project document (A/)
-#   s2m-meta PROJECT@BIDDER@FILE -v     # Verbose (stream AI response)
-set -euo pipefail
-cd ~/code/python-utils/packages/strukt2meta
-exec uv run strukt2meta ofs "$@"
