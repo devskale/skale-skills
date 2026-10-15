@@ -1,3 +1,25 @@
+## 1.6.14 — 2026-10-15
+
+### pdf2mark 1.6.0 — output goes to a file, not stdout
+- `pdf2mark document.pdf` writes `md/document.pdf.md` next to the PDF (dir
+  created) instead of dumping markdown to stdout. `--out FILE` still overrides,
+  new `--stdout` restores the pipe case.
+- tests: `default_out_path` unit check, live default-output integration check,
+  `--stdout` check; fixture build got a `ps2pdf` fallback (`cupsfilter` is
+  broken on this box); token probe falls back to the skill's venv credgoo.
+
+### rodney 1.1.0 (skill) — minimum version enforced in scripts
+- New `skills/rodney/MIN_VERSION` (`0.12.1`) is the single source of truth, read
+  by `install.sh`, `install.bat` and `tests/rodney/test.sh`. Older binaries fail
+  install and suite instead of silently passing with the `about:blank` panic bug
+  (devskale/rodney 78b8dd4).
+- Fixed `find -perm +111` → `-perm -u+x` (GNU findutils 4.10 rejects `+111`).
+
+### Housekeeping
+- dropped the `skills/pdf2md/` rename leftover (untracked `uv.lock`)
+- linked `.work` in this checkout (`issues init skale-skills`) — its absence made
+  the docs gate flag a dead link in `skills/youtube/SKILL.md`
+
 ## Unreleased
 
 ### pdf2md → pdf2mark (rename)
@@ -24,25 +46,6 @@ Log of notable changes to skale-skills. Newest first.
 
 ## Unreleased
 
-### pdf2mark 1.6.0 — output goes to a file, not stdout
-- `pdf2mark document.pdf` writes `md/document.pdf.md` next to the PDF (dir
-  created) instead of dumping markdown to stdout. `--out FILE` still overrides,
-  new `--stdout` restores the pipe case.
-- tests: `default_out_path` unit check, live default-output integration check,
-  `--stdout` check; fixture build got a `ps2pdf` fallback (`cupsfilter` is
-  broken on this box); token probe falls back to the skill's venv credgoo.
-
-### rodney — minimum version enforced in scripts
-- New `skills/rodney/MIN_VERSION` (`0.12.1`) is the single source of truth, read
-  by `install.sh`, `install.bat` and `tests/rodney/test.sh`. Older binaries fail
-  install and suite instead of silently passing with the `about:blank` panic
-  bug (devskale/rodney 78b8dd4).
-- Fixed `find -perm +111` → `-perm -u+x` (GNU findutils 4.10 rejects `+111`).
-
-### Housekeeping
-- dropped the `skills/pdf2md/` rename leftover (untracked `uv.lock`)
-- linked `.work` in this checkout (`issues init skale-skills`) — its absence made
-  the docs gate flag a dead link in `skills/youtube/SKILL.md`
 
 ### issues 1.3.0 — Container-Link heißt `.work` (konfigurierbar, kein Hardcode)
 - Repo-seitiger Container-Link: `.handoff` → **`.work`** — benennt den Container
