@@ -40,27 +40,27 @@ issues init <project> --local  # degraded: real local dir, gitignored + WARN
 
 New machine? `issues install.sh` (this skill dir) puts the CLI on PATH
 (`~/.local/bin/issues`) — or, from a checkout of this repo:
-`skills/issues/install.sh`.
+`skills/issues/install.sh`. The skill manages only `<project>/issues/`;
+other shared subfolders (`docs/`, …) are just files.
 
-> The synced root is `~/code/skaleshare/works` (renamed from `~/code/handoffs`
-> on 2026-10-14; env `ISSUES_DIR` / `ISSUES_WORK_DIR` to override). This skill
-> + CLI manage only the `issues/` subfolder of the current project; other
-> shared subfolders (`docs/`, …) are just files.
+## Transports — every repo can have the board
+
+The works root syncs by whatever the machine has; the CLI adapts:
+**Syncthing** or **network mount** (pi5/CIFS) = automatic · **throway-
+virtualisiert** (nothing shared): `init` bootstraps from the `skale.dev/throway`
+snapshot, changes auto-push, `issues pull` fetches (last push wins) ·
+**`--local`** = offline board in-repo, gitignored, WARNed. Legacy `handoffs`
+roots migrate automatically (`init` / `doctor --fix`).
 
 ## Quick Start
 
 ```bash
 issues board                 # overview
-issues doctor                # setup check (new machine? start here)
+issues doctor [--fix]        # setup check; --fix migrates legacy roots + safe fixes
 issues new <slug> [to]       # create (from = me@<repo>)
 issues todo                  # what's waiting on you
 issues start <slug> → work → issues review <slug> → issues done <slug>
 ```
-(New project? `issues init <project>` first — see above.)
-
-**New machine?** `issues doctor` checks the whole setup (synced root, transport,
-identity, `.handoff` link, board columns) and `issues doctor --fix` applies the
-safe fixes (create root, pin `~/.handoff-me`, create missing columns).
 
 **As a worker:** `issues todo` → `issues start <slug>` → work → `issues review <slug>`.
 **As a requester:** `issues mine review` → review → `issues done <slug>` (sets DONE → archive/).

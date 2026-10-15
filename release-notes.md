@@ -1,3 +1,18 @@
+## Unreleased
+
+### issues 1.5.0 — every repo can kanban: legacy migration + throway-virtual mode
+- `issues init` / `doctor --fix` migrate a legacy `handoffs` root found next to
+  `works`: renamed when works is missing/empty, merged (unique entries moved,
+  duplicate dropped) otherwise. Sync-lag leftovers clean themselves on the
+  next init (found 2026-10-14: the rename resurrected `handoffs` from a lagging peer).
+- throway-virtual mode: `issues pull` (force-fetch snapshot, overwrites),
+  `issues push` (refresh snapshot + enable auto-push). After a successful
+  bootstrap pull, every mutation (new/start/review/done/cancel/set/triage/
+  archive/purge) auto-pushes a fresh snapshot — skipped on machines whose
+  works root is a real share (.stfolder above it or network mount).
+- suite now counts ALL tests: the summary sat mid-file, everything after the
+  bootstrap section ran uncounted (69 shown, 88 real) — summary moved to EOF.
+
 # Release Notes
 
 Log of notable changes to skale-skills. Newest first.

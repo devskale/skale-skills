@@ -130,6 +130,97 @@ works_shared() {
   return 0
 }
 
+# works_shared_transport — TRUE only on STRONG signals that the works root
+# syncs itself (a Syncthing .stfolder anywhere above it, or a network mount).
+# Weak signals (syncthing merely installed) don't count: they must not silence
+# the throway snapshot on a machine whose works root is actually local-only.
+works_shared_transport() {
+  local wd p
+  wd="$(works_dir)"
+  [ -n "$(netmount_of "$wd" 2>/dev/null)" ] && return 0
+  p="$wd"
+  while [ "$p" != "/" ]; do
+    [ -d "$p/.stfolder" ] && return 0
+    p=$(dirname "$p")
+  done
+  return 1
+}
+
+# throway-mode marker (machine-local, never synced): set by a successful
+# bootstrap pull and by explicit `issues push` — it turns on the auto-push
+# after mutations on machines without a real transport.
+throway_marker() { echo "${ISSUES_STATE_DIR:-$HOME/.local/state/issues}/throway-sync"; }
+throway_mode_on()  { mkdir -p "$(dirname "$(throway_marker)")" 2>/dev/null; : > "$(throway_marker)"; }
+throway_mode()    { [ -f "$(throway_marker)" ]; }
+
+# works_pull — FORCE fetch: overwrite the local works tree from the throway
+# snapshot (unlike works_bootstrap, which only fills an EMPTY root).
+works_pull() {
+  local wd tmp
+  wd="$(works_dir)"; tmp=$(mktemp -d)
+  if curl -sf -m 60 "$(throway_base)/d/$WORK_BUNDLE_KEY/work.zip?download=1" -o "$tmp/work.zip" 2>/dev/null \
+     && [ -s "$tmp/work.zip" ] \
+     && mkdir -p "$wd" && unzip -qo "$tmp/work.zip" -d "$wd" 2>/dev/null; then
+    echo "  work  snapshot pulled ← $(throway_base)/d/$WORK_BUNDLE_KEY → $wd (overwritten)"
+    throway_mode_on
+    rm -rf "$tmp"; return 0
+  fi
+  rm -rf "$tmp"
+  echo "  NOTE  could not pull work snapshot from throway (offline? none pushed yet?)" >&2
+  return 1
+}
+
+# works_autopush — called after every mutation. Skipped on machines whose
+# works root syncs itself (Syncthing mount/netmount: snapshot redundant).
+# In throway mode (marker set) a failed push is ONE honest NOTE — the board
+# change is local until the next successful push.
+works_autopush() {
+  works_shared_transport && return 0
+  throway_mode || return 0
+  works_push
+}
+
+# migrate_legacy_works_root — the works rename (2026-10-14) left machines
+# with an old handoffs root (sync lag, un-migrated peers). Rebuild it:
+# works missing → plain rename; both exist → merge unique entries, drop the
+# duplicate remainder. Also re-points a legacy ~/code/handoffs symlink.
+# Best-effort: reports, never fatal. Called from init and doctor --fix.
+migrate_legacy_works_root() {
+  local wd lr entry moved=0
+  wd="$(works_dir)"; lr="$(dirname "$wd")/handoffs"
+  [ "$lr" = "$wd" ] && return 0
+  if [ -d "$lr" ] && [ ! -L "$lr" ]; then
+    if [ ! -d "$wd" ] || [ -z "$(ls -A "$wd" 2>/dev/null)" ]; then
+      # works missing or empty → plain rename (rmdir first: mv onto an
+      # existing dir would NEST handoffs inside works)
+      rmdir "$wd" 2>/dev/null
+      mkdir -p "$(dirname "$wd")"
+      if mv "$lr" "$wd" 2>/dev/null; then
+        echo "  work  legacy handoffs root → $wd (renamed)"
+      fi
+    else
+      for entry in "$lr"/* "$lr"/.[!.]*; do
+        [ -e "$entry" ] || continue
+        if [ ! -e "$wd/${entry##*/}" ]; then
+          mv "$entry" "$wd/" && moved=$((moved+1))
+        fi
+      done
+      rm -rf "$lr"
+      if [ "$moved" -gt 0 ]; then
+        echo "  work  merged $moved unique entr$( [ "$moved" -eq 1 ] && echo y || echo ies ) from legacy handoffs → $wd"
+      else
+        echo "  work  dropped legacy handoffs duplicate (0 unique entries) → $wd"
+      fi
+    fi
+  fi
+  # machine-level ~/code/handoffs symlink → ~/code/works (default paths only,
+  # so tests with a custom ISSUES_WORK_DIR never touch the real HOME)
+  if [ "$wd" = "$HOME/code/skaleshare/works" ] && [ -L "$HOME/code/handoffs" ] && [ ! -e "$HOME/code/works" ]; then
+    rm "$HOME/code/handoffs" && ln -s "$wd" "$HOME/code/works" \
+      && echo "  work  ~/code/handoffs → ~/code/works ($wd)"
+  fi
+}
+
 # works_bootstrap — PULL only: machine without a shared works root fetches the
 # snapshot zip from throway (full works tree, all projects). Best-effort.
 works_bootstrap() {
@@ -140,6 +231,7 @@ works_bootstrap() {
      && [ -s "$tmp/work.zip" ] \
      && mkdir -p "$wd" && unzip -qo "$tmp/work.zip" -d "$wd" 2>/dev/null; then
     echo "  work  snapshot pulled ← $(throway_base)/d/$WORK_BUNDLE_KEY → $wd"
+    throway_mode_on   # this machine works throway-virtualized: push after every change
   else
     echo "  NOTE  no shared works dir and no snapshot on throway — starting empty." >&2
     echo "        A machine WITH the works root must run 'issues init <project>' once." >&2
@@ -369,8 +461,9 @@ EOF2
   local repo; repo=$(init_repo_root)
   [ -n "$repo" ] || die "no repo root found walking up from $PWD (.git/pyproject.toml/package.json) — cd into a repo first (a link outside a repo becomes a walk-up trap)"
   [ "$repo" = "$target" ] && die "init run inside the shared project dir itself ($target) — run from a repo checkout"
-  # works bootstrap FIRST — before the board makes the root non-empty,
-  # or the pull would never trigger on a fresh machine
+  # legacy handoffs root? rebuild it to works FIRST (rename or merge),
+  # then bootstrap fills an empty root if there was nothing to migrate
+  migrate_legacy_works_root
   works_bootstrap
   init_migrate_flat "$root" "$project"
   local col new=0 existing=0
@@ -1142,16 +1235,23 @@ issues — multi-project kanban (shared root, one dir per project;
 repo-side container link: .work, configurable)
 
   issues init <project> [--local] bootstrap a project board in ONE command:
-                                   root + 5 columns (idempotent) + work-bundle
-                                   entry + container link (.work → work/<project>;
-                                   migrates legacy .handoff links)
-                                   symlink at the repo root. --local = real
-                                   local dir, gitignored + WARN (not synced)
+                                   works root + 5 columns (idempotent) +
+                                   container link (.work → works/<project>;
+                                   migrates legacy .handoff links AND legacy
+                                   handoffs roots). Without Syncthing the root
+                                   bootstraps from a throway snapshot.
+                                   --local = real local dir, gitignored + WARN
   issues doctor [--fix]          setup check (pocock-style): synced root, transport
                                    (Syncthing/throway), versioning, identity,
                                    container link, board columns. --fix = apply
                                    safe fixes (mkdir root, pin ~/.handoff-me,
-                                   create missing columns)
+                                   create missing columns, migrate legacy roots)
+  issues pull                    throway mode: fetch the snapshot (overwrites
+                                   the local works tree) — machines WITH
+                                   Syncthing/mount are a no-op
+  issues push                    throway mode: refresh the snapshot from the
+                                   local works tree (also enables auto-push
+                                   after every change on this machine)
   issues board                    one-line-per-column overview (live board)
   issues board-html [flags]       kanban as self-contained HTML (--share → URL)
                                    flags: --share --out <f> --title <t>
@@ -1317,6 +1417,12 @@ cmd_doctor() {
   fi
 
   # 2. transport — how does the root travel between machines?
+  # (migrate any legacy handoffs root first when fixing)
+  if [ "$fix" -eq 1 ]; then
+    migrate_legacy_works_root
+  elif [ -d "$(dirname "$(works_dir)")/handoffs" ]; then
+    doc_warn "legacy handoffs root found next to works — run 'issues doctor --fix' (or issues init <project>) to migrate it"
+  fi
   if doctor_syncthing; then
     doc_ok "transport: Syncthing detected"
   elif [ -n "$(netmount_of "$CENTRAL")" ]; then
@@ -1427,6 +1533,16 @@ cmd_doctor() {
   fi
 }
 
+# ---- throway sync (virtual mode, no Syncthing needed) ---------------------
+cmd_pull() {
+  works_shared_transport && { echo "  work  transport is a real share (Syncthing/mount) — nothing to pull"; return 0; }
+  works_pull
+}
+
+cmd_push() {
+  works_shared && { works_push; throway_mode_on; } || echo "  NOTE  no shared works root to push ($(works_dir))" >&2
+}
+
 # ---- dispatch -------------------------------------------------------------
 cmd="${1:-help}"; [ $# -gt 0 ] && shift || true
 case "$cmd" in
@@ -1434,19 +1550,21 @@ case "$cmd" in
   board-html)      cmd_board_html "$@" ;;
   init)            cmd_init "$@" ;;
   doctor)          cmd_doctor "$@" ;;
-  new|n)           cmd_new "$@" ;;
+  new|n)           cmd_new "$@"; works_autopush ;;
   ls|list)         cmd_ls "$@" ;;
   todo)            cmd_todo "$@" ;;
   mine)            cmd_mine "$@" ;;
-  done)            cmd_done "$@" ;;
+  done)            cmd_done "$@"; works_autopush ;;
   show|cat)        cmd_show "$@" ;;
-  set|state)       cmd_set "$@" ;;
-  start)           cmd_start "$@" ;;
-  review)          cmd_review "$@" ;;
-  cancel)          cmd_cancel "$@" ;;
+  set|state)       cmd_set "$@"; works_autopush ;;
+  start)           cmd_start "$@"; works_autopush ;;
+  review)          cmd_review "$@"; works_autopush ;;
+  cancel)          cmd_cancel "$@"; works_autopush ;;
   triage)          cmd_triage "$@" ;;
-  archive)         cmd_archive "$@" ;;
-  purge|rm)        cmd_purge "$@" ;;
+  archive)         cmd_archive "$@"; works_autopush ;;
+  purge|rm)        cmd_purge "$@"; works_autopush ;;
+  pull)            cmd_pull "$@" ;;
+  push)            cmd_push "$@" ;;
   help|-h|--help)  cmd_help ;;
   *) die "unknown command '$cmd' (try: issues help)";;
 esac

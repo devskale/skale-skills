@@ -170,10 +170,6 @@ echo "$out" | grep -q "done <slug>" && ok || bad "help must document done <slug>
 # launcher flags
 out=$(run_in "$REPO" --selfcheck); echo "$out" | grep -q "selfcheck" && ok || bad "--selfcheck broken"
 
-echo
-echo "PASS: $PASS  FAIL: $FAIL"
-[ "$FAIL" -eq 0 ]
-
 # ── works bootstrap: no shared works dir → pull attempt (offline → NOTE, not fatal) ──
 BOOT_RE="$TEST_ROOT/boot-repo"; mkdir -p "$BOOT_RE/.git"
 rm -rf "$TEST_ROOT/works"                      # simulate: no shared works root on this machine
@@ -192,3 +188,37 @@ out=$(run_in "$NOREPO" init testproj 2>&1); rc=$?
 [ "$rc" -ne 0 ] && ok || bad "init outside a repo must fail (rc=$rc)"
 [ ! -e "$NOREPO/.work" ] && ok || bad "init outside a repo must not plant .work"
 echo "$out" | grep -q "no repo root" && ok || bad "init must explain the repo-root refusal"
+
+# ── legacy handoffs root → works migration ──
+MIG_RE="$TEST_ROOT/mig-repo"; mkdir -p "$MIG_RE/.git"
+rm -rf "$TEST_ROOT/works"
+mkdir -p "$TEST_ROOT/handoffs/legacyproj/issues/backlog"        # works fehlt, legacy da
+echo x > "$TEST_ROOT/handoffs/legacyproj/issues/backlog/keep.md"
+out=$(run_in "$MIG_RE" init legacyproj)
+[ -d "$TEST_ROOT/works/legacyproj/issues/backlog" ] && ok || bad "legacy rename: works root missing after init"
+[ -f "$TEST_ROOT/works/legacyproj/issues/backlog/keep.md" ] && ok || bad "legacy rename: content lost"
+[ ! -d "$TEST_ROOT/handoffs" ] && ok || bad "legacy rename: old root still there"
+echo "$out" | grep -q "renamed" && ok || bad "legacy rename must be reported"
+
+# ── legacy merge: both roots exist, legacy has a unique entry ──
+mkdir -p "$TEST_ROOT/handoffs/onlyproj/issues" "$TEST_ROOT/works/legacyproj"
+echo y > "$TEST_ROOT/handoffs/onlyproj/issues/unique.md"
+cp "$TEST_ROOT/works/legacyproj"/* /dev/null 2>/dev/null || true
+out=$(run_in "$MIG_RE" init legacyproj)
+[ -d "$TEST_ROOT/works/onlyproj" ] && ok || bad "legacy merge: unique entry not moved"
+[ ! -d "$TEST_ROOT/handoffs" ] && ok || bad "legacy merge: old root still there"
+echo "$out" | grep -q "merged" && ok || bad "legacy merge must be reported"
+
+# ── pull (offline → NOTE, rc!=0 but board intact) ──
+out=$(issues pull 2>&1); rc=$?
+[ "$rc" -ne 0 ] && ok || bad "pull offline must fail (rc=$rc)"
+echo "$out" | grep -q "could not pull" && ok || bad "pull offline must NOTE the failure"
+
+# ── push (offline → NOTE, never fatal) ──
+out=$(issues push 2>&1); rc=$?
+echo "$out" | grep -q "could not push" && ok || bad "push offline must NOTE the failure"
+[ "$rc" -eq 0 ] && ok || bad "push offline must stay rc=0 (best-effort, rc=$rc)"
+
+echo
+echo "PASS: $PASS  FAIL: $FAIL"
+[ "$FAIL" -eq 0 ]
