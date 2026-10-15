@@ -1,19 +1,26 @@
 ---
 disable-model-invocation: true
 name: issues
-description: Manage the cross-machine shared issue kanban (.work/<project>/issues/). Create, triage, start, review, cancel, archive, or purge work items. One synced dir per project (.work/ → ~/code/handoffs/<project>/), shared across machines and repos. Use when creating, reading, picking up, triaging, cleaning up, or asking about tickets, tasks, issues, the backlog, kanban, or the board — or when handing work off / passing tasks to another machine, repo, or person. Triggers on mentions of issue, ticket, task, backlog, kanban, board, triage, assign to, pass to, hand off, cleanup done.
+description: Manage the cross-machine shared issue kanban (works/<project>/issues/). Create, triage, start, review, cancel, archive, or purge work items. One synced dir per project (repo .work → ~/code/skaleshare/works/<project>/), shared across machines and repos. Use when creating, reading, picking up, triaging, cleaning up, or asking about tickets, tasks, issues, the backlog, kanban, or the board — or when handing work off / passing tasks to another machine, repo, or person. Triggers on mentions of issue, ticket, task, backlog, kanban, board, triage, assign to, pass to, hand off, cleanup done.
 metadata:
   author: skale
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 ## What this is
 
-Every project has **one synced kanban** at the shared root
-(`<root>/<project>/issues/`), reachable from every repo in the project via a
-container symlink — **`.work`** by default (`ISSUES_LINK_NAME` to override;
-legacy `.handoff` links keep resolving). One markdown file per issue. One CLI
-manages everything:
+Every project has **one synced kanban** at the shared works root
+(`~/code/skaleshare/works/<project>/issues/`), reachable from every repo in the
+project via a container symlink — **`.work`** by default (`ISSUES_LINK_NAME` to
+override; legacy `.handoff` links keep resolving). One markdown file per issue.
+One CLI manages everything:
+
+```text
+the chain (one line, top to bottom):
+
+<repo>/.work  →  ~/code/skaleshare/works/<project>/issues/{backlog,active,review,archive,cancelled}
+  symlink         shared works root (Syncthing)      one .md file per issue
+```
 
 ```bash
 issues --help      # ← all detail functions, config keys, troubleshooting
@@ -35,11 +42,10 @@ New machine? `issues install.sh` (this skill dir) puts the CLI on PATH
 (`~/.local/bin/issues`) — or, from a checkout of this repo:
 `skills/issues/install.sh`.
 
-> The synced root keeps the historical name `~/code/handoffs` (existing
-> mounts/agents unchanged); the repo-side container link is `.work`
-> (configurable, legacy `.handoff` honored). This skill + CLI manage only the
-> `issues/` subfolder of the current project; other shared subfolders
-> (`docs/`, …) are just files.
+> The synced root is `~/code/skaleshare/works` (renamed from `~/code/handoffs`
+> on 2026-10-14; env `ISSUES_DIR` / `ISSUES_WORK_DIR` to override). This skill
+> + CLI manage only the `issues/` subfolder of the current project; other
+> shared subfolders (`docs/`, …) are just files.
 
 ## Quick Start
 
@@ -79,7 +85,7 @@ safe fixes (create root, pin `~/.handoff-me`, create missing columns).
   reopen.
 - **`purge` deletes the live file everywhere.** The synced root has no git —
   but the local auto-commit history (LaunchAgent, hourly, per-machine) is a
-  recovery net: `git -C ~/code/handoffs log`. History is NOT synced; a purged
+  recovery net: `git -C ~/code/skaleshare/works log`. History is NOT synced; a purged
   file is recoverable only on machines with local history. Double-check before
   purging.
 - **Project-specific values** (version, module, triage vocabulary) come from

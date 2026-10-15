@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # issues — multi-project kanban for cross-machine shared task tracking.
 #
-# One synced root (default ~/code/handoffs/). Inside it, one dir per project;
+# One synced root (default ~/code/skaleshare/works). Inside it, one dir per project;
 # each project has an issues/ kanban (backlog/active/review/archive/cancelled)
 # plus any other shared subfolders (docs/, etc.). Per-repo container symlink
 # (default `.work`, configurable — see link_name()) points at the project dir.
 #
-# The synced root keeps its historical name (~/code/handoffs); the REPO-side
-# container link is `.work` (configurable via ISSUES_LINK_NAME; legacy
-# `.handoff` links keep resolving via ISSUES_LEGACY_LINK_NAMES). This tool
-# manages only the `issues/` subfolder of the current project.
+# The synced works root is ~/code/skaleshare/works (renamed from
+# ~/code/handoffs 2026-10-14); the REPO-side container link is `.work`
+# (configurable via ISSUES_LINK_NAME; legacy `.handoff` links keep resolving
+# via ISSUES_LEGACY_LINK_NAMES). This tool manages only the `issues/`
+# subfolder of the current project.
 #
 # Identity ("me"):  $HANDOFF_ME  →  ~/.handoff-me  →  hostname -s
 #   Put your machine name in ~/.handoff-me (e.g. "mac", "pi5") and sync it
@@ -300,7 +301,7 @@ init_migrate_flat() {
 }
 
 # cmd_init <project> [--local] — generic project bootstrap in ONE command:
-#   1. root check ($ISSUES_DIR/$HANDOFF_DIR/~/code/handoffs — missing → mkdir)
+#   1. root check ($ISSUES_DIR/$HANDOFF_DIR/~/code/skaleshare/works — missing → mkdir)
 #   2. <root>/<project>/issues/{backlog,active,review,archive,cancelled}
 #      idempotent
 #   3. container symlink (default .work) at the repo root → <root>/<project>
@@ -1187,10 +1188,10 @@ State flow: OPEN(backlog) → WIP(active) → FOR_REVIEW(review) → DONE(archiv
                                                            ↘ CANCELLED(cancelled)
 
 Container link name: `.work` (config: ISSUES_LINK_NAME; legacy `.handoff`
-still honored via ISSUES_LEGACY_LINK_NAMES). The synced root keeps
-its historical name (~/code/handoffs, env ISSUES_DIR). This
-tool manages only `<project>/issues/`. Other shared subfolders (docs/, …) are
-just files — manage them with plain mv/ls.
+still honored via ISSUES_LEGACY_LINK_NAMES). The synced works root is
+~/code/skaleshare/works (env ISSUES_DIR / ISSUES_WORK_DIR; renamed from
+~/code/handoffs on 2026-10-14). This tool manages only `<project>/issues/`.
+Other shared subfolders (docs/, …) are just files — manage them with plain mv/ls.
 
 Project is resolved from cwd by WALKING UP the directory tree:
   1. at each level, check the container link — configured name first
@@ -1201,7 +1202,7 @@ Project is resolved from cwd by WALKING UP the directory tree:
 init only plants the link at a REPO ROOT (.git / pyproject.toml /
 package.json) — a link at a non-repo root would be a walk-up trap for
 everything below it.
-Env: ISSUES_DIR (default ~/code/handoffs/). Identity: HANDOFF_ME → ~/.handoff-me → hostname.
+Env: ISSUES_DIR (default ~/code/skaleshare/works). Identity: HANDOFF_ME → ~/.handoff-me → hostname.
 
 CONFIG — project-specific values live in <project>/.issues/config, not the
 code. Cascade: env ISSUES_<KEY> → <project>/.issues/config → script default.
@@ -1211,7 +1212,7 @@ Keys (key = value, one per line; ~ expands to $HOME):
   module_cmd        shell cmd printing the @<module> name (default: repo heuristic)
   triage            space-separated label vocabulary; new stamps the first
                     (default: needs-triage needs-info ready-for-agent ready-for-human wontfix)
-  Config file: ~/code/handoffs/<project>/.issues/config
+  Config file: ~/code/skaleshare/works/<project>/.issues/config
   link_name         repo-side container link name (default: .work). ENV-ONLY
                     (ISSUES_LINK_NAME) — a project-config value would be
                     circular: the link is what RESOLVES the project config.
@@ -1339,9 +1340,9 @@ cmd_doctor() {
       # mount (or syncs into it) commits; a second local auto-commit would
       # race two committers onto one network repo (pi5 via CIFS from lubu).
       autocommit_loaded=2
-    elif [ -x "$CENTRAL/.autocommit.sh" ] && ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
+    elif [ -x "$CENTRAL/.autocommit.sh" ] && ls "$HOME/Library/LaunchAgents"/com.skale.works.plist "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
       # macOS: verify the LaunchAgent is actually loaded (launchctl list)
-      if command -v launchctl >/dev/null 2>&1 && launchctl list 2>/dev/null | grep -q handoffs; then
+      if command -v launchctl >/dev/null 2>&1 && launchctl list 2>/dev/null | grep -qE "com\.skale\.works|handoffs"; then
         autocommit_loaded=1
       elif [ ! -x /usr/bin/launchctl ]; then
         autocommit_loaded=1  # not macOS — plist presence is all we can check
@@ -1350,8 +1351,8 @@ cmd_doctor() {
     case "$autocommit_loaded" in
       2) doc_ok "versioning: shared git over network mount (committed on the sharing/syncing box)" ;;
       1) doc_ok "versioning: local git + auto-commit loaded (recovery net; history is per-machine, not synced)" ;;
-      *) if [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
-           doc_warn "auto-commit installed but NOT loaded (launchctl) — recovery net is not running. Fix: launchctl load ~/Library/LaunchAgents/com.skale.handoffs.plist"
+      *) if [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/com.skale.works.plist "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
+           doc_warn "auto-commit installed but NOT loaded (launchctl) — recovery net is not running. Fix: launchctl load ~/Library/LaunchAgents/com.skale.works.plist (or com.skale.handoffs.plist on older machines)"
          else
            doc_warn "local git in root but no auto-commit found — commits happen only by hand"
          fi ;;
