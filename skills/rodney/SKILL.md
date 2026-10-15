@@ -1,7 +1,7 @@
 ---
 disable-model-invocation: true
 name: rodney
-version: "1.0.0"
+version: "1.1.0"
 description: Drive a persistent headless Chrome from the CLI — one process keeps cookies and state across calls. Use when the user wants to scrape JS-rendered pages, screenshot, fill forms, export PDFs, or run browser tests in CI.
 ---
 
