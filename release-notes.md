@@ -22,6 +22,14 @@
 
 ## Unreleased
 
+### visualize 1.13.3 — description: no gate mechanics
+- The always-loaded description dropped its "Hard style bans (enforced by
+  the share gate): …" clause (365 → 242 chars): mechanics in the description
+  drift — the "no pills" ban it claimed for months was never enforced. The
+  body (§ Hard style bans) stays the single source of truth.
+- skill-metadata now WARNs on enforcement language ("enforced by", "hard
+  ban", "exit N") in any description — the drift-shape can't silently return.
+
 ### visualize 1.13.2 — live agent path as a check (and what it caught)
 - **`LIVE_OK=1` runs prompts.md P1 verbatim through `pi --print --skill`:** a
   real agent session builds the page; the suite asserts file + `visualize gate`

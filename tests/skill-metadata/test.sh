@@ -88,6 +88,13 @@ print(len(d))")
         warn "skills/$name: description has no 'Use when' clause (routing signal)"
     fi
 
+    # gate mechanics in the always-loaded description drift into lies — the
+    # "no pills" ban visualize claimed for months was never enforced. The
+    # body (§ Hard style bans) is the single source of truth.
+    if grep -m1 '^description:' "$f" | grep -qiE 'enforced by|hard ban|exit [0-9]'; then
+        warn "skills/$name: description carries gate mechanics — enforcement language belongs in the body"
+    fi
+
     # version truth: SKILL.md frontmatter ↔ pyproject.toml (where present).
     # Found in the wild 2026-10-15: youtube SKILL.md 2.2.0 vs pyproject 2.1.0.
     pp="skills/$name/pyproject.toml"
