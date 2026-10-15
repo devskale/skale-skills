@@ -87,6 +87,16 @@ print(len(d))")
     if ! grep -qE "Use when|Use it when" "$f"; then
         warn "skills/$name: description has no 'Use when' clause (routing signal)"
     fi
+
+    # version truth: SKILL.md frontmatter ↔ pyproject.toml (where present).
+    # Found in the wild 2026-10-15: youtube SKILL.md 2.2.0 vs pyproject 2.1.0.
+    pp="skills/$name/pyproject.toml"
+    if [ -f "$pp" ]; then
+        sv=$(grep -m1 '^version:' "$f" | grep -oE '[0-9][0-9.]*')
+        pv=$(grep -m1 '^version' "$pp" | grep -oE '[0-9][0-9.]*')
+        assert "skills/$name: SKILL.md version ($sv) matches pyproject ($pv)" \
+            "[ -n '$sv' ] && [ '$sv' = '$pv' ]"
+    fi
 done
 
 if [ "${#lens[@]}" -gt 0 ]; then

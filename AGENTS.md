@@ -13,14 +13,14 @@ External skills (docx, xlsx, etc.) should be installed from upstream — see `RE
 | vtd | `vtd transcript --url '...'` | ~49 | Video/audio/transcript downloader (yt-dlp) |
 | rodney | `rodney start/open/stop` | ~54 | Headless Chrome automation. **Binary: Go fork at `~/code/clones/rodney` (branch `skale`) — build/test/release only on request (see its AGENTS.md)** |
 | surf | `surf open/click/read` (macOS) | ~36 | Drive your real, logged-in Chrome via AppleScript |
-| visualize | `visualize open/share/validate` | ~124 | Render any set of things as ONE self-contained HTML + share URL |
+| visualize | `visualize open/share/gate` | ~219 | Render any set of things as ONE self-contained HTML + share URL |
 | d2 | `d2 validate/render` | ~46 | Diagrams as code (D2 language) — knowledge skill + helper scripts |
 | figure | `node build/build_figures.mjs` | ~20 | Hand-drawn-style architecture figures (SVG/PNG compositor) |
 | peep | `peep <command>` | ~55 | Read X/Twitter via the `peep` CLI (knowledge skill) |
-| issues | `issues board/new/todo/…` | 52 | Cross-machine shared issue kanban (`.work/<project>/issues/`, legacy `.handoff` resolves) — one markdown file per issue, synced dir per project |
+| issues | `issues board/new/todo/…` | 109 | Cross-machine shared issue kanban (`.work/<project>/issues/`, legacy `.handoff` resolves) — one markdown file per issue, synced dir per project |
 | ~~viewimg~~ | ~~`viewimg img.jpg [--open]`~~ | ~~~16~~ | **DEPRECATED** — use `read img.jpg` instead. Archived to `skills/deprecated/viewimg/`. [Migration guide](docs/image-display-deprecation.md) |
-| pdf2mark | `pdf2mark <file.pdf>` | ~30 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
-| improve-ux | `improve-ux discover/add/rate/ledger` | ~96 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
+| pdf2mark | `pdf2mark <file.pdf>` | ~52 | Convert PDFs to Markdown — pdfplumber (local), llamaparse fallback for scans (skale pdf API) |
+| improve-ux | `improve-ux discover/add/rate/ledger` | ~103 | Improve UI/UX grounded in curated reference sites — progressive topic routing, verify loop, findings ledger (`ledger` cmd), ratings loop (`rate` cmd), site discovery |
 
 Counts are approximate (`~`); suites include honest network-skip counters — a WARN
 does not count as a pass. `tests/` also has `imagegen` (tests `extensions/imagegen.ts`),

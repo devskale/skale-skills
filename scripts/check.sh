@@ -37,6 +37,23 @@ else
     warn "shellcheck not installed — shell gate skipped"
 fi
 
+banner "Bash status-leak pattern ([ … ] && exit)"
+# `[ $? -ne 0 ] && exit 1` returns 1 on SUCCESS too — the test's own failure
+# status leaks when the condition is false. visualize's validate shipped that
+# for a year, masked by a trailing command that reset it (found 2026-10-15).
+# Propagation goes through `if` / `|| exit`; a `… && exit … || …` fallback on
+# the same line is unambiguous and not flagged.
+leak=0
+while IFS= read -r f; do
+    [ -f "$f" ] || continue
+    hits=$(grep -nE '^[[:space:]]*\[.*\] && exit' "$f" 2>/dev/null | grep -v '||' || true)
+    if [ -n "$hits" ]; then
+        echo "$hits" | sed "s|^|  ✗ $f:|" >&2
+        leak=1
+    fi
+done < <(git ls-files 'skills/*' 'tests/*' 'scripts/*' '.githooks/*'; git ls-files --others --exclude-standard 'skills/*' 'tests/*' 'scripts/*')
+[ "$leak" -eq 0 ] && echo "ok" || { FAIL=1; echo "FAIL: status-leak pattern" >&2; }
+
 banner "Python scripts (ruff F,E9 — the vet tier)"
 # Static bug checks for the skill Python code: pyflakes (F) + syntax (E9).
 # Style rules stay OUT of the gate on purpose (same philosophy as shellcheck
@@ -67,6 +84,43 @@ done < <(git ls-files '*.json')
 
 banner "Skill metadata (description hygiene)"
 if bash tests/skill-metadata/test.sh; then echo "ok"; else FAIL=1; echo "FAIL: skill-metadata" >&2; fi
+
+banner "Test suites (temp hygiene, vacuous ok)"
+# Two lints born in the 2026-10-15 visualize retro:
+#   fixed /tmp asserts — two concurrent suites (two agent sessions) clobber them
+#   vacuous ok         — a bare `ok` counts a pass nothing asserted
+# (A central coverage-mirror lived here for an hour and was trimmed to explicit
+# per-suite command lists — regex-parsing three launcher dialects was 80% of the
+# complexity for 0% of the findings; the lists live in the issues/improve-ux/
+# visualize suites.)
+if python3 - <<'PYEOF'
+import re, sys
+from pathlib import Path
+
+bad = []
+
+for p in sorted(Path("tests").glob("*/test.sh")):
+    for n, line in enumerate(p.read_text().splitlines(), 1):
+        if re.search(r">/tmp/", line) and "mktemp" not in line:
+            bad.append(f"{p}:{n}: fixed /tmp write — mktemp it (parallel runs clobber it)")
+
+for p in sorted(Path("tests").glob("*/test.sh")):
+    prev = ""
+    for n, line in enumerate(p.read_text().splitlines(), 1):
+        if re.match(r"^\s*ok(\s+#.*)?$", line):
+            pl = prev.rstrip()
+            if not (pl.endswith("then") or pl.endswith("else")):
+                bad.append(f'{p}:{n}: bare "ok" not guarded by then/else — vacuous pass')
+        if line.strip() and not line.lstrip().startswith("#"):
+            prev = line
+
+if bad:
+    for b in bad:
+        print(f"  ✗ {b}")
+    sys.exit(1)
+print("  clean: no fixed /tmp asserts, no vacuous ok")
+PYEOF
+then echo "ok"; else FAIL=1; echo "FAIL: suite lint" >&2; fi
 
 banner "Watchlist (watchlist.jsonl)"
 if python3 - <<'PY'

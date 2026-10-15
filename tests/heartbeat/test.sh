@@ -9,6 +9,7 @@ set -uo pipefail
 cd "$(dirname "$0")/../.."
 
 EXT=extensions/heartbeat.ts
+HB_TMP="$(mktemp -d)"   # run-private: parallel suites clobber fixed /tmp paths
 LIB=extensions/lib/heartbeat-parse.ts
 PASS=0; FAIL=0; WARN=0
 
@@ -29,7 +30,7 @@ echo "-------------------------"
 grep -q "^import\|^} from\|require(" "$LIB" && bad "heartbeat-parse.ts must stay import-free" || ok
 
 # lint/typecheck gate (extensions/)
-if bash scripts/lint.sh >/tmp/hb-lint.log 2>&1; then ok; else bad "lint.sh failed ($(tail -1 /tmp/hb-lint.log))"; fi
+if bash scripts/lint.sh >"$HB_TMP/hb-lint.log" 2>&1; then ok; else bad "lint.sh failed ($(tail -1 "$HB_TMP/hb-lint.log"))"; fi
 
 # registration surface (wiring lives in heartbeat.ts)
 grep -q 'registerCommand("heartbeat"' "$EXT" && ok || bad "slash command not registered"
@@ -61,7 +62,7 @@ if command -v node >/dev/null 2>&1; then
   NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
   if [ "$NODE_MAJOR" -ge 23 ] || { [ "$NODE_MAJOR" -eq 22 ] && node --experimental-strip-types /dev/null >/dev/null 2>&1; }; then
     STRIP=""; [ "$NODE_MAJOR" -eq 22 ] && STRIP="--experimental-strip-types"
-    cat > /tmp/hb-parse.test.ts <<'EOF'
+    cat > "$HB_TMP/hb-parse.test.ts" <<'EOF'
 import assert from "node:assert";
 import { parseDuration, humanDuration, parseCommand } from "./EXT_REL/lib/heartbeat-parse.ts";
 
@@ -145,14 +146,14 @@ assert.equal(c8.once, undefined, "no once when --limit explicit");
 
 console.log("parser unit tests passed");
 EOF
-    sed -i '' "s|./EXT_REL|$(pwd)/extensions|" /tmp/hb-parse.test.ts 2>/dev/null || sed -i "s|./EXT_REL|$(pwd)/extensions|" /tmp/hb-parse.test.ts
-    if node $STRIP /tmp/hb-parse.test.ts >/tmp/hb-unit.log 2>&1; then
+    sed -i '' "s|./EXT_REL|$(pwd)/extensions|" "$HB_TMP/hb-parse.test.ts" 2>/dev/null || sed -i "s|./EXT_REL|$(pwd)/extensions|" "$HB_TMP/hb-parse.test.ts"
+    if node $STRIP "$HB_TMP/hb-parse.test.ts" >"$HB_TMP/hb-unit.log" 2>&1; then
       ok
-      grep -q "parser unit tests passed" /tmp/hb-unit.log && ok || bad "unit test output unexpected"
+      grep -q "parser unit tests passed" "$HB_TMP/hb-unit.log" && ok || bad "unit test output unexpected"
     else
-      bad "parser unit tests failed: $(tail -3 /tmp/hb-unit.log)"
+      bad "parser unit tests failed: $(tail -3 "$HB_TMP/hb-unit.log")"
     fi
-    rm -f /tmp/hb-parse.test.ts
+    rm -f "$HB_TMP/hb-parse.test.ts"
   else
     warn "parser unit tests skipped (node < 22.6, no type stripping)"
   fi
@@ -170,9 +171,9 @@ else
     HBC=/tmp/hb-core; rm -rf "$HBC"; mkdir -p "$HBC"
     ( cd extensions/lib && "$TSC_BIN" heartbeat-core.ts heartbeat-parse.ts session-state.ts \
         --outDir "$HBC" --module commonjs --target es2022 --skipLibCheck --noResolve \
-        ) >/tmp/hb-tsc.log 2>&1
+        ) >"$HB_TMP/hb-tsc.log" 2>&1
     if [ ! -f "$HBC/heartbeat-core.js" ]; then
-        warn "control-flow tests skipped (tsc emit failed: $(tail -1 /tmp/hb-tsc.log))"
+        warn "control-flow tests skipped (tsc emit failed: $(tail -1 "$HB_TMP/hb-tsc.log"))"
     else
         cat > "$HBC/run.js" <<'EOF'
 const core = require("./heartbeat-core.js");
@@ -308,10 +309,10 @@ eq(core.isEscapePress(""), false, "esc-enc: empty");
 console.log(`CORE TESTS: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
 EOF
-        if node "$HBC/run.js" >/tmp/hb-core.log 2>&1; then
+        if node "$HBC/run.js" >"$HB_TMP/hb-core.log" 2>&1; then
             ok
         else
-            bad "control-flow tests failed: $(grep -m1 'FAIL:' /tmp/hb-core.log)"
+            bad "control-flow tests failed: $(grep -m1 'FAIL:' "$HB_TMP/hb-core.log")"
         fi
     fi
 fi
@@ -319,6 +320,7 @@ fi
 # smoke: extension loads in pi is a live check — skipped here, covered by pi itself
 warn "live load in pi not exercised (interactive)"
 
+rm -rf "$HB_TMP"
 echo
 echo "PASS=$PASS FAIL=$FAIL WARN=$WARN"
 [ "$FAIL" -eq 0 ]

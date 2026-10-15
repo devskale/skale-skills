@@ -8,6 +8,7 @@ set -uo pipefail
 cd "$(dirname "$0")/../.."
 
 SCRIPT=scripts/skill-filter.sh
+SF_TMP="$(mktemp -d)"   # run-private: parallel suites clobber fixed /tmp paths
 PASS=0; FAIL=0; WARN=0
 
 ok()   { PASS=$((PASS+1)); }
@@ -30,10 +31,10 @@ grep -q '"!\./' package.json && bad 'package.json: ./-prefixed glob-exclude sile
 
 # ── shellcheck (if available) ──
 if command -v shellcheck >/dev/null 2>&1; then
-  if shellcheck "$SCRIPT" >/tmp/sf-shellcheck.log 2>&1; then
+  if shellcheck "$SCRIPT" >"$SF_TMP/sf-shellcheck.log" 2>&1; then
     ok
   else
-    bad "shellcheck: $(tail -1 /tmp/sf-shellcheck.log)"
+    bad "shellcheck: $(tail -1 "$SF_TMP/sf-shellcheck.log")"
   fi
 else
   warn "shellcheck not installed"
@@ -196,6 +197,7 @@ JSON
 # ── seed-defaults exists in install.sh right after pi install ──
 grep -q 'skill-filter.sh seed-defaults' install.sh && ok || bad "install.sh should seed defaults after pi install"
 
+rm -rf "$SF_TMP"
 echo ""
 echo "PASS=$PASS FAIL=$FAIL WARN=$WARN"
 [ "$FAIL" -eq 0 ]

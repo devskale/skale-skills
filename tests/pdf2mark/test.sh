@@ -7,6 +7,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/../.."
 ROOT=$(pwd)
+PM_OUTDIR="$(mktemp -d)"; PM_OUT="$PM_OUTDIR/pdf2mark.out"   # run-private (see visualize suite)
 
 SKILL=skills/pdf2mark
 SCRIPT="$SKILL/pdf2mark"
@@ -19,7 +20,7 @@ warn() { WARN=$((WARN+1)); echo "  WARN (network-dependent, skipped honestly): $
 
 check() { # check <desc> <expected-exit> <cmd...>
     local desc="$1" want="$2"; shift 2
-    "$@" >/tmp/pdf2mark.out 2>&1
+    "$@" >"$PM_OUT" 2>&1
     local got=$?
     if [ "$got" -eq "$want" ]; then ok; else bad "$desc (want exit $want, got $got)"; fi
 }
@@ -69,25 +70,25 @@ check "unknown flag → exit 2" 2 "$SCRIPT" --bogus /nonexistent.pdf
 BIG=$(mktemp)
 dd if=/dev/zero of="$BIG" bs=1024 count=11264 2>/dev/null   # 11 MB > 10 MB limit
 check "oversized file → exit 1" 1 "$SCRIPT" "$BIG"
-grep -q "larger than 10MB" /tmp/pdf2mark.out && ok || bad "oversized message lacks the limit"
+grep -q "larger than 10MB" "$PM_OUT" && ok || bad "oversized message lacks the limit"
 EMPTY=$(mktemp)
 check "empty file → exit 1" 1 "$SCRIPT" "$EMPTY"
-grep -q "is empty" /tmp/pdf2mark.out && ok || bad "empty-file message missing"
+grep -q "is empty" "$PM_OUT" && ok || bad "empty-file message missing"
 rm -f "$BIG" "$EMPTY"
 
 # path handling: relative paths + ~ expansion resolve against the caller's cwd
-( cd /tmp && "$ROOT/$SCRIPT" pdf2mark-rel-missing.pdf >/tmp/pdf2mark.out 2>&1 )
+( cd /tmp && "$ROOT/$SCRIPT" pdf2mark-rel-missing.pdf >"$PM_OUT" 2>&1 )
 [ $? -eq 1 ] && ok || bad "missing relative file → exit 1"
-"$SCRIPT" '~/pdf2mark-nonexistent.pdf' >/tmp/pdf2mark.out 2>&1
-[ $? -eq 1 ] && grep -q "$HOME/pdf2mark-nonexistent.pdf" /tmp/pdf2mark.out && ok \
+"$SCRIPT" '~/pdf2mark-nonexistent.pdf' >"$PM_OUT" 2>&1
+[ $? -eq 1 ] && grep -q "$HOME/pdf2mark-nonexistent.pdf" "$PM_OUT" && ok \
     || bad "~/ in arguments not expanded"
 
 # launcher flags (convention: --update/--selfcheck)
 check "--selfcheck → exit 0" 0 "$SCRIPT" --selfcheck
-grep -q "pdf2mark v" /tmp/pdf2mark.out && ok || bad "selfcheck shows version"
-grep -q "dir:" /tmp/pdf2mark.out && ok || bad "selfcheck shows dir"
+grep -q "pdf2mark v" "$PM_OUT" && ok || bad "selfcheck shows version"
+grep -q "dir:" "$PM_OUT" && ok || bad "selfcheck shows dir"
 check "--update → exit 0" 0 "$SCRIPT" --update
-grep -q "Updated" /tmp/pdf2mark.out && ok || bad "--update reports Updated"
+grep -q "Updated" "$PM_OUT" && ok || bad "--update reports Updated"
 [ -f "$SKILL/.last-update" ] && ok || bad "stamp file created"
 
 # default output: md/<name>.pdf.md next to the PDF (no --out, no --stdout)
@@ -162,32 +163,32 @@ else
         # default output: no --out → md/<name>.pdf.md next to the PDF
         DEFDIR=$(mktemp -d)
         cp "$FIXPDF" "$DEFDIR/abd.pdf"
-        ( cd "$DEFDIR" && "$ROOT/$SCRIPT" abd.pdf ) >/tmp/pdf2mark.out 2>&1
+        ( cd "$DEFDIR" && "$ROOT/$SCRIPT" abd.pdf ) >"$PM_OUT" 2>&1
         [ -s "$DEFDIR/md/abd.pdf.md" ] && ok \
-            || bad "default output md/abd.pdf.md not written (stderr: $(head -2 /tmp/pdf2mark.out))"
+            || bad "default output md/abd.pdf.md not written (stderr: $(head -2 "$PM_OUT"))"
         grep -q "Funktionstest" "$DEFDIR/md/abd.pdf.md" 2>/dev/null && ok \
             || bad "default output lacks fixture text"
         # --stdout restores the old behavior
-        ( cd "$DEFDIR" && "$ROOT/$SCRIPT" abd.pdf --stdout ) >/tmp/pdf2mark-stdout.out 2>/dev/null
-        grep -q "Funktionstest" /tmp/pdf2mark-stdout.out && ok \
+        ( cd "$DEFDIR" && "$ROOT/$SCRIPT" abd.pdf --stdout ) >"$PM_OUT-stdout" 2>/dev/null
+        grep -q "Funktionstest" "$PM_OUT-stdout" && ok \
             || bad "--stdout did not write markdown to stdout"
         rm -rf "$DEFDIR"
 
         # relative in+out resolve against the caller's cwd, not the skill dir
         TESTCWD=$(mktemp -d)
         cp "$FIXPDF" "$TESTCWD/rel.pdf"
-        ( cd "$TESTCWD" && "$ROOT/$SCRIPT" rel.pdf --out rel-out.md ) >/tmp/pdf2mark.out 2>&1
+        ( cd "$TESTCWD" && "$ROOT/$SCRIPT" rel.pdf --out rel-out.md ) >"$PM_OUT" 2>&1
         [ -s "$TESTCWD/rel-out.md" ] && ok || bad "relative paths don't resolve against caller cwd"
         rm -rf "$TESTCWD"
 
         # robustness: network timeout → clean error, never a traceback
         # (blackhole address + tiny timeout; PDF2MD_URL is a supported override)
         PDF2MD_URL="http://10.255.255.1:9/" timeout 30 \
-            "$SCRIPT" "$FIXPDF" --timeout 2 >/tmp/pdf2mark.out 2>&1
+            "$SCRIPT" "$FIXPDF" --timeout 2 >"$PM_OUT" 2>&1
         got=$?
         [ "$got" -eq 1 ] && ok || bad "blackhole timeout exit (want 1, got $got)"
-        grep -q "Traceback" /tmp/pdf2mark.out && bad "timeout leaked a traceback" || ok
-        grep -q "retry with a higher --timeout" /tmp/pdf2mark.out && ok \
+        grep -q "Traceback" "$PM_OUT" && bad "timeout leaked a traceback" || ok
+        grep -q "retry with a higher --timeout" "$PM_OUT" && ok \
             || bad "timeout message lacks retry hint"
     fi
 fi

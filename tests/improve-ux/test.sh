@@ -6,6 +6,7 @@ cd "$(dirname "$0")/../.."
 
 SKILL=skills/improve-ux
 SCRIPT="$SKILL/improve-ux"
+UX_OUTDIR="$(mktemp -d)"; UX_OUT="$UX_OUTDIR/improve-ux.out"   # run-private (see visualize suite)
 PASS=0; FAIL=0; WARN=0
 
 ok()   { PASS=$((PASS+1)); }
@@ -14,7 +15,7 @@ warn() { WARN=$((WARN+1)); echo "  WARN: $1" >&2; }
 
 check() { # check <desc> <expected-exit> <cmd...>
     local desc="$1" want="$2"; shift 2
-    "$@" >/tmp/improve-ux.out 2>&1
+    "$@" >"$UX_OUT" 2>&1
     local got=$?
     if [ "$got" -eq "$want" ]; then ok; else bad "$desc (want exit $want, got $got)"; fi
 }
@@ -27,6 +28,13 @@ echo "---------------"
 [ -x "$SCRIPT" ] && ok || bad "improve-ux launcher not executable"
 grep -q 'GIT_ROOT=' "$SCRIPT" && ok || bad "launcher must resolve enclosing git root (GIT_ROOT)"
 grep -q 'GIT_ROOT/.git' "$SCRIPT" && ok || bad "auto-update guard must use GIT_ROOT/.git"
+
+# every command: listed in --help AND exercised in this suite (explicit list —
+# a new command fails here until both are true)
+for c in discover add rate ledger; do
+    if "$SCRIPT" --help 2>&1 | grep -q "improve-ux $c " && grep -qw "$c" "$0"; then ok
+    else bad "command '$c' must be in --help AND exercised in this suite"; fi
+done
 [ -f "$SKILL/install.sh" ] && ok || bad "install.sh missing"
 [ -f "$SKILL/install.bat" ] && ok || bad "install.bat missing"
 [ -f "$SKILL/.gitignore" ] && ok || bad ".gitignore missing"
@@ -63,11 +71,11 @@ check "no args → exit 2" 2 "$SCRIPT"
 check "unknown cmd → exit 2" 2 "$SCRIPT" bogus
 check "--help → exit 0" 0 "$SCRIPT" --help
 check "--selfcheck → exit 0" 0 "$SCRIPT" --selfcheck
-grep -q "improve-ux v" /tmp/improve-ux.out && ok || bad "selfcheck shows version"
-grep -q "web-search:" /tmp/improve-ux.out && ok || bad "selfcheck shows web-search dep"
-grep -qi "syntax error" /tmp/improve-ux.out && bad "selfcheck emits bash syntax errors" || ok
+grep -q "improve-ux v" "$UX_OUT" && ok || bad "selfcheck shows version"
+grep -q "web-search:" "$UX_OUT" && ok || bad "selfcheck shows web-search dep"
+grep -qi "syntax error" "$UX_OUT" && bad "selfcheck emits bash syntax errors" || ok
 check "--update → exit 0" 0 "$SCRIPT" --update
-grep -q "Updated" /tmp/improve-ux.out && ok || bad "--update reports Updated"
+grep -q "Updated" "$UX_OUT" && ok || bad "--update reports Updated"
 [ -f "$SKILL/.last-update" ] && ok || bad "stamp file created"
 
 # add — offline behavior via temp copy + --force
@@ -96,7 +104,7 @@ grep -cvE '^[[:space:]]*(#|$)' "$SKILL/references/discovery-queries.txt" | grep 
 if command -v web-search >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
     if curl -sf --max-time 10 -o /dev/null -I "https://cdn.jsdelivr.net/npm/axe-core@4/axe.min.js"; then
         check "discover live → exit 0" 0 "$SCRIPT" discover -n 3
-        grep -q "Discovered" /tmp/improve-ux.out && ok || bad "discover prints candidate table"
+        grep -q "Discovered" "$UX_OUT" && ok || bad "discover prints candidate table"
         check "discover unknown flag → exit 2" 2 "$SCRIPT" discover --bogus
     else
         warn "network unreachable — skipped live discover (structure checks still ran)"
@@ -122,7 +130,7 @@ grep -q '"helped": 1' "$RATINGS" && ok || bad "rate: helped stays 1 without --he
 check "rate: URL input normalized to domain" 0 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate "https://emilkowal.ski/sect" --helped
 grep -q '"emilkowal.ski"' "$RATINGS" && ok || bad "rate: domain normalization"
 check "rate: --top lists rated sites" 0 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate --top
-grep -q "ui.shadcn.com" /tmp/improve-ux.out && ok || bad "rate: --top prints site"
+grep -q "ui.shadcn.com" "$UX_OUT" && ok || bad "rate: --top prints site"
 check "rate: unknown flag → exit 2" 2 env XDG_CACHE_HOME="$TMPR" "$SCRIPT" rate example.com --bogus
 rm -rf "$TMPR"
 
@@ -143,17 +151,18 @@ grep -q '"id": "F2"' "$LEDGER" && ok || bad "ledger: F2 monotonic"
 grep -q '"status": "open"' "$LEDGER" && ok || bad "ledger: default status open"
 check "ledger: bad severity → exit 2" 2 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger add "x" --severity huge
 check "ledger: show prints findings" 0 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger show "Demo target"
-grep -q "F1" /tmp/improve-ux.out && grep -q "open item" /tmp/improve-ux.out && ok || bad "ledger: show lists findings + open count"
+grep -q "F1" "$UX_OUT" && grep -q "open item" "$UX_OUT" && ok || bad "ledger: show lists findings + open count"
 check "ledger: show missing target → exit 1" 1 env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger show "does-not-exist"
 # cap warning: push the current pass over the ~7-changes cap (F2..F10 → 10 findings)
 for i in 3 4 5 6 7 8 9 10; do
     env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger add "filler finding $i" >/dev/null 2>&1
 done
 grep -q "~7 kept-changes cap" "$LEDGER" 2>/dev/null && bad "ledger: cap text must not be written into JSON" || ok
-env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger show "Demo target" >/tmp/improve-ux-cap.out 2>&1
-grep -q "~7 kept-changes cap" /tmp/improve-ux-cap.out && ok || bad "ledger: cap warning printed on show"
+env XDG_CACHE_HOME="$TMPL" "$SCRIPT" ledger show "Demo target" >"$UX_OUT-cap" 2>&1
+grep -q "~7 kept-changes cap" "$UX_OUT-cap" && ok || bad "ledger: cap warning printed on show"
 rm -rf "$TMPL"
 
 echo "---------------"
 echo "PASS: $PASS  FAIL: $FAIL  WARN: $WARN"
+rm -rf "$UX_OUTDIR"
 [ "$FAIL" -eq 0 ]

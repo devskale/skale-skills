@@ -36,6 +36,14 @@ grep -q 'GIT_ROOT' "$SCRIPT" && ok || bad "launcher must walk up to GIT_ROOT (cw
 grep -q '\.last-update' "$SCRIPT" && ok || bad "launcher must write .last-update"
 bash -n "$SCRIPT" && ok || bad "bash -n syntax check failed"
 
+# every command: listed in --help AND exercised in this suite (explicit list —
+# a new command fails here until both are true; trimmed from the central
+# mirror 2026-10-15: explicit lists read trivially, misparse nothing)
+for c in board board-html init doctor new ls todo mine done show set start review cancel triage archive purge pull push; do
+    if "$SCRIPT" --help 2>&1 | grep -q "issues $c " && grep -qw "$c" "$0"; then ok
+    else bad "command '$c' must be in --help AND exercised in this suite"; fi
+done
+
 # ── sandbox board (isolated ISSUES_DIR + fake repo with .handoff) ──────────
 TEST_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
@@ -72,6 +80,14 @@ out=$(run_in "$REPO" ls --tsv); echo "$out" | grep -q "live-one" && ok || bad "l
 out=$(run_in "$REPO" ls all --tsv); echo "$out" | grep -q "happy-path" && ok || bad "ls all --tsv missing archived issue"
 out=$(run_in "$REPO" show happy-path); echo "$out" | grep -q "^state: DONE" && ok || bad "show did not print issue"
 out=$(run_in "$REPO" ls --json); echo "$out" | grep -q '"slug"' && ok || bad "ls --json broken"
+
+# todo/mine — dispatched + documented (coverage mirror), never exercised before:
+# clean death outside a board (deterministic on every machine, no identity needed)
+NOBOARD="$TEST_ROOT/noboard"; mkdir -p "$NOBOARD/.git"
+out=$(run_in "$NOBOARD" todo); rc=$?
+[ "$rc" -eq 1 ] && echo "$out" | grep -q "no issues dir" && ok || bad "todo must die cleanly without a board (rc=$rc: $out)"
+out=$(run_in "$NOBOARD" mine); rc=$?
+[ "$rc" -eq 1 ] && echo "$out" | grep -q "no issues dir" && ok || bad "mine must die cleanly without a board (rc=$rc: $out)"
 
 # ── regression: flag without value must die cleanly (was: unbound variable) ─
 for flag in --module --triage --to --from --state --sort; do

@@ -22,6 +22,71 @@
 
 ## Unreleased
 
+### check.sh: four gates from the visualize retro (2026-10-15)
+- **Bash status-leak pattern:** `[ … ] && exit 1` returns 1 on success too —
+  visualize's `validate` shipped that for a year, masked by a trailing command
+  (found while decoupling jscheck). Gate greps every tracked bash file; the one
+  live site rewritten to `if`.
+- **Test-suite temp hygiene:** fixed `/tmp` assert writes die at the gate — two
+  parallel suites clobber each other. figure/heartbeat/skill-filter normalized
+  to `mktemp -d` (visualize/improve-ux/pdf2mark already were).
+- **Vacuous-ok lint:** a bare `ok` outside a `then`/`else` branch is a pass
+  nothing asserted (two lived inside visualize's 190-count).
+- **Version truth, centrally:** `tests/skill-metadata` asserts SKILL.md ↔
+  pyproject for every skill with a pyproject — caught youtube 2.2.0 vs 2.1.0 in
+  the wild (fixed).
+- Command coverage: a central launcher-parsing mirror was built, found `issues
+  mine/todo` never exercised (+2 suite checks), then **trimmed** to explicit
+  per-suite command lists (issues/improve-ux/visualize) — three launcher
+  dialects were 80% of the complexity for 0% of the findings.
+- Retro rules landed in CODING_RULES: exit-code propagation, temp hygiene,
+  vacuous ok, explicit command lists.
+
+### visualize 1.13.1 — the JS gate had two definitions of "script block"
+- **`jscheck` silently skipped every attributed tag.** The syntax pass matched
+  `<script[[:space:]]*>` while the TDZ pass matched `<script[^>]*>` — so
+  `<script type="module">`, the tag in our own `templates/mermaid.html`, was never
+  syntax-checked. Two more holes came from the line-based parse: code on the same
+  line as `<script>`, and a `</script>` in the final line without a trailing
+  newline. A page with a real syntax error passed `validate` *and* `gate`, printed
+  "all gates pass", and got a URL (found 2026-10-15 on
+  `<script type="module">const a = ;</script>`).
+- Extraction moved to `scripts/jscheck.py`: one definition of a script block for
+  both passes, regex-based instead of line-based. Also fixes two false positives —
+  HTML comments are stripped (a commented-out script never ran, but was flagged)
+  and non-JS types (`application/ld+json`, `text/template`) plus `src=` blocks are
+  skipped. `type="module"` is checked as ESM (`.mjs`), everything else classic.
+  A block that fails to reach disk is now an error, not an unchecked pass.
+  Launcher: 586 → 530 lines (one `exec` instead of ~45 lines of bash parsing).
+- tests: 8 new jscheck checks — attributed `<script type="module">`, same-line,
+  no-trailing-newline, JSON-LD/`src=` skip, commented-out script, error in the
+  second block, missing file, `--help` listing — plus `jscheck` on every template.
+  Two vacuous `ok` assertions replaced with real ones (`max = 120` is a denominator,
+  not an axis floor; `--help` lists every command).
+- **Docs told the same two lies the code did.** The always-loaded `description`
+  claimed a "no pills" hard ban the gate has never enforced (pills are info), and
+  README claimed "no API or no token → `exit 3`" when the client degrades to the
+  offline hard-ban subset (`exit 1` on a hit). Description, README, `output.md`,
+  `html-patterns.md`, `report.md`, `templates/README.md` and the launcher's own
+  header comment now state what the gate actually does.
+- Added the missing `pyproject.toml` (CODING_RULES: required for Python), version
+  aligned with SKILL.md and asserted in the suite.
+- **gate composition:** jscheck ist jetzt ein eigener, korrekt gelabelter gate-Zweig —
+  vorher lief es als stiller Anhang in validate, und ein JS-Fehler hieß „gate validate:
+  FAIL" (der Agent suchte ein Dependency-Problem). Nebenfund beim Entkoppeln:
+  `[ $? -ne 0 ] && exit 1` in validate lieferte auf dem Erfolgspfad Status 1, jahrelang
+  vom jscheck-Anhang auf 0 maskiert — jetzt ein explizites `if`. usage/SKILL.md/README/
+  Flow-Diagramm nennen alle vier Gates.
+- **TDZ-Heuristik scope-bewusst** (Brace-Tiefe statt Textposition): eine Nutzung in
+  Funktionskörper/Callback vor der Deklaration läuft später und wird nicht mehr falsch
+  markiert (präistentes Falsch-Positiv auf gültigen Seiten; klammungslose
+  Arrow-Callbacks bleiben dokumentierte Grenze).
+- **Test-Isolation:** alle drei Suiten (visualize, improve-ux, pdf2mark) schreiben ihre
+  Assert-Ausgabe nach `$(mktemp -d)` statt auf einen festen `/tmp`-Pfad — zwei parallele
+  Läufe (zwei Agent-Sessions) haben sich sonst gegenseitig die Assert-Datei
+  überschrieben. AGENTS.md-Testzahlen aufgefrischt (visualize ~216, issues 88,
+  pdf2mark ~52).
+
 ### pdf2md → pdf2mark (rename)
 - Skill dir `skills/pdf2md-lite/` → `skills/pdf2mark/`, command `pdf2md` → `pdf2mark`
   (launcher `~/.local/bin/pdf2mark`, script `scripts/pdf2mark.py`, venv cache

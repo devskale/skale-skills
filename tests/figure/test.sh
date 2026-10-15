@@ -7,6 +7,7 @@ set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../../skills/figure"
 FIG_DIR="$(pwd)"
+FIG_TMP="$(mktemp -d)"   # run-private: parallel suites clobber fixed /tmp paths
 
 PASS=0
 FAIL=0
@@ -28,14 +29,14 @@ echo ""
 
 # ── 1. layout() unit tests ──────────────────────────────────────────────
 echo "[1] layout() unit tests (node:test)..."
-assert "layout unit tests pass" "node --test build/layout.test.mjs >/tmp/fig-layout-test.log 2>&1"
+assert "layout unit tests pass" "node --test build/layout.test.mjs >"$FIG_TMP/fig-layout-test.log" 2>&1"
 echo ""
 
 # ── 2. every example spec lints clean (bounds + collisions) ─────────────
 echo "[2] review_figure on example specs..."
 for spec in diagrams/examples/*/*.fig.mjs diagrams/architectures/*/*.fig.mjs diagrams/scope/*/*.fig.mjs diagrams/agentic-rag.fig.mjs; do
     name="$(basename "$(dirname "$spec")")"
-    assert "review clean: $name" "node build/review_figure.mjs '$spec' >/tmp/fig-review-$name.log 2>&1"
+    assert "review clean: $name" "node build/review_figure.mjs '$spec' >"$FIG_TMP/fig-review-$name.log" 2>&1"
 done
 echo ""
 
@@ -54,6 +55,7 @@ done
 echo ""
 
 echo "==============================="
+rm -rf "$FIG_TMP"
 echo "PASS: $PASS  FAIL: $FAIL"
 if [ "$FAIL" -ne 0 ]; then exit 1; fi
 echo "All figure tests passed."

@@ -290,6 +290,25 @@ invocation in a skill, guide, or agent prompt:
   values, negative tests of removed logic.
 - Behavior changes (flag parsing, backend fallback, output format) MUST add an
   **integration test** — a real invocation of the command.
+- Assert output goes under `$(mktemp -d)`, never a fixed `/tmp` path — two
+  concurrent suites (two agent sessions) clobber each other otherwise. Gated in
+  `scripts/check.sh`.
+- A bare `ok` sits in a `then`/`else` branch — an unconditioned `ok` counts a
+  pass nothing asserted. Gated in `scripts/check.sh`.
+- Multi-command launchers carry an **explicit command list** in their suite:
+  every command must be in `--help` AND exercised in the suite file (see
+  `tests/issues`, `tests/improve-ux`, `tests/visualize`). Explicit lists misparse
+  nothing — a central launcher-parsing mirror was tried 2026-10-15 and trimmed
+  to this for exactly that reason.
+
+### Exit-code propagation
+
+`[ $? -ne 0 ] && exit 1` returns **1 on success** — the test's own failure
+status leaks when the condition is false. visualize's `validate` shipped that
+for a year, masked by a trailing command that reset the status (found
+2026-10-15 while decoupling jscheck). Propagate through `if` / `|| exit`;
+`… && exit … || …` with a same-line fallback is fine. Gated: `scripts/check.sh`
+greps every tracked bash file for the pattern.
 
 ### Unambiguous Call Sites
 
@@ -324,7 +343,9 @@ touch; CI doesn't forget.
 Three places must agree:
 - `SKILL.md` → `metadata.version: "2.6.0"`
 - `pyproject.toml` → `version = "2.6.0"`
-- Test: version alignment check
+- Test: version alignment check — gated **centrally** in
+  `tests/skill-metadata/test.sh` for every skill with a pyproject (found in the
+  wild 2026-10-15: youtube 2.2.0 vs 2.1.0).
 
 Default bump is **patch (+0.0.1)** — for every change, regardless of size. Minor
 (+0.1.0) or major only when the user asks explicitly. Same policy for the repo
