@@ -1,11 +1,11 @@
 ---
-name: pdf2md
+name: pdf2md-lite
 version: "1.5.1"
 description: Bash skill — run `pdf2md <file.pdf>` in your shell (not an MCP tool). Convert PDFs to clean Markdown — local extraction, cloud-OCR fallback for scans. Use when the user wants a PDF as Markdown.
 disable-model-invocation: true
 ---
 
-# Skill: pdf2md
+# Skill: pdf2md-lite
 
 ```bash
 pdf2md document.pdf          # That's it.

@@ -8,7 +8,7 @@ set -uo pipefail
 cd "$(dirname "$0")/../.."
 ROOT=$(pwd)
 
-SKILL=skills/pdf2md
+SKILL=skills/pdf2md-lite
 SCRIPT="$SKILL/pdf2md"
 PY="$SKILL/scripts/pdf2md.py"
 PASS=0; FAIL=0; WARN=0
@@ -40,7 +40,7 @@ grep -q 'GIT_ROOT/.git' "$SCRIPT" && ok || bad "auto-update guard must use GIT_R
 
 # frontmatter: name + version, version aligned with pyproject
 head -1 "$SKILL/SKILL.md" | grep -q '^---$' && ok || bad "SKILL.md missing frontmatter"
-grep -q '^name: pdf2md' "$SKILL/SKILL.md" && ok || bad "frontmatter name: pdf2md"
+grep -q '^name: pdf2md-lite' "$SKILL/SKILL.md" && ok || bad "frontmatter name: pdf2md"
 grep -q '^description:' "$SKILL/SKILL.md" && ok || bad "frontmatter description missing"
 FMV=$(grep -m1 '^version:' "$SKILL/SKILL.md" | grep -o '[0-9][0-9.]*')
 PYV=$(grep -m1 '^version' "$SKILL/pyproject.toml" | grep -o '[0-9][0-9.]*')
