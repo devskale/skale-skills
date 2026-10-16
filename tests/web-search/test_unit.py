@@ -15,9 +15,11 @@ None, and that clean results pass through untouched.
 Runs under the skill venv's python. Invoked by tests/web-search/test.sh.
 """
 import argparse
+import io
 import json
 import os
 import sys
+from contextlib import redirect_stderr
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[2] / "skills" / "web-search" / "scripts"
@@ -231,15 +233,20 @@ search.urllib.request.urlopen = _fake_urlopen_by_url({
     "private.example": DEGRADED,
     None: HEALTHY,  # any public instance
 })
-res = search.search_searxng(query="q", max_results=10, categories=None,
-                            engines=None, time_range=None, language="en",
-                            instance_url="https://private.example",
-                            auth=None)
+stderr = io.StringIO()
+with redirect_stderr(stderr):
+    res = search.search_searxng(query="q", max_results=10, categories=None,
+                                engines=None, time_range=None, language="en",
+                                instance_url="https://private.example",
+                                auth=None)
 check("degraded private → public results served",
       isinstance(res, dict) and res.get("results") == [{"title": "t", "url": "u"}])
 check("degraded private → tried public fallback",
       len(urls_requested) == 2 and "private.example" in urls_requested[0]
       and "private.example" not in urls_requested[1])
+check("degraded fall-through warns LOUDLY (hard rule)",
+      "suspended" in stderr.getvalue() and "private.example" in stderr.getvalue()
+      and stderr.getvalue().startswith("Warning:"))
 
 # 13. ALL instances degraded → first degraded payload (suspension stays visible)
 urls_requested.clear()
@@ -282,6 +289,19 @@ check("plain miss output unchanged",
       text_ok == "No results found for 'q'." and "suspended" not in text_ok)
 
 search.urllib.request.urlopen = original_urlopen
+
+# 16. malformed SEARXNG_URL env → loud warning, NOT a silent drop to credgoo
+original_env = search.PRIVATE_SEARXNG_URL
+search.PRIVATE_SEARXNG_URL = "@user@pass"  # url part empty → unparseable
+run(calls, lambda n: "https://credgoo.example@u@p")  # credgoo would answer
+stderr = io.StringIO()
+with redirect_stderr(stderr):
+    creds = search.get_searxng_credentials()
+check("malformed SEARXNG_URL warns loudly",
+      "Warning" in stderr.getvalue() and "SEARXNG_URL" in stderr.getvalue())
+check("malformed SEARXNG_URL still falls back to credgoo",
+      creds is not None and creds["url"] == "https://credgoo.example")
+search.PRIVATE_SEARXNG_URL = original_env
 
 print("")
 print(f"PASS={PASS} FAIL={FAIL}")

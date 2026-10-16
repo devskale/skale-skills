@@ -1,6 +1,6 @@
 ---
 name: web-search
-version: "2.5.0"
+version: "2.5.1"
 description: "Bash skill — run `web-search \"query\"` in your shell (not an MCP tool). Search the web; returns text, image, news, or video results. Use when the user wants to search or look something up."
 ---
 

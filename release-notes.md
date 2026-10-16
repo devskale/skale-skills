@@ -1,5 +1,21 @@
 ## Unreleased
 
+### HARD RULE: failures are loud, never silenced (8 launchers + audit suite)
+- New repo rule (AGENTS.md / CODING_RULES.md): launchers may not discard
+  stderr of critical operations (`git pull`, `uv sync`) via `2>/dev/null`,
+  `&>/dev/null` or `|| true`. A failed auto-update warns on stderr and does
+  **not** write `.last-update`, so the next run retries instead of hiding the
+  breakage for the whole 7-day window. Manual `--update` fails with exit 1.
+- Enforced by new `tests/loud-failures/test.sh` (32 checks; also scans
+  `except: pass` swallows in skill python scripts — benign ones carry an
+  explicit `# loud-ok` marker with a reason). Wired into the `--full` gate.
+- Applied to the shared launcher template in: fetch-url 2.8.4, pdf2mark 1.6.1,
+  improve-ux, visualize 1.13.4, issues 1.5.1, youtube 2.2.1, vtd 1.3.1,
+  surf 1.6.1 (web-search 2.5.1 landed earlier in this change set).
+- One genuine hidden error surfaced by the audit and fixed:
+  `fetch-url` silently fell back to default settings on a corrupt
+  `settings.json` — now warns on stderr first.
+
 ### web-search 2.5.0 — degraded SearXNG instances are retried, not reported as misses
 - A SearXNG answer of `200 + results:[]` with **all engines suspended**
   (CAPTCHA / access denied / 429 — lubu 2026-10-16 after its update) is now

@@ -27,8 +27,11 @@ case "${1:-}" in
     --update|--self-update)
         cd "$SKILL_DIR"
         echo "Updating youtube..."
-        (cd "$GIT_ROOT" && git pull --ff-only 2>&1) || true
-        (cd "$SKILL_DIR" && uv sync --quiet 2>/dev/null)
+        if ! (cd "$GIT_ROOT" && git pull --ff-only); then
+            echo "✗ git pull failed — staying on current code, stamp NOT updated" >&2
+            exit 1
+        fi
+        (cd "$SKILL_DIR" && uv sync --quiet)
         date +%s > "$STAMP_FILE"
         echo "Updated."
         exit 0
@@ -65,7 +68,21 @@ if [ -d "$GIT_ROOT/.git" ]; then
         [ $(( (now - last) / 86400 )) -gt 7 ] && needs_update=true
     fi
     if $needs_update; then
-        (cd "$GIT_ROOT" && git pull --ff-only --quiet 2>/dev/null && (cd "$SKILL_DIR" && uv sync --quiet 2>/dev/null) && date +%s > "$STAMP_FILE") &
+        # Hard rule (AGENTS.md): failures are loud, never silenced. stdout is
+        # discarded, stderr stays attached; NO stamp on failure → next run retries.
+        (
+            cd "$GIT_ROOT" || exit 1
+            ok=true
+            if ! git pull --ff-only --quiet; then
+                echo "youtube: auto-update git pull failed — staying on current code, will retry next run" >&2
+                ok=false
+            fi
+            if $ok && ! (cd "$SKILL_DIR" && uv sync --quiet); then
+                echo "youtube: auto-update uv sync failed — staying on current code, will retry next run" >&2
+                ok=false
+            fi
+            $ok && date +%s > "$STAMP_FILE"
+        ) >/dev/null &
     fi
 fi
 

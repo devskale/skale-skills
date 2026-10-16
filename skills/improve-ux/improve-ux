@@ -63,7 +63,16 @@ if [ -d "$GIT_ROOT/.git" ]; then
         [ $(( (now_ts - last_ts) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
     fi
     if $needs_update; then
-        ( cd "$GIT_ROOT" && git pull --ff-only --quiet 2>/dev/null && date +%s > "$STAMP_FILE" ) &>/dev/null &
+        # Hard rule (AGENTS.md): failures are loud, never silenced. stdout is
+        # discarded, stderr stays attached; NO stamp on failure → next run retries.
+        (
+            cd "$GIT_ROOT" || exit 1
+            if ! git pull --ff-only --quiet; then
+                echo "improve-ux: auto-update git pull failed — staying on current code, will retry next run" >&2
+                exit 1
+            fi
+            date +%s > "$STAMP_FILE"
+        ) >/dev/null &
     fi
 fi
 
@@ -124,8 +133,11 @@ case "$cmd" in
 
     --update|--self-update)
         echo "Updating improve-ux..."
-        cd "$GIT_ROOT"
-        git pull --ff-only 2>&1 || true
+        cd "$GIT_ROOT" || exit 1
+        if ! git pull --ff-only; then
+            echo "✗ git pull failed — staying on current code, stamp NOT updated" >&2
+            exit 1
+        fi
         date +%s > "$STAMP_FILE"
         echo "✓ Updated $(date)"
         exit 0

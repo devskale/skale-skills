@@ -1,6 +1,6 @@
 ---
 name: pdf2mark
-version: "1.6.0"
+version: "1.6.1"
 description: Bash skill — run `pdf2mark <file.pdf>` in your shell (not an MCP tool). Convert PDFs to clean Markdown — local extraction, cloud-OCR fallback for scans. Use when the user wants a PDF as Markdown.
 disable-model-invocation: true
 ---

@@ -1,7 +1,7 @@
 ---
 disable-model-invocation: true
 name: video-transcript-downloader
-version: "1.3.0"
+version: "1.3.1"
 description: Bash skill — download videos, audio, subtitles, or clean transcripts from YouTube and any yt-dlp-supported site. Use when asked to download a video, rip audio, or get a transcript.
 ---
 

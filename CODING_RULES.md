@@ -214,12 +214,14 @@ SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 STAMP_FILE="$SKILL_DIR/.last-update"
 
 case "${1:-}" in
-    --update)    # git pull + uv sync + timestamp ;;
+    --update)    # git pull + uv sync + timestamp — failures LOUD: warn on stderr, exit 1, NO stamp on failure ;;
     --selfcheck) # show version + last update ;;
 esac
 
-# Auto-update (7-day cycle, background, non-blocking)
-# ...
+# Auto-update (7-day cycle, background, non-blocking) — but NOT silent:
+# stdout discarded, stderr attached; a failed pull/sync warns on stderr and
+# skips the stamp so the next run retries (hard rule, see AGENTS.md).
+# Enforcement: bash tests/loud-failures/test.sh
 
 cd "$SKILL_DIR" && exec uv run scripts/main.py "$@"
 ```

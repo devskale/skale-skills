@@ -56,9 +56,15 @@ export UV_PROJECT_ENVIRONMENT="$ENV_DIR"
 case "${1:-}" in
     --update)
         echo "Updating web-search..."
-        cd "$GIT_ROOT"
-        git pull --ff-only 2>&1 || true
-        (cd "$SKILL_DIR" && uv sync --quiet 2>&1)
+        cd "$GIT_ROOT" || exit 1
+        if ! git pull --ff-only 2>&1; then
+            echo "✗ git pull failed — staying on current code, stamp NOT updated" >&2
+            exit 1
+        fi
+        if ! (cd "$SKILL_DIR" && uv sync 2>&1); then
+            echo "✗ uv sync failed — code updated but deps may be stale" >&2
+            exit 1
+        fi
         date +%s > "$STAMP_FILE"
         echo "✓ Updated $(date)"
         exit 0
@@ -110,12 +116,24 @@ if [ -d "$GIT_ROOT/.git" ]; then
         [ $(( (now_ts - last_ts) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ] && needs_update=true
     fi
     if $needs_update; then
+        # Auto-update: non-blocking, but NOT silent on failure. stdout is
+        # discarded, stderr stays attached — a failed pull/sync warns on
+        # stderr and does NOT write the stamp, so the next run retries
+        # (loudly) instead of hiding the breakage for AUTO_UPDATE_DAYS.
+        # Hard rule (AGENTS.md): failures must be loud, never silenced.
         (
-            cd "$GIT_ROOT"
-            git pull --ff-only --quiet 2>/dev/null
-            (cd "$SKILL_DIR" && uv sync --quiet 2>/dev/null)
-            date +%s > "$STAMP_FILE"
-        ) &>/dev/null &
+            cd "$GIT_ROOT" || exit 1
+            ok=true
+            if ! git pull --ff-only --quiet; then
+                echo "web-search: auto-update git pull failed — staying on current code, will retry next run" >&2
+                ok=false
+            fi
+            if $ok && ! (cd "$SKILL_DIR" && uv sync --quiet); then
+                echo "web-search: auto-update uv sync failed — staying on current code, will retry next run" >&2
+                ok=false
+            fi
+            $ok && date +%s > "$STAMP_FILE"
+        ) >/dev/null &
     fi
 fi
 

@@ -206,6 +206,7 @@ bash tests/figure/test.sh
 bash tests/peep/test.sh
 bash tests/issues/test.sh         # issues kanban CLI (sandboxed ISSUES_DIR)
 bash tests/imagegen/test.sh          # extensions/imagegen.ts
+bash tests/loud-failures/test.sh         # hard rule: failures loud, never silenced (launchers + except:pass)
 bash tests/heartbeat/test.sh         # extensions/heartbeat.ts
 bash tests/skill-filter/test.sh      # scripts/skill-filter.sh (settings filter helper)
 bash tests/skill-metadata/test.sh    # SKILL.md description hygiene (≤ 600 chars; What + Use-when)
@@ -275,6 +276,7 @@ Coding guidelines live in [CODING_RULES.md](CODING_RULES.md) — read it when wr
 Always-on hard rules:
 
 - Never modify code that tests observe — launcher flags (`--update`, `--selfcheck`), `.last-update`, env-var fallback order — to make a failing test pass. The test is the finding: report it.
+- **Failures must be loud — never silenced** (hard rule, any skill): a launcher/script may not discard stderr of a critical operation (`git pull`, `uv sync`, credential/backend calls) via `2>/dev/null`, `&>/dev/null` or `\|\| true`. Failed auto-updates warn on stderr and do **not** write `.last-update`, so the next run retries instead of hiding the breakage for the whole update window. Enforced by `bash tests/loud-failures/test.sh` (gate: `--full`); genuinely benign swallows carry an explicit `# loud-ok` marker with a reason.
 - A change to skill behavior (flag parsing, backend fallback, output format) MUST add an integration test: a real invocation of the command.
 - A correction that repeats in review goes into the Coding Guidelines; once stable and objectively checkable, automate it in `test.sh` and prune the prose.
 

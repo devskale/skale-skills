@@ -1,7 +1,7 @@
 ---
 disable-model-invocation: true
 name: youtube
-version: "2.2.0"
+version: "2.2.1"
 description: Search YouTube for long, recent, well-watched content and curate ranked lists you can refine and transcribe. Use when the user wants to find videos or build a watch list.
 ---
 

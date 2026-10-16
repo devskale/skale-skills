@@ -28,7 +28,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
                 sys.stdout.buffer, encoding='utf-8', errors='replace'
             )
         except Exception:
-            pass
+            pass  # loud-ok: display-encoding fallback for exotic terminals
 
 # Optional dependencies with graceful fallback
 try:
@@ -106,7 +106,7 @@ def _key_with_refresh(service: str) -> Optional[str]:
         if key := get_api_key(service):
             return key
     except Exception:
-        pass  # network hiccup / backend down → try the source once
+        pass  # network hiccup / backend down → try the source once  # loud-ok: next statement retries with no_cache=True; final miss errors loudly at the caller
     try:
         return get_api_key(service, no_cache=True) or None
     except Exception:
@@ -178,6 +178,11 @@ def get_searxng_credentials() -> Optional[Dict[str, str]]:
         result = _parse_searxng_cred(PRIVATE_SEARXNG_URL)
         if result:
             return result
+        # Fail loud: a set-but-unparseable SEARXNG_URL is a config error,
+        # not a reason to silently drop to credgoo/public instances.
+        print(f"Warning: SEARXNG_URL is set but unparseable "
+              f"(expected URL or URL@USER@PASS): {PRIVATE_SEARXNG_URL!r} — "
+              f"ignoring it and trying credgoo/public instances.", file=sys.stderr)
 
     # Credgoo (no silent fallback to searx.json — that masked failures)
     if cred := get_api_key("searx"):
@@ -424,6 +429,9 @@ def search_searxng(
                             degraded = data
                         dead = ", ".join(e for e, _ in data["unresponsive_engines"])
                         last_error = f"{instance}: engines suspended ({dead})"
+                        # Fail loud even when a later instance saves the query.
+                        print(f"Warning: {instance}: all engines suspended "
+                              f"({dead}) — trying next instance.", file=sys.stderr)
                         continue
                 return data
         except Exception as exc:

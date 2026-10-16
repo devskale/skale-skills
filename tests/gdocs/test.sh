@@ -16,6 +16,16 @@ SIMPLE_MARKER="[GDOCS_TEST_SIMPLE_${TIMESTAMP}]"
 SOPHISTICATED_MARKER="[GDOCS_TEST_SOPHISTICATED_${TIMESTAMP}]"
 
 echo "=== Starting Tests for gdocs skill ==="
+
+# Honest skip: gdocs is a LIVE smoke of the external gog CLI. No CLI → WARN,
+# not FAIL (same convention as the live-browser suites). A missing tool is an
+# environment fact, not a regression.
+if ! command -v gog >/dev/null 2>&1; then
+    echo "  ⚠ WARN: gog CLI not installed — live smoke skipped honestly"
+    echo "    (install gog to run: see tests/gdocs/README or skill docs)"
+    exit 0
+fi
+
 echo "GOG CLI: gog"
 echo "Document ID: $DOC_ID"
 echo "Account: $ACCOUNT"

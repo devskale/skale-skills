@@ -251,6 +251,37 @@ fi
 rm -rf "$TMPD"
 echo ""
 
+# ── 11b. Loud failures (hard rule: no silencing) ────────────────────────
+echo "[11b] Launcher fails loud: --update failure → stderr warning, NO stamp..."
+# A launcher in a fake repo whose remote does not exist must NOT swallow the
+# git pull failure and must NOT write .last-update (which would hide the
+# breakage for AUTO_UPDATE_DAYS). Previously: errors went to /dev/null and
+# the stamp was written unconditionally.
+TMPD=$(mktemp -d)
+mkdir -p "$TMPD/repo/skills/web-search"
+git -C "$TMPD/repo" init -q
+git -C "$TMPD/repo" remote add origin /nonexistent-does-not-exist
+cp search "$TMPD/repo/skills/web-search/search"
+# Link the real project files so uv run / uv sync would work if reached
+ln -s "$PWD/scripts"        "$TMPD/repo/skills/web-search/scripts"
+ln -s "$PWD/pyproject.toml" "$TMPD/repo/skills/web-search/pyproject.toml"
+ln -s "$PWD/uv.lock"        "$TMPD/repo/skills/web-search/uv.lock"
+UP_RC=0
+UP_OUT=$(bash "$TMPD/repo/skills/web-search/search" --update 2>&1) || UP_RC=$?   # expected failure (set -e guard)
+if printf '%s' "$UP_OUT" | grep -q "git pull failed"; then
+    PASS=$((PASS+1)); echo "  ✓ failed pull named loudly on stderr"
+else
+    FAIL=$((FAIL+1)); echo "  ✗ --update failure not loud (output: $UP_OUT)"
+fi
+if [ ! -f "$TMPD/repo/skills/web-search/.last-update" ]; then
+    PASS=$((PASS+1)); echo "  ✓ stamp NOT written on failure (retry next run)"
+else
+    FAIL=$((FAIL+1)); echo "  ✗ stamp written despite failure — breakage hidden"
+fi
+[ $UP_RC -ne 0 ] && PASS=$((PASS+1)) || { FAIL=$((FAIL+1)); echo "  ✗ --update exit code 0 despite failure"; }
+rm -rf "$TMPD"
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "  Passed: $PASS"

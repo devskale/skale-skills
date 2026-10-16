@@ -220,14 +220,14 @@ echo "  Passed: $PASS"
 echo "[16] Noise module..."
 
 # Run noise/ tests (absoluter Pfad)
-if python3 /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_noise.py > /dev/null 2>&1; then
-    NOISE_PASS=$(python3 /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_noise.py 2>&1 | grep -c '✓')
+if python3 $SKILL_DIR/../../tests/fetch-url/noise/test_noise.py > /dev/null 2>&1; then
+    NOISE_PASS=$(python3 $SKILL_DIR/../../tests/fetch-url/noise/test_noise.py 2>&1 | grep -c '✓')
     PASS=$((PASS + NOISE_PASS))
     echo "  ✓ Noise module tests ($NOISE_PASS passed)"
 else
     FAIL=$((FAIL + 1))
     echo "  ❌ Noise module tests failed"
-    python3 /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_noise.py 2>&1 | head -20
+    python3 $SKILL_DIR/../../tests/fetch-url/noise/test_noise.py 2>&1 | head -20
 fi
 echo ""
 
@@ -235,7 +235,7 @@ echo ""
 #      fetch-url-nav-cookie-noise) ─────────────────────────────────────
 echo "[17] Text noise cleaner (nav/consent)..."
 
-TEXTCLEAN="/Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/noise/test_textclean.py"
+TEXTCLEAN="$SKILL_DIR/../../tests/fetch-url/noise/test_textclean.py"
 if python3 "$TEXTCLEAN" > /dev/null 2>&1; then
     TC_PASS=$(python3 "$TEXTCLEAN" 2>&1 | grep -c '✓')
     PASS=$((PASS + TC_PASS))
@@ -247,8 +247,8 @@ else
 fi
 
 # Fixtures vorhanden (Live-Fälle 2026-09-14, gekürzt)
-assert "fixture claude-docs-nav"  "[ -f /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/fixtures/claude-docs-nav.txt ]"
-assert "fixture w3c-wcag-nav"     "[ -f /Users/johannwaldherr/code/agents/skills/skale-skills/tests/fetch-url/fixtures/w3c-wcag-nav.txt ]"
+assert "fixture claude-docs-nav"  "[ -f $SKILL_DIR/../../tests/fetch-url/fixtures/claude-docs-nav.txt ]"
+assert "fixture w3c-wcag-nav"     "[ -f $SKILL_DIR/../../tests/fetch-url/fixtures/w3c-wcag-nav.txt ]"
 
 # Cookie-Wall als Strong-Error-Pattern (w3.org via w3m/markdown)
 COOKIEWALL=$(python3 -c "

@@ -40,7 +40,7 @@ def resolve_bearer() -> str:
         if isinstance(key, str) and key.strip():
             return key.strip()
     except Exception:
-        pass
+        pass  # loud-ok: handled loudly right below — sys.exit with fix instructions
     sys.exit("error: no token. Set PDF2MD_BEARER/FETCH_URL_BEARER or run: credgoo FETCH_URL_BEARER")
 
 
@@ -232,7 +232,7 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
     try:
         detail = resp.json().get("detail", "")
     except Exception:
-        pass
+        pass  # loud-ok: optional error detail; the real error below exits loudly
     if resp.status_code == 401:
         sys.exit("error: 401 authentication failed. Check the token: credgoo FETCH_URL_BEARER")
     if resp.status_code == 413:

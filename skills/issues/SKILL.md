@@ -4,7 +4,7 @@ name: issues
 description: Manage the cross-machine shared issue kanban (works/<project>/issues/). Create, triage, start, review, cancel, archive, or purge work items. One synced dir per project (repo .work → ~/code/skaleshare/works/<project>/), shared across machines and repos. Use when creating, reading, picking up, triaging, cleaning up, or asking about tickets, tasks, issues, the backlog, kanban, or the board — or when handing work off / passing tasks to another machine, repo, or person. Triggers on mentions of issue, ticket, task, backlog, kanban, board, triage, assign to, pass to, hand off, cleanup done.
 metadata:
   author: skale
-  version: "1.5.0"
+  version: "1.5.1"
 ---
 
 ## What this is

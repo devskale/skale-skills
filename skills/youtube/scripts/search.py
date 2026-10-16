@@ -162,7 +162,7 @@ def load_cached_instances() -> List[str]:
         if time.time() - cache.get("ts", 0) < CACHE_TTL:
             return cache.get("instances", [])
     except (json.JSONDecodeError, OSError, KeyError):
-        pass
+        pass  # loud-ok: corrupt/missing cache = cache miss, instances are re-fetched
     return []
 
 
@@ -171,7 +171,7 @@ def save_cached_instances(instances: List[str]) -> None:
         with open(CACHE_FILE, "w") as f:
             json.dump({"ts": time.time(), "instances": instances}, f)
     except OSError:
-        pass
+        pass  # loud-ok: aux cache write; missing cache only costs a refetch
 
 
 def _probe_instance(host: str, timeout: int = 6) -> bool:
@@ -210,7 +210,7 @@ def discover_instances(limit: int = 6, timeout: int = 6) -> List[str]:
                     if host not in candidates:
                         candidates.append(host)
     except Exception:
-        pass
+        pass  # loud-ok: best-effort host extraction, other candidate sources follow
 
     working: List[str] = []
     with ThreadPoolExecutor(max_workers=8) as ex:
@@ -295,7 +295,7 @@ def load_stats() -> Dict[str, Dict[str, float]]:
             if isinstance(data, dict):
                 return data
     except (json.JSONDecodeError, OSError):
-        pass
+        pass  # loud-ok: corrupt stats file = no stats, never a search failure
     return {}
 
 
@@ -304,7 +304,7 @@ def save_stats(stats: Dict[str, Dict[str, float]]) -> None:
         with open(STATS_FILE, "w") as f:
             json.dump(stats, f)
     except OSError:
-        pass
+        pass  # loud-ok: aux stats write; stats are optional metadata
 
 
 def _record_stat(host: str, ok: bool) -> None:
@@ -360,7 +360,7 @@ def load_channels() -> Dict[str, Dict[str, str]]:
                 if ucid:
                     channels[section][ucid] = name
     except OSError:
-        pass
+        pass  # loud-ok: channels file only affects display names
     return channels
 
 
@@ -861,7 +861,7 @@ def cmd_expand(rest: List[str]) -> int:
                     if ucid:
                         break
                 except Exception:
-                    pass
+                    pass  # loud-ok: multi-strategy vqd lookup; empty ucid handled by caller
         if not ucid:
             print("Error: couldn't resolve that video's channel (it's not in the list "
                   "and Invidious /videos is unavailable). Use --channel <name> or --more \"<topic>\".",

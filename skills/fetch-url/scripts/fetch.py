@@ -27,7 +27,7 @@ requests = None
 try:
     import requests
 except ImportError:
-    pass  # Will show error when API mode is actually used
+    pass  # loud-ok: API mode errors loudly at call time when requests is missing
 
 # credgoo is a declared dependency (uv sync installs it into this skill's venv).
 # The missing-key message is surfaced through `logging` at DEBUG — silent by
@@ -113,8 +113,11 @@ def load_settings() -> Dict[str, Any]:
     if SETTINGS_FILE.exists():
         try:
             return json.loads(SETTINGS_FILE.read_text())
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as exc:
+            # Corrupt settings are a real config error — warn loudly, then
+            # fall back to defaults instead of hiding the breakage.
+            print(f"Warning: {SETTINGS_FILE} is corrupt ({exc}) — "
+                  f"using default settings.", file=sys.stderr)
     return get_default_settings()
 
 
@@ -178,7 +181,7 @@ def _key_with_refresh(service: str) -> Optional[str]:
         if key := get_api_key(service):
             return key
     except Exception:
-        pass  # network hiccup / backend down → try the source once
+        pass  # network hiccup / backend down → try the source once  # loud-ok: next statement retries with no_cache=True; final miss errors loudly at the caller
     try:
         return get_api_key(service, no_cache=True) or None
     except Exception:
@@ -458,7 +461,7 @@ def _find_chrome() -> Optional[str]:
             if result.returncode == 0:
                 return result.stdout.strip()
         except Exception:
-            pass
+            pass  # loud-ok: best-effort `which` probe; None is the defined miss
     return None
 
 
