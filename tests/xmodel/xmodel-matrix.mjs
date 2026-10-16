@@ -131,7 +131,8 @@ await handlers.session_start[0]({}, makeCtx(NON_VISION));
 	const res = await fireToolResult(readEvent({ path: "img.png" }), ctx);
 	check("a: model content has NO image blocks", !hasImage(res));
 	check("a: handover note present", textOf(res).includes("xmodel handover"));
-	check("a: note teaches understand:true", textOf(res).includes("understand:true"));
+	check("a: note teaches read_image (canonical understand path)", textOf(res).includes("read_image"));
+	check("a: note no longer leads with understand:true (schema-strict providers drop it)", !textOf(res).includes("understand:true"));
 	check("a: pi non-vision note stripped", !textOf(res).includes("omitted from this request"));
 	const entry = ctx._entries[0];
 	check(

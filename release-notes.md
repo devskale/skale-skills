@@ -1,5 +1,18 @@
 ## Unreleased
 
+### xmodel 0.5.14 — read_image is the canonical understand path
+- Evidence (2026-10-16, two sessions): schema-strict providers never emit the
+  out-of-schema `understand` param on `read` — the model *intends* it, tool-call
+  generation drops it (glm/tu: 4/4 dropped; the tldraws agent burned three reads
+  before falling back). Advertising the param first made agents try the path
+  that cannot work.
+- Protocol note, handover note, read_image description and guidelines now lead
+  with `read_image` (declared with path/focus/thinking params — every provider
+  can call it; it displays the image AND returns the analysis).
+- The `understand` interception stays (works where providers do emit extra
+  params) but is no longer advertised to the model. Matrix test pins the new
+  handover text.
+
 ### HARD RULE: failures are loud, never silenced (8 launchers + audit suite)
 - New repo rule (AGENTS.md / CODING_RULES.md): launchers may not discard
   stderr of critical operations (`git pull`, `uv sync`) via `2>/dev/null`,

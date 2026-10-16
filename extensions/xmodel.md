@@ -73,7 +73,7 @@ Concretely, this means:
 1. **Display-only is the default.** `read` on an image moves the pixels into a session display
    entry for the user; the model gets a short handover note, never the bytes. Zero tokens, zero VLM.
 2. **Understanding is opt-in and delegated.** When the task genuinely needs image content, the
-   agent calls `read` with `understand: true` (or `read_image` / `/readimg`). xmodel routes that
+   agent calls the `read_image` tool (`/readimg` is the command form). xmodel routes that
    to a **VLM sub-call** (compress → VLM → text) so the *main* model receives only a text analysis
    — never the image bytes. This is the `delegate` mode, and it exists precisely to keep the main
    model's context small while still answering the user's question.
@@ -118,17 +118,20 @@ full root-cause.
   note, never the pixels. Zero tokens, zero VLM. In vision mode `view`, `read` routes to throway +
   browser instead (shared display).
 - **Verstehen gefordert + Hauptmodell IST ein img-Modell** — pixels pass straight through to the
-  model (native understanding, no detour). Trigger: `read` with `understand: true`.
+  model (native understanding, no detour). Trigger: `read_image` (or `read` with
+  `understand: true`, kept working but no longer advertised — schema-strict providers never
+  emit the out-of-schema param; observed 2026-10-16).
 - **Verstehen gefordert + Hauptmodell ist KEIN img-Modell** — **handover an ein img-Modell**:
   you still see the image inline, the model receives a VLM text analysis instead of pixels
   (the delegate pipeline: compress → VLM → text).
 
-The agent decides "verstehen gefordert" from task context and re-calls `read` with
-`understand: true` (brief built by the compressor sub-call) or `understand: '<what to
-examine>'` — the focus string goes straight to the vision model, skipping the compressor
-(fastest path). A protocol note in the system prompt teaches this; the handover note in
-every display-only result points there too. `read_image` / `/readimg` remain the explicit
-fallbacks — also for strict providers that strip extra `read` parameters — and `read_image`
+The agent decides "verstehen gefordert" from task context and calls `read_image`,
+optionally with `focus: '<what to examine>'` — the focus string goes straight to the vision
+model, skipping the compressor (fastest path). A protocol note in the system prompt teaches
+this; the handover note in every display-only result points there too. The
+`read`-with-`understand:true` interception still works where a provider emits out-of-schema
+params, but is no longer advertised (schema-strict tool-call generation drops it — the model
+cannot send it; 2026-10-16: glm/tu dropped it 4/4). `read_image` also
 accepts `url` (downloads to ~/.cache/webimg/ automatically), plus `thinking` + `focus`
 params for deep, targeted analysis.
 

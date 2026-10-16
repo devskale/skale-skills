@@ -14,11 +14,11 @@
  *   session display entry rendered inline for the user; the model (vision-capable or
  *   not) gets only a routing note. Understanding stays explicit (read_image / /readimg),
  *   driven by task context. With _vision.mode="view", read routes to throway + browser.
- * Understand via param: the agent calls `read` with understand:true when the task needs
- *   the image's contents — the user still sees it, and the model receives a VLM text
- *   analysis instead of pixels (vision-capable main models get the pixels directly).
- *   A protocol note is appended to the system prompt; read_image / /readimg stay as
- *   explicit fallbacks (also for strict providers that strip extra parameters).
+ * Understand via param (legacy, v0.5.8 demoted): `read` with understand:true still works
+ *   when a provider emits out-of-schema params — the interception is kept — but models on
+ *   schema-strict providers never emit it (observed 2026-10-16, glm/tu: 4/4 dropped). The
+ *   advertised understand path is therefore read_image / /readimg; the protocol note and
+ *   handover texts teach that directly.
  * ASCII fallback (v0.5.3): terminals without kitty/iterm2 graphics get chafa
  *   block art rendered INTO the display entry — the user always sees the image.
  * URL understanding (v0.5.5): read_image accepts url — downloaded to
@@ -110,7 +110,7 @@ import {
 	type VisionConfig,
 } from "./lib/xmodel-config";
 
-const VERSION = "0.5.13";
+const VERSION = "0.5.14";
 
 /** customType for the read-handover display entry (rendered inline, never sent to the model). */
 const XMODEL_VIEW_MSG = "xmodel-view";
@@ -850,14 +850,14 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 		label: "Read Image (VLM)",
 		description:
 			"Analyze an image file with a vision model and return a text description of what's in it. " +
-			"Use when you need to UNDERSTAND an image (read text in it, diagnose a screenshot, interpret a chart/diagram). " +
-			"Equivalent to calling `read` with understand:true — prefer that param; this tool is the explicit/fallback path (also when the provider strips extra read parameters). " +
+			"Use when you need to UNDERSTAND an image (read text in it, diagnose a screenshot, interpret a chart/diagram) — `read` alone is display-only and never fires the vision model. " +
+			"This is the canonical understand path; it also displays the image to the user. " +
 			"Pass thinking:'high' for deep understanding (complex diagrams, dense screenshots); default vision thinking is off for speed. " +
 			"Takes a local path OR an image url (http(s) — downloaded to ~/.cache/webimg/ automatically).",
 		promptSnippet: "Analyze an image file with a vision model to understand its contents",
 		promptGuidelines: [
-			"read_image is the UNDERSTAND path: prefer `read` with understand:true for the same effect; call this tool when understanding an image's contents is actually required for the task (extract text, diagnose a screenshot, interpret a chart) or when the provider strips the read param. " +
-				"NEVER call read_image autonomously right after a plain `read` \u2014 it is display-only and fast, and running the VLM is slow and costs tokens. `viewimg` (deprecated) was the legacy CLI for display-only; use `read img.jpg` instead. " +
+			"read_image is the UNDERSTAND path; plain `read` is display-only. Call read_image when understanding an image's contents is actually required for the task (extract text, diagnose a screenshot, interpret a chart) — it displays the image to the user AND returns the analysis. " +
+				"NEVER call read_image autonomously right after a plain `read` \u2014 it is display-only and fast, and running the VLM is slow and costs tokens. " +
 				"If the user just asks to read/view/show an image, use `read img.jpg` and do nothing more. Use thinking:'high' only when the user asks for deep/thorough image analysis.",
 		],
 		parameters: Type.Object({
@@ -987,11 +987,17 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 	});
 
 	// --- Optional system-prompt instructions for active preset + read protocol ---
-	/** System-prompt note teaching the read/understand protocol (v0.5.1). */
+	/** System-prompt note teaching the read/understand protocol (v0.5.8: read_image-first).
+	 * v0.5.1–0.5.7 taught `read` + understand:true as the primary path. That only works when
+	 * the model emits params outside the tool schema — schema-strict providers never do
+	 * (observed 2026-10-16: glm/tu dropped the param in 4/4 attempts, agents burned calls on
+	 * repeated display-only reads). read_image is declared WITH the params, so every provider
+	 * can call it. The understand interception stays for providers where it does arrive. */
 	const READ_PROTOCOL =
 		"[xmodel image protocol] `read` on an image file is DISPLAY-ONLY: the user sees it inline, you do NOT receive the pixels. " +
-		"When — and only when — understanding the image's contents is required for the task (the user asks about it, or you must extract text / diagnose a chart), call `read` again with the extra parameter `understand: true`: the image gets analyzed by a vision model and you receive a text description. Pass understand:'<what to examine>' to hand the vision model a focused question directly (skips the brief-building sub-call, fastest). " +
-		"Never use understand:true just to view or show an image. If your provider rejects the extra parameter, use the read_image tool instead. For deep understanding (complex diagrams, dense screenshots) use read_image with thinking:'high'. Image URLs: read_image accepts url directly (downloads to ~/.cache/webimg/); for pure display, curl the URL to ~/.cache/webimg/ first, then read the file.";
+		"When — and only when — understanding the image's contents is required for the task (the user asks about it, or you must extract text / diagnose a chart / interpret a diagram), call the `read_image` tool with the file path: it displays the image AND returns a vision-model analysis. " +
+		"Pass focus:'<what to examine>' to hand the vision model a question directly (fastest), and thinking:'high' for complex diagrams or dense screenshots. " +
+		"Never run the vision model just to view or show an image — plain `read` already did that. Image URLs: read_image accepts url directly (downloads to ~/.cache/webimg/); for pure display, curl the URL to ~/.cache/webimg/ first, then read the file.";
 
 	pi.on("before_agent_start", async (event, ctx) => {
 		// auto-vision (switch mode only): user attached images to this prompt. Only worth a
@@ -1505,7 +1511,7 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			const how = shown.mode === "pixels" ? "inline" : "as ASCII block art (chafa)";
 			content.push({
 				type: "text",
-				text: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} displayed ${how} to the user — view-only, you did NOT receive the pixels. If understanding this image is required for the task, call read again with understand:true (or use read_image).]`,
+				text: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} displayed ${how} to the user — view-only, you did NOT receive the pixels. To analyze the contents (read text in it, diagnose a screenshot, interpret a chart), call the read_image tool with this path.]`,
 			});
 		} else {
 			content.push({

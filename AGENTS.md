@@ -55,8 +55,10 @@ opt-in via `pi config`. Idempotent + respects customization: an existing skills
 filter is left untouched.
 
 > **View vs. understand images:** `read img.jpg` is **display-only** (canonical, native pi image display) — it shows an
-> image inline / in the terminal but **never fires the VLM**. Understanding is **opt-in**: the `read_image`
-> tool or `/readimg` command runs the vision model. `xmodel` is still active and powers this separation.
+> image inline / in the terminal but **never fires the VLM**. Understanding is **opt-in and canonical via `read_image`**
+> (or `/readimg`): the model reliably calls it because its params (`focus`, `thinking`) are in the tool schema. Do NOT
+> advertise `read` + `understand:true` as the primary path — schema-strict providers drop the out-of-schema param
+> (proven 2026-10-16); the interception stays as legacy. `xmodel` powers this separation.
 > `viewimg` (deprecated) was the legacy CLI; use `read img.jpg` instead. [Migration guide](docs/image-display-deprecation.md).
 
 Full install, activate, filter, project-scope, update, and conflict docs: **[docs/installation.md](docs/installation.md)**.
