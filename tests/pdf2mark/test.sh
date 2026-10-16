@@ -182,9 +182,11 @@ else
         rm -rf "$TESTCWD"
 
         # robustness: network timeout → clean error, never a traceback
-        # (blackhole address + tiny timeout; PDF2MD_URL is a supported override)
+        # (blackhole address + tiny timeout; PDF2MD_URL is a supported override.
+        # --force: an earlier live check may have cached FIXPDF — a cache hit
+        # would never touch the network and defeat the timeout test.)
         PDF2MD_URL="http://10.255.255.1:9/" timeout 30 \
-            "$SCRIPT" "$FIXPDF" --timeout 2 >"$PM_OUT" 2>&1
+            "$SCRIPT" "$FIXPDF" --timeout 2 --force >"$PM_OUT" 2>&1
         got=$?
         [ "$got" -eq 1 ] && ok || bad "blackhole timeout exit (want 1, got $got)"
         grep -q "Traceback" "$PM_OUT" && bad "timeout leaked a traceback" || ok
@@ -257,7 +259,7 @@ MOCK
         # the mock answers 202 -> pdf2mark polls -> done with markdown_url.
         # With --share it must print the URL and NOT download the markdown.
         PDF2MD_URL="http://127.0.0.1:8731/pdf/to_md" PDF2MD_BEARER="test-token" \
-            "$SCRIPT" "$FIXPDF" --share --no-wait --timeout 30 >"$MOCKDIR/out" 2>&1
+            "$SCRIPT" "$FIXPDF" --share --no-wait --timeout 30 --force >"$MOCKDIR/out" 2>&1
         got=$?
         [ "$got" -eq 0 ] && ok || bad "--share async job exit (want 0, got $got): $(head -2 "$MOCKDIR/out")"
         grep -q "http://127.0.0.1:8731/md" "$MOCKDIR/out" && ok || bad "--share did not print the URL"
@@ -309,6 +311,103 @@ if [ "${PDF2MD_TEST_SCAN:-0}" = "1" ]; then
     fi
 else
     warn "llamaparse scan path not exercised (opt in: PDF2MD_TEST_SCAN=1)"
+fi
+
+# ── Result cache + job attach (offline, mock API) ──────────────────────
+# A local mock server speaks just enough of the pdf API to exercise the
+# client-side cache (hit/miss/--force) and the job registry (202 → attach)
+# without any network. Counts POSTs (submissions) and GETs (polls/attaches).
+if command -v python3 >/dev/null 2>&1 \
+        && command -v uv >/dev/null 2>&1; then
+    MOCK_DIR=$(mktemp -d)
+    cat > "$MOCK_DIR/server.py" <<'MEOF'
+import json, os, sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+COUNTERS = os.environ["MOCK_COUNTERS"]
+MODEFILE = os.environ["MOCK_MODEFILE"]
+JOB_MD = "# converted via job — mock result\n"
+
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def _send(self, code, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+    def _count(self, key):
+        c = {"posts": 0, "gets": 0}
+        try: c.update(json.load(open(COUNTERS)))
+        except Exception: pass
+        c[key] += 1
+        json.dump(c, open(COUNTERS, "w"))
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0)); self.rfile.read(n)
+        self._count("posts")
+        if os.path.exists(MODEFILE):
+            self._send(202, {"job_id": "j1"})
+        else:
+            self._send(200, {"markdown": "# fresh convert — mock result\n", "pages": 3, "chars": 29,
+                             "converter": "pdfplumber"})
+    def do_GET(self):
+        self._count("gets")
+        self._send(200, {"status": "done", "markdown": JOB_MD, "pages": 9, "chars": 19,
+                         "converter": "done"})
+
+srv = HTTPServer(("127.0.0.1", 0), H)
+print(srv.server_port, flush=True)
+srv.serve_forever()
+MEOF
+    MOCK_COUNTERS="$MOCK_DIR/counters.json"
+    MOCK_MODEFILE="$MOCK_DIR/async"
+    MOCK_COUNTERS="$MOCK_COUNTERS" MOCK_MODEFILE="$MOCK_MODEFILE" \
+        python3 "$MOCK_DIR/server.py" > "$MOCK_DIR/port" 2>/dev/null &    MOCK_PID=$!
+    sleep 0.6
+    MOCK_PORT=$(cat "$MOCK_DIR/port" 2>/dev/null)
+    if [ -n "$MOCK_PORT" ]; then
+        export PDF2MD_CACHE="$MOCK_DIR/cache" PDF2MD_BEARER=test-token
+        export PDF2MD_URL="http://127.0.0.1:$MOCK_PORT/pdf/to_md"
+        export UV_PROJECT_ENVIRONMENT="$HOME/.cache/skale-skills/pdf2mark"
+        RUN() { uv run -q --project "$SKILL" "$PY" "$@"; }
+        printf '%%PDF-1.4\n%%%%mock-fixture\n' > "$MOCK_DIR/fix.pdf"
+        POSTS() { python3 -c "import json;print(json.load(open('$MOCK_COUNTERS'))['posts'])" 2>/dev/null || echo 0; }
+        # 1) fresh sync convert: one POST, markdown lands in the output
+        OUT1=$(RUN "$MOCK_DIR/fix.pdf" --stdout 2>/dev/null)
+        [ "$OUT1" = "# fresh convert — mock result" ] && ok || bad "mock convert output wrong: $OUT1"
+        [ "$(POSTS)" -eq 1 ] && ok || bad "expected 1 POST, got $(POSTS)"
+
+        # 2) cache hit: no new POST, identical output, sub-second
+        T0=$SECONDS
+        OUT2=$(RUN "$MOCK_DIR/fix.pdf" --stdout 2>/dev/null)
+        [ "$OUT2" = "$OUT1" ] && [ "$(POSTS)" -eq 1 ] && ok \
+            || bad "cache hit did not serve identical output without a POST (posts=$(POSTS))"
+
+        # 3) --force bypasses the cache: new POST
+        OUT3=$(RUN "$MOCK_DIR/fix.pdf" --stdout --force 2>/dev/null)
+        [ "$(POSTS)" -eq 2 ] && ok || bad "--force did not re-submit (posts=$(POSTS))"
+
+        # 4) async 202 path writes the job registry, then a re-run ATTACHES
+        #    (GET on the job, zero new POSTs) once the result cache is gone
+        touch "$MOCK_DIR/async"
+        rm -f "$MOCK_DIR/cache/"*-pdfplumber.md "$MOCK_DIR/cache/"*-pdfplumber.json
+        OUT4=$(RUN "$MOCK_DIR/fix.pdf" --stdout 2>/dev/null)
+        [ "$OUT4" = "# converted via job — mock result" ] && ok || bad "async 202 path output wrong: $OUT4"
+        [ -f "$MOCK_DIR/cache/jobs.json" ] && grep -q j1 "$MOCK_DIR/cache/jobs.json" \
+            && ok || bad "jobs.json missing or lacks job id"
+        rm -f "$MOCK_DIR/cache/"*-pdfplumber.md "$MOCK_DIR/cache/"*-pdfplumber.json
+        P_BEFORE=$(POSTS)
+        OUT5=$(RUN "$MOCK_DIR/fix.pdf" --stdout 2>/dev/null)
+        [ "$OUT5" = "# converted via job — mock result" ] && [ "$(POSTS)" -eq "$P_BEFORE" ] && ok \
+            || bad "re-run did not attach to job j1 (posts $(POSTS) != $P_BEFORE)"
+    else
+        warn "mock server did not start — cache/attach checks skipped"
+    fi
+    kill $MOCK_PID 2>/dev/null
+    unset PDF2MD_CACHE PDF2MD_BEARER PDF2MD_URL UV_PROJECT_ENVIRONMENT
+else
+    warn "python3/uv missing — cache/attach checks skipped"
 fi
 
 echo

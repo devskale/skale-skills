@@ -1,5 +1,19 @@
 ## Unreleased
 
+### pdf2mark 1.7.0 — result cache + job attach: big PDFs unblocked
+- Reading a 100-page PDF took ~5-6 min **every time** (server-side pdfplumber
+  ~0.5-3.6s/page + upload + polling) — and agents re-read the same file on
+  every follow-up. Two client-side unblocks, no server changes:
+  - **result cache** (`~/.cache/pdf2mark/`, keyed by content hash + method
+    + tier): the second read is instant (measured: 6m07s → 0.23s, identical
+    output, `converter=cache/…`). `--force` bypasses, `PDF2MD_CACHE` overrides.
+  - **job registry** (`jobs.json`): async job ids are persisted — a re-run
+    while a job is running (or within the ~2h server-side TTL) re-attaches
+    to it instead of re-uploading and re-converting.
+- Offline mock-API tests pin all three paths (cache hit / --force / attach);
+  pre-existing network tests now pass `--force` so a cached fixture can't
+  defeat them.
+
 ### xmodel 0.5.14 — read_image is the canonical understand path
 - Evidence (2026-10-16, two sessions): schema-strict providers never emit the
   out-of-schema `understand` param on `read` — the model *intends* it, tool-call

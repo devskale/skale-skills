@@ -1,6 +1,6 @@
 ---
 name: pdf2mark
-version: "1.6.1"
+version: "1.7.0"
 description: Bash skill — run `pdf2mark <file.pdf>` in your shell (not an MCP tool). Convert PDFs to clean Markdown — local extraction, cloud-OCR fallback for scans. Use when the user wants a PDF as Markdown.
 disable-model-invocation: true
 ---
@@ -29,7 +29,17 @@ pdf2mark document.pdf            # → ./md/document.pdf.md (default: file next 
 pdf2mark scan.pdf --method llamaparse    # force cloud OCR (scans, tables, multi-column)
 pdf2mark doc.pdf --out doc.md            # explicit output file
 pdf2mark doc.pdf --stdout                # markdown to stdout instead of a file
+pdf2mark doc.pdf --force                 # bypass cache — re-upload and re-convert
 ```
+
+## Cache (instant second read)
+
+Big PDFs (100 pages ≈ minutes server-side) are cached by content hash in
+`~/.cache/pdf2mark/` — the **second** `pdf2mark doc.pdf` returns in
+milliseconds with identical output. Async job ids are kept too: a re-run
+**while a job is still running** (or <2h after it finished) re-attaches to it
+instead of re-uploading. `--force` bypasses both; `PDF2MD_CACHE` overrides
+the directory. Follow-up questions about the same PDF never re-convert.
 
 Full options (llamaparse tiers, OCR language, timeout), size limits, error codes, credentials and the raw endpoint: **[references/api.md](references/api.md)**.
 

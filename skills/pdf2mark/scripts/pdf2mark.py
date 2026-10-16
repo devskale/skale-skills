@@ -1,6 +1,7 @@
 # pdf2md.py - Convert PDFs to Markdown via the skale pdf API.
 # pdfplumber (local, text-layer) by default; llamaparse (cloud OCR) for scans.
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -19,6 +20,82 @@ AUTO_FALLBACK_CHARS = 20  # less than this from pdfplumber -> scan, go llamapars
 # main() must not read this as an empty conversion result.
 SHARE_SKIPPED_DOWNLOAD = "\x00SHARE_SKIPPED\x00"
 DEFAULT_TIMEOUTS = {"pdfplumber": 180, "llamaparse": 600}  # OCR scales with pages
+
+# ── Result cache + job registry (v1.7.0) ──────────────────────────────
+# A 100-page PDF takes minutes server-side, and agents re-read the same file
+# across follow-ups. Two unblocks, both client-side:
+#   1. result cache: markdown keyed by content hash + method (+ tier) — the
+#      second read is instant instead of another full conversion
+#   2. job registry: async job ids persisted under the same key — a re-run
+#      while a job is still running (or finished <2h ago, server-side TTL)
+#      re-attaches to it instead of re-uploading and re-converting
+CACHE_DIR = os.environ.get(
+    "PDF2MD_CACHE", os.path.join(os.path.expanduser("~"), ".cache", "pdf2mark"))
+JOBS_PATH = os.path.join(CACHE_DIR, "jobs.json")
+
+
+def _cache_paths(digest: str, method: str, tier: str):
+    key = f"{digest[:20]}-{method}" + (f"-{tier}" if method == "llamaparse" else "")
+    base = os.path.join(CACHE_DIR, key)
+    return base + ".md", base + ".json"
+
+
+def _cache_load(digest: str, method: str, tier: str):
+    """Return (markdown, meta) on hit, None on miss/corruption."""
+    md_path, meta_path = _cache_paths(digest, method, tier)
+    try:
+        with open(meta_path, encoding="utf-8") as fh:
+            meta = json.load(fh)
+        with open(md_path, encoding="utf-8") as fh:
+            md = fh.read()
+    except (OSError, ValueError):
+        return None
+    if not isinstance(meta, dict) or "ts" not in meta:
+        return None
+    return md, meta
+
+
+def _cache_store(digest: str, method: str, tier: str, markdown: str,
+                 result: dict) -> None:
+    """Best-effort; a full cache dir or a failed write must never fail a
+    conversion that already succeeded."""
+    if not markdown or markdown == SHARE_SKIPPED_DOWNLOAD:
+        return
+    md_path, meta_path = _cache_paths(digest, method, tier)
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        tmp_md, tmp_meta = md_path + ".tmp", meta_path + ".tmp"
+        with open(tmp_md, "w", encoding="utf-8") as fh:
+            fh.write(markdown)
+        meta = {"ts": time.time(), "method": method,
+                "pages": result.get("pages"), "chars": result.get("chars"),
+                "converter": result.get("converter", result.get("status"))}
+        with open(tmp_meta, "w", encoding="utf-8") as fh:
+            json.dump(meta, fh)
+        os.replace(tmp_md, md_path)
+        os.replace(tmp_meta, meta_path)
+    except OSError:
+        pass  # loud-ok: cache write failure must not fail a finished conversion
+
+
+def _jobs_load() -> dict:
+    try:
+        with open(JOBS_PATH, encoding="utf-8") as fh:
+            jobs = json.load(fh)
+        return jobs if isinstance(jobs, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _jobs_save(jobs: dict) -> None:
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        tmp = JOBS_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(jobs, fh)
+        os.replace(tmp, JOBS_PATH)
+    except OSError:
+        pass  # loud-ok: registry write failure only costs a re-submit
 
 
 def resolve_bearer() -> str:
@@ -197,7 +274,7 @@ def heartbeat(label: str, enabled: bool, interval: int = 30, hint: str = ""):
 
 def convert(path: str, method: str, tier: str, language: str, bearer: str,
             timeout: int, verbose: bool = False, no_wait: bool = False,
-            share: bool = False):
+            share: bool = False, force: bool = False):
     # Size check BEFORE reading: a 2GB file would be buffered in RAM just to be
     # rejected afterwards. os.path.getsize is a stat call, no read.
     try:
@@ -213,6 +290,46 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
     if len(data) > MAX_BYTES:
         # the file grew between stat and read (or a sparse/odd file) — re-check
         sys.exit(f"error: {path} is larger than 10MB (API limit)")
+    digest = hashlib.sha256(data).hexdigest()
+
+    # ── cache hit: instant return ────────────────────────────────────────
+    if not force:
+        cached = _cache_load(digest, method, tier)
+        if cached:
+            md, meta = cached
+            age_min = int((time.time() - meta.get("ts", 0)) / 60)
+            if verbose:
+                print(f"pdf2md: cache hit ({method}, {age_min}m old) — skipping upload+conversion",
+                      file=sys.stderr)
+            return md, {"pages": meta.get("pages"), "chars": meta.get("chars"),
+                        "converter": f"cache/{meta.get('converter') or method}"}
+
+    # ── job attach: a previous run left a job for exactly this file+method ─
+    if not force:
+        jobs = _jobs_load()
+        entry = jobs.get(f"{digest[:20]}:{method}")
+        if isinstance(entry, dict) and entry.get("job_id"):
+            job_id = entry["job_id"]
+            try:
+                r = requests.get(f"{API_BASE}/pdf/jobs/{job_id}",
+                                 headers={"Authorization": f"Bearer {bearer}"}, timeout=15)
+            except requests.exceptions.RequestException:
+                r = None  # loud-ok: attach is an optimization; fall through to a fresh submit
+            if r is not None and r.status_code == 200:
+                status = r.json().get("status")
+                if verbose:
+                    print(f"pdf2md: re-attaching to job {job_id[:8]}… (status: {status})",
+                          file=sys.stderr)
+                # done → wait_job's first poll returns immediately; running →
+                # poll it; failed/error/cancelled → wait_job exits loudly.
+                md, body = wait_job({"job_id": job_id}, bearer, verbose,
+                                    max(timeout, 600), share=share)
+                _cache_store(digest, method, tier, md, body)
+                return md, body
+            # unknown/expired (404) or server error: drop the stale entry, submit fresh
+            jobs.pop(f"{digest[:20]}:{method}", None)
+            _jobs_save(jobs)
+
     params = {"method": method}
     if method == "llamaparse":
         params["tier"] = tier
@@ -257,12 +374,21 @@ def convert(path: str, method: str, tier: str, language: str, bearer: str,
         # done. Async conversions outlive the sync timeout by design (local:
         # ~0.5-0.8s/page on the server box) — the poll budget is therefore at
         # least 600s, however small the request timeout was.
-        return wait_job(resp.json(), bearer, verbose,
-                        max(timeout, 600), share=share)
+        queued = resp.json()
+        jobs = _jobs_load()
+        jobs[f"{digest[:20]}:{method}"] = {"job_id": queued.get("job_id"),
+                                            "ts": time.time(), "file": os.path.basename(path)}
+        _jobs_save(jobs)  # re-runs attach to this job instead of re-submitting
+        md, body = wait_job(queued, bearer, verbose,
+                            max(timeout, 600), share=share)
+        _cache_store(digest, method, tier, md, body)
+        return md, body
     if resp.status_code >= 400:
         raise ApiError(resp.status_code, detail)
     result = resp.json()
-    return result.get("markdown", ""), result
+    markdown = result.get("markdown", "")
+    _cache_store(digest, method, tier, markdown, result)
+    return markdown, result
 
 
 def default_out_path(pdf_path: str) -> str:
@@ -283,7 +409,7 @@ def convert_or_exit(args, method: str, bearer: str, timeout: int):
                        hint="large scans take minutes"):
             return convert(args.pdf, method, args.tier, args.language, bearer,
                            timeout, verbose=args.verbose, no_wait=args.no_wait,
-                           share=args.share)
+                           share=args.share, force=args.force)
     except requests.exceptions.Timeout:
         sys.exit(f"error: conversion took >{timeout}s — large documents can take "
                  f"minutes; retry with a higher --timeout")
@@ -323,6 +449,9 @@ def main():
     parser.add_argument("--share", action="store_true",
                         help="share the result via skale.dev/throway (4h TTL): prints "
                         "the URL instead of the full text")
+    parser.add_argument("--force", action="store_true",
+                        help="bypass the result cache and the job registry — always "
+                             "re-upload and re-convert")
     parser.add_argument("--verbose", "-v", action="store_true", help="stats to stderr")
     args = parser.parse_args()
 
