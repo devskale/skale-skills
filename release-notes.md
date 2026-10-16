@@ -1,3 +1,19 @@
+## Unreleased
+
+### web-search 2.5.0 — degraded SearXNG instances are retried, not reported as misses
+- A SearXNG answer of `200 + results:[]` with **all engines suspended**
+  (CAPTCHA / access denied / 429 — lubu 2026-10-16 after its update) is now
+  treated as a degraded instance: the search falls through to the next
+  instance (private → public list) instead of stopping there. If every
+  instance is degraded, the first payload is served so the suspension stays
+  visible.
+- `web-search` output names the suspended engines when an instance is
+  degraded (`⚠ Instance degraded … engines suspended — …`) — no more
+  "No results found" for what is really an upstream outage. A healthy empty
+  result set is still a plain miss (no fallback, no note).
+- tests: mocked urlopen unit checks pin the fall-through, the all-degraded
+  path, the healthy-miss short-circuit, and the output hint.
+
 ## 1.6.14 — 2026-10-15
 
 ### pdf2mark 1.6.0 — output goes to a file, not stdout

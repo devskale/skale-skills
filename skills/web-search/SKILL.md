@@ -1,6 +1,6 @@
 ---
 name: web-search
-version: "2.4.0"
+version: "2.5.0"
 description: "Bash skill — run `web-search \"query\"` in your shell (not an MCP tool). Search the web; returns text, image, news, or video results. Use when the user wants to search or look something up."
 ---
 
@@ -101,6 +101,7 @@ web-search "query" --time-range day           # last 24h
 - Server chain: query cache (12h) → ddgs/yahoo → private SearXNG fallback — repeat queries are fast.
 - `404` from the API means *no results* (not an error); `502` means all backends failed or the queue is saturated — retry in a few seconds.
 - **Client-side fallback:** if the Duck API itself errors (unreachable, 502, timeout), the skill retries once via SearXNG (private instance first, public instances last) instead of giving up. Errors from both backends are reported, each labeled with its origin (`Duck API ...` / `SearXNG ...`).
+- **Degraded SearXNG instance:** a `200` with empty results while all engines are suspended (CAPTCHA / access denied) is treated as an outage — the next instance is tried, and the output names the suspended engines. A healthy empty result is still a plain miss.
 - Ad-click redirect URLs (`bing.com/aclick`, `doubleclick.net`, ...) are filtered out client-side.
 
 ## Configure backends (optional)

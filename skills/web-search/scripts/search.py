@@ -395,6 +395,7 @@ def search_searxng(
     import ssl
 
     last_error: Optional[str] = None
+    degraded: Optional[Dict[str, Any]] = None
     for i, instance in enumerate(instances_to_try):
         url = f"{instance}/search?{urllib.parse.urlencode(params)}"
         try:
@@ -414,11 +415,23 @@ def search_searxng(
                 if "results" in data:
                     data["results"] = filter_ads(data["results"])[:max_results]
                     data["_instance"] = instance
+                    if not data["results"] and data.get("unresponsive_engines"):
+                        # Degraded instance, not a genuine miss: every queried
+                        # engine is suspended (CAPTCHA / access denied / 429).
+                        # Try the next instance; keep this payload as last
+                        # resort so the suspension stays visible (format_results).
+                        if degraded is None:
+                            degraded = data
+                        dead = ", ".join(e for e, _ in data["unresponsive_engines"])
+                        last_error = f"{instance}: engines suspended ({dead})"
+                        continue
                 return data
         except Exception as exc:
             last_error = f"{instance}: {exc}"
             continue
 
+    if degraded is not None:
+        return degraded
     detail = f" — last error: {last_error}" if last_error else ""
     return {"error": f"SearXNG error: all {len(instances_to_try)} instances "
                      f"failed{detail}"}
@@ -509,6 +522,13 @@ def format_results(results: Union[List, Dict], backend: str, query: str, limit: 
 
     items = results if isinstance(results, list) else results.get("results", [])
     if not items:
+        if isinstance(results, dict) and results.get("unresponsive_engines"):
+            dead = ", ".join(e for e, _ in results["unresponsive_engines"])
+            where = results.get("_instance", "the instance")
+            return (f"No results found for '{query}'.\n\n"
+                    f"⚠ Instance degraded ({where}): all queried engines "
+                    f"suspended — {dead}. Not a query miss; engines usually "
+                    f"recover after their suspension window.")
         return f"No results found for '{query}'."
 
     lines = [f"# Results for '{query}'\n"]

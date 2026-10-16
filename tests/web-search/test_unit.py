@@ -15,6 +15,7 @@ None, and that clean results pass through untouched.
 Runs under the skill venv's python. Invoked by tests/web-search/test.sh.
 """
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -172,6 +173,115 @@ check("duck 502 labeled", '"Duck API error 502' in src)
 check("duck request errors labeled", 'f"Duck API request failed' in src)
 check("duck news errors labeled", 'f"Duck news API request failed' in src)
 check("searxng errors labeled", 'f"SearXNG error: all' in src)
+
+# =============================================================================
+# Degraded-instance handling (2026-10-16: lubu SearXNG update — private
+# instance answered 200 with results:[] while ALL engines were suspended
+# (CAPTCHA / access denied / 429). That is an outage, not a query miss:
+# fall through to the next instance, and surface the suspension in output.
+# ==============================================================================
+
+class _FakeResp:
+    """Minimal urlopen stand-in: context manager returning a JSON payload."""
+    def __init__(self, payload):
+        self._p = json.dumps(payload).encode()
+
+    def read(self):
+        return self._p
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _sx_args():
+    return argparse.Namespace(
+        query="q", max=10, categories=None, engines=None,
+        time_range=None, language="en", page=1,
+    )
+
+
+DEGRADED = {"query": "q", "results": [], "answers": [], "corrections": [],
+            "infoboxes": [], "suggestions": [],
+            "unresponsive_engines": [["duckduckgo", "CAPTCHA"],
+                                     ["google", "Suspended: access denied"]]}
+HEALTHY = {"query": "q", "results": [{"title": "t", "url": "u"}],
+           "unresponsive_engines": []}
+
+
+# 12. private degraded (empty + suspensions) → fall through to public
+urls_requested = []
+original_urlopen = search.urllib.request.urlopen
+
+
+def _fake_urlopen_by_url(mapping):
+    """Last mapping entry whose marker matches wins; marker None = default."""
+    def fake(req, timeout=15, context=None):
+        urls_requested.append(req.full_url)
+        for marker, payload in mapping.items():
+            if (marker is None or marker in req.full_url):
+                return _FakeResp(payload)
+        raise AssertionError(f"unexpected url {req.full_url}")
+    return fake
+
+
+search.urllib.request.urlopen = _fake_urlopen_by_url({
+    "private.example": DEGRADED,
+    None: HEALTHY,  # any public instance
+})
+res = search.search_searxng(query="q", max_results=10, categories=None,
+                            engines=None, time_range=None, language="en",
+                            instance_url="https://private.example",
+                            auth=None)
+check("degraded private → public results served",
+      isinstance(res, dict) and res.get("results") == [{"title": "t", "url": "u"}])
+check("degraded private → tried public fallback",
+      len(urls_requested) == 2 and "private.example" in urls_requested[0]
+      and "private.example" not in urls_requested[1])
+
+# 13. ALL instances degraded → first degraded payload (suspension stays visible)
+urls_requested.clear()
+search.urllib.request.urlopen = _fake_urlopen_by_url({
+    "private.example": DEGRADED,
+    None: DEGRADED,
+})
+res = search.search_searxng(query="q", max_results=10, categories=None,
+                            engines=None, time_range=None, language="en",
+                            instance_url="https://private.example",
+                            auth=None)
+check("all degraded → no error row, suspension kept",
+      isinstance(res, dict) and "error" not in res
+      and res.get("unresponsive_engines") == DEGRADED["unresponsive_engines"])
+check("all degraded → every instance tried",
+      len(urls_requested) == 1 + len(search.PUBLIC_SEARXNG_INSTANCES))
+
+# 14. empty but HEALTHY (no suspensions) → genuine miss, returned immediately
+urls_requested.clear()
+search.urllib.request.urlopen = _fake_urlopen_by_url({
+    "private.example": {"query": "q", "results": [],
+                        "unresponsive_engines": []},
+    None: HEALTHY,
+})
+res = search.search_searxng(query="q", max_results=10, categories=None,
+                            engines=None, time_range=None, language="en",
+                            instance_url="https://private.example",
+                            auth=None)
+check("healthy empty → returned as-is (no fallback)",
+      isinstance(res, dict) and res.get("results") == []
+      and res.get("_instance") == "https://private.example")
+check("healthy empty → public NOT queried", len(urls_requested) == 1)
+
+# 15. format_results: degraded payload names the suspended engines
+text = search.format_results(DEGRADED, "searxng", "q")
+check("degraded output mentions suspension",
+      "suspended" in text and "duckduckgo" in text and "google" in text)
+text_ok = search.format_results({"query": "q", "results": []}, "searxng", "q")
+check("plain miss output unchanged",
+      text_ok == "No results found for 'q'." and "suspended" not in text_ok)
+
+search.urllib.request.urlopen = original_urlopen
 
 print("")
 print(f"PASS={PASS} FAIL={FAIL}")
