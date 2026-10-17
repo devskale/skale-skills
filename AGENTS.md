@@ -150,6 +150,13 @@ Our own tools (rodney, surf, CloakBrowser tests) are unaffected — they launch 
 
 ## External Skills
 
+**Hard rule (user 2026-10-17): Externe Skills nur TESTEN/ENTWICKELN — Übernahme
+(installation) NUR auf ausdrücklichen Nutzer-Wunsch.** Testen läuft über das
+Playgrounding-Regime ([docs/development.md](docs/development.md): `.clones/` →
+`.pi/skills/` → Play → Verdict → Clean); eine gute Play-Session endet im Verdict,
+nie in einer Installation. `adopted` in der Watchlist ist eine Einordnung, kein
+Install-Trigger.
+
 Personal watchlist for skills/extensions worth reviewing or installing:
 [`watchlist.jsonl`](watchlist.jsonl) (repo root, JSONL, not shipped in the
 package). One JSON object per line — required fields: `status`
