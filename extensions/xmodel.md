@@ -100,13 +100,18 @@ There are **two separate conversions** in the pipeline, and they are NOT the sam
   WebP, not a PNG.
 - **our `toDisplayPng()` (xmodel, `lib/image-utils.ts`)** — converts the **pixels** to PNG, and
   only at the **display/render** stage (the Kitty/iTerm2-Graphics APC). PNG stays byte-identical;
-  non-PNG (WebP/JPEG/GIF/BMP) is transcoded via `sips` to PNG **and resized to 1200px** (so the
-  APC payload is ~5× smaller).
+  non-PNG (WebP/JPEG/GIF/BMP) is transcoded via **photon** (pi's bundled WASM; the macOS-only
+  `sips` fallback was removed 2026-10-17) **and capped at 1200px long edge** (so the APC payload
+  is ~5× smaller).
 
-This matters because pi's `encodeKitty()` hardcodes `f=100` (PNG) and ignores `mimeType` — so a
-WebP sent as a PNG APC is silently discarded by the terminal. `toDisplayPng()` fixes that by
-making the bytes actually PNG *before* the APC. See the `inline-image-not-rendering` issue for
-full root-cause.
+**Why still needed after pi 1.0.1:** the original bug — pi-tui's `encodeKitty()` hardcoding
+`f=100` (PNG) so non-PNG payloads were silently discarded by the terminal (Ghostty,
+2026-10-01) — is fixed upstream
+([pi#10292](https://github.com/earendil-works/pi/issues/10292)): pi-tui's `Image` now converts
+through a registered photon transcoder at render time. But that transcoder **only converts,
+never resizes** (pi 1.3.0, `image-convert.js`: decode → EXIF-orient → re-encode). Our
+display-path normalisation stays for the resize; the conversion is belt-and-suspenders that
+also keeps pi < 1.0.1 working. See the `inline-image-not-rendering` issue for full root-cause.
 
 ### Display vs. understand (`read` vs. `read_image` / `/readimg`)
 

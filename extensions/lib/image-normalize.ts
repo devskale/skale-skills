@@ -65,6 +65,10 @@ let cachedPhoton: PhotonModule | null | undefined;
 function loadPhoton(): PhotonModule | null {
 	if (cachedPhoton !== undefined) return cachedPhoton;
 	const candidates: string[] = [];
+	// Escape hatch for tests and exotic embeddings, where argv[1] is not pi: an
+	// explicit entry whose node_modules holds photon (pi's real cli.js) wins
+	// over the argv guessing below.
+	if (process.env.PI_PHOTON_ENTRY) candidates.push(process.env.PI_PHOTON_ENTRY);
 	const entry = process.argv[1];
 	if (entry) {
 		candidates.push(entry);

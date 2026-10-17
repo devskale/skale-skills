@@ -1536,8 +1536,9 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 				const raw = typeof im.data === "string" ? im.data : "";
 				const b64 = raw.startsWith("data:") ? (raw.split(",")[1] ?? "") : raw;
 				if (b64 && isValidImage(Buffer.from(b64, "base64"))) {
-					// Normalise to PNG up front: the display renderer and any replay from
-					// session state both rely on Kitty's f=100 label matching the payload.
+					// pi ≥ 1.0.1 converts non-PNG at render time as a safety net
+					// (pi#10292 fixed the Kitty f=100 drop upstream); our display path
+					// additionally caps the long edge at 1200px. Here:
 					// Store the ORIGINAL bytes — the display renderer transcodes+downscales at
 					// render time (toDisplayPng). Transcoding here would persist a full-res PNG
 					// (often 5–8× the source) into the session for every displayed image.

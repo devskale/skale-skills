@@ -171,19 +171,39 @@ fi
 echo ""
 
 # === 3. display path normalises non-PNG to PNG ======================
-# Regression for "inline image not rendering" (2026-10-01): pi-tui's Kitty encoder
-# hardcodes f=100 (PNG) and ignores mimeType, so a .webp/.jpg payload was sent
-# labelled as PNG and the terminal dropped it SILENTLY — the TUI wrote a valid
-# APC, the user saw no image. toDisplayPng must transcode non-PNG to PNG.
+# toDisplayPng transcodes via photon (pi's bundled WASM) and caps the long
+# edge at 1200px — the format bug itself is fixed upstream since pi 1.0.1
+# (pi#10292); our path stays for the resize. photon resolves from pi's
+# entry, and argv[1] here is node, so PI_PHOTON_ENTRY points the resolver
+# at pi's real cli.js. Fixtures are COMMITTED (the old sips-based runtime
+# generation failed without desktop pictures and could not encode webp at
+# all — it also silently masked a non-resolving photon).
 echo "[3] Display path normalises non-PNG to PNG..."
-if ! command -v sips >/dev/null 2>&1; then
+if [ ! -x "$TSC" ]; then
     WARN=$((WARN + 1))
-    echo "  WARN: sips not on PATH (macOS only) — skipped"
+    echo "  WARN: tsc not found (run scripts/lint.sh once) — skipped"
+elif [ ! -f "$HERE/fixtures/t-small.jpg" ]; then
+    WARN=$((WARN + 1))
+    echo "  WARN: committed fixtures missing — skipped"
+elif ! command -v pi >/dev/null 2>&1; then
+    WARN=$((WARN + 1))
+    echo "  WARN: pi not on PATH (photon entry unresolvable) — skipped"
 else
-    UT="$TMP/todisplaypng.mjs"
-    cat >"$UT" <<'UTEOF'
-import { toDisplayPng, isPng } from "EXTPATH/lib/image-utils.ts";
-import { readFileSync } from "node:fs";
+    # Compile to CommonJS like section 2 — raw node cannot import the .ts
+    # sources (extensionless ./image-normalize specifier; strip-types needs .ts).
+    if ! "$TSC" "$EXT/lib/image-utils.ts" --outDir "$TMP/js3" --module commonjs --moduleResolution node \
+        --target ES2022 --strict --esModuleInterop --skipLibCheck --types node >"$TMP/tsc3.out" 2>&1; then
+        FAIL=$((FAIL + 1))
+        echo "  FAIL: tsc compile error"; sed 's/^/    /' "$TMP/tsc3.out" | head -10
+    else
+        UT="$TMP/todisplaypng.cjs"
+        cat >"$UT" <<'UTEOF'
+const { toDisplayPng, isPng } = require("JSDIR/image-utils.js");
+const { normalizationProbe } = require("JSDIR/image-normalize.js");
+const { readFileSync } = require("node:fs");
+
+// 77 = photon unresolvable under PI_PHOTON_ENTRY → honest WARN skip, not FAIL.
+if (!normalizationProbe().available) { console.log("PHOTON-UNAVAILABLE"); process.exit(77); }
 
 const files = process.argv.slice(2);
 if (!files.length) { console.error("no fixture files given"); process.exit(1); }
@@ -204,28 +224,17 @@ if (png) {
 }
 process.exit(bad ? 1 : 0);
 UTEOF
-    sed -i.bak "s|EXTPATH|$EXT|" "$UT" && rm -f "$UT.bak"
+        sed -i.bak "s|JSDIR|$TMP/js3|" "$UT" && rm -f "$UT.bak"
 
-    # Real fixtures: one per format that used to vanish.
-    mkdir -p "$TMP/fx"
-    if [ ! -f "$HERE/fixtures/t2-small.png" ]; then
-        sips -s format png /System/Library/Desktop\ Pictures/*.heic --out "$TMP/fx/t2-small.png" >/dev/null 2>&1 \
-            || cp /tmp/t2-small.png "$TMP/fx/t2-small.png" 2>/dev/null \
-            || printf '\211PNG\r\n\032\n' > "$TMP/fx/t2-small.png"
-    else
-        cp "$HERE/fixtures/t2-small.png" "$TMP/fx/t2-small.png"
-    fi
-    sips -s format jpeg "$TMP/fx/t2-small.png" --out "$TMP/fx/t2-small.jpg"   >/dev/null 2>&1 || true
-    sips -s format webp "$TMP/fx/t2-small.png" --out "$TMP/fx/t2-small.webp" >/dev/null 2>&1 || true
-
-    FX=$(ls "$TMP"/fx/* 2>/dev/null | tr '\n' ' ')
-    if [ "$(echo "$FX" | wc -w)" -lt 2 ]; then
-        WARN=$((WARN + 1))
-        echo "  WARN: could not build image fixtures — skipped"
-    else
-        if (cd "$REPO" && node "$UT" $FX >"$TMP/ut.out" 2>&1); then
+        FX="$HERE/fixtures/t-small.png $HERE/fixtures/t-small.jpg $HERE/fixtures/t-small.gif $HERE/fixtures/t-small.webp"
+        PI_PHOTON_ENTRY="$(realpath "$(command -v pi)")" node "$UT" $FX >"$TMP/ut.out" 2>&1
+        rc=$?
+        if [ "$rc" -eq 77 ]; then
+            WARN=$((WARN + 1))
+            echo "  WARN: photon not resolvable via PI_PHOTON_ENTRY — skipped"
+        elif [ "$rc" -eq 0 ]; then
             PASS=$((PASS + 1))
-            echo "  ok: webp/jpeg/png all normalise to PNG (png byte-identical)"
+            echo "  ok: png/jpg/gif/webp all normalise to PNG (png byte-identical, photon path)"
         else
             FAIL=$((FAIL + 1))
             echo "  FAIL: non-PNG not normalised to PNG"

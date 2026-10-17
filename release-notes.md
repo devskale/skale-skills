@@ -1,5 +1,24 @@
 ## Unreleased
 
+### xmodel/imagegen: toDisplayPng auf photon-only — sips-Fallback entfernt
+- Anlass: pi 1.0.1 hat den Original-Bug upstream gefixt
+  ([pi#10292](https://github.com/earendil-works/pi/issues/10292) — Kitty `f=100`
+  warf non-PNG still weg; pi-tui konvertiert seitdem zur Render-Zeit über einen
+  photon-Transcoder). Unser `toDisplayPng` bleibt trotzdem: pi's Transcoder
+  konvertiert NUR (kein Resize, verifiziert an pi 1.3.0, `image-convert.js`) —
+  unsere 1200px-Kappe hält den APC-Payload ~5× klein.
+- sips-Fallback (macOS-only) entfernt: in Test-Kontexten maskierte er still
+  einen nicht auflösbaren photon (WARN-grün statt FAIL). Fehlerfall jetzt
+  ehrlich: Input unverändert → pi's Render-Zeit-Transcoder als Safety-Net.
+- `PI_PHOTON_ENTRY` in `loadPhoton()`: expliziter photon-Einstiegspfad für
+  Tests/Embeddings (argv[1] ist dort nicht pi).
+- Test [3] neu gebaut: tsc-kompiliert (raw node kann die .ts-Sourcen nicht
+  laden — extensionless Imports), committete Fixtures (png/jpg/gif/webp),
+  photon-Gate via `normalizationProbe` (exit 77 = ehrlicher WARN). Lief zuvor
+  nie wirklich: Fixtures wurden zur Laufzeit per sips generiert (schlug fehl),
+  und der raw-node-Aufruf war seit dem photon-Import (0.5.13) kaputt — beides
+  still hinter einem WARN.
+
 ### pdf2mark 1.7.0 — result cache + job attach: big PDFs unblocked
 - Reading a 100-page PDF took ~5-6 min **every time** (server-side pdfplumber
   ~0.5-3.6s/page + upload + polling) — and agents re-read the same file on

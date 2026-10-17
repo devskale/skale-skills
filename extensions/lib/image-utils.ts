@@ -11,11 +11,7 @@
  * are extension-specific.
  */
 
-import { execFileSync } from "node:child_process";
 import { normalizeImageForDisplay } from "./image-normalize";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 /** True if a model accepts image input (vision-capable). */
 export function isVisionCapable(model: unknown): boolean {
@@ -50,22 +46,24 @@ export function isPng(buf: Buffer): boolean {
 }
 
 /**
- * Normalise a base64 image to PNG for terminal display.
+ * Normalise a base64 image to PNG (+ 1200px long-edge cap) for terminal display.
  *
- * WHY THIS EXISTS: pi-tui's Kitty encoder (`encodeKitty`) hardcodes the control
- * key `f=100`, which means PNG. It ignores `mimeType` — that is only consulted
- * for dimension probing. So a .webp/.jpg/.gif/.bmp gets its raw bytes sent with
- * a "this is a PNG" label. Ghostty parses the PNG signature, finds RIFF/WEBP,
- * and drops the image *silently*: the TUI writes a valid-looking Kitty APC, but
- * nothing appears. Verified 2026-10-01 on Ghostty → herdr → pi (webp+jpeg with
- * f=100/f=101 both invisible; PNG with f=100 renders).
+ * WHY THIS STILL EXISTS (updated 2026-10-17): the original bug — pi-tui's
+ * Kitty encoder hardcoding f=100 (PNG) so non-PNG payloads were dropped
+ * silently by the terminal (verified 2026-10-01 on Ghostty) — is FIXED
+ * upstream since pi 1.0.1 (earendil-works/pi#10292): pi-tui's Image now
+ * converts through a registered photon transcoder at render time.
  *
- * Non-PNG therefore has to be transcoded, not just relabelled — the host
- * terminal's Kitty path only accepts PNG payloads.
+ * But pi's transcoder only CONVERTS — it never resizes (pi 1.3.0,
+ * image-convert.js encodePng: decode → EXIF-orient → re-encode, dimensions
+ * unchanged). A full-res photo (2880px, 2–3 MB) would cross the Kitty APC for
+ * ~100 cells of screen. This caps the long edge at 1200px (~5× smaller
+ * payload, still crisp on retina) and runs once per image per session (the
+ * Image component caches its rendered lines).
  *
- * Returns the (possibly re-encoded) base64 PNG. On any failure the input is
- * returned unchanged, so a converter that is missing or refuses a format
- * degrades to the previous behaviour instead of dropping the image.
+ * PNG passes through byte-identical. On any failure the input is returned
+ * unchanged — pi's render-time transcoder then gets a second shot, so the
+ * worst case is a full-res image, never a vanished one.
  */
 export function toDisplayPng(b64: string): string {
 	// Already PNG (the overwhelmingly common case): one decode, no work, no shell.
@@ -76,9 +74,9 @@ export function toDisplayPng(b64: string): string {
 		return b64;
 	}
 
-	// Non-PNG: transcode to PNG. Portable path first (photon WASM — ships with pi,
-	// works on mac/Linux/Windows); sips stays as a macOS-only fallback for the rare
-	// case where photon cannot be resolved (e.g. an exotic embedding).
+	// Non-PNG: transcode + downscale via photon — the same WASM engine pi
+	// itself ships (sips fallback removed 2026-10-17: macOS-only, and in test
+	// contexts it silently masked a non-resolving photon).
 	try {
 		const raw = b64.startsWith("data:") ? (b64.split(",")[1] ?? "") : b64;
 		const buf = Buffer.from(raw, "base64");
@@ -86,40 +84,7 @@ export function toDisplayPng(b64: string): string {
 		const norm = normalizeImageForDisplay(buf, guessMime(b64));
 		if (norm) return norm.toString("base64");
 	} catch {
-		/* fall through to the legacy path */
+		/* return the input unchanged */
 	}
-
-	// Legacy fallback: sips (macOS only). On Linux/Windows without photon this
-	// returns the input unchanged — same as before the portable path existed.
-	let dir: string | undefined;
-	try {
-		const raw = b64.startsWith("data:") ? (b64.split(",")[1] ?? "") : b64;
-		const buf = Buffer.from(raw, "base64");
-		if (!isValidImage(buf)) return b64;
-		dir = mkdtempSync(join(tmpdir(), "img2png-"));
-		// sips picks the decoder from the extension, so name the input by its real format.
-		const inPath = join(dir, `in.${(guessMime(b64).split("/")[1] || "png").replace("jpeg", "jpg")}`);
-		const outPath = join(dir, "out.png");
-		writeFileSync(inPath, buf);
-		// Resize while transcoding: the terminal shows images at ≤ ~100 cells wide, so a
-		// full-res photo (2880px) becomes a 2–3 MB APC payload for nothing. 1200px keeps
-		// them crisp on retina and cuts the Kitty payload ~5×. Runs once per image per
-		// session (the Image component caches its rendered lines).
-		execFileSync("sips", ["-s", "format", "png", "-Z", "1200", inPath, "--out", outPath], {
-			stdio: ["ignore", "ignore", "ignore"],
-			timeout: 10000,
-		});
-		const png = readFileSync(outPath);
-		return isPng(png) ? png.toString("base64") : b64;
-	} catch {
-		return b64;
-	} finally {
-		if (dir) {
-			try {
-				rmSync(dir, { recursive: true, force: true });
-			} catch {
-				/* best effort */
-			}
-		}
-	}
+	return b64;
 }
