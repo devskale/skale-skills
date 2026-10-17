@@ -62,7 +62,7 @@ const execFileAsync = promisify(execFile);
 // ── Version ──────────────────────────────────────────────────────────────────
 // Shipped in the notify lines and the /imagegen help so a bug report can name the
 // build. Bump on any behaviour change (same convention as xmodel/image-slim).
-const VERSION = "1.0.1";
+const VERSION = "1.0.2";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -81,13 +81,13 @@ const IMAGEGEN_MSG = "imagegen-result";
 /** customType for the /imagegen help panel (rendered inline). */
 const IMAGEGEN_HELP_MSG = "imagegen-help";
 
-// Known provider → credgoo service name overrides. Unlisted providers use
-// their provider name as the credgoo service. This is the only provider-ish
-// map, and it's purely a key-lookup convenience — any provider is allowed.
-const CREDGOO_SERVICE: Record<string, string> = {
-	pollinations: "pollinations",
-	tu: "tu",
-};
+// All providers ride the same uniinfer gateway, so they share ONE token from
+// ONE credgoo service: `unii` — the same name as pi's auth.json entry. One
+// rotation point (auth.json + credgoo unii), no per-provider shadowing. The
+// 2026-10-17 outage was exactly that: stale credgoo pollinations/tu entries
+// shadowing the valid gateway token. A per-provider override stays possible
+// via <PROVIDER>_API_KEY (for scoped tokens, should the operator issue one).
+const CREDGOO_GATEWAY_SERVICE = "unii";
 
 // ── Persistent state: last-good model + learned costs per provider ─────────
 // Nothing about models or prices is hardcoded. The extension discovers the
@@ -263,21 +263,26 @@ function splitProviderModel(model: string): { provider: string; modelId: string 
 	return { provider: model.slice(0, idx), modelId: model.slice(idx + 1) };
 }
 
-/** Resolve an API key for a provider: env → credgoo → ~/.pi/agent/auth.json.
- *  Generic across providers — unlisted providers use their name as the credgoo
- *  service. Returns null when no key is configured (keyless providers are fine).
- *  Async because credgoo can take seconds — never block the event loop on it. */
+/** Resolve the gateway API key for a provider: <PROVIDER>_API_KEY (scoped
+ *  override) → UNIINFER_API_KEY (gateway env) → credgoo `unii` →
+ *  ~/.pi/agent/auth.json `unii.key` (the token chat already uses). One gateway,
+ *  one token, one rotation point. Returns null when no key is configured
+ *  (keyless providers are fine). Async because credgoo can take seconds —
+ *  never block the event loop on it. */
 async function resolveKey(provider: string): Promise<string | null> {
-	const service = CREDGOO_SERVICE[provider] ?? provider;
-
-	// 1. Environment variable (provider name uppercased, e.g. POLLINATIONS_API_KEY)
+	// 1. Per-provider override — most specific wins (scoped tokens).
 	const fromEnv = process.env[`${provider.toUpperCase()}_API_KEY`];
 	if (fromEnv && fromEnv.trim()) return fromEnv.trim();
 
-	// 2. credgoo (suppress its stdout chatter). Try the PATH binary, then ~/.local/bin.
+	// 2. Gateway-wide env var.
+	const fromGatewayEnv = process.env.UNIINFER_API_KEY;
+	if (fromGatewayEnv && fromGatewayEnv.trim()) return fromGatewayEnv.trim();
+
+	// 3. credgoo — the single gateway service (suppress its stdout chatter).
+	//    Try the PATH binary, then ~/.local/bin.
 	for (const cmd of ["credgoo", path.join(os.homedir(), ".local", "bin", "credgoo")]) {
 		try {
-			const { stdout } = await execFileAsync(cmd, [service], {
+			const { stdout } = await execFileAsync(cmd, [CREDGOO_GATEWAY_SERVICE], {
 				encoding: "utf8",
 				timeout: 8000,
 			});
@@ -288,11 +293,11 @@ async function resolveKey(provider: string): Promise<string | null> {
 		}
 	}
 
-	// 3. ~/.pi/agent/auth.json (e.g. tu-aqueduct)
+	// 4. ~/.pi/agent/auth.json — same token pi's chat providers use.
 	try {
 		const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
 		const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
-		const entry = auth[service];
+		const entry = auth[CREDGOO_GATEWAY_SERVICE];
 		if (entry?.key) return entry.key;
 	} catch {
 		/* not present */

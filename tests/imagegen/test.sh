@@ -94,14 +94,16 @@ echo ""
 
 # === 4. Credentials ==================================================
 echo "[4] Credentials resolvable..."
-POLL_KEY=""
-TU_KEY=""
-command -v credgoo &>/dev/null && POLL_KEY=$(credgoo pollinations 2>/dev/null || true)
-command -v credgoo &>/dev/null && TU_KEY=$(credgoo tu 2>/dev/null || true)
-[ -n "$POLLINATIONS_API_KEY" ] && POLL_KEY="$POLLINATIONS_API_KEY"
-[ -n "$TU_API_KEY" ] && TU_KEY="$TU_API_KEY"
-assert_soft "pollinations key resolvable" "[ -n \"\$POLL_KEY\" ]"
-assert_soft "tu key resolvable"           "[ -n \"\$TU_KEY\" ]"
+# One gateway, one token: credgoo service `unii` (or UNIINFER_API_KEY),
+# with per-provider env overrides for scoped tokens. The per-provider credgoo
+# services (pollinations, tu) were REMOVED 2026-10-17 — they shadowed the
+# valid gateway token with stale sk_-style keys.
+UNII_KEY=""
+command -v credgoo &>/dev/null && UNII_KEY=$(credgoo unii 2>/dev/null || true)
+[ -n "$UNIINFER_API_KEY" ] && UNII_KEY="$UNIINFER_API_KEY"
+POLL_KEY="${POLLINATIONS_API_KEY:-$UNII_KEY}"
+TU_KEY="${TU_API_KEY:-$UNII_KEY}"
+assert_soft "unii gateway key resolvable (credgoo unii / UNIINFER_API_KEY)" "[ -n \"\$UNII_KEY\" ]"
 echo ""
 
 # === 5. Live generation: pollinations@lykon/dreamshaper-8-lcm =========

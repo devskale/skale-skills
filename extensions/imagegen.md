@@ -108,11 +108,12 @@ so the next call self-heals.
 
 ## Credentials
 
-Key resolution is generic and per-provider, in order: env var
-(`<PROVIDER>_API_KEY`, e.g. `POLLINATIONS_API_KEY`) → `credgoo <service>` (the
-provider name, or an override like `tu`/`pollinations`) → `~/.pi/agent/auth.json`.
+Key resolution rides the uniinfer gateway token, in order: per-provider env
+(`<PROVIDER>_API_KEY`, scoped override) → `UNIINFER_API_KEY` (gateway env) →
+`credgoo unii` (the single gateway service — same name as pi's auth.json
+entry, one rotation point) → `~/.pi/agent/auth.json` (`unii.key`).
 
-Keyless providers (e.g. `pollinations`, `ollama`) work with **no Bearer at all**
+Keyless providers (e.g. `ollama`) work with **no Bearer at all**
 — the extension only sends `Authorization` when a key resolves. Providers that
 need a key and have none will surface the proxy's error, which names the
 missing credential.
@@ -354,16 +355,19 @@ always saved to disk regardless.
 Both verified working against the proxy:
 
 ```bash
+# One gateway token (credgoo unii — mirrors auth.json unii.key)
+TOKEN="$(credgoo unii)"
+
 # Pollinations — fast
 curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $(credgoo pollinations)" \
-  -d '{"model":"pollinations@dreamshaper","prompt":"a tiny red cube on white, centered","size":"512x512"}'
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"model":"pollinations@lykon/dreamshaper-8-lcm","prompt":"a tiny red cube on white, centered","size":"512x512"}'
 
 # TU — high quality
 curl -s -X POST https://uniinfer.skale.dev/v1/images/generations \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $(credgoo tu)" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"model":"tu@z-image-turbo","prompt":"a tiny red cube on white, centered","size":"512x512"}'
 ```
 

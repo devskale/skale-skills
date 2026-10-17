@@ -1,5 +1,13 @@
 ## Unreleased
 
+### imagegen 1.0.2 — ein Gateway-Token: credgoo-Service `unii` (Nutzer-Präferenz)
+- Statt zweier Provider-Services (pollinations, tu — beide gelöscht) liest die
+  Auflösung jetzt EINEN Token aus EINEM Service: `<PROVIDER>_API_KEY` (scoped
+  Override) → `UNIINFER_API_KEY` → `credgoo unii` → `auth.json unii.key`.
+  Ein Gateway, ein Token, ein Rotationspunkt — keine Schattierung mehr durch
+  veraltete Provider-Einträge (die 2026-10-17- Ursache).
+- Suite live grün über den Einzel-Service (22 PASS / 0 WARN).
+
 ### imagegen 1.0.1 — Tokens + Katalog-ID repariert (live wieder grün)
 - Beide credgoo-Bild-Tokens (pollinations, tu) waren am Proxy revoked — der
   gültige Gateway-Token lag in `~/.pi/agent/auth.json` (`unii.key`) und wurde
