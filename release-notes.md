@@ -1,6 +1,6 @@
 ## Unreleased
 
-### xmodel/imagegen: toDisplayPng auf photon-only — sips-Fallback entfernt
+### xmodel 0.5.15 — toDisplayPng photon-only, sips-Fallback raus (pi#10292 gefixt)
 - Anlass: pi 1.0.1 hat den Original-Bug upstream gefixt
   ([pi#10292](https://github.com/earendil-works/pi/issues/10292) — Kitty `f=100`
   warf non-PNG still weg; pi-tui konvertiert seitdem zur Render-Zeit über einen
