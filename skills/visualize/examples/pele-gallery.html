@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mermaid, meet pele — a gallery</title>
+<!--
+  visualize example — pele gallery. Six real Mermaid diagram types (flowchart
+  with subgraph, sequence, git graph, gantt, pie, mindmap) rendered by pele
+  and themed by the house skin. All content real: the pele adoption session
+  of Oct 17, 2026. Rebuild/extend: copy this file, swap the <pre class="pele">
+  sources. Gotcha: gantt task names must not contain ':' (pele parse error).
+-->
+<script type="module">
+  // pele: Mermaid syntax → themeable SVG (MIT · github.com/obsidianmd/pele)
+  import { render, PeleError } from "https://cdn.jsdelivr.net/npm/pele@1/+esm";
+  document.querySelectorAll("pre.pele").forEach((el, i) => {
+    try {
+      const { svg } = render(el.textContent, { idPrefix: `pele-${i}-` });
+      el.outerHTML = svg;
+    } catch (error) {
+      if (!(error instanceof PeleError)) throw error;
+      el.textContent = error.message; // error text carries diagram source → textContent only
+    }
+  });
+</script>
+<style>
+  :root{
+    --paper:#faf8f5; --card:#fff; --soft:#f2efe9;
+    --ink:#211d19;   --muted:#82796e; --line:#e3ddd2;
+    --cat-1:#0d6e64; --cat-2:#1e4fbf; --cat-3:#a05a12;
+    --ok:#1a7f4b; --warn:#b45309; --bad:#c0262d;
+    --radius:12px; --shadow:0 1px 2px rgba(60,50,30,.05);
+  }
+  :root{--pele-bg:var(--paper);--pele-fg:var(--ink);--pele-muted:var(--muted);--pele-line:var(--ink);
+    --pele-surface:var(--card);--pele-surface-alt:var(--soft);--pele-border:var(--line)}
+  *{ box-sizing:border-box }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding:56px 24px 64px;
+  }
+  .wrap{ max-width:940px; margin:0 auto }
+  header{ margin-bottom:8px }
+  header::after{ content:""; display:block; height:3px; background:var(--ink); margin-top:20px }
+  .kicker{ font-family:ui-monospace,Menlo,monospace; font-size:11.5px; font-weight:700;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--cat-1) }
+  h1{ font-size:clamp(30px,5vw,40px); line-height:1.08; letter-spacing:-.025em;
+      font-weight:800; margin:10px 0 10px }
+  .sub{ color:var(--muted); font-size:16px; line-height:1.5; max-width:56ch; margin:0 }
+  .meta{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-top:12px }
+  h2{ font-size:13px; font-weight:700; letter-spacing:.02em; margin:46px 0 6px;
+      display:flex; align-items:baseline; gap:10px;
+      border-top:2px solid var(--ink); padding-top:12px }
+  h2 .idx{ font-family:ui-monospace,Menlo,monospace; font-size:12px; font-weight:700; color:var(--cat-1) }
+  .note{ color:var(--muted); font-size:13px; margin:0 0 12px }
+  .diagram-card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+                 padding:20px 22px; overflow-x:auto; box-shadow:var(--shadow) }
+  footer{ margin-top:52px; padding-top:14px; border-top:2px solid var(--ink);
+          display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+          font-size:12.5px; color:var(--muted) }
+</style>
+</head>
+<body data-skin="paper">
+<div class="wrap">
+
+  <header>
+    <div class="kicker">visualize × pele · gallery</div>
+    <h1>Mermaid, meet pele</h1>
+    <p class="sub">Six Mermaid diagram types — flowchart, sequence, git graph, gantt, pie,
+       mindmap — rendered by one renderer, themed by one skin. Every fact on this page is
+       real: the diagrams describe the pele adoption that shipped today.</p>
+    <div class="meta">data: this session · Oct 17, 2026 · house skin v3 · paper · pele 1.6 via CDN</div>
+  </header>
+
+  <h2><span class="idx">01</span>flowchart — with subgraph</h2>
+  <p class="note">How pele turns Mermaid text into a themed SVG (per pele.run/api).</p>
+  <div class="diagram-card">
+    <pre class="pele">
+      flowchart LR
+        SRC[Mermaid text] --> D[detectType]
+        D --> P[parse → diagram model]
+        P --> L[layout engine<br/>pele's own, not Mermaid's]
+        L --> S[SVG string]
+        subgraph HOST[the hosting page]
+          T[CSS-variable theming<br/>--pele-bg · --pele-fg · --pele-surface] --> M[mount · responsive<br/>maxWidth re-layout]
+        end
+        S --> T
+    </pre>
+  </div>
+
+  <h2><span class="idx">02</span>sequence — the share flow</h2>
+  <p class="note">From build to rendered page, end to end.</p>
+  <div class="diagram-card">
+    <pre class="pele">
+      sequenceDiagram
+        participant A as Agent
+        participant V as visualize gate
+        participant S as throway store
+        participant B as Your browser
+        A->>V: gate page.html
+        V-->>A: validate + slop + chartcheck + jscheck · all pass
+        A->>S: share (PUT, stable URL)
+        S-->>A: URL
+        A->>B: open URL
+        B->>B: fetch pele from CDN (~230 kB gzip)
+        B->>B: render() each block · 0.05–0.3 ms
+        B-->>B: SVG themed from the page's own tokens
+    </pre>
+  </div>
+
+  <h2><span class="idx">03</span>git graph — today, on main</h2>
+  <p class="note">The actual branch story of commit b52fce5.</p>
+  <div class="diagram-card">
+    <pre class="pele">
+      gitGraph
+        commit id: "imagegen 1.1.1"
+        branch pele-spike
+        checkout pele-spike
+        commit id: "probe CDN + smoke 2/2 · 20 ms"
+        commit id: "template + module docs"
+        checkout main
+        merge pele-spike id: "adopt renderer"
+        commit id: "README image refresh"
+        commit id: "b52fce5 · pushed"
+    </pre>
+  </div>
+
+  <h2><span class="idx">04</span>gantt — the adoption session</h2>
+  <p class="note">From inspiration entry to pushed commit, hour by hour (Oct 17).</p>
+  <div class="diagram-card">
+    <pre class="pele">
+      gantt
+        dateFormat YYYY-MM-DD HH:mm
+        axisFormat %H:%M
+        section Research
+          Inspiration entry pele.run        :done, r1, 2026-10-17 19:45, 15m
+          CDN probe + compat check          :done, r2, after r1, 15m
+        section Spike
+          Rodney smoke — 2 diagrams in 20 ms :done, s1, after r2, 20m
+        section Ship
+          pele.html template + gates         :done, t1, after s1, 30m
+          README images (5 pages)           :done, t2, after t1, 45m
+          Commit b52fce5 + push             :milestone, done, after t2, 10m
+    </pre>
+  </div>
+
+  <h2><span class="idx">05</span>pie — where the checks live</h2>
+  <p class="note">Test checks per suite in this repo — approximate counts, Oct 2026.</p>
+  <div class="diagram-card">
+    <pre class="pele">
+      pie showData
+        title Test checks by suite (approx.)
+        "visualize" : 219
+        "issues" : 109
+        "improve-ux" : 103
+        "fetch-url" : 89
+        "peep" : 55
+        "rodney" : 54
+        "pdf2mark" : 52
+        "youtube" : 50
+    </pre>
+  </div>
+
+  <h2><span class="idx">06</span>mindmap — the ecosystem</h2>
+  <p class="note">One package, four families of skills.</p>
+  <div class="diagram-card">
+    <pre class="pele">
+      mindmap
+        root((skale-skills))
+          Web
+            fetch-url
+            web-search
+          Browser
+            surf
+              real Chrome
+            rodney
+              headless
+          Media
+            youtube
+            vtd
+          Pages &amp; diagrams
+            visualize
+            d2
+            figure
+    </pre>
+  </div>
+
+  <footer>
+    <span>all six types · one renderer · one skin · data real</span>
+    <span>house skin v3 · data-skin="paper" · pele 1.6 · MIT</span>
+  </footer>
+</div>
+</body>
+</html>

@@ -246,6 +246,10 @@ instead of scaling), many small diagrams (fast sync renders). Prefer `mermaid` f
 Mermaid-specific features (ZenUML, arbitrary HTML labels) — see the
 [compatibility matrix](https://pele.run/compatibility).
 
+**Pele syntax gotchas:** gantt task names must not contain `:` ("too many fields"
+parse error). `PeleError` messages quote the diagram source — always surface them
+via `textContent`, never `innerHTML`. Filled example: [examples/pele-gallery.html](../examples/pele-gallery.html).
+
 ### footer
 Provenance footer.
 

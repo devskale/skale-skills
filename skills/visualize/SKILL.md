@@ -69,6 +69,7 @@ For a global `visualize` command, run this skill's `./install.sh` (Linux/macOS) 
 ## References
 
 - **Decide:** [routing.md](references/routing.md) (d2/figure vs. inline) · [code-forms.md](references/code-forms.md) (smallest view first)
+- **Examples:** [examples/pele-gallery.html](examples/pele-gallery.html) — six Mermaid types rendered by pele, house-themed (filled, real content)
 - **Design:** [structures.md](references/structures.md) (intents → stacks) · [patterns.md](references/patterns.md) (semantic patterns) · [modules.md](references/modules.md) (page modules) · [report.md](references/report.md) (report mode)
 - **Architektur:** [architecture-log.md](references/architecture-log.md) — Review-Kandidaten, Entscheidungen, Verworfenes (dauerhafte Spur; der HTML-Report auf throway verfällt)
 - **Polish:** [promptlib.md](references/promptlib.md) (design moves) · [inspirations.md](references/inspirations.md) (visual references)

@@ -128,6 +128,13 @@ for t in cards repo-tree system-map report mermaid pele tailwind-report timeline
     check "jscheck template $t.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/templates/$t.html"
 done
 
+# examples must pass the same gates (filled pages, real content)
+for e in pele-gallery; do
+    check "lint example $e.html → exit 0" 0 "$SCRIPT" lint "$SKILL/examples/$e.html"
+    check "validate example $e.html → exit 0" 0 "$SCRIPT" validate "$SKILL/examples/$e.html"
+    check "jscheck example $e.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/examples/$e.html"
+done
+
 # pyproject is required for Python skills (CODING_RULES) and its version must match SKILL.md
 [ -f "$SKILL/pyproject.toml" ] && ok || bad "pyproject.toml missing"
 SKILL_V=$(grep -m1 '^version:' "$SKILL/SKILL.md" | grep -o '[0-9][0-9.]*')

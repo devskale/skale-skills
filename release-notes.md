@@ -1,5 +1,13 @@
 ## Unreleased
 
+### visualize — pele-Gallery als lebendes Beispiel (`examples/`)
+- Die Sechs-Typen-Gallery (Flowchart+Subgraph, Sequenz, Git-Graph, Gantt, Pie,
+  Mindmap — alles echte Session-Daten) liegt jetzt als gefülltes Beispiel unter
+  `examples/pele-gallery.html`: in SKILL.md verlinkt, in der Test-Suite durch
+  lint/validate/jscheck gegrünt.
+- Lehre gebakt: pele-Gantt-Task-Namen dürfen kein `:` enthalten ("too many
+  fields") — als Gotcha ins pele-Modul in modules.md dokumentiert.
+
 ### visualize — pele als Diagramm-Renderer (neues Template `pele.html`)
 - **pele** ([pele.run](https://pele.run/), MIT, Obsidian) rendert Mermaid-Syntax als
   themeable SVG: zero deps, 6× kleiner, ~0,1 ms statt 6–82 ms. Neues CDN-Template
