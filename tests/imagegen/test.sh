@@ -68,7 +68,10 @@ echo ""
 echo "[2] Extension loads in pi..."
 # Print mode + trivial prompt. If the extension fails to compile/import,
 # pi prints a load error mentioning the file path.
-pi -e ./imagegen.ts -p "say hi" >"$TMP/load.out" 2>&1 || true
+# --no-extensions: the installed package copy also registers generate_image;
+# loading the repo copy on top CONFLICTS (duplicate tool name) — same
+# isolation the xmodel suite needed (its 2026-10 retro).
+pi --no-extensions -e ./imagegen.ts -p "say hi" >"$TMP/load.out" 2>&1 || true
 assert_soft "pi loads imagegen.ts (no parse error)" \
     "grep -qi 'hi' $TMP/load.out && ! grep -qiE 'Failed to load extension|ParseError|cannot find module' $TMP/load.out"
 echo ""
@@ -80,8 +83,12 @@ assert_soft "proxy models endpoint responds" "[ \"$MODELS_HTTP\" = \"200\" ]"
 
 if [ "$MODELS_HTTP" = "200" ]; then
     curl -s -m 10 "$PROXY_BASE/image/models/pollinations" -o "$TMP/models.json" 2>/dev/null
-    assert_soft "pollinations returns dreamshaper"    "grep -q '\"dreamshaper\"' $TMP/models.json"
-    assert_soft "pollinations returns kontext" "grep -q '\"kontext\"' $TMP/models.json"
+    # Substring, nicht '"id"' mit Quotes: der Katalog ist namespaced worden
+    # (2026-10-17: 'lykon/dreamshaper-8-lcm', 'flux.1-kontext-pro' — die alten
+    # 'pollinations@dreamshaper'-IDs gibt es nicht mehr). Wir prüfen, dass die
+    # FAMILIE noch gelistet ist, nicht die exakte alte Schreibweise.
+    assert_soft "pollinations returns dreamshaper"    "grep -q dreamshaper $TMP/models.json"
+    assert_soft "pollinations returns kontext" "grep -q kontext $TMP/models.json"
 fi
 echo ""
 
