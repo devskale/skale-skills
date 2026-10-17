@@ -62,16 +62,17 @@ const execFileAsync = promisify(execFile);
 // ── Version ──────────────────────────────────────────────────────────────────
 // Shipped in the notify lines and the /imagegen help so a bug report can name the
 // build. Bump on any behaviour change (same convention as xmodel/image-slim).
-const VERSION = "1.0.0";
+const VERSION = "1.0.1";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const PROXY_BASE =
 	process.env.UNIINFER_PROXY_URL?.replace(/\/+$/, "") || "https://uniinfer.skale.dev/v1";
 
-// Default model per provider. pollinations@dreamshaper is the cheapest
-// pollinations model (~0.0001 pollen vs flux's 0.0020); tu@z-image-turbo is
-// TU's only model. Override with IMAGEGEN_MODEL (a full provider@modelid).
+// Default model per provider. pollinations@lykon/dreamshaper-8-lcm is the
+// cheapest pollinations model (~0.0001 pollen vs flux's 0.0020) — the catalog
+// namespaced its IDs 2026-10-17 ('dreamshaper' alone is gone); tu@z-image-turbo
+// is TU's only model. Override with IMAGEGEN_MODEL (a full provider@modelid).
 const DEFAULT_MODEL = process.env.IMAGEGEN_MODEL || "tu@z-image-turbo";
 const DEFAULT_SIZE = process.env.IMAGEGEN_SIZE || "512x512";
 
@@ -818,7 +819,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 		label: "Generate Image",
 		description:
 			"Generate an image from a text prompt. Returns the image inline (the model can see it and iterate) plus an ASCII preview. " +
-			'Model is any available "provider@modelid" from the proxy catalog, e.g. "pollinations@dreamshaper" (cheap, default) or "tu@z-image-turbo" (high quality). ' +
+			'Model is any available "provider@modelid" from the proxy catalog, e.g. "pollinations@lykon/dreamshaper-8-lcm" (cheap) or "tu@z-image-turbo" (high quality, default). ' +
 			"Images are saved to ~/.cache/generated/ (./uploads/ if present, or ./generated/ otherwise); the prompt is embedded in the file metadata.",
 		promptSnippet: "Generate an image from a text prompt; model sees the result and can iterate",
 		promptGuidelines: [

@@ -1,5 +1,16 @@
 ## Unreleased
 
+### imagegen 1.0.1 — Tokens + Katalog-ID repariert (live wieder grün)
+- Beide credgoo-Bild-Tokens (pollinations, tu) waren am Proxy revoked — der
+  gültige Gateway-Token lag in `~/.pi/agent/auth.json` (`unii.key`) und wurde
+  von den toten credgoo-Einträgen geschattet. Beide Services jetzt mit dem
+  gültigen Token bestückt (Auflöse-Kette der Extension unverändert:
+  env → credgoo → auth.json).
+- uniinfer hat die pollinations-Modell-IDs namespaced (2026-10-17):
+  `dreamshaper` → `lykon/dreamshaper-8-lcm` (tu unverändert). Tool-Beschreibung
+  + Tests auf die neue ID; Suite damit erstmals wieder komplett live grün
+  (23 PASS / 0 WARN, beide Provider generieren echt).
+
 ### xmodel 0.5.15 — toDisplayPng photon-only, sips-Fallback raus (pi#10292 gefixt)
 - Anlass: pi 1.0.1 hat den Original-Bug upstream gefixt
   ([pi#10292](https://github.com/earendil-works/pi/issues/10292) — Kitty `f=100`
