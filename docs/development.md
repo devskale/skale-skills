@@ -79,7 +79,9 @@ target skill's `references/inspirations.md`. Then `rm -rf .pi/skills/<name>` —
 - Playground sessions don't edit this repo's skills during play — findings go to docs
   first, code changes happen after the verdict (trial ≠ change).
 - The entertainment test: a session that produced no verdict line wasn't playgrounding.
-- Never vendor: adoption means installing from upstream (`npx skills add`, `openskills`).
+- **Trying ≠ adopting.** A play wires skills into the *ephemeral* testbed only —
+  installing anything permanently is a separate, explicit user decision; never vendor
+  (adoption would mean installing from upstream: `npx skills add`, `openskills`).
 
 ### A. Session-only override (preferred — zero persistent state)
 
