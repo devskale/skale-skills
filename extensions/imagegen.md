@@ -118,6 +118,13 @@ Keyless providers (e.g. `ollama`) work with **no Bearer at all**
 need a key and have none will surface the proxy's error, which names the
 missing credential.
 
+**Failure behaviour (1.1.0):** every outbound fetch is timeout-capped
+(generation 180 s, catalog 15 s) — a hung proxy never hangs the tool. A
+gateway-token rejection (401/403 revoked) skips catalog probing, fires the
+emergency pollinations-free path, and — if that also fails — returns an error
+with a rotation hint (`auth.json unii.key` + `credgoo --add unii <token>`).
+The gateway key is memoized per session; a restart re-resolves.
+
 ---
 
 ## Tool design (proposed)

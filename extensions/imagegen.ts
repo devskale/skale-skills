@@ -62,12 +62,35 @@ const execFileAsync = promisify(execFile);
 // ── Version ──────────────────────────────────────────────────────────────────
 // Shipped in the notify lines and the /imagegen help so a bug report can name the
 // build. Bump on any behaviour change (same convention as xmodel/image-slim).
-const VERSION = "1.0.2";
+const VERSION = "1.1.0";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const PROXY_BASE =
 	process.env.UNIINFER_PROXY_URL?.replace(/\/+$/, "") || "https://uniinfer.skale.dev/v1";
+
+// Generation can legitimately take ~30-60s (z-image-turbo at 1024²), but a HUNG
+// call must never hang the tool: every outbound fetch is capped. Catalog reads
+// are cheap metadata lookups — tighter cap than generation.
+const GEN_TIMEOUT_MS = 180_000;
+const CATALOG_TIMEOUT_MS = 15_000;
+
+/**
+ * Combined abort signal: user cancel (if any) + hard timeout. Hand-rolled
+ * (AbortSignal.any is not in the TS lib level we compile against) and
+ * unref'd so a pending cap never keeps the process alive.
+ */
+function fetchSignal(user?: AbortSignal, timeoutMs: number = GEN_TIMEOUT_MS): AbortSignal {
+	const ctrl = new AbortController();
+	const timer = setTimeout(() => ctrl.abort(new Error(`fetch timed out after ${timeoutMs}ms`)), timeoutMs);
+	(timer as unknown as { unref?: () => void }).unref?.();
+	if (user) {
+		if (user.aborted) ctrl.abort(user.reason);
+		else user.addEventListener("abort", () => ctrl.abort(user.reason), { once: true });
+	}
+	ctrl.signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
+	return ctrl.signal;
+}
 
 // Default model per provider. pollinations@lykon/dreamshaper-8-lcm is the
 // cheapest pollinations model (~0.0001 pollen vs flux's 0.0020) — the catalog
@@ -162,7 +185,7 @@ function learnCost(provider: string, modelId: string, cost: number): void {
 }
 
 /** Parse "costs ~0.0020 pollen" out of a 402 error detail string. */
-function parseCost(error: string): number | undefined {
+export function parseCost(error: string): number | undefined {
 	const m = /costs?\s+~?([0-9.]+)\s+pollen/i.exec(error);
 	if (!m) return undefined;
 	const c = parseFloat(m[1]);
@@ -175,8 +198,21 @@ function parseCost(error: string): number | undefined {
  * gone, so we should fall back to an available one instead of failing hard.
  * Matches the uniinfer proxy's 400 responses for bad model names/aliases.
  */
-function isModelUnavailable(error: string): boolean {
+export function isModelUnavailable(error: string): boolean {
 	return /invalid model or alias|invalid provider_model format|model[^\n]*(not found|does not exist|unknown|unavailable)/i.test(error);
+}
+
+/**
+ * Whether an error means the GATEWAY TOKEN was rejected — 401/403 plus a
+ * revoked/unknown/invalid-token detail. Verified 2026-10-17: the proxy answers
+ * stale tokens with `401 — {"detail": "Unknown or revoked token. Request a
+ * current token from the operator."}` (and misleadingly maps some unknown-model
+ * routes onto the same 401). Auth rejections make every further relay
+ * candidate fail identically, so callers skip catalog probing and go straight
+ * to the emergency path; the final error carries a rotation hint.
+ */
+export function isAuthRejected(error: string): boolean {
+	return /\b(401|403)\b/.test(error) && /revoked|invalid.{0,20}token|unknown.{0,20}token|token.{0,20}(revoked|invalid|unknown)|unauthorized/i.test(error);
 }
 
 /**
@@ -199,7 +235,7 @@ async function imageModelsForProvider(provider: string): Promise<string[]> {
 	let models: string[] = [];
 	// 1. Per-provider image model list (authoritative).
 	try {
-		const resp = await fetch(`${PROXY_BASE}/image/models/${provider}`);
+		const resp = await fetch(`${PROXY_BASE}/image/models/${provider}`, { signal: fetchSignal(undefined, CATALOG_TIMEOUT_MS) });
 		if (resp.ok) {
 			const body = (await resp.json()) as { data?: Array<{ id?: string }> };
 			models = (body.data ?? []).map((m) => m?.id).filter((id): id is string => !!id);
@@ -211,7 +247,7 @@ async function imageModelsForProvider(provider: string): Promise<string[]> {
 	// 2. Fallback: filter the general catalog by image type/modality.
 	if (!models.length) {
 		try {
-			const resp = await fetch(`${PROXY_BASE}/models`);
+			const resp = await fetch(`${PROXY_BASE}/models`, { signal: fetchSignal(undefined, CATALOG_TIMEOUT_MS) });
 			if (resp.ok) {
 				const body = (await resp.json()) as { data?: Array<{ id?: string; type?: string; modalities?: { output?: string[] } }> };
 				const all = (body.data ?? []).filter((m) => m?.id && (m.type === "image" || (m.modalities?.output ?? []).includes("image"))).map((m) => m.id as string);
@@ -269,41 +305,55 @@ function splitProviderModel(model: string): { provider: string; modelId: string 
  *  one token, one rotation point. Returns null when no key is configured
  *  (keyless providers are fine). Async because credgoo can take seconds —
  *  never block the event loop on it. */
+// Session-scoped memo for the gateway token: credgoo can take seconds and the
+// token does not rotate mid-session. A restart re-resolves.
+let gatewayKeyMemo: string | null | undefined;
+
 async function resolveKey(provider: string): Promise<string | null> {
 	// 1. Per-provider override — most specific wins (scoped tokens).
 	const fromEnv = process.env[`${provider.toUpperCase()}_API_KEY`];
 	if (fromEnv && fromEnv.trim()) return fromEnv.trim();
+	if (gatewayKeyMemo !== undefined) return gatewayKeyMemo;
+	let resolved: string | null = null;
 
 	// 2. Gateway-wide env var.
 	const fromGatewayEnv = process.env.UNIINFER_API_KEY;
-	if (fromGatewayEnv && fromGatewayEnv.trim()) return fromGatewayEnv.trim();
+	if (fromGatewayEnv && fromGatewayEnv.trim()) resolved = fromGatewayEnv.trim();
 
 	// 3. credgoo — the single gateway service (suppress its stdout chatter).
 	//    Try the PATH binary, then ~/.local/bin.
-	for (const cmd of ["credgoo", path.join(os.homedir(), ".local", "bin", "credgoo")]) {
-		try {
-			const { stdout } = await execFileAsync(cmd, [CREDGOO_GATEWAY_SERVICE], {
-				encoding: "utf8",
-				timeout: 8000,
-			});
-			const out = stdout.trim();
-			if (out && !/^error/i.test(out)) return out;
-		} catch {
-			/* try next */
+	if (resolved === null) {
+		for (const cmd of ["credgoo", path.join(os.homedir(), ".local", "bin", "credgoo")]) {
+			try {
+				const { stdout } = await execFileAsync(cmd, [CREDGOO_GATEWAY_SERVICE], {
+					encoding: "utf8",
+					timeout: 8000,
+				});
+				const out = stdout.trim();
+				if (out && !/^error/i.test(out)) {
+					resolved = out;
+					break;
+				}
+			} catch {
+				/* try next */
+			}
 		}
 	}
 
 	// 4. ~/.pi/agent/auth.json — same token pi's chat providers use.
-	try {
-		const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
-		const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
-		const entry = auth[CREDGOO_GATEWAY_SERVICE];
-		if (entry?.key) return entry.key;
-	} catch {
-		/* not present */
+	if (resolved === null) {
+		try {
+			const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
+			const auth = JSON.parse(fs.readFileSync(authPath, "utf8"));
+			const entry = auth[CREDGOO_GATEWAY_SERVICE];
+			if (entry?.key) resolved = entry.key;
+		} catch {
+			/* not present */
+		}
 	}
 
-	return null;
+	gatewayKeyMemo = resolved;
+	return resolved;
 }
 
 /**
@@ -525,7 +575,7 @@ async function generatePollinationsFree(opts: GenerateOnceOpts): Promise<GenResu
 				nologo: "true",
 			});
 			const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?${params}`;
-			const resp = await fetch(url, { signal });
+			const resp = await fetch(url, { signal: fetchSignal(signal) });
 			if (!resp.ok) {
 				const detail = await resp.text().catch(() => "");
 				return { ok: false, error: `pollinations-free returned ${resp.status} ${resp.statusText}${detail ? ` — ${detail}` : ""}` };
@@ -570,7 +620,7 @@ async function suggestSwitch(provider: string, current: string): Promise<string>
 	}
 }
 
-async function generateAndSave(opts: GenOpts): Promise<GenResult> {
+export async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 	const settings = getSettings();
 	const size = (opts.size || settings.size || DEFAULT_SIZE).trim();
 	const n = Math.max(1, Math.min(4, Math.floor(opts.n ?? settings.n ?? 1)));
@@ -594,6 +644,7 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 	const candidates = await fallbackCandidates(provider, modelId);
 	let lastError: string | undefined;
 	let fellBack = false;
+	let sawAuthRejection = false;
 	for (const candidate of candidates) {
 		const attempt = await generateOnce({
 			provider,
@@ -619,6 +670,15 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 		// (renamed/removed) is a probe signal — fall through to an available
 		// model rather than failing hard. Other non-402 errors of the requested
 		// model are terminal and surfaced as-is.
+		// Auth rejection: every further relay candidate fails identically —
+		// skip catalog probing. pollinations continues (its direct-API attempt
+		// runs at the bottom of this loop body); other providers break to the
+		// emergency pollinations-free path after the loop.
+		if (isAuthRejected(attempt.error)) {
+			lastError = attempt.error;
+			sawAuthRejection = true;
+			if (provider !== "pollinations") break;
+		}
 		const cost = parseCost(attempt.error);
 		if (cost != null) {
 			learnCost(provider, candidate, cost);
@@ -692,7 +752,14 @@ async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 		lastError = direct.error;
 	}
 	const creditExhausted = lastError ? isCreditExhausted(lastError) : false;
-	const suggested = creditExhausted ? await suggestSwitch(provider, modelId) : "";
+	// sawAuthRejection, not just lastError: a failed emergency attempt overwrites
+	// lastError with its own (non-auth) error — the rotation hint must survive.
+	const authRejected = sawAuthRejection || (lastError ? isAuthRejected(lastError) : false);
+	const suggested = creditExhausted
+		? await suggestSwitch(provider, modelId)
+		: authRejected
+			? "rotate the gateway token: update auth.json (unii.key) and `credgoo --add unii <token>`"
+			: "";
 	return { ok: false, error: lastError ?? "generation failed", creditExhausted, suggested };
 }
 
@@ -726,7 +793,7 @@ async function generateOnce(opts: GenerateOnceOpts): Promise<GenResult> {
 				n: opts.n,
 				...(opts.seed != null ? { seed: opts.seed } : {}),
 			}),
-			signal: opts.signal,
+			signal: fetchSignal(opts.signal),
 		});
 		if (!resp.ok) {
 			const detail = await resp.text().catch(() => "");
@@ -750,7 +817,7 @@ async function generateOnce(opts: GenerateOnceOpts): Promise<GenResult> {
 		let b64 = it.b64_json;
 		if (!b64 && it.url) {
 			try {
-				const r = await fetch(it.url, { signal: opts.signal });
+				const r = await fetch(it.url, { signal: fetchSignal(opts.signal) });
 				if (r.ok) b64 = Buffer.from(await r.arrayBuffer()).toString("base64");
 			} catch {
 				/* leave undefined */
@@ -927,7 +994,7 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			});
 		}
 		try {
-			const resp = await fetch(`${PROXY_BASE}/models`);
+			const resp = await fetch(`${PROXY_BASE}/models`, { signal: fetchSignal(undefined, CATALOG_TIMEOUT_MS) });
 			if (resp.ok) {
 				const body = (await resp.json()) as { data?: Array<{ id?: string; type?: string; modalities?: { output?: string[] } }> };
 				const out: Array<{ provider: string; id: string }> = [];

@@ -1,5 +1,25 @@
 ## Unreleased
 
+### imagegen 1.1.0 — Stabilitäts-Paket: Fetch-Caps, Auth-Klasse, Offline-Integrationstest
+- **Fetch-Timeouts**: jeder ausgehende Fetch gedeckelt (Generierung 180 s,
+  Katalog 15 s, per handgerolltem AbortSignal-Kombinator — `AbortSignal.any`
+  fehlt in der TS-Lib-Stufe). Ein hängender Proxy hängt nie mehr den Tool-Call.
+- **Auth-Fehler-Klasse** (`isAuthRejected`, exportiert): 401/403 + revoked-Token-Detail
+  überspringt die Katalog-Sonde (jeder Kandidat fiele identisch), feuert sofort
+  den pollinations-Notfallpfad, und der Rotation-Hinweis überlebt auch einen
+  fehlgeschlagenen Notfallversuch (`sawAuthRejection`-Flag — der Emergency-Fehler
+  überschreibt sonst lastError). Genau die 2026-10-17-Incident-Klasse.
+- **Gateway-Key-Memo** pro Session: credgoo (bis 8 s) läuft nicht mehr pro
+  Generierung — Restart re-resolviert.
+- **Offline-Integrationstest [8]**: Mock-Relay (python, dynamischer Port) treibt
+  das kompilierte `generateAndSave` hermetisch (HOME-Sandbox, fake auth.json,
+  credgoo nicht erreichbar): 401→Emergency+Hinweis (oder echter Emergency-Erfolg
+  mit Netz — beides pinnt den neuen Pfad; der alte Code scheitert an beidem),
+  Valid-Token→Datei+Prompt-Metadaten, plus Classifier-Pins mit den echten
+  Incident-Strings. Zwei Prozesse, weil der Key-Memo den Key-Swap prozesslokal
+  unsichtbar macht. Suite: 24 PASS / 0 WARN.
+- `generateAndSave`, `parseCost`, `isModelUnavailable` für Tests exportiert.
+
 ### imagegen 1.0.2 — ein Gateway-Token: credgoo-Service `unii` (Nutzer-Präferenz)
 - Statt zweier Provider-Services (pollinations, tu — beide gelöscht) liest die
   Auflösung jetzt EINEN Token aus EINEM Service: `<PROVIDER>_API_KEY` (scoped
