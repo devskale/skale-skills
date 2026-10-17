@@ -1,5 +1,21 @@
 ## Unreleased
 
+### imagegen 1.1.1 — P3-Express: Parser-Guard (nur #1); #3 zurückgezogen
+- `-n two` / `--seed=abc`: NaN floss still in die Loop und endete als irreführendes
+  „no images returned". Der Parser verwirft nicht-numerische Werte jetzt und
+  meldet sie (`invalid`), der Handler zeigt eine Warnung; der n-Clamp in
+  `generateAndSave` ist zusätzlich NaN-sicher (hand-editierte Settings-Datei).
+  `parseImagegenArgs` exportiert, in Test [8] gepinnt.
+- **#3 (State-Race) zurückgezogen** — Review-Fehler: `learnCost`/
+  `rememberLastGood` sind synchron, im single-threaded JS ist load-modify-write
+  damit atomar; in-process geht nichts verloren. Cross-session gilt weiter
+  last-writer-wins (unverändert, akzeptabel). Lehre: vor „Race!" die
+  Event-Loop-Semantik prüfen — sync Code rast nicht.
+- #2 (dynamische Modell-IDs in der Beschreibung) bewusst verworfen — die
+  Fallback-Kette fängt ID-Rotte ab, dynamische Descriptions wären Komplexität
+  für Kosmetik. #4 (402-Präzision) auf Nutzer-Entscheid entfallen (402 ist
+  sichtbar genug).
+
 ### imagegen 1.1.0 — Stabilitäts-Paket: Fetch-Caps, Auth-Klasse, Offline-Integrationstest
 - **Fetch-Timeouts**: jeder ausgehende Fetch gedeckelt (Generierung 180 s,
   Katalog 15 s, per handgerolltem AbortSignal-Kombinator — `AbortSignal.any`

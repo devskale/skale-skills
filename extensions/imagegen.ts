@@ -62,7 +62,7 @@ const execFileAsync = promisify(execFile);
 // ── Version ──────────────────────────────────────────────────────────────────
 // Shipped in the notify lines and the /imagegen help so a bug report can name the
 // build. Bump on any behaviour change (same convention as xmodel/image-slim).
-const VERSION = "1.1.0";
+const VERSION = "1.1.1";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -623,7 +623,8 @@ async function suggestSwitch(provider: string, current: string): Promise<string>
 export async function generateAndSave(opts: GenOpts): Promise<GenResult> {
 	const settings = getSettings();
 	const size = (opts.size || settings.size || DEFAULT_SIZE).trim();
-	const n = Math.max(1, Math.min(4, Math.floor(opts.n ?? settings.n ?? 1)));
+	const nReq = Math.floor(opts.n ?? settings.n ?? 1);
+	const n = Number.isFinite(nReq) ? Math.max(1, Math.min(4, nReq)) : 1;
 
 	// Resolve the model. Explicit --model wins; then the user's settings-menu
 	// choice; then the stored last-good model for the provider; else the
@@ -858,28 +859,43 @@ async function maybeAscii(saved: ImageItem[], model: unknown): Promise<string | 
 	return results.map((r, i) => (r.ok ? r.art : `(unable to render preview; see ${saved[i].path})`)).join("\n\n");
 }
 
-/** Parse `/imagegen` arg string: flags + free-form prompt. */
-function parseImagegenArgs(raw: string): { prompt: string; model?: string; size?: string; n?: number; seed?: number } {
+/** Parse `/imagegen` arg string: flags + free-form prompt.
+ *
+ *  Invalid numeric flag values (`-n two`, `--seed=abc`) are DROPPED and
+ *  reported in `invalid` instead of silently coerced: Number("two") is NaN,
+ *  NaN survives the clamp, the loop never runs, and the user got a
+ *  misleading "no images returned". */
+export function parseImagegenArgs(raw: string): { prompt: string; model?: string; size?: string; n?: number; seed?: number; invalid?: string[] } {
 	const tokens = raw.split(/\s+/);
 	const promptParts: string[] = [];
+	const invalid: string[] = [];
 	let model: string | undefined;
 	let size: string | undefined;
 	let n: number | undefined;
 	let seed: number | undefined;
+	const num = (flag: string, v: string | undefined): number | undefined => {
+		if (v == null) return undefined;
+		const x = Number(v);
+		if (!Number.isFinite(x)) {
+			invalid.push(`${flag} ${v}`);
+			return undefined;
+		}
+		return x;
+	};
 	for (let i = 0; i < tokens.length; i++) {
 		const t = tokens[i];
 		const next = (): string | undefined => tokens[++i];
 		if (t === "--model" || t === "-m") model = next();
 		else if (t === "--size" || t === "-s") size = next();
-		else if (t === "--n" || t === "-n") n = next() ? Number(tokens[i]) : undefined;
-		else if (t === "--seed") seed = next() ? Number(tokens[i]) : undefined;
+		else if (t === "--n" || t === "-n") n = num("--n", next());
+		else if (t === "--seed") seed = num("--seed", next());
 		else if (t.startsWith("--model=")) model = t.slice(8);
 		else if (t.startsWith("--size=")) size = t.slice(7);
-		else if (t.startsWith("--n=")) n = Number(t.slice(4));
-		else if (t.startsWith("--seed=")) seed = Number(t.slice(7));
+		else if (t.startsWith("--n=")) n = num("--n=", t.slice(4));
+		else if (t.startsWith("--seed=")) seed = num("--seed=", t.slice(7));
 		else promptParts.push(t);
 	}
-	return { prompt: promptParts.join(" ").trim(), model, size, n, seed };
+	return { prompt: promptParts.join(" ").trim(), model, size, n, seed, invalid: invalid.length ? invalid : undefined };
 }
 
 // ── Extension ────────────────────────────────────────────────────────────────
@@ -1144,7 +1160,10 @@ export default function imagegenExtension(pi: ExtensionAPI) {
 			await runSettingsMenu(ctx);
 			return;
 		}
-		const { prompt, model, size, n, seed } = parseImagegenArgs(raw);
+		const { prompt, model, size, n, seed, invalid } = parseImagegenArgs(raw);
+		if (invalid?.length) {
+			ctx.ui.notify(`imagegen: ignoring non-numeric value${invalid.length > 1 ? "s" : ""}: ${invalid.join(", ")}`, "warning");
+		}
 		if (!prompt) {
 			ctx.ui.notify("imagegen: no prompt given", "warning");
 			return;

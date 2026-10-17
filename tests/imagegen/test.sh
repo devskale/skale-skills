@@ -244,7 +244,7 @@ process.env.HOME = home;
 delete process.env.UNIINFER_API_KEY;
 process.env.UNIINFER_PROXY_URL = `http://127.0.0.1:${process.argv[3]}/v1`;
 
-const { generateAndSave, isAuthRejected } = require("JSDIR/imagegen.js");
+const { generateAndSave, isAuthRejected, parseImagegenArgs } = require("JSDIR/imagegen.js");
 const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "imgen-out-"));
 
 (async () => {
@@ -255,6 +255,13 @@ const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "imgen-out-"));
               && !isAuthRejected("proxy returned 500 Internal Server Error");
     console.log(`classifier-pin: ${pin}`);
     if (!pin) bad++;
+
+    // Parser guard: non-numeric -n/--seed are dropped + reported, prompt survives.
+    const p = parseImagegenArgs("-n two --seed=abc a red cube --size 64x64");
+    const parseOk = p.prompt === "a red cube" && p.size === "64x64"
+        && p.n === undefined && p.seed === undefined && p.invalid && p.invalid.length === 2;
+    console.log(`parse-guard: ${parseOk} ${JSON.stringify(p.invalid)}`);
+    if (!parseOk) bad++;
 
     if (keyMode === "sk-test-dead") {
         // Auth-rejection path: emergency fires (may SUCCEED with network — fine);
