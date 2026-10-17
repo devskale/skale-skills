@@ -46,6 +46,19 @@ of them live in [modules.md](modules.md) (the base) and [promptlib.md](promptlib
 
 ## mermaid.html — graph-shaped content
 
+Header (kicker/title/intent/legend) · `mermaid-card` sections holding `<pre class="mermaid">`
+sources (Mermaid from CDN, `theme:"neutral"`) · house card grid · provenance footer.
+CDN track: needs network at view time.
+
+## pele.html — graph-shaped content, house-themeable
+
+Same anatomy as `mermaid.html`, but renders the `<pre class="pele">` blocks with
+[pele](https://pele.run/) from CDN (`render()` per block, `PeleError` → `textContent`).
+The pele color tokens are CSS variables mapped onto the house tokens in `:root`, so the
+diagram recolors with the skin without re-render. CDN track: needs network at view time.
+Template of choice when diagrams should feel native to the house; fall back to
+`mermaid.html` for Mermaid-specific features.
+
 - `mermaid-card`s (white card, scrollable) each holding one `pre.mermaid` graph;
   hand-built `card`s for everything non-graph.
 - The scaffold ships `.seam`/`.leak`/`.deep` classDef helpers — diagram semantics, colour

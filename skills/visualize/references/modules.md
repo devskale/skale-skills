@@ -209,6 +209,43 @@ Keep page layout in the base CSS (house tokens); Mermaid only renders the diagra
 </div>
 ```
 
+### pele — the house-themeable diagram module
+Same job as `mermaid` (Mermaid syntax, graph-shaped content), but renders via
+[pele](https://pele.run/) (MIT, Obsidian): zero deps, 6× smaller, ~0.1 ms renders, and
+**theming through CSS variables mapped onto the house tokens** — diagrams recolor with
+the skin, no re-render, no `themeVariables` config. **Needs network** too (CDN).
+
+```html
+<script type="module">
+  import { render, PeleError } from "https://cdn.jsdelivr.net/npm/pele@1/+esm";
+  document.querySelectorAll("pre.pele").forEach((el, i) => {
+    try {
+      const { svg } = render(el.textContent, { idPrefix: `pele-${i}-` });
+      el.outerHTML = svg;
+    } catch (error) {
+      if (!(error instanceof PeleError)) throw error;
+      el.textContent = error.message; // error text carries diagram source → textContent only
+    }
+  });
+</script>
+<style>
+  /* pele theming mapped onto house tokens */
+  :root{--pele-bg:var(--paper);--pele-fg:var(--ink);--pele-muted:var(--muted);--pele-line:var(--ink);
+    --pele-surface:#fff;--pele-surface-alt:var(--paper-2);--pele-border:var(--line)}
+</style>
+<div class="diagram-card">
+  <pre class="pele">flowchart LR
+    A[{{A}}] --> B[{{B}}]
+    B --> C[{{C}}]</pre>
+</div>
+```
+
+When to prefer `pele` over `mermaid`: pages that should feel like the house (theme
+follows the skin tokens), mobile/narrow targets (`responsive` + `maxWidth` re-layout
+instead of scaling), many small diagrams (fast sync renders). Prefer `mermaid` for
+Mermaid-specific features (ZenUML, arbitrary HTML labels) — see the
+[compatibility matrix](https://pele.run/compatibility).
+
 ### footer
 Provenance footer.
 

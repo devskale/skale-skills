@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>visualize — one system, four moods</title>
+<!--
+  visualize house skin v3 · THE four flavors on one page.
+  Same components in four frames — each frame scoped to its flavor token set
+  (values 1:1 from templates/skin.html). This page IS the skin demo.
+  Source of truth: this file; PNG exports are derived.
+-->
+<style>
+  *{ box-sizing:border-box }
+  body{
+    margin:0; background:#ececea; color:#211d19;
+    font:15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding:52px 24px 48px;
+  }
+  .wrap{ max-width:920px; margin:0 auto }
+  .kicker{ font-family:ui-monospace,Menlo,monospace; font-size:11.5px; font-weight:700;
+           letter-spacing:.14em; text-transform:uppercase; color:#0d6e64 }
+  h1{ font-size:clamp(30px,5vw,40px); line-height:1.08; letter-spacing:-.025em;
+      font-weight:800; margin:10px 0 10px }
+  .sub{ color:#82796e; font-size:16px; line-height:1.5; max-width:56ch; margin:0 0 34px }
+
+  /* ═══ flavor token sets — scoped copies of skin.html (1:1 values) ═══ */
+  .f{ border-radius:14px; padding:26px 28px 22px; margin:0 0 18px;
+      border:1px solid rgba(0,0,0,.08); box-shadow:0 1px 3px rgba(0,0,0,.06) }
+  .f-paper{ --paper:#faf8f5; --card:#fff; --soft:#f2efe9; --ink:#211d19; --muted:#82796e;
+            --line:#e3ddd2; --cat-1:#0d6e64; --radius:12px;
+            --shadow:0 1px 2px rgba(60,50,30,.05) }
+  .f-swiss{ --paper:#f4f4f2; --card:#fff; --soft:#e9e9e6; --ink:#111; --muted:#666;
+            --line:#d8d8d4; --cat-1:#d43d2a; --radius:0px; --shadow:none }
+  .f-terminal{ --paper:#141210; --card:#1d1a17; --soft:#26221e; --ink:#e9e2d6; --muted:#96897a;
+               --line:#3a342c; --cat-1:#4ade80; --radius:4px; --shadow:none }
+  .f-blueprint{ --paper:#f1f3f2; --card:#fbfcfc; --soft:#e6eae8; --ink:#1e2b28; --muted:#5f7370;
+                --line:#c9d4d0; --cat-1:#0e7490; --radius:2px; --shadow:none }
+
+  /* ═══ the shared mini-page: same components in every frame ═══ */
+  .f{ background:var(--paper); color:var(--ink) }
+  .f .tag{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px; letter-spacing:.1em;
+           text-transform:uppercase; color:var(--muted); display:flex;
+           justify-content:space-between; margin-bottom:14px }
+  .f .tag b{ color:var(--cat-1); font-weight:700 }
+  .f h2{ font-size:21px; font-weight:800; letter-spacing:-.015em; margin:0 0 3px; line-height:1.15 }
+  .f .fsub{ color:var(--muted); font-size:13px; margin:0 0 14px }
+  .f .rule{ height:2px; background:var(--ink); margin:0 0 14px }
+  .f .row{ display:grid; grid-template-columns:1.5fr 1fr; gap:12px; align-items:stretch }
+  .f .mini-card{ background:var(--card); border:1px solid var(--line);
+                 border-radius:var(--radius); padding:12px 14px }
+  .f .mini-card h3{ font-size:13px; font-weight:700; margin:0 0 4px }
+  .f .mini-card p{ color:var(--muted); font-size:12px; margin:0 0 8px }
+  .f .dot{ display:inline-block; width:8px; height:8px; border-radius:2px;
+           background:var(--cat-1); margin-right:6px }
+  .f .pill{ display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px;
+            font-weight:650; background:var(--soft); border:1px solid var(--line) }
+  .f table{ border-collapse:collapse; width:100%; font-size:12px }
+  .f th{ text-align:left; font-size:9.5px; font-weight:700; letter-spacing:.07em;
+         text-transform:uppercase; color:var(--muted); padding:6px 9px; background:var(--soft) }
+  .f td{ padding:6px 9px; border-bottom:1px solid var(--soft);
+         font-variant-numeric:tabular-nums }
+  .f tr:last-child td{ border-bottom:none }
+  .f .ok{ color:#1a7f4b } .f-terminal .ok{ color:#4ade80 }
+
+  /* per-flavor personality (component tweaks from skin.html) */
+  .f-swiss h2{ font-weight:900; letter-spacing:-.03em }
+  .f-swiss .fsub, .f-swiss .mini-card h3{ text-transform:uppercase; letter-spacing:.08em }
+  .f-terminal .f *{ }
+  .f-terminal, .f-terminal .row, .f-terminal .mini-card, .f-terminal table{  }
+  .f-terminal{ font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:13px }
+  .f-terminal .tag b{ color:var(--cat-1) }
+  .f-blueprint .mini-card{ border-style:dashed; border-color:#b7c6c0 }
+  .f-blueprint .tag b{ color:var(--cat-1) }
+
+  footer{ margin-top:26px; padding-top:14px; border-top:2px solid #211d19;
+          display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+          font-size:12.5px; color:#82796e }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">visualize · house skin v3</div>
+  <h1>One system, four moods</h1>
+  <p class="sub">The same components — kicker, title, rule, card, pill, table — restyled
+     wholesale by a single <code>data-skin</code> attribute. Pick the mood that fits the
+     subject; the structure stays identical.</p>
+
+  <div class="f f-paper">
+    <div class="tag"><b>paper</b><span>editorial — reports &amp; explainers</span></div>
+    <h2>Your real Chrome, driven from the shell</h2>
+    <p class="fsub">warm editorial default · the workhorse for most pages</p>
+    <div class="rule"></div>
+    <div class="row">
+      <div class="mini-card">
+        <h3><span class="dot"></span>No debug port needed</h3>
+        <p>AppleScript is the native lane — Chrome 136+ port lockdown never applies.</p>
+        <span class="pill">zero deps</span>
+      </div>
+      <table>
+        <tr><th>cmd</th><th>result</th></tr>
+        <tr><td>tabs</td><td class="ok">list</td></tr>
+        <tr><td>text h1</td><td class="ok">read</td></tr>
+        <tr><td>assert</td><td class="ok">exit 0/1</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="f f-swiss">
+    <div class="tag"><b>swiss</b><span>poster grid — stats &amp; comparisons</span></div>
+    <h2>Your real Chrome, driven from the shell</h2>
+    <p class="fsub">one red accent · uppercase labels · punch</p>
+    <div class="rule"></div>
+    <div class="row">
+      <div class="mini-card">
+        <h3><span class="dot"></span>No debug port needed</h3>
+        <p>AppleScript is the native lane — Chrome 136+ port lockdown never applies.</p>
+        <span class="pill">zero deps</span>
+      </div>
+      <table>
+        <tr><th>cmd</th><th>result</th></tr>
+        <tr><td>tabs</td><td class="ok">list</td></tr>
+        <tr><td>text h1</td><td class="ok">read</td></tr>
+        <tr><td>assert</td><td class="ok">exit 0/1</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="f f-terminal">
+    <div class="tag"><b>terminal</b><span>phosphor — infra, CLI, logs</span></div>
+    <h2>Your real Chrome, driven from the shell</h2>
+    <p class="fsub">dark · mono · for pages that feel like a console</p>
+    <div class="rule"></div>
+    <div class="row">
+      <div class="mini-card">
+        <h3><span class="dot"></span>No debug port needed</h3>
+        <p>AppleScript is the native lane — Chrome 136+ port lockdown never applies.</p>
+        <span class="pill">zero deps</span>
+      </div>
+      <table>
+        <tr><th>cmd</th><th>result</th></tr>
+        <tr><td>tabs</td><td class="ok">list</td></tr>
+        <tr><td>text h1</td><td class="ok">read</td></tr>
+        <tr><td>assert</td><td class="ok">exit 0/1</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="f f-blueprint">
+    <div class="tag"><b>blueprint</b><span>technical drawing — architecture</span></div>
+    <h2>Your real Chrome, driven from the shell</h2>
+    <p class="fsub">dashed frames · mono labels · drawing-sheet calm</p>
+    <div class="rule"></div>
+    <div class="row">
+      <div class="mini-card">
+        <h3><span class="dot"></span>No debug port needed</h3>
+        <p>AppleScript is the native lane — Chrome 136+ port lockdown never applies.</p>
+        <span class="pill">zero deps</span>
+      </div>
+      <table>
+        <tr><th>cmd</th><th>result</th></tr>
+        <tr><td>tabs</td><td class="ok">list</td></tr>
+        <tr><td>text h1</td><td class="ok">read</td></tr>
+        <tr><td>assert</td><td class="ok">exit 0/1</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <span>visualize · house skin v3 · four flavors, one file</span>
+    <span>templates/skin.html · data-skin="paper|swiss|terminal|blueprint"</span>
+  </footer>
+</div>
+</body>
+</html>

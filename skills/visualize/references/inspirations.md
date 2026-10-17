@@ -36,4 +36,27 @@ with our own NO-AI-generated-accents principle.
 
 ---
 
+## [Pele](https://pele.run/)
+
+**Mermaid-syntax diagrams as themeable SVG — zero dependencies, 6× smaller, up to 500×
+faster than Mermaid.js.** Open source ([obsidianmd/pele](https://github.com/obsidianmd/pele)),
+built for Obsidian to render diagrams quickly and match the vault theme. Theming via CSS
+variables (`--pele-bg`, `--pele-fg`, `--pele-surface`, …) that recolor without re-render;
+supports every diagram type in Mermaid 12.1.0 ([compatibility](https://pele.run/compatibility)).
+
+**Why it's here:** a direct competitor to the Mermaid-by-CDN path our HTML output takes —
+and its homepage is itself a strong single-page demo (live editor, honest benchmark table,
+editorial warm-paper palette). Both are worth studying.
+
+**Steal / compare:**
+- **Theming model:** CSS variables that restyle without re-render vs. our skin tokens —
+  naming, granularity, and what they let users override per-diagram.
+- **Renderer swap candidate:** 230 kB / 0.05–0.3 ms vs. Mermaid.js 1.6 MB / 6–82 ms —
+  where does `pele` from a CDN (or inlined) beat `mermaid` for our self-contained pages?
+  Check the [compatibility matrix](https://pele.run/compatibility) for diagram-type gaps first.
+- **Homepage craft:** the benchmark table (Pele vs. Mermaid.js) as an honest-comparison
+  pattern; live-edit playground as the hero element.
+
+---
+
 > More inspirations to be added later.

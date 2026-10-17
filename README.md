@@ -72,7 +72,7 @@ Five skills are production-hardened — full docs and flow diagrams (most ship t
 ⭐ **No daemon, no debug port, no extension, no per-connection “Allow remote debugging?” dialog.** 30+ commands, CI assertions, `--json`, zero deps.
 
 <p align="center">
-  <img src="docs/diagrams/surf-flow.svg" alt="surf flow" width="560">
+  <img src="docs/diagrams/surf-flow.png" alt="surf flow — how a command reaches your real Chrome" width="560">
 </p>
 
 ```bash
@@ -89,7 +89,7 @@ surf wait ".result" && surf assert '...' '5'    # exit 1 on fail
 Public SearXNG out-of-the-box (or private via `credgoo searx`); optional Duck API (`credgoo WEB_SEARCH_BEARER`) for advanced filters. Images, news, videos.
 
 <p align="center">
-  <img src="docs/images/web-search.png" alt="web-search flow" width="560">
+  <img src="docs/diagrams/web-search-flow.png" alt="web-search — backend auto-select" width="560">
 </p>
 
 ```bash
@@ -105,7 +105,7 @@ web-search "openai" --time-range week
 Readable text from any page; auto-selects the best tool with smart fallback (`w3m`/`lynx`/`chawan` + reader APIs). Works on Reddit, StackOverflow, GitHub, docs.
 
 <p align="center">
-  <img src="docs/images/fetch-url.png" alt="fetch-url flow" width="560">
+  <img src="docs/diagrams/fetch-url-flow.png" alt="fetch-url — the fallback chain" width="560">
 </p>
 
 ```bash
@@ -128,6 +128,13 @@ Write a small spec (nodes + edges + numbered step badges), get a consistent **ha
 ### 🖼 `visualize` — one self-contained HTML, one stable URL
 
 Turn any set of things into **one self-contained HTML page** — report, comparison, block diagram, timeline — and share it with a URL that **stays valid while you edit**: the pin ledger maps each file to its URL, re-sharing is a PUT in place.
+
+<p align="center">
+  <img src="docs/diagrams/visualize-flavors.png" alt="visualize — one system, four skin flavors" width="560">
+</p>
+<p align="center">
+  <img src="docs/diagrams/visualize-showcase.png" alt="visualize — every pattern on one page" width="560">
+</p>
 
 - **House skin v3, four flavors** — `paper` (editorial), `swiss` (poster stats), `terminal` (infra/CLI), `blueprint` (architecture). Style by construction: start from the skin, not blank CSS.
 - **`visualize gate`** — all quality gates in parallel behind one command (self-contained check, slop lint, dataviz integrity, JS syntax); exit 1 if any fails.

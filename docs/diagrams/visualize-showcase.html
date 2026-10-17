@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>visualize — every pattern, one page</title>
+<!--
+  visualize house skin v3 · flavor: paper (editorial)
+  Subject: visualize demonstrating itself — the four module patterns on one page:
+  a pele diagram, the card grid, an honest CSS barchart (real benchmark data),
+  and a process timeline. All data real (repo + pele.run, Oct 2026).
+  Source of truth: this file; PNG exports are derived.
+-->
+<script type="module">
+  // pele: Mermaid syntax → themeable SVG (MIT · github.com/obsidianmd/pele)
+  import { render, PeleError } from "https://cdn.jsdelivr.net/npm/pele@1/+esm";
+  document.querySelectorAll("pre.pele").forEach((el, i) => {
+    try {
+      const { svg } = render(el.textContent, { idPrefix: `pele-${i}-` });
+      el.outerHTML = svg;
+    } catch (error) {
+      if (!(error instanceof PeleError)) throw error;
+      el.textContent = error.message; // error text carries diagram source → textContent only
+    }
+  });
+</script>
+<style>
+  :root{
+    --paper:#faf8f5; --card:#fff; --soft:#f2efe9;
+    --ink:#211d19;   --muted:#82796e; --line:#e3ddd2;
+    --cat-1:#0d6e64; --cat-2:#1e4fbf; --cat-3:#a05a12;
+    --ok:#1a7f4b; --warn:#b45309; --bad:#c0262d;
+    --radius:12px; --shadow:0 1px 2px rgba(60,50,30,.05);
+  }
+  :root{--pele-bg:var(--paper);--pele-fg:var(--ink);--pele-muted:var(--muted);--pele-line:var(--ink);
+    --pele-surface:var(--card);--pele-surface-alt:var(--soft);--pele-border:var(--line)}
+  *{ box-sizing:border-box }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding:56px 24px 48px;
+  }
+  .wrap{ max-width:920px; margin:0 auto }
+  header{ margin-bottom:8px }
+  header::after{ content:""; display:block; height:3px; background:var(--ink); margin-top:20px }
+  .kicker{ font-family:ui-monospace,Menlo,monospace; font-size:11.5px; font-weight:700;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--cat-1) }
+  h1{ font-size:clamp(30px,5vw,40px); line-height:1.08; letter-spacing:-.025em;
+      font-weight:800; margin:10px 0 10px }
+  .sub{ color:var(--muted); font-size:16px; line-height:1.5; max-width:56ch; margin:0 }
+  .meta{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-top:12px }
+  h2{ font-size:13px; font-weight:700; letter-spacing:.02em; margin:44px 0 14px;
+      display:flex; align-items:baseline; gap:10px;
+      border-top:2px solid var(--ink); padding-top:12px }
+  h2 .idx{ font-family:ui-monospace,Menlo,monospace; font-size:12px; font-weight:700; color:var(--cat-1) }
+  .diagram-card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+                 padding:18px 20px; overflow-x:auto }
+  .grid{ display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)) }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+         padding:16px 18px; box-shadow:var(--shadow) }
+  .card h3{ font-size:14.5px; font-weight:700; margin:0 0 5px }
+  .card h3 .dot{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:7px }
+  .card p{ color:var(--muted); font-size:13px; margin:0 }
+  .card code{ font-family:ui-monospace,Menlo,monospace; font-size:12px;
+              background:var(--soft); border:1px solid var(--line); border-radius:3px; padding:0 4px }
+  /* barchart — zero baseline, width ∝ value, values as text, one accent bar */
+  .chart{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+          padding:20px 22px }
+  .chart h3{ font-size:14.5px; font-weight:700; margin:0 0 2px }
+  .chart .src{ font-size:12px; color:var(--muted); margin:0 0 16px }
+  .bar-row{ display:grid; grid-template-columns:110px 1fr 84px; gap:10px; align-items:center;
+            margin:10px 0; font-size:13px }
+  .bar-track{ position:relative; height:26px; background:var(--soft); border-radius:4px }
+  .bar{ position:absolute; left:0; top:0; bottom:0; background:var(--ink); border-radius:4px 3px 3px 4px }
+  .bar.acc{ background:var(--cat-1) }
+  .bar-val{ text-align:right; font-variant-numeric:tabular-nums; font-weight:700; font-size:13px }
+  table{ border-collapse:collapse; width:100%; font-size:13px; margin-top:14px }
+  th{ text-align:left; font-size:11px; font-weight:700; letter-spacing:.07em;
+      text-transform:uppercase; color:var(--muted); padding:8px 12px; background:var(--soft) }
+  td{ padding:8px 12px; border-bottom:1px solid var(--soft); font-variant-numeric:tabular-nums }
+  tr:last-child td{ border-bottom:none }
+  /* timeline — vertical spine + step dots + now marker */
+  .steps{ position:relative; margin-left:6px; padding-left:26px }
+  .steps::before{ content:""; position:absolute; left:0; top:6px; bottom:6px; width:2px;
+                  background:var(--line) }
+  .step{ position:relative; margin:0 0 14px }
+  .step::before{ content:""; position:absolute; left:-30px; top:5px; width:10px; height:10px;
+                 border-radius:50%; background:var(--card); border:2px solid var(--cat-1) }
+  .step.now::before{ background:var(--cat-1) }
+  .step h3{ font-size:14px; font-weight:700; margin:0 0 2px }
+  .step p{ color:var(--muted); font-size:13px; margin:0 }
+  .pill{ display:inline-flex; align-items:center; gap:6px; padding:1px 10px;
+         border-radius:999px; font-size:11.5px; font-weight:650;
+         background:var(--soft); border:1px solid var(--line); margin-left:8px }
+  footer{ margin-top:44px; padding-top:14px; border-top:2px solid var(--ink);
+          display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+          font-size:12.5px; color:var(--muted) }
+</style>
+</head>
+<body data-skin="paper">
+<div class="wrap">
+
+  <header>
+    <div class="kicker">visualize · pattern showcase</div>
+    <h1>Every pattern, one page, one file</h1>
+    <p class="sub">This page demonstrates the visualize module catalog on itself: a diagram,
+       a card grid, an honest barchart, and a process timeline — all in one self-contained
+       HTML file with real data.</p>
+    <div class="meta">data: repo + pele.run benchmark · Oct 2026 · house skin v3 · paper</div>
+  </header>
+
+  <h2><span class="idx">01</span>diagrams — pele, Mermaid syntax, house-themed</h2>
+  <div class="diagram-card">
+    <pre class="pele">
+      flowchart LR
+        B[Build page<br/>from skin] --> G[Gate — 4 checks in parallel]
+        G --> V[validate]
+        G --> S[slop lint]
+        G --> C[chartcheck]
+        G --> J[jscheck]
+        V --> P{all pass?}
+        S --> P
+        C --> P
+        J --> P
+        P -- no --> F[Fix · failures are loud] --> G
+        P -- yes --> SH([Share · stable URL])
+    </pre>
+  </div>
+
+  <h2><span class="idx">02</span>cards — the four gates</h2>
+  <div class="grid">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--cat-1)"></span>validate</h3>
+      <p>One self-contained file — local refs fail, popular CDNs pass.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--cat-2)"></span>slop lint</h3>
+      <p>AI-tells fail the share: edge accents, violet fills, circle badges.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--cat-3)"></span>chartcheck</h3>
+      <p>Dataviz integrity: zero baseline, honest scales, source notes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--muted)"></span>jscheck</h3>
+      <p>Every inline script parsed — syntax errors and TDZ violations fail.</p>
+    </div>
+  </div>
+
+  <h2><span class="idx">03</span>data — bars ∝ value, zero baseline</h2>
+  <div class="chart">
+    <h3>Renderer bundle, gzipped</h3>
+    <p class="src">source: pele.run benchmark table (Mermaid 12 vs pele 1.6) · Oct 2026 · linear scale</p>
+    <div class="bar-row">
+      <span>pele</span>
+      <div class="bar-track"><div class="bar acc" style="width:14.4%"></div></div>
+      <span class="bar-val">230 kB</span>
+    </div>
+    <div class="bar-row">
+      <span>mermaid.js</span>
+      <div class="bar-track"><div class="bar" style="width:100%"></div></div>
+      <span class="bar-val">1.6 MB</span>
+    </div>
+    <table>
+      <tr><th></th><th>bundle (gzip)</th><th>render time</th><th>deps</th></tr>
+      <tr><td>pele</td><td>230 kB</td><td>0.05–0.3 ms</td><td>0</td></tr>
+      <tr><td>mermaid.js</td><td>1.6 MB</td><td>6–82 ms</td><td>23</td></tr>
+    </table>
+  </div>
+
+  <h2><span class="idx">04</span>timeline — how a page ships</h2>
+  <div class="steps">
+    <div class="step">
+      <h3>Build <span class="pill">skin first</span></h3>
+      <p>Copy the skin, pick a flavor, fill modules — never blank CSS.</p>
+    </div>
+    <div class="step">
+      <h3>Gate <span class="pill">4 checks · parallel</span></h3>
+      <p>One command, exit 1 if anything fails. Failures are loud by design.</p>
+    </div>
+    <div class="step now">
+      <h3>Share <span class="pill">stable URL</span></h3>
+      <p>The pin ledger maps file → URL; re-sharing edits in place.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>visualize pattern showcase · all data real</span>
+    <span>house skin v3 · data-skin="paper" · diagram by pele</span>
+  </footer>
+</div>
+</body>
+</html>

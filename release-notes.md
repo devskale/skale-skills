@@ -1,5 +1,29 @@
 ## Unreleased
 
+### visualize — pele als Diagramm-Renderer (neues Template `pele.html`)
+- **pele** ([pele.run](https://pele.run/), MIT, Obsidian) rendert Mermaid-Syntax als
+  themeable SVG: zero deps, 6× kleiner, ~0,1 ms statt 6–82 ms. Neues CDN-Template
+  `templates/pele.html` — gleiche Anatomie wie `mermaid.html`, aber die pele-Farben
+  sind CSS-Variablen (`--pele-*`), die in `:root` auf die House-Tokens gemappt sind:
+  Diagramme folgen dem Skin ohne Re-Render.
+- `references/modules.md`: neues Modul `pele` mit Wann-pele/wann-mermaid-Regel
+  (House-Feeling, mobile `responsive`/`maxWidth`, viele kleine Diagramme → pele;
+  ZenUML/HTML-Labels → mermaid). `templates/README.md` + `scaffolds.md` registriert,
+  Test-Suite lintet/validiert/jscheckt das neue Template.
+- Smoke (rodney, file://): Flowchart + Sequenzdiagramm 2/2 in 20 ms gerendert,
+  theming greift, `supports("gantt")=true`. Integration in `inspirations.md` →
+  adoption vollzogen (Steal-Item „Renderer swap candidate" umgesetzt).
+- **README-Refresh — super images:** alle Flow-Bilder durch visualize-Seiten ersetzt
+  (HTML = Source of Truth, PNG derived via rodney-Screenshot auf Seitennhöhe):
+  `web-search-flow` / `fetch-url-flow` / `surf-flow` (paper flavor, pele-Diagramme) ersetzen
+  die alten figure-PNGs bzw. die D2-SVG; visualize-Sektion bekommt zwei Selbst-Demos —
+  `visualize-flavors` („One system, four moods": alle 4 Skin-Flavors im selben Bild,
+  Token-Sets 1:1 aus skin.html) und `visualize-showcase` (alle Muster auf einer Seite:
+  pele-Diagramm, Karten-Grid, ehrlicher Barchart mit echten pele-vs-mermaid-Daten,
+  Prozess-Timeline). Alle Seiten durch `visualize gate` (validate/slop/chartcheck/jscheck)
+  gegrünt, PNGs vision-verifiziert; `docs/skill-diagrams.md` dokumentiert die neue
+  Pipeline (Legacy figure/D2 bleibt verlinkt). docs-Integrity: PASS 46 FAIL 0.
+
 ### imagegen 1.1.1 — P3-Express: Parser-Guard (nur #1); #3 zurückgezogen
 - `-n two` / `--seed=abc`: NaN floss still in die Loop und endete als irreführendes
   „no images returned". Der Parser verwirft nicht-numerische Werte jetzt und

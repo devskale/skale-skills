@@ -14,6 +14,7 @@ in [../references/scaffolds.md](../references/scaffolds.md).
 | [`system-map.html`](system-map.html) | Inline CSS, editorial | Multi-repo / multi-service platform | Multi-panel: topology, pipeline, fleet |
 | [`report.html`](report.html) | Inline CSS, editorial | A structured document | Kicker, exec summary, numbered sections, recommendations, TOC |
 | [`mermaid.html`](mermaid.html) | **Mermaid (CDN)** | Graph-shaped content, polished Pocock-style | Loads Mermaid from CDN — needs network; use for complex graphs |
+| [`pele.html`](pele.html) | **pele (CDN)** | Graph-shaped content, Mermaid syntax | Mermaid syntax via pele (MIT, Obsidian) — 6× smaller, themeable via CSS variables mapped to house tokens; needs network; check the [compatibility matrix](https://pele.run/compatibility) for exotic types |
 | [`tailwind-report.html`](tailwind-report.html) | **Tailwind (CDN)** | Irregular report layouts, Pocock-style candidate cards | Utilities as syntax, house tokens as vocabulary (config maps ink/paper/severity); critical CSS kills the flash; needs network |
 | [`timeline.html`](timeline.html) | Inline CSS, editorial | Sequence: roadmap, changelog, phases, history | Vertical spine + type dots (legend hue) + `now` marker |
 | [`before-after.html`](before-after.html) | Inline CSS, editorial | Migration, refactor, "what would change" | Two-column −/+ delta + paired trace with first-divergence marker |
@@ -24,14 +25,19 @@ in [../references/scaffolds.md](../references/scaffolds.md).
 
 - **Inline-CSS templates** (`cards`, `repo-tree`, `system-map`, `report`) — zero external
   deps, work fully offline, truly self-contained. Use these by default.
-- **CDN templates** (`mermaid.html`, `tailwind-report.html`) — one framework loaded from
+- **CDN templates** (`mermaid.html`, `pele.html`, `tailwind-report.html`) — one library loaded from
   CDN at view time. Network at view time is the accepted contract (a shared URL is a web
-  page like any other). Use when the content is genuinely graph-shaped (Mermaid) or the
+  page like any other). Use when the content is genuinely graph-shaped (Mermaid/pele) or the
   per-page layout is irregular enough that utilities beat the inline module catalog
   (Tailwind). The Tailwind track keeps the house tokens as semantic classes
   (`text-ink`, `bg-paper`, `text-ok`) via its inline `tailwind.config` — the house rules
   (dot + muted text categories, severity only where colour IS the data) apply
   unchanged. Pills are a taste call, not a gate (the linter reports them as info).
+- `pele.html` is the diagram default when the page should feel like the house: it accepts
+  the same Mermaid syntax but themes through CSS variables mapped onto the house tokens
+  (`--pele-bg: var(--paper)` …), so diagrams recolor with the skin without re-render.
+  Prefer it over `mermaid.html` unless you need Mermaid-specific features (ZenUML, HTML
+  labels) — pele's layout and limits differ; see [pele compatibility](https://pele.run/compatibility).
 - `mermaid.html` is adapted from the Pocock `improve-codebase-architecture` HTML-report
   scaffold; `tailwind-report.html` adopts its Tailwind scaffold directly.
 

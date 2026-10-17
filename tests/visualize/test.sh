@@ -107,7 +107,7 @@ if [ -f "$CF" ]; then
 fi
 
 # templates
-for t in cards repo-tree system-map report mermaid tailwind-report; do
+for t in cards repo-tree system-map report mermaid pele tailwind-report; do
     [ -f "$SKILL/templates/$t.html" ] && ok || bad "template $t.html missing"
 done
 
@@ -122,7 +122,7 @@ rm -rf "$(dirname "$PILLFILE")"
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
 # templates must pass their own gates (house style + self-contained + JS parses)
-for t in cards repo-tree system-map report mermaid tailwind-report timeline before-after cheatsheet barchart; do
+for t in cards repo-tree system-map report mermaid pele tailwind-report timeline before-after cheatsheet barchart; do
     check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
     check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
     check "jscheck template $t.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/templates/$t.html"
