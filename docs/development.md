@@ -32,8 +32,8 @@ To evaluate a skill from outside this repo (a GitHub find, a candidate for
 ```bash
 cd ~/code/skale-skills
 mkdir -p .pi/skills
-git clone --depth 1 https://github.com/<org>/<repo> /tmp/<repo>-src
-cp -r /tmp/<repo>-src/skills/<skill-name> .pi/skills/   # or the repo root if it IS the skill
+git clone --depth 1 https://github.com/<org>/<repo> .clones/<org>-<repo>   # staging (gitignored)
+cp -r .clones/<org>-<repo>/skills/<skill-name> .pi/skills/   # or the repo root if it IS the skill
 pi -p "do you see a skill called '<name>'? answer YES or NO"   # verify discovery
 ```
 
@@ -53,6 +53,33 @@ deprecated — it is someone else's code under live trial. Verdict after the tri
 [`watchlist.jsonl`](../watchlist.jsonl) (`status: review → adopted|rejected`, fill `verdict`);
 adopted skills get installed properly (upstream, per [RECOMMENDED-SKILLS.md](../RECOMMENDED-SKILLS.md)),
 not copied into this repo.
+
+### The playgrounding regime
+
+The testbed mechanics, turned into a deliberate practice. One session ≈ 30–60 min,
+five stages:
+
+1. **Stage** — `git clone --depth 1 <repo> .clones/<org>-<repo>` (gitignored).
+   `.clones/` is the read-only study shelf; testbed skills are copied *from* here.
+2. **Pick ≤ 3** — skim each candidate's SKILL.md; it must pass the one-thing test
+   (a clear job + explicit non-goals). More than 3 skills per session = diffusion.
+3. **Wire** — `cp -r .clones/<repo>/skills/<name> .pi/skills/`, then verify with
+   `pi -p "do you see a skill … YES or NO"`. Project-scope only.
+4. **Play real** — one micro-task per skill with *real content from this repo*
+   (e.g. `break-ui` against a visualize example page, `emil-design-eng` reviewing
+   one template). Timebox ~15 min per skill. No real task → no play.
+5. **Verdict + clean** — every play ends in a written verdict: one line in
+   [`watchlist.jsonl`](../watchlist.jsonl) (`status` + `verdict`); craft lessons go to the
+target skill's `references/inspirations.md`. Then `rm -rf .pi/skills/<name>` —
+   the testbed is ephemeral, re-wiring from `.clones/` takes seconds.
+
+**Rules:**
+
+- `.clones/` and `.pi/skills/` never reach a commit — both gitignored, never shipped.
+- Playground sessions don't edit this repo's skills during play — findings go to docs
+  first, code changes happen after the verdict (trial ≠ change).
+- The entertainment test: a session that produced no verdict line wasn't playgrounding.
+- Never vendor: adoption means installing from upstream (`npx skills add`, `openskills`).
 
 ### A. Session-only override (preferred — zero persistent state)
 

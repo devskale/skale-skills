@@ -250,6 +250,14 @@ Mermaid-specific features (ZenUML, arbitrary HTML labels) — see the
 parse error). `PeleError` messages quote the diagram source — always surface them
 via `textContent`, never `innerHTML`. Filled example: [examples/pele-gallery.html](../examples/pele-gallery.html).
 
+**Content budgets** (from a break-ui worst-case pass on the example — keep pages
+robust under real data): flowchart node labels wrapped via `<br/>` beyond ~20 chars,
+edge labels short; sequence ≤ 5 participants, short `as` aliases, long messages split
+or moved to notes; git-graph 7-char ids + short subjects; gantt task names ≤ ~30 chars,
+no `:`; pie ≤ 8 slices (group the tail into "other"); mindmap depth ≤ 4. The diagram
+card's `overflow-x:auto` is the pressure valve — wide content degrades to scroll,
+never overlap.
+
 ### footer
 Provenance footer.
 

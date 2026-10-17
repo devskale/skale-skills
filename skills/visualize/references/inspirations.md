@@ -59,4 +59,35 @@ editorial warm-paper palette). Both are worth studying.
 
 ---
 
+## [emilkowalski/skills](https://github.com/emilkowalski/skills)
+
+**„Skills for Designers and Engineers" (~47k ★) — 15 Skills, die Design-Expertise
+(Ex-Vercel/Linear) als Agent-Regeln kodieren.** Kernthese: *„Agents don't have great
+taste"* — die Skills listen die kleinen Fehler, die Agenten machen (ease-in für Entrances,
+solid borders statt semi-transparenter Schatten), und korrigieren sie mit konkreten
+Werten. Haupt-Skill: `emil-design-eng` (Animation + Design); dazu `break-ui`, `prototype`,
+`mobile-native`, `animate` u.a. — jedes macht ONE thing, mit expliziten Non-Goals und
+Sidecar-Dateien (RECIPES · CATALOG · STANDARDS · PICKER).
+
+**Why it's here:** gleiche Grundthese wie unser Slop-Gate — Geschmack als kodierbare
+Regeln statt Vibes — aber von der Motion-Seite her gedacht. Ihre Tabellen (Frequenz →
+Animieren ja/nein, Element → Dauer, Easing nach Zweck) sind genau unsere Token-Denkweise,
+angewandt auf Bewegung; `break-ui` ist das adversariales Gegenstück zu unseren Gates.
+
+**Steal / compare:**
+- **Motion-Tokens für interaktive Seiten:** `--ease-out: cubic-bezier(0.23,1,0.32,1)`,
+  160ms `:active` scale(0.97), Entrances nie `ease-in`, UI-Motion < 300ms — als
+  Rezept-Katalog (deren RECIPES.md) für visualize-Seiten mit Hover/Press-States.
+- **break-ui als Content-Gate:** Worst-Case-Daten vor dem Share — plausible Extremwerte
+  („Aleksandra Wiśniewska-Kowalczyk", 1.284 Members, „1 members", leere Liste) statt
+  Nonsense-Strings; ergänzt chartcheck um die Inhalts-Kante (lange Labels im Diagramm,
+  8-Slice-Pie, Extreme-Werte-Skala).
+- **prototype's Divergenz-Picker:** bei ambigen Requests 2–3 *echt verschiedene*
+  Strukturen bauen (benannte Achsen — „Quiet"/„Editorial"/„Dense", nie drei Tints)
+  und durchschalten lassen — Alternative zu unserer „eine präzise Frage"-Regel.
+- **Pflicht-Output-Format:** deren Before|After|Why-Tabelle für Reviews → als Format
+  für Gate-Fundings (finding · fix · why), maschinenlesbar und lehrreich zugleich.
+
+---
+
 > More inspirations to be added later.

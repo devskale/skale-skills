@@ -83,3 +83,6 @@ tests/gdocs/output/
 # issues container link (repo-local, points into ~/code/handoffs)
 .work
 .handoff
+
+# repo clones for study (agent convention, never ship)
+.clones/
