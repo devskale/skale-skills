@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-version: "2.8.4"
+version: "2.9.0"
 description: "Bash skill — run `fetch-url \"url\"` in your shell (not an MCP tool). Fetch and extract readable text from any web page. Use when the user wants to read an article, docs, or scrape a page."
 ---
 
@@ -23,7 +23,7 @@ The default auto-selects the best tool per site. Don't add flags you don't need.
 
 - **Output is already cleaned** (empty lines collapsed). No `head`, no `2>&1`.
 - **No URL yet?** `web-search "query"` finds the page first — the two are a combo: search finds, fetch-url reads.
-- **Tool auto-selects per site** (Reddit→w3m, GitHub→jina, StackOverflow→markdown). Reach for `--tool` only when the default output is poor.
+- **Tool auto-selects per site** (Reddit→w3m, GitHub/docs→defuddle, StackOverflow→markdown). Reach for `--tool` only when the default output is poor.
 - **JS/Cloudflare-protected site?** `fetch-url "url" --tool chrome` (or `--tool markdown --md-method browser`).
 
 ## Install & update
@@ -47,7 +47,7 @@ fetch-url "URL" -v                        # Verbose (shows tool + redirects)
 
 | Option | Description |
 |--------|-------------|
-| `--tool NAME` | w3m, lynx, jina, markdown, chrome, chawan, api |
+| `--tool NAME` | w3m, lynx, defuddle, jina, markdown, chrome, chawan, api |
 | `-v, --verbose` | Show tool selection and redirects |
 | `--no-clean` | Keep empty lines AND skip noise stripping (raw output) |
 | `--update` | Update the skill now |
@@ -56,17 +56,16 @@ fetch-url "URL" -v                        # Verbose (shows tool + redirects)
 ## Tools (Auto-Selected)
 
 Selection: site hints first (`settings.json`), else `auto` = **jina** (leanest on
-JS-heavy docs) — measured: static HTML local ≈ cloud (W3C: w3m 12.9KB/280 lines vs
-jina 12.3KB/115), JS-heavy docs jina halves the output with less nav noise
-(platform.claude.com: 27.5KB vs 42KB). On failure the fallback chain runs local-first
-(w3m, lynx → jina, markdown, chawan) until the content check accepts. Privacy:
-`auto`/jina/markdown send the URL to a third-party extractor — local-only via
-`--tool w3m` / `--tool lynx`. Chrome is explicit-only.
+JS-heavy docs). On failure the fallback chain runs local-first
+(w3m, lynx, defuddle → jina, markdown, chawan) until the content check accepts.
+Privacy: `auto`/jina/markdown send the URL to a third-party extractor — local-only
+via `--tool w3m` / `--tool lynx` / `--tool defuddle`. Chrome is explicit-only.
 
 | Tool | Best For | Cost |
 |------|----------|------|
 | w3m | Reddit, HN, simple HTML sites | Free, local |
 | lynx | Wikipedia, text-heavy sites | Free, local |
+| defuddle | GitHub, docs/article pages (local main-content extraction) | Free, local, needs Node |
 | jina | Docs, blogs, GitHub, Medium | Free API |
 | markdown | StackOverflow, fallback | Free API (50/day) |
 | api | Skale fetch endpoint (`amd.skale.dev`) | Free, needs credgoo key |
@@ -74,7 +73,7 @@ jina 12.3KB/115), JS-heavy docs jina halves the output with less nav noise
 
 ## Site-Specific Behavior
 
-Auto-selects per site (Reddit → old.reddit + w3m, GitHub → jina, StackOverflow → markdown, Cloudflare/JS → chrome). Full per-site rankings: [references/sites.md](references/sites.md) — **read when** a site returns poor output.
+Auto-selects per site (Reddit → old.reddit + w3m, GitHub/docs → defuddle, StackOverflow → markdown, Cloudflare/JS → chrome). Full per-site rankings: [references/sites.md](references/sites.md) — **read when** a site returns poor output.
 
 ## Configure (optional)
 
@@ -88,8 +87,8 @@ brew install w3m lynx chawan       # optional local browsers for better fallback
 | Problem | Fix |
 |---------|-----|
 | `fetch-url: command not found` | Run `./install.sh` once (creates the `fetch-url` command on PATH), then call `fetch-url "url"` — never the full path and never `export PATH=`. |
-| gunzip error on GitHub | Use `--tool jina` |
-| Empty result | Try `--tool jina` or `--tool chrome` |
+| gunzip error on GitHub | Use `--tool defuddle` (now default for GitHub) |
+| Empty result | Try `--tool defuddle`, `--tool jina` or `--tool chrome` |
 | Dependency error | `fetch-url --update` |
 
 ## References
@@ -97,3 +96,4 @@ brew install w3m lynx chawan       # optional local browsers for better fallback
 - [references/sites.md](references/sites.md) — per-site tool rankings. **Read when** a site returns poor output and you need to pick a better `--tool`.
 - [references/github.md](references/github.md) — GitHub raw-URL patterns. **Read when** fetching GitHub file/README/directory content.
 - [references/troubleshooting.md](references/troubleshooting.md) — detailed fixes. **Read when** a fetch fails or returns empty/garbled output.
+- [references/inspirations.md](references/inspirations.md) — extraction engines worth studying (Defuddle, …). **Read when** improving extraction quality or picking new tools.

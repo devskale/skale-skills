@@ -295,6 +295,82 @@ fi
 rm -rf "$TMP_CWD"
 echo ""
 
+# ── 20. defuddle tool (2026-10: local main-content extraction) ────────
+echo "[20] defuddle tool..."
+assert "--tool choices include defuddle" "fetch-url --help 2>&1 | grep -q 'defuddle'"
+assert "fetch.py has fetch_with_defuddle" "grep -q 'def fetch_with_defuddle' scripts/fetch.py"
+assert "wordCount shell gate present" "grep -q '_DEFUDDLE_MIN_WORDS' scripts/fetch.py"
+assert "defuddle pinned version" "grep -q 'DEFUDDLE_VERSION = ' scripts/fetch.py"
+assert "settings.json registers defuddle" "grep -q '\"defuddle\"' settings.json"
+assert "fallback_order includes defuddle" "python3 -c \"import json; s=json.load(open('settings.json')); print('defuddle' in s['fallback_order'])\" | grep -q True"
+assert "github hint defuddle-first" "python3 -c \"import json; s=json.load(open('settings.json')); print(s['site_tool_hints']['github.com'][0])\" | grep -q defuddle"
+assert "defaults hint includes defuddle" "python3 -c \"import json; s=json.load(open('settings.json')); print('defuddle' in s['defaults']['Darwin'])\" | grep -q True"
+
+# Unit (no network): wordCount gate rejects nav shells, accepts content
+SHELLGATE=$(python3 -c "
+import sys; sys.path.insert(0, 'scripts')
+import fetch
+assert fetch._DEFUDDLE_MIN_WORDS == 100, 'gate value drifted'
+# Medium shell measured at 48 words, pydocs real page at 316 — both must
+# sit on the correct side of the gate.
+assert 48 < fetch._DEFUDDLE_MIN_WORDS, 'Medium shell would pass the gate'
+assert 316 >= fetch._DEFUDDLE_MIN_WORDS, 'real page would fail the gate'
+print('ok')
+") || true
+assert "shell gate thresholds sane (48<100<=316)" "[ '$SHELLGATE' = 'ok' ]"
+
+# Unit (no network): _fetch_html_chrome_tls falls back to requests w/o curl_cffi
+TLSFALLBACK=$(python3 -c "
+import sys; sys.path.insert(0, 'scripts')
+import fetch
+# Simulate missing curl_cffi by poisoning the import
+import builtins
+real_import = builtins.__import__
+def no_cffi(name, *a, **kw):
+    if name == 'curl_cffi':
+        raise ImportError('simulated')
+    return real_import(name, *a, **kw)
+builtins.__import__ = no_cffi
+try:
+    # Must NOT raise ImportError at call time — falls back to requests.
+    # We expect a network-level error instead (offline-safe assertion:
+    # the error must not be about curl_cffi availability).
+    try:
+        fetch._fetch_html_chrome_tls('https://127.0.0.1:1/', timeout=2)
+        print('unexpected-success')
+    except RuntimeError as e:
+        msg = str(e)
+        assert 'curl_cffi' not in msg or 'defuddle fetch' in msg, msg
+        print('ok')
+except ImportError as e:
+    print('importerror-' + str(e))
+builtins.__import__ = real_import
+") || true
+assert "requests fallback when curl_cffi missing" "[ '$TLSFALLBACK' = 'ok' ] || [ '$TLSFALLBACK' = 'unexpected-success' ]"
+
+# Live: GitHub via defuddle (integration — real invocation)
+if command -v npx &>/dev/null; then
+    RESULT=$(fetch-url "https://github.com/kepano/defuddle" --tool defuddle 2>&1) || true
+    if echo "$RESULT" | grep -q 'defuddle'; then
+        PASS=$((PASS + 1))
+    else
+        echo "  WARN: no defuddle result (network?)"
+        WARN=$((WARN + 1))
+    fi
+    # Live: nav shell rejected -> fallthrough visible in verbose mode
+    VOUT=$(fetch-url "https://medium.com/towards-data-science/how-i-use-llms-1b1e6c5be00f" --tool defuddle -v 2>&1) || true
+    if echo "$VOUT" | grep -qE 'nav shell|Trying jina'; then
+        PASS=$((PASS + 1))
+    else
+        echo "  WARN: shell-fallthrough not observed (network?)"
+        WARN=$((WARN + 1))
+    fi
+else
+    echo "  WARN: npx not found — defuddle live checks skipped"
+    WARN=$((WARN + 2))
+fi
+echo ""
+
 # ── Results ──────────────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "  Passed: $PASS"

@@ -8,6 +8,7 @@ Extracts readable text from web pages without rendering.
 
 import os
 import sys
+import shutil
 import argparse
 import subprocess
 import platform as platform_module
@@ -55,6 +56,19 @@ DEFAULT_API_URL = "https://amd.skale.dev/api/fetch_url"
 MARKDOWN_NEW_URL = "https://markdown.new"
 JINA_READER_URL = "https://r.jina.ai"
 
+# Defuddle (Obsidian Web Clipper's extraction engine): local main-content
+# extraction, curl_fetched HTML -> `npx defuddle parse --json`.
+# Pinned: pre-1.0 project, CLI/API may shift between minors.
+DEFUDDLE_VERSION = "0.19.5"
+
+# Below this word count defuddle output is a nav shell, not content —
+# measured: JS shells (Medium) = ~48 words, shortest real page (pydocs) = 316.
+_DEFUDDLE_MIN_WORDS = 100
+
+# Browser-like User-Agent for plain-HTTP fallbacks (defuddle fetch layer).
+_CHROME_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36")
+
 # Strong error patterns: these never appear in legitimate article content.
 # Any single match in the first 1500 chars is a definitive block.
 STRONG_ERROR_PATTERNS = [
@@ -92,11 +106,11 @@ _DEFAULT_SITE_TOOL_HINTS = {
     "www.reddit.com": ["w3m", "lynx", "jina", "markdown"],
     "old.reddit.com": ["w3m", "lynx", "jina", "markdown"],
     "news.ycombinator.com": ["w3m", "lynx", "jina"],
-    "wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
-    "en.wikipedia.org": ["jina", "lynx", "w3m", "markdown"],
-    "github.com": ["w3m", "jina", "markdown"],
-    "docs.python.org": ["jina", "w3m", "lynx"],
-    "developer.mozilla.org": ["jina", "w3m", "lynx"],
+    "wikipedia.org": ["jina", "defuddle", "lynx", "w3m", "markdown"],
+    "en.wikipedia.org": ["jina", "defuddle", "lynx", "w3m", "markdown"],
+    "github.com": ["defuddle", "jina", "markdown"],
+    "docs.python.org": ["defuddle", "jina", "w3m", "lynx"],
+    "developer.mozilla.org": ["defuddle", "jina", "w3m", "lynx"],
     "medium.com": ["jina", "markdown", "w3m"],
     "stackoverflow.com": ["markdown", "jina"],
     "stackexchange.com": ["markdown", "jina"],
@@ -127,15 +141,16 @@ def get_default_settings() -> Dict[str, Any]:
         "tools": {
             "w3m": {"platforms": ["Darwin", "Linux"], "requires_install": True},
             "lynx": {"platforms": ["Darwin", "Linux"], "requires_install": True},
+            "defuddle": {"platforms": ["Darwin", "Linux", "Windows"], "requires_install": True},
             "markdown": {"platforms": ["Darwin", "Linux", "Windows"], "requires_install": False},
             "jina": {"platforms": ["Darwin", "Linux", "Windows"], "requires_install": False},
         },
         "defaults": {
-            "Darwin": ["jina", "markdown", "w3m", "lynx"],
-            "Linux": ["jina", "markdown", "w3m", "lynx"],
+            "Darwin": ["jina", "markdown", "w3m", "lynx", "defuddle"],
+            "Linux": ["jina", "markdown", "w3m", "lynx", "defuddle"],
             "Windows": ["jina", "markdown"]
         },
-        "fallback_order": ["w3m", "lynx", "jina", "markdown", "chawan"],
+        "fallback_order": ["w3m", "lynx", "defuddle", "jina", "markdown", "chawan"],
         "timeout": 30
     }
 
@@ -353,6 +368,81 @@ def fetch_with_jina(url: str, timeout: int = 30) -> str:
         raise RuntimeError(f"Jina.ai failed: {e}")
 
 
+def _fetch_html_chrome_tls(url: str, timeout: int = 30) -> str:
+    """Fetch raw HTML with a browser-like TLS fingerprint.
+
+    curl_cffi (Chrome JA4 impersonation) first — TLS/JA4 gates are the most
+    common block layer (apisniffer SOTA check 2026-10). Plain requests with a
+    browser UA as fallback for environments where curl_cffi isn't installed.
+    """
+    try:
+        from curl_cffi import requests as cffi_requests
+    except ImportError:
+        cffi_requests = None
+
+    if cffi_requests is not None:
+        try:
+            response = cffi_requests.get(url, timeout=timeout, impersonate="chrome")
+            response.raise_for_status()
+            return response.text
+        except Exception as e:
+            raise RuntimeError(f"defuddle fetch (curl_cffi) failed: {e}")
+
+    if requests is None:
+        raise RuntimeError("Neither curl_cffi nor requests available for defuddle fetch")
+    try:
+        response = requests.get(url, timeout=timeout, headers={"User-Agent": _CHROME_UA})
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.Timeout:
+        raise RuntimeError(f"defuddle fetch timed out for URL: {url}")
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"defuddle fetch failed: {e}")
+
+
+def fetch_with_defuddle(url: str, timeout: int = 30) -> str:
+    """Fetch main content locally with defuddle (Obsidian Web Clipper engine).
+
+    curl_cffi fetch -> `npx defuddle parse --json` on stdin. Fully local
+    and free (no third-party extractor API). Shines on article/doc pages
+    (GitHub README, MDN, docs sites). JS-built pages return a nav shell —
+    detected via wordCount (< _DEFUDDLE_MIN_WORDS) and raised as a failure
+    so the fallback chain moves on to the next tool.
+    """
+    npx = shutil.which('npx')
+    if not npx:
+        raise RuntimeError("npx not found. Install Node.js for the defuddle tool (nodejs.org)")
+
+    url = url.strip()
+    if not url.startswith('http://') and not url.startswith('https://'):
+        url = 'https://' + url
+
+    html = _fetch_html_chrome_tls(url, timeout)
+
+    try:
+        cmd = [npx, '-y', f'defuddle@{DEFUDDLE_VERSION}', 'parse', '--json']
+        result = subprocess.run(cmd, input=html, capture_output=True, text=True,
+                                check=True, timeout=timeout)
+        data = json.loads(result.stdout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"defuddle timed out for URL: {url}")
+    except subprocess.CalledProcessError as e:
+        stderr = (e.stderr or '').strip()[:200]
+        raise RuntimeError(f"defuddle failed: {stderr or e}")
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"defuddle returned invalid JSON: {e}")
+
+    content = data.get('contentMarkdown') or data.get('content') or ''
+    word_count = data.get('wordCount', 0)
+    if not content.strip():
+        raise RuntimeError("defuddle returned empty content (JS-built page?)")
+    if word_count < _DEFUDDLE_MIN_WORDS:
+        # Nav shell, not an article — let the next tool try.
+        raise RuntimeError(
+            f"defuddle extracted only {word_count} words (nav shell / JS-built page)")
+    return content
+
+
 def fetch_with_w3m(url: str, links: bool = False, timeout: int = 30) -> str:
     """Fetch a webpage using w3m."""
     w3m_path = get_w3m_path()
@@ -559,6 +649,8 @@ def fetch_with_tool(tool: str, url: str, links: bool = False, bearer: str = None
         return fetch_with_markdown_new(url, md_method, md_retain_images, timeout)
     elif tool == 'jina':
         return fetch_with_jina(url, timeout)
+    elif tool == 'defuddle':
+        return fetch_with_defuddle(url, timeout)
     elif tool == 'api':
         # Get API URL from settings if not provided
         if not api_url and settings:
@@ -709,7 +801,7 @@ Examples:
     )
 
     parser.add_argument('url', help='URL to fetch')
-    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'chawan', 'chrome', 'markdown', 'jina', 'api'], 
+    parser.add_argument('--tool', choices=['auto', 'w3m', 'lynx', 'defuddle', 'chawan', 'chrome', 'markdown', 'jina', 'api'], 
                         default='auto', help='Tool to use (default: auto)')
     parser.add_argument('--links', action='store_true', help='Display link numbers (w3m only)')
     parser.add_argument('--clean', '-c', action='store_true', default=True, 

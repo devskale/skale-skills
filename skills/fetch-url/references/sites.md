@@ -9,20 +9,22 @@ Tested tool rankings for popular sites.
 | Reddit | w3m | lynx, markdown | jina blocked |
 | StackOverflow | markdown | - | jina partial |
 | Hacker News | w3m | jina | w3m cleanest |
-| GitHub | jina | markdown | Both work |
-| Python Docs | jina | - | Clean markdown |
-| Wikipedia | jina | - | Clean markdown |
-| Medium | jina | - | Clean markdown |
+| GitHub | defuddle | jina, markdown | defuddle: local, README-only, no rate limits |
+| Python Docs | defuddle | jina | defuddle: content-only markdown |
+| Wikipedia | jina | defuddle, lynx | defuddle richer (links/footnotes), jina leaner |
+| Medium | jina | markdown | defuddle/w3m get JS shell |
+| MDN | defuddle | jina | defuddle: content-only, half the size |
 
 ## Tool Ranking
 
 | Rank | Tool | Score | Best For |
 |------|------|-------|----------|
-| 🥇 | jina | ⭐⭐⭐⭐⭐ | Docs, blogs, GitHub |
-| 🥈 | w3m | ⭐⭐⭐⭐ | Reddit, HN, text sites |
-| 🥉 | markdown | ⭐⭐⭐ | Fallback, blocked sites |
-| 4 | lynx | ⭐⭐⭐ | Simple, fast |
-| 5 | chawan | ⭐⭐ | Visual debugging only |
+| 🥇 | jina | ⭐⭐⭐⭐⭐ | Docs, blogs, Medium |
+| 🥈 | defuddle | ⭐⭐⭐⭐⭐ | GitHub, docs/article pages (local, unlimited) |
+| 🥉 | w3m | ⭐⭐⭐⭐ | Reddit, HN, text sites |
+| 4 | markdown | ⭐⭐⭐ | Fallback, blocked sites |
+| 5 | lynx | ⭐⭐⭐ | Simple, fast |
+| 6 | chawan | ⭐⭐ | Visual debugging only |
 
 ## Site-Specific Notes
 
@@ -43,14 +45,23 @@ Tested tool rankings for popular sites.
 - **w3m**: ✅ **Best** - clean formatting
 
 ### GitHub
-- **jina**: ✅ Clean
+- **defuddle**: ✅ **Best** - local, free, README-only output (13KB vs 20KB w3m nav chrome)
+- **jina**: ✅ Clean, but anonymous access gets per-domain abuse blocks (403 for days)
 - **markdown**: ✅ Clean
-- **w3m**: ❌ Gunzip errors on some pages
+- **w3m**: ❌ Gunzip errors + nav chrome on some pages
 
 ### Documentation Sites (Python, MDN, etc.)
-- **jina**: ✅ **Best** - strips nav, clean content
+- **defuddle**: ✅ **Best** - local, content-only markdown (MDN: 3.9KB vs 7.2KB w3m)
+- **jina**: ✅ Good
 - **markdown**: ✅ Good
 - **w3m**: ⚠️ Navigation-heavy output
+
+### Defuddle notes (added 2026-10, benchmark `references/inspirations.md`)
+- Local main-content extraction (Obsidian Web Clipper engine) via `npx defuddle`,
+  fetched with curl_cffi (Chrome TLS impersonation). Needs Node.js.
+- Nav shells on JS-built pages are detected via wordCount gate (<100 words = shell →
+  fallthrough), so it never shadows jina/markdown on JS sites.
+- Weak on list/index pages (HN: raw HTML tables) — those stay on w3m.
 
 ## Blocked Sites
 

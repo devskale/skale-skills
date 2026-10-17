@@ -1,5 +1,21 @@
 ## Unreleased
 
+### fetch-url 2.9.0 — defuddle: lokale Haupt-Inhalts-Extraktion (neues Tool)
+- **Neues Tool `defuddle`** ([kepano/defuddle](https://github.com/kepano/defuddle),
+  Obsidian Web Clipper Engine): curl_cffi-Fetch (Chrome-TLS-Impersonation) →
+  `npx defuddle parse --json`. Lokal, kostenlos, unbegrenzt — keine Dritt-API.
+- **Live-benchmarkt (2026-10)** gegen w3m/lynx/jina: gewinnt auf GitHub
+  (README-only, 13 KB statt 20 KB Nav-Chrome), MDN (3,9 statt 7,2 KB) und
+  Python-Docs; verliert auf List-Seiten (HN) und JS-Shells. Site-Hints
+  umgestellt: github.com / docs.python.org / developer.mozilla.org →
+  defuddle-first; Wikipedia → defuddle als jina-Fallback.
+- **Shell-Gate:** JS-Shells (Medium ~48 Wörter Nav-Reste) werden über defuddles
+  `wordCount` erkannt (<100 = Shell → Failure → Fallthrough), sodass defuddle
+  nie jina/markdown auf JS-Seiten verdrängt.
+- `curl_cffi>=0.7` als Dependency (TLS/JA4-Gate-Prophylaxe, apisniffer-SOTA-
+  Check), pinned `defuddle@0.19.5` (pre-1.0). `--tool defuddle` im CLI.
+  Hintergrund + Benchmark: `references/inspirations.md`.
+
 ### visualize — pele-Gallery als lebendes Beispiel (`examples/`)
 - Die Sechs-Typen-Gallery (Flowchart+Subgraph, Sequenz, Git-Graph, Gantt, Pie,
   Mindmap — alles echte Session-Daten) liegt jetzt als gefülltes Beispiel unter
