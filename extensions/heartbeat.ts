@@ -33,6 +33,8 @@ import {
 	ENTRY_TYPE,
 	isEscapePress,
 	onEscape,
+	persist,
+	reanchor,
 	resetAll,
 	restoreFrom,
 	setBusy,
@@ -68,9 +70,12 @@ function wireEscape(pi: ExtensionAPI, ctx: any) {
 // ── Extension entry point ────────────────────────────────────
 export default function (pi: ExtensionAPI) {
 	// Reconstruct config from session entries on each lifecycle event (§6, §19.3).
-	// Timers are NOT auto-restarted — they are process-global and a resumed/
-	// branched session re-starts on demand via command/tool.
+	// Timers are process-global: a heartbeat that is still active IN THIS
+	// PROCESS (compaction, tree switch) keeps ticking — re-anchored to the fresh
+	// ctx. Only after a real restart (fresh module state) does the reconstruct
+	// dance run; the user re-starts on demand via command/tool.
 	const restore = (ctx: any) => {
+		if (reanchor(pi, ctx)) return; // survived in this process — keep ticking
 		resetAll();
 		try {
 			const saved = reconstructLastCustomEntry(ctx, ENTRY_TYPE) as Record<string, unknown> | undefined;
@@ -89,7 +94,16 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("session_start", (_e, ctx) => restore(ctx));
 	pi.on("session_tree", (_e, ctx) => restore(ctx));
-	pi.on("session_compact", (_e, ctx) => restore(ctx));
+	// Compaction replaces the SESSION (new transcript), not the process or the
+	// user's intent — NEVER reset a running heartbeat here. Re-anchor it to the
+	// compact ctx; if that ctx is already a stale proxy (§19.3 race), the beat's
+	// stale guard stops the timers but state.active survives in memory — the
+	// replacement session's session_start re-anchors then. persist() rewrites
+	// the config entry into the new transcript (best-effort) so a later restart
+	// still reconstructs message/interval.
+	pi.on("session_compact", (_e, ctx) => {
+		if (reanchor(pi, ctx)) persist(pi);
+	});
 	pi.on("session_shutdown", () => resetAll());
 
 	// ── Busy/idle tracking: only fire heartbeats when pi is idle ──

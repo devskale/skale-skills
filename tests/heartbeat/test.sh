@@ -249,6 +249,42 @@ eq(core.control(m.host, m.ctx, { action: "status" }).state.message, "keep me", "
 eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "restore: active cleared");
 eq(m.host.entries.at(-1)[1].active, false, "restore: persists cleared flag (no repeat nag)");
 
+// 8. REANCHOR (compaction hardening): a running heartbeat must survive
+m = mocks(); core.resetAll();
+const fresh = mocks().ctx; // the replacement session's ctx
+	eq(core.reanchor(m.host, fresh), false, "reanchor: no-op (false) when inactive");
+core.control(m.host, m.ctx, { action: "start", duration: "30s", message: "survive" });
+const before = core.control(m.host, m.ctx, { action: "status" }).state.nextAt;
+eq(core.reanchor(m.host, fresh), true, "reanchor: running heartbeat survives compaction");
+const ra = core.control(m.host, m.ctx, { action: "status" }).state;
+eq(ra.active, true, "reanchor: still active");
+eq(ra.message, "survive", "reanchor: message kept");
+Math.abs(ra.nextAt - before) <= 50 ? pass++ : (fail++, console.log("  FAIL: reanchor: countdown preserved"));
+core.onBeatDue(m.host, fresh);
+eq(m.host.sent.length, 1, "reanchor: beat fires through the fresh ctx");
+eq(m.host.sent[0].includes("survive"), true, "reanchor: message delivered");
+
+// 9. REANCHOR paused: stays paused, no beat fires after re-anchor
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "30s" });
+core.control(m.host, m.ctx, { action: "pause" });
+eq(core.reanchor(m.host, fresh), true, "reanchor paused: survives");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.paused, true, "reanchor paused: still paused");
+core.onBeatDue(m.host, fresh);
+eq(m.host.sent.length, 0, "reanchor paused: no fire");
+
+// 10. REANCHOR one-shot: due time preserved, still fires exactly once
+m = mocks(); core.resetAll();
+core.control(m.host, m.ctx, { action: "start", duration: "1h", once: true, message: "shot" });
+const dueBefore = core.control(m.host, m.ctx, { action: "status" }).state.nextAt;
+core.reanchor(m.host, fresh);
+const os = core.control(m.host, m.ctx, { action: "status" }).state;
+eq(os.active, true, "reanchor once: still active");
+Math.abs(os.nextAt - dueBefore) <= 50 ? pass++ : (fail++, console.log("  FAIL: reanchor once: due time preserved"));
+core.onBeatDue(m.host, fresh);
+eq(m.host.sent.length, 1, "reanchor once: exactly one delivery");
+eq(core.control(m.host, m.ctx, { action: "status" }).state.active, false, "reanchor once: stopped after delivery");
+
 // 8. ESC: 1st press pauses (passed through), slow 2nd press stops (consumed);
 //    pi's native fast double-ESC (chat tree) is never touched
 m = mocks(); core.resetAll();

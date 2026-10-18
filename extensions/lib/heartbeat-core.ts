@@ -258,6 +258,35 @@ function scheduleOneShot(pi: HeartbeatHost, ctx: HeartbeatCtx, delayMs: number) 
 	}, delayMs);
 }
 
+/**
+ * Re-anchor a running heartbeat to a fresh ctx.
+ *
+ * Compaction replaces the SESSION (new transcript, possibly a replaced runner
+ * with a dead ctx proxy) — but not the process and not the user's intent.
+ * Pending timers captured the outgoing ctx and would die on their first stale
+ * send; re-arm them on the fresh one, preserving the countdown. Paused beats
+ * stay paused (only the status ticker re-anchors). No-op → false when
+ * inactive. Fixes: session_compact used to resetAll() and silently kill a
+ * live heartbeat on every compaction.
+ */
+export function reanchor(pi: HeartbeatHost, ctx: HeartbeatCtx): boolean {
+	if (!state.active) return false;
+	// Drop pending timers WITHOUT resetTimers() — that clears active/paused too.
+	if (timerId) { clearTimeout(timerId); timerId = undefined; }
+	if (oneShotTimerId) { clearTimeout(oneShotTimerId); oneShotTimerId = undefined; }
+	if (statusTimerId) { clearInterval(statusTimerId); statusTimerId = undefined; }
+	if (!state.paused) {
+		if (state.once) {
+			// one-shot: preserve the due time, not the elapsed budget
+			scheduleOneShot(pi, ctx, Math.max(0, state.nextAt - Date.now()));
+		} else {
+			scheduleNext(pi, ctx); // recurring: delay = interval − elapsed
+		}
+	}
+	startStatusBar(ctx);
+	return true;
+}
+
 // ── Config persistence (survives reload / branch switch) ──────
 export function persist(pi: HeartbeatHost) {
 	try {

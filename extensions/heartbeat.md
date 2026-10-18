@@ -145,11 +145,18 @@ After editing settings or the file, run `/reload` inside pi (or restart pi).
 
 ## Robustness notes
 
+- **Compaction no longer kills a running heartbeat** (fix 2026-10-17).
+  `session_compact` used to reset the heartbeat on every compaction; now a
+  running heartbeat is **re-anchored** to the fresh session context and keeps
+  ticking with its countdown preserved (paused stays paused). The config entry
+  is re-persisted into the new transcript. Only a real process restart stops
+  it — then the old behavior applies: config restored, one hint to re-run
+  `/heartbeat`.
 - Timers are stale-ctx safe — no crashes on reload / branch switch / compaction.
 - Config (message, interval, maxCount) is persisted via `appendEntry` and
-  restored on `session_start` / `session_tree` / `session_compact`. The timer
-  itself is not auto-restarted (it is process-global); re-run `/heartbeat` to
-  resume.
+  restored on `session_start` / `session_tree` when no heartbeat is active in
+  the process. The timer itself never survives a restart (it is process-global);
+  re-run `/heartbeat` to resume after restarting pi.
 - **Idle-only delivery (default):** a beat that comes due while pi is mid-turn
   (busy) is **shifted** by one interval (capped at 5 minutes max) and re-checked
   — it is **not consumed** (the count isn't bumped), so a long agent run just
