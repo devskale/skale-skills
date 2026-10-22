@@ -46,6 +46,9 @@ KNOWN_INSTANCES = [
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".instance-cache.json")
 CACHE_TTL = 4 * 60 * 60
 STATS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".instance-stats.json")
+REGISTRY_META_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".instance-registry.json")
+REGISTRY_META_TTL = 6 * 60 * 60  # registry uptime/api flags change slowly
+REGISTRY_URL = "https://api.invidious.io/instances.json"
 STATS_KEEP_OK_DAYS = 45   # hosts with no success for this long are pruned
 STATS_RANK_DAYS = 30      # only hosts with success inside this window rank above the static pool
 UA = "youtube-skill/2.0"
@@ -174,6 +177,65 @@ def save_cached_instances(instances: List[str]) -> None:
         pass  # loud-ok: aux cache write; missing cache only costs a refetch
 
 
+# ── Registry metadata (uptime %, api flag, region) ────────────────────────
+# The official registry reports per-instance monitor data. The `api` flag is
+# the cheap kill criterion: an instance can be 99% "up" (web UI) while the
+# operator disabled the API (403 on /api/v1/*). Knowing it up front saves
+# wasted probes; uptime% is a 30d average complementing our live probe.
+
+def load_registry_meta() -> Dict[str, Dict[str, Any]]:
+    """Cached {host: {uptime, api, region}} from the official registry.
+
+    Stale (>TTL) or missing → refresh from the network; on failure return
+    the stale copy (better than nothing) or {} — never raise."""
+    data: Dict[str, Any] = {}
+    fresh = False
+    try:
+        if os.path.exists(REGISTRY_META_FILE):
+            with open(REGISTRY_META_FILE, "r") as f:
+                data = json.load(f)
+            fresh = time.time() - data.get("ts", 0) < REGISTRY_META_TTL
+    except (json.JSONDecodeError, OSError):
+        data = {}
+    if fresh:
+        return data.get("hosts", {})
+    hosts: Dict[str, Dict[str, Any]] = {}
+    try:
+        entries = _get_json(REGISTRY_URL, timeout=10)
+        for _name, info in entries:
+            if not (isinstance(info, dict) and info.get("type") == "https"):
+                continue
+            uri = info.get("uri", "")
+            if not uri.startswith("https://"):
+                continue
+            host = uri.replace("https://", "").rstrip("/")
+            monitor = info.get("monitor") or {}
+            hosts[host] = {
+                "uptime": monitor.get("uptime"),
+                "api": info.get("api"),
+                "region": info.get("region"),
+            }
+    except Exception:
+        pass  # loud-ok: registry is best-effort metadata; stale copy serves
+    if hosts:
+        try:
+            with open(REGISTRY_META_FILE, "w") as f:
+                json.dump({"ts": time.time(), "hosts": hosts}, f)
+        except OSError:
+            pass  # loud-ok: metadata cache write; failure only costs a refetch
+        return hosts
+    return data.get("hosts", {})  # stale copy or {}
+
+
+def _registry_sort_key(host: str) -> Tuple[int, float]:
+    """Probe order: api-enabled first, then higher uptime."""
+    meta = load_registry_meta().get(host, {})
+    api = meta.get("api")
+    api_rank = 0 if api else 1  # api=True first; None/False after
+    uptime = meta.get("uptime") or 0.0
+    return (api_rank, -float(uptime))
+
+
 def _probe_instance(host: str, timeout: int = 6) -> bool:
     """True if the host answers a search query. Retries with a browser UA
     (some instances 403 non-browser agents)."""
@@ -200,8 +262,9 @@ def discover_instances(limit: int = 6, timeout: int = 6) -> List[str]:
     for h in KNOWN_INSTANCES:
         if h not in candidates:
             candidates.append(h)
+    registry_meta = load_registry_meta()
     try:
-        data = _get_json("https://api.invidious.io/instances.json", timeout=10)
+        data = _get_json(REGISTRY_URL, timeout=10)
         for _name, info in data:
             if isinstance(info, dict):
                 uri = info.get("uri", "")
@@ -211,6 +274,10 @@ def discover_instances(limit: int = 6, timeout: int = 6) -> List[str]:
                         candidates.append(host)
     except Exception:
         pass  # loud-ok: best-effort host extraction, other candidate sources follow
+    # Probe api-enabled, high-uptime hosts first — saves wasted probes on
+    # instances whose operator disabled the API (403 despite 99% uptime).
+    if registry_meta:
+        candidates.sort(key=_registry_sort_key)
 
     working: List[str] = []
     with ThreadPoolExecutor(max_workers=8) as ex:
@@ -1007,6 +1074,16 @@ def cmd_hosts(rest: List[str]) -> int:
 
     now = time.time()
     stats = load_stats()
+    reg = load_registry_meta()
+
+    def fmt_reg(host: str) -> str:
+        m = reg.get(host, {})
+        up = m.get("uptime")
+        api = m.get("api")
+        region = m.get("region") or "??"
+        ups = f"{up:5.1f}%" if isinstance(up, (int, float)) else "  n/a "
+        apis = "api:yes" if api else ("api:NO" if api is False else "api:?")
+        return f"{ups} {apis:7} {region:2}"
 
     def fmt_age(ts: Optional[float]) -> str:
         if not ts:
@@ -1032,10 +1109,10 @@ def cmd_hosts(rest: List[str]) -> int:
                 st = stats.get(host, {})
                 stx = f"ok={int(st.get('ok', 0)):4} fail={int(st.get('fail', 0)):3}"
                 print(f"  {'✓' if ok else '✗'} {host:32} "
-                      f"{'alive %5.0f ms' % ms if ok else 'dead       -'}   {stx}")
+                      f"{'alive %5.0f ms' % ms if ok else 'dead       -'}   {fmt_reg(host)}  {stx}")
                 if ok:
                     alive.append(host)
-        print(f"{len(alive)}/{len(hosts)} alive")
+        print(f"{len(alive)}/{len(hosts)} alive  (reg: uptime=30d avg, api=operator flag)")
         if alive and _cache_writes_enabled():
             save_cached_instances(alive)
             for h in alive:
@@ -1048,13 +1125,13 @@ def cmd_hosts(rest: List[str]) -> int:
     if not hosts:
         print("No cached instances — run: youtube hosts --probe")
         return 0
-    print(f"{'HOST':32} {'SOURCE':8} {'LAST OK':10} STATS")
+    print(f"{'HOST':32} {'SOURCE':8} {'REGISTRY':20} {'LAST OK':10} STATS")
     for h in hosts:
         st = stats.get(h, {})
         src = "cached" if h in cached else "history"
-        print(f"{h:32} {src:8} {fmt_age(st.get('last_ok')):10} "
+        print(f"{h:32} {src:8} {fmt_reg(h):20} {fmt_age(st.get('last_ok')):10} "
               f"ok={int(st.get('ok', 0))} fail={int(st.get('fail', 0))}")
-    print("Active health check: youtube hosts --probe")
+    print("Active health check: youtube hosts --probe  (reg: uptime=30d avg, api=operator flag)")
     return 0
 
 

@@ -76,7 +76,8 @@ Stored at `~/.config/youtube-skill/channels.md`. Blocked → filtered before ran
 ## Update / health
 
 ```bash
-youtube hosts [--probe]   # which instances are alive (probe: active check + latency)
+youtube hosts [--probe]   # which instances are alive (probe: active check + latency;
+                          #   both views show registry uptime % + api flag + region)
 youtube --update | --selfcheck | --discover
 ```
 
@@ -92,7 +93,7 @@ youtube --update | --selfcheck | --discover
 
 ## How it works
 
-1. Instance resolution, self-healing and **self-maintaining**: probe order is fresh cache → hosts with recent real-world success (health history in `.instance-stats.json`, recorded on every search) → cold-start pool. Dead hosts are evicted, healthy ones promoted; rotted entries (45d without success) are pruned automatically. On cache-miss, a parallel probe (registry + pool, browser-UA retry) refreshes the cache for 4h.
+1. Instance resolution, self-healing and **self-maintaining**: probe order is fresh cache → hosts with recent real-world success (health history in `.instance-stats.json`, recorded on every search) → cold-start pool. Dead hosts are evicted, healthy ones promoted; rotted entries (45d without success) are pruned automatically. On cache-miss, a parallel probe (registry + pool, browser-UA retry) refreshes the cache for 4h. Registry metadata (uptime %, api flag, region from api.invidious.io, cached 6h in `.instance-registry.json`) ranks the probe order — api-enabled, high-uptime hosts first — and shows in `youtube hosts` (an instance can be 99% "up" while its operator disabled the API; the flag is the kill criterion).
 2. Search `/api/v1/search` (or `/channels/{ucid}/search` for `--channel`) with filters
 3. Deep mode: apply fav/block + filters → score (preset weights) → rank → split picks/candidates
 4. Write `./lists/<slug>.md`; print path + preview

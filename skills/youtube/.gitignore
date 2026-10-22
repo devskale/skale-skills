@@ -8,3 +8,4 @@ node_modules/
 __pycache__/
 lists/
 .instance-stats.json
+.instance-registry.json

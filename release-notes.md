@@ -1,5 +1,19 @@
 ## Unreleased
 
+### youtube — Registry-Metadata: uptime %, api-Flag, Region (health sichtbar machen)
+- **`youtube hosts` zeigt jetzt Registry-Daten** (beide Views, cached + `--probe`):
+  30-Tage-Uptime-%, `api:yes/NO/?`-Flag und Region aus der offiziellen
+  Registry (api.invidious.io) — direkt neben dem eigenen Live-Probe.
+- **Kill-Kriterium vorab sichtbar:** eine Instance kann 99,6% "up" sein,
+  während der Betreiber die API abgeschaltet hat (403 auf `/api/v1/*`).
+  Live gemessen 2026-10-21: 4/5 Registry-Instanzen `api: false` —
+  ein 403-Roulette, das der Flag vorab verrät.
+- **Probe-Order nutzt die Daten** (`discover_instances`): api-enabled,
+  high-uptime Hosts zuerst — spart Fehlprobes auf API-gesperrte Instanzen.
+- Cache: `.instance-registry.json`, 6h TTL, stale-Fallback bei
+  Registry-Ausfall. Unit-Tests (6 neue, gemockte Registry), Suite 54/54 grün,
+  Live-Smoke ok.
+
 ### fetch-url 2.9.0 — defuddle: lokale Haupt-Inhalts-Extraktion (neues Tool)
 - **Neues Tool `defuddle`** ([kepano/defuddle](https://github.com/kepano/defuddle),
   Obsidian Web Clipper Engine): curl_cffi-Fetch (Chrome-TLS-Impersonation) →

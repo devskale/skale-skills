@@ -12,7 +12,10 @@ Run:  python3 tests/youtube/test_unit.py
 
 import os
 import sys
+import json
+import time
 import unittest
+from unittest import mock as unittest_mock  # noqa: F401 — used via unittest.mock
 
 # Make scripts/search.py importable regardless of cwd.
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -307,6 +310,86 @@ class TestInstanceStats(unittest.TestCase):
         order = search.get_instances()
         self.assertLess(order.index("cached.example"), order.index("proven.example"))
         self.assertLess(order.index("proven.example"), order.index("iv.catgirl.cloud"))
+
+
+class TestRegistryMeta(unittest.TestCase):
+    """Registry metadata (uptime/api/region): cache roundtrip, sort key, no-registry fallback."""
+
+    def setUp(self):
+        import tempfile
+        self._orig = (search.REGISTRY_META_FILE,)
+        tmp = tempfile.NamedTemporaryFile(suffix=".json", delete=False); tmp.close()
+        search.REGISTRY_META_FILE = tmp.name
+        self._tmp = tmp.name
+
+    def tearDown(self):
+        search.REGISTRY_META_FILE, = self._orig
+        os.unlink(self._tmp)
+
+    def _write_cache(self, hosts: dict, ts: float) -> None:
+        with open(search.REGISTRY_META_FILE, "w") as f:
+            json.dump({"ts": ts, "hosts": hosts}, f)
+
+    def test_fresh_cache_served_without_network(self):
+        # A fresh cached entry is returned as-is (no network access happens).
+        self._write_cache({"a.example": {"uptime": 99.0, "api": True, "region": "DE"}},
+                          ts=time.time())
+        meta = search.load_registry_meta()
+        self.assertEqual(meta, {"a.example": {"uptime": 99.0, "api": True, "region": "DE"}})
+
+    def test_stale_cache_refreshed_from_registry(self):
+        # Stale cache + mocked registry fetch → new data, persisted with fresh ts.
+        self._write_cache({"old.example": {"uptime": 1.0, "api": False, "region": "XX"}},
+                          ts=time.time() - search.REGISTRY_META_TTL - 60)
+        entries = [
+            ["api-host", {"type": "https", "uri": "https://api.example",
+                          "api": True, "region": "DE",
+                          "monitor": {"uptime": 97.5}}],
+            ["noapi-host", {"type": "https", "uri": "https://noapi.example",
+                            "api": False, "region": "US",
+                            "monitor": {"uptime": 99.9}}],
+            ["onion-host", {"type": "onion", "uri": "http://xyz.onion", "api": True}],
+        ]
+        with unittest.mock.patch.object(search, "_get_json", return_value=entries):
+            meta = search.load_registry_meta()
+        self.assertIn("api.example", meta)
+        self.assertIn("noapi.example", meta)  # https api:false kept — only onion dropped
+        self.assertNotIn("xyz.onion", meta)
+        self.assertEqual(meta["noapi.example"]["api"], False)
+        self.assertEqual(meta["api.example"]["uptime"], 97.5)
+        self.assertEqual(meta["api.example"]["api"], True)
+        self.assertEqual(meta["api.example"]["region"], "DE")
+        # Persisted for the next call.
+        with open(search.REGISTRY_META_FILE) as f:
+            persisted = json.load(f)
+        self.assertIn("api.example", persisted["hosts"])
+
+    def test_registry_failure_falls_back_to_stale_copy(self):
+        self._write_cache({"stale.example": {"uptime": 50.0, "api": None, "region": "CL"}},
+                          ts=time.time() - search.REGISTRY_META_TTL - 60)
+        with unittest.mock.patch.object(search, "_get_json",
+                                        side_effect=OSError("network down")):
+            meta = search.load_registry_meta()
+        self.assertEqual(meta, {"stale.example": {"uptime": 50.0, "api": None, "region": "CL"}})
+
+    def test_sort_key_api_first_then_uptime(self):
+        self._write_cache({
+            "up-noapi.example": {"uptime": 99.9, "api": False, "region": "US"},
+            "low-api.example": {"uptime": 90.0, "api": True, "region": "DE"},
+            "high-api.example": {"uptime": 97.0, "api": True, "region": "JP"},
+        }, ts=time.time())
+        hosts = ["up-noapi.example", "low-api.example", "high-api.example"]
+        ranked = sorted(hosts, key=search._registry_sort_key)
+        # api:true hosts first (higher uptime first), api:false last despite 99.9%.
+        self.assertEqual(ranked,
+                         ["high-api.example", "low-api.example", "up-noapi.example"])
+
+    def test_sort_key_unknown_host_ranks_neutral(self):
+        self._write_cache({}, ts=time.time())
+        # Unknown host: no api flag, no uptime → sorts after api-enabled, before nothing
+        key = search._registry_sort_key("mystery.example")
+        self.assertEqual(key[0], 1)
+        self.assertEqual(key[1], 0.0)
 
 
 class TestFailLoud(unittest.TestCase):
