@@ -1135,12 +1135,131 @@ def cmd_hosts(rest: List[str]) -> int:
     return 0
 
 
+# ╔ Playlist import (yt-dlp backend) ════════════════════════════════════
+
+def _playlist_target(raw: str) -> str:
+    """Normalize user input to a canonical playlist URL.
+
+    Accepts: playlist URLs, watch URLs with ?list=…, bare PL…/OL…/RD… ids.
+    Raises ValueError on anything that carries no playlist reference."""
+    raw = (raw or "").strip()
+    m = re.search(r"[?&]list=([A-Za-z0-9_-]+)", raw)
+    if m:
+        pid = m.group(1)
+    elif re.fullmatch(r"[A-Za-z0-9_-]{12,}", raw) and not raw.startswith("http"):
+        pid = raw  # bare playlist id
+    else:
+        raise ValueError(f"no playlist reference found in {raw!r} "
+                         "(expected playlist URL, watch URL with ?list=, or a bare PL… id)")
+    return f"https://www.youtube.com/playlist?list={pid}"
+
+
+def _playlist_entry_line(d: Dict[str, Any]) -> str:
+    """One list entry from a flat yt-dlp playlist dump line (list format
+    contract: watch link + channel · duration · views + ucid token)."""
+    vid = d.get("id") or "?"
+    url = f"https://www.youtube.com/watch?v={vid}"
+    title = d.get("title") or vid
+    channel = d.get("channel") or d.get("uploader") or "?"
+    dur = format_duration(d.get("duration"))
+    views = format_views(d.get("view_count"))
+    ucid = d.get("channel_id") or "?"
+    return f"- [**{title}**]({url}) — {channel} · {dur} · {views} ucid:{ucid}"
+
+
+def cmd_playlist_import(rest: List[str]) -> int:
+    """youtube playlist-import <url|PL-id> [--save NAME] — import any YouTube
+    playlist (own, unlisted, or foreign) into a curatable ./lists/<slug>.md.
+    First yt-dlp-backed code path in the skill: complete listings (Invidious
+    channel search is query-limited), one flat dump, no metadata enrichment."""
+    import subprocess
+
+    p = argparse.ArgumentParser(prog="youtube playlist-import",
+                                description="Import a YouTube playlist into a list")
+    p.add_argument("playlist", help="playlist URL, watch URL with ?list=, or bare PL… id")
+    p.add_argument("--save", help="name the list explicitly (overrides slug)")
+    a = p.parse_args(rest)
+
+    try:
+        target = _playlist_target(a.playlist)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    try:
+        proc = subprocess.run(
+            ["yt-dlp", "--flat-playlist", "--dump-json", "--no-warnings", target],
+            capture_output=True, text=True, timeout=120,
+        )
+    except FileNotFoundError:
+        print("error: yt-dlp not found on PATH — install it (e.g. `pip install yt-dlp` "
+              "or `brew install yt-dlp`)", file=sys.stderr)
+        return 1
+    except subprocess.TimeoutExpired:
+        print("error: yt-dlp timed out after 120s — very large playlist? retry.",
+              file=sys.stderr)
+        return 1
+    if proc.returncode != 0:
+        err = (proc.stderr or "").strip().splitlines()
+        hint = " — playlist may be private; share/unlist it or use cookies-enabled yt-dlp" \
+            if any("Private" in l or "unavailable" in l.lower() for l in err) else ""
+        print(f"error: yt-dlp failed (exit {proc.returncode}){hint}\n"
+              + "\n".join(err[-3:]), file=sys.stderr)
+        return 1
+
+    entries: List[Dict[str, Any]] = []
+    meta: Dict[str, Any] = {}
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(d, dict):
+            continue
+        entries.append(d)
+        if not meta and d.get("playlist_title"):
+            meta = {"title": d.get("playlist_title"),
+                    "uploader": d.get("playlist_uploader") or "?",
+                    "id": d.get("playlist_id") or "?"}
+    if not entries:
+        print("error: playlist resolved but contains no videos", file=sys.stderr)
+        return 1
+
+    title = meta.get("title") or "playlist"
+    slug = slugify(a.save) if a.save else slugify(title)
+    out_dir = os.path.join(".", "lists")
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{slug}.md")
+    today = time.strftime("%Y-%m-%d")
+    lines = [
+        f"# {slug}",
+        f"_Import: {today} · playlist:{meta.get('id')} \"{title}\" ({meta.get('uploader')}) "
+        f"· {len(entries)} videos_",
+        "",
+        "## Picks",
+    ]
+    lines += [_playlist_entry_line(d) for d in entries]
+    with open(out_path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+    print(f"✓ {os.path.abspath(out_path)}  ({len(entries)} videos)")
+    for line in lines[4:4 + 3]:
+        print(f"  {line}")
+    if len(entries) > 3:
+        print(f"  … +{len(entries) - 3} more")
+    return 0
+
+
 SUBCOMMANDS = {
     "expand": cmd_expand,
     "exclude": cmd_exclude,
     "dedup": cmd_dedup,
     "channel": cmd_channel,
     "hosts": cmd_hosts,
+    "playlist-import": cmd_playlist_import,
 }
 
 

@@ -73,6 +73,16 @@ youtube channel --list
 
 Stored at `~/.config/youtube-skill/channels.md`. Blocked → filtered before ranking; favourites → score boost.
 
+## Playlist import (any playlist → curatable list)
+
+```bash
+youtube playlist-import "https://www.youtube.com/playlist?list=PL…"   # → ./lists/<slug>.md
+youtube playlist-import "https://www.youtube.com/watch?v=X&list=PL…"  # watch URL works too
+youtube playlist-import PLunPKX4o0PQ… --save my-name                 # bare id + explicit name
+```
+
+Imports **any** playlist (own, unlisted, foreign) as a `## Picks` list — complete listing via yt-dlp (Invidious search is query-limited), ready for curation and `vtd transcript --list`. Requires `yt-dlp` on PATH. Writes `./lists/` relative to cwd.
+
 ## Update / health
 
 ```bash

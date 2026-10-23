@@ -1,5 +1,18 @@
 ## Unreleased
 
+### youtube — `playlist-import`: beliebige YouTube-Playlist als kuratierbare Liste
+- **`youtube playlist-import <url|PL-id> [--save NAME]`** — importiert jede
+  Playlist (eigene, unlisted, fremde) als `./lists/<slug>.md` im Skill-Format
+  (`## Picks`, Watch-Links, ucid-Tokens) — bereit für Curation und
+  `vtd transcript --list`.
+- **Erste yt-dlp-gestützte Code-Path im Skill** (erster Baustein des
+  Backend-Plans): vollständige Listings in ~1s — Invidious-Channel-Search ist
+  query-limitiert, yt-dlp listet alles. Akzeptiert Playlist-URLs, Watch-URLs
+  mit `?list=` und bare IDs. Loud failures (private Playlist → klarer
+  Fehler + Hint). 8 neue Unit-Tests (Normalisierung, Entry-Format,
+  End-to-End mit gemocktem yt-dlp), Suite 54/54 grün, Live-Smoke an
+  2 echten Playlists (3 + 46 Videos) ok.
+
 ### youtube — Registry-Metadata: uptime %, api-Flag, Region (health sichtbar machen)
 - **`youtube hosts` zeigt jetzt Registry-Daten** (beide Views, cached + `--probe`):
   30-Tage-Uptime-%, `api:yes/NO/?`-Flag und Region aus der offiziellen

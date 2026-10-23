@@ -455,5 +455,100 @@ class TestAgeRestriction(unittest.TestCase):
         self.assertFalse(search._is_age_restricted(self._video()))
 
 
+class TestPlaylistImport(unittest.TestCase):
+    """playlist-import: target normalization, entry lines, end-to-end with
+    mocked yt-dlp subprocess."""
+
+    def test_target_from_playlist_url(self):
+        self.assertEqual(search._playlist_target("https://www.youtube.com/playlist?list=PLabc123"),
+                         "https://www.youtube.com/playlist?list=PLabc123")
+
+    def test_target_from_watch_url_with_list_param(self):
+        self.assertEqual(search._playlist_target("https://www.youtube.com/watch?v=X&list=PLabc123&t=5"),
+                         "https://www.youtube.com/playlist?list=PLabc123")
+
+    def test_target_from_bare_id(self):
+        self.assertEqual(search._playlist_target("PLunPKX4o0PQDumbiN-V4GZVW5uvHvq-Bl"),
+                         "https://www.youtube.com/playlist?list=PLunPKX4o0PQDumbiN-V4GZVW5uvHvq-Bl")
+
+    def test_target_rejects_plain_garbage(self):
+        with self.assertRaises(ValueError):
+            search._playlist_target("rust async")
+        with self.assertRaises(ValueError):
+            search._playlist_target("")
+
+    def test_entry_line_format(self):
+        d = {"id": "abc123", "title": "Entropy & Compression", "channel": "3Blue1Brown",
+             "channel_id": "UCYO_jab", "duration": 1940, "view_count": 1_600_000}
+        line = search._playlist_entry_line(d)
+        self.assertIn("[**Entropy & Compression**](https://www.youtube.com/watch?v=abc123)", line)
+        self.assertIn("— 3Blue1Brown · 32:20 · 1.6M views ucid:UCYO_jab", line)
+
+    def test_entry_line_survives_missing_fields(self):
+        line = search._playlist_entry_line({"id": "x"})
+        self.assertIn("watch?v=x", line)
+        self.assertIn("ucid:?", line)
+
+    def _mock_dump(self, monkey_stdout: str, returncode: int = 0,
+                   stderr: str = "") -> None:
+        class _P:
+            pass
+        p = _P()
+        p.returncode = returncode
+        p.stdout = monkey_stdout
+        p.stderr = stderr
+        def _fake_run(cmd, **kwargs):
+            assert cmd[0] == "yt-dlp", "playlist-import must call yt-dlp"
+            return p
+        unittest.mock.patch("subprocess.run", _fake_run).start()
+        self.addCleanup(unittest.mock.patch.stopall)
+
+    def test_import_end_to_end_writes_list(self):
+        import tempfile
+        import contextlib
+        import io
+        entry = json.dumps({
+            "id": "-n6-9IgiqHo", "title": "History of General Relativity",
+            "channel": "Institute for Advanced Study", "channel_id": "UC8aRaZ6",
+            "duration": 2835, "view_count": 23000, "url": "https://www.youtube.com/watch?v=-n6-9IgiqHo",
+            "playlist_title": "deeptech&physics", "playlist_uploader": "Hans Waldherr",
+            "playlist_id": "PLCtvg0SUrK7M",
+        })
+        with tempfile.TemporaryDirectory() as td:
+            orig = os.getcwd()
+            os.chdir(td)
+            try:
+                self._mock_dump(entry + "\n")
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = search.cmd_playlist_import(["https://www.youtube.com/playlist?list=PLCtvg0SUrK7M"])
+                self.assertEqual(rc, 0)
+                self.assertTrue(os.path.exists("lists/deeptech-physics.md"))
+                body = open("lists/deeptech-physics.md").read()
+                self.assertIn("## Picks", body)
+                self.assertIn("playlist:PLCtvg0SUrK7M", body)
+                self.assertIn("History of General Relativity", body)
+                self.assertIn("ucid:UC8aRaZ6", body)
+            finally:
+                os.chdir(orig)
+
+    def test_import_ytdlp_failure_is_loud(self):
+        import tempfile
+        import contextlib
+        import io
+        with tempfile.TemporaryDirectory() as td:
+            orig = os.getcwd()
+            os.chdir(td)
+            try:
+                self._mock_dump("", returncode=1, stderr="ERROR: Private playlist")
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = search.cmd_playlist_import(["PLprivate0000000000000000"])
+                self.assertEqual(rc, 1)  # loud failure, no partial file
+                self.assertFalse(os.path.exists("lists"))
+            finally:
+                os.chdir(orig)
+
+
 if __name__ == "__main__":
     unittest.main()
