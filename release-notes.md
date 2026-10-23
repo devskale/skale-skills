@@ -1,5 +1,20 @@
 ## Unreleased
 
+### issues — Autocommit-Lüge beendet: doctor + SKILL.md auf Realität (2026-10-21-Entscheidung)
+- **Hintergrund:** der Autocommit-Timer (stündlicher Commit im geteilten
+  works-root) korrupte das Repo 2× (2026-10-20/21) und wurde per Nutzer-
+  Entscheidung entfernt (Beleg: works-Log `3242db1`). Doctor + SKILL.md
+  empfahlen ihn danach trotzdem weiter — Konterkarierung der Entscheidung.
+  Vorfall 2026-10-23: eine Session legte ihn daraufhin fast neu an.
+- **doctor neu:** kein Autocommit = **ok** („commits by hand, purge is FINAL,
+  by decision 2026-10-21“). Geladener/files-präsenter Autocommit = **WARN mit
+  Deletions-Anleitung** (aktiver Schutz vor Wiedereinführung).
+- **SKILL.md Gotcha umgeschrieben:** purge hat KEIN Recovery-Netz — nur
+  frühere manuelle Commits retten. Verweist auf die verbindliche Retro:
+  `~/configs/machines/skaleshare-works-no-autocommit.md` (neu, inkl.
+  Maschinen-Check mac/pi5/lubu/amd/amp/tu/ubugrill — alle clean; amd1 offen).
+- Suite 109/109 grün; Live-Doctor verifiziert.
+
 ### vtd — Cookie-Identität: laut anunciieren + Agent fragt immer nach dem Account
 - **Nutzer-Regel (2026-10-23):** vor JEDEM `--cookies`-Download fragt der Agent,
   mit welchem Browser-Profil/Account geladen wird — nie stillschweigend das

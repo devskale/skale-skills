@@ -1465,15 +1465,15 @@ cmd_doctor() {
     fi
     case "$autocommit_loaded" in
       2) doc_ok "versioning: shared git over network mount (committed on the sharing/syncing box)" ;;
-      1) doc_ok "versioning: local git + auto-commit loaded (recovery net; history is per-machine, not synced)" ;;
+      1) doc_warn "auto-commit LOADED — this mechanism was REMOVED by user decision 2026-10-21 (hourly commits into the Syncthing-synced .git corrupted the repo 2×). Unload + delete: launchctl unload ~/Library/LaunchAgents/com.skale.works.plist && rm ~/Library/LaunchAgents/com.skale.works.plist $CENTRAL/.autocommit.sh" ;;
       *) if [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/com.skale.works.plist "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
-           doc_warn "auto-commit installed but NOT loaded (launchctl) — recovery net is not running. Fix: launchctl load ~/Library/LaunchAgents/com.skale.works.plist (or com.skale.handoffs.plist on older machines)"
+           doc_warn "auto-commit files present but the mechanism was REMOVED by user decision 2026-10-21 (2× repo corruption) — delete them: $CENTRAL/.autocommit.sh + the LaunchAgent plist. purge is FINAL by design; only manual commits that happened earlier can recover a file"
          else
-           doc_warn "local git in root but no auto-commit found — commits happen only by hand"
+           doc_ok "versioning: local git, commits by hand (no auto-commit, by decision 2026-10-21: hourly auto-commits corrupted the synced .git 2×) — 'purge' is FINAL; only earlier manual commits can recover"
          fi ;;
     esac
   else
-    doc_warn "no git history in root — 'purge' is FINAL (no recovery). Consider git init + hourly auto-commit in $CENTRAL"
+    doc_warn "no git history in root — 'purge' is FINAL (no recovery). Consider a manual git init in $CENTRAL (NO hourly auto-commit — removed 2026-10-21 after 2× repo corruption)"
   fi
 
   # 4. identity

@@ -83,11 +83,12 @@ issues start <slug> → work → issues review <slug> → issues done <slug>
   revived live copy; commands resolve to the LIVE copy. Don't hand-edit
   terminal columns — use `purge` to remove, or move back to a live column to
   reopen.
-- **`purge` deletes the live file everywhere.** The synced root has no git —
-  but the local auto-commit history (LaunchAgent, hourly, per-machine) is a
-  recovery net: `git -C ~/code/skaleshare/works log`. History is NOT synced; a purged
-  file is recoverable only on machines with local history. Double-check before
-  purging.
+- **`purge` deletes the live file everywhere — and there is NO recovery net.**
+  2026-10-21 decision: NO auto-commit timer on any machine (an hourly
+  `git add -A` on the Syncthing-synced `.git` corrupted the repo 2× — see
+  `~/configs/machines/skaleshare-works-no-autocommit.md`). Recovery exists
+  only via manual commits that happened to run earlier
+  (`git -C ~/code/skaleshare/works log`). Double-check before purging.
 - **Project-specific values** (version, module, triage vocabulary) come from
   `<project>/.issues/config`, NOT from the code — see `issues --help` §CONFIG.
 
