@@ -126,6 +126,54 @@ try:
 except Exception as e:
     check(f"malformed json must not raise ({e})", False)
 
+
+# ── 9. pages-aware poll budget (_poll_budget_for_pages) ──────────────────
+# Vorfall 2026-10-22: 222 Seiten > 600s statisches Budget -> Fehler, obwohl
+# der Job kurz danach fertig war. Real gemessen: 2.7–9 s/Seite -> Budget
+# pages×10s+120s (großzügiger oberer Rand).
+B = pdf2mark._poll_budget_for_pages
+check("222 pages -> 2220+120=2340s (covers the observed ~29min)",
+      B(222, 600) == 222 * 10 + 120)
+check("316 pages -> 3280s (st7789v case, >19min observed)",
+      B(316, 600) == 316 * 10 + 120)
+check("small doc keeps base when pages-budget is smaller",
+      B(30, 600) == 600)  # 30×10+120=420 < 600 -> base wins
+check("unknown pages -> base", B(None, 600) == 600)
+check("zero pages -> base", B(0, 600) == 600)
+check("garbage pages -> base", B("many", 600) == 600)
+check("negative pages -> base", B(-5, 600) == 600)
+
+# ── 10. _poll_wait extends the deadline once pages are known ─────────────
+# Simulierter Job: 1. Poll running(222 pages), 2. Poll done. time.sleep wird
+# gepatcht (kein echtes Warten); requests.get liefert die Fake-Antworten.
+class _FakeResp:
+    def __init__(self, payload, status_code=200):
+        self._p = payload
+        self.status_code = status_code
+    def json(self):
+        return self._p
+
+_poll_calls = {"n": 0}
+_real_sleep = pdf2mark.time.sleep
+pdf2mark.time.sleep = lambda s: None
+
+def _seq_get(url, **kw):
+    _poll_calls["n"] += 1
+    if _poll_calls["n"] == 1:
+        return _FakeResp({"status": "running", "pages": 222})
+    return _FakeResp({"status": "done", "markdown": "ok", "pages": 222})
+
+pdf2mark.requests.get = _seq_get
+_short_deadline = pdf2mark.time.monotonic() + 1  # would expire next loop!
+try:
+    body = pdf2mark._poll_wait("jobX", "http://x/jobs/jobX", {}, _short_deadline, False)
+    check("_poll_wait survives a short deadline via pages-extension",
+          body.get("status") == "done" and _poll_calls["n"] == 2)
+except SystemExit as e:
+    check(f"_poll_wait must not exit while pages-budget covers the job ({e})", False)
+finally:
+    pdf2mark.time.sleep = _real_sleep
+
 print("")
 print(f"PASS={PASS} FAIL={FAIL}")
 sys.exit(0 if FAIL == 0 else 1)

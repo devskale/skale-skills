@@ -31,7 +31,10 @@ case "${1:-}" in
     --update)
         echo "Updating pdf2mark..."
         cd "$GIT_ROOT" || exit 1
-        if ! git pull --ff-only; then
+        # -c pull.rebase=false: pure fast-forward, unabhängig vom globalen
+        # pull.rebase=true (Rebase verlangt einen sauberen Tree und meldet sich
+        # dann mit irreführenden cannot-pull-with-rebase-Fehlern, Vorfall 2026-10-23)
+        if ! git -c pull.rebase=false pull --ff-only; then
             echo "✗ git pull failed — staying on current code, stamp NOT updated" >&2
             exit 1
         fi
@@ -67,7 +70,7 @@ if [ -d "$GIT_ROOT/.git" ]; then
         (
             cd "$GIT_ROOT" || exit 1
             ok=true
-            if ! git pull --ff-only --quiet; then
+            if ! git -c pull.rebase=false pull --ff-only --quiet; then
                 echo "pdf2mark: auto-update git pull failed — staying on current code, will retry next run" >&2
                 ok=false
             fi

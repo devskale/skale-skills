@@ -41,6 +41,13 @@ milliseconds with identical output. Async job ids are kept too: a re-run
 instead of re-uploading. `--force` bypasses both; `PDF2MD_CACHE` overrides
 the directory. Follow-up questions about the same PDF never re-convert.
 
+**Lange OCR-Jobs warten jetzt durch:** sobald der Job seine Seitenzahl meldet,
+hebt pdf2mark das Poll-Budget auf pages×10 s + 120 s an (real gemessen:
+2.7–9 s/Seite) und zeigt eine grobe ETA — ein 222-Seiten-Scan stirbt nicht
+mehr an der statischen 600s-Grenze. Sollte das Budget dennoch reißen:
+**einfach denselben Befehl erneut laufen lassen** — er re-attacht an den
+laufenden Job.
+
 Full options (llamaparse tiers, OCR language, timeout), size limits, error codes, credentials and the raw endpoint: **[references/api.md](references/api.md)**.
 
 ## Install

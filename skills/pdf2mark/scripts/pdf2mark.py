@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 from contextlib import contextmanager
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 
@@ -20,6 +20,26 @@ AUTO_FALLBACK_CHARS = 20  # less than this from pdfplumber -> scan, go llamapars
 # main() must not read this as an empty conversion result.
 SHARE_SKIPPED_DOWNLOAD = "\x00SHARE_SKIPPED\x00"
 DEFAULT_TIMEOUTS = {"pdfplumber": 180, "llamaparse": 600}  # OCR scales with pages
+# llamaparse-OCR ist 10× langsamer als lokale pdfplumber-Konversion: real
+# gemessen 2026-10-22 (embeddings-Suite): 2.7–9 s/Seite (cc1101 112p ≈ 5 min,
+# PN532 222p ≈ 29 min, st7789v 316p >19 min). Das pages-aware Budget nimmt
+# den oberen Rand — zu lange warten schadet nicht (der Job läuft serverseitig
+# weiter, Re-Run attachet sich erneut), ein zu frühes Exiten bricht Batches.
+SECONDS_PER_PAGE_POLL = 10.0
+POLL_BUFFER_S = 120
+
+
+def _poll_budget_for_pages(pages: Any, base: float) -> float:
+    """Pages-aware Poll-Budget: große Scans sprengen jede statische Default-
+    Grenze (Vorfall 2026-10-22: 222 Seiten > 600 s Budget → Fehler, obwohl der
+    Job 2 Minuten später fertig war). Unbekannte/ungültige Seitenzahl → base."""
+    try:
+        p = int(pages)
+    except (TypeError, ValueError):
+        return base
+    if p <= 0:
+        return base
+    return max(base, p * SECONDS_PER_PAGE_POLL + POLL_BUFFER_S)
 
 # ── Result cache + job registry (v1.7.0) ──────────────────────────────
 # A 100-page PDF takes minutes server-side, and agents re-read the same file
@@ -132,9 +152,14 @@ def _poll_wait(job_id: str, poll_url: str, headers: dict, deadline: float,
                verbose: bool) -> dict:
     """Klassisches 3s-Polling bis terminal/Deadline (der bewährte Pfad).
 
+    Pages-aware Budget-Erweiterung: sobald der Job seine Seitenzahl meldet,
+    wird die Deadline auf max(deadline, now + pages×10s + 120s) angehoben —
+    ein 300-Seiten-Scan stirbt nicht mehr an der statischen 600s-Grenze.
+
     Exits selbst bei 401/HTTP-Fehler/Deadline (mit poll-manual-Hinweis) —
     wie historisch wait_job.
     """
+    budget_from_pages = False
     while True:
         r = requests.get(poll_url, headers=headers, timeout=30)
         if r.status_code == 401:
@@ -150,8 +175,19 @@ def _poll_wait(job_id: str, poll_url: str, headers: dict, deadline: float,
         if status == "cancelled":
             sys.exit("error: job was cancelled (DELETE) — submit again if you "
                      "still want the conversion")
+        if not budget_from_pages and body.get("pages"):
+            budget = _poll_budget_for_pages(body["pages"], 0)
+            new_deadline = time.monotonic() + budget
+            if new_deadline > deadline:
+                deadline = new_deadline
+                est = int(body["pages"] * 5)  # Mitte der realen 2.7–9 s/Seite
+                print(f"pdf2md: job has {body['pages']} pages — poll budget extended "
+                      f"to ~{int(budget)}s (OCR takes minutes at this size; rough ETA "
+                      f"~{est // 60}min)", file=sys.stderr)
+            budget_from_pages = True
         if time.monotonic() > deadline:
-            sys.exit(f"error: job {job_id} not done after poll budget — poll manually "
+            sys.exit(f"error: job {job_id} not done after poll budget — re-run the "
+                     f"same command (it re-attaches to this job) or poll manually "
                      f"(result kept ~2h):\n"
                      f"  curl -s -H 'Authorization: Bearer <token>' {poll_url}")
         time.sleep(3)
