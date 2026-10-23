@@ -1,7 +1,6 @@
 ---
-disable-model-invocation: true
 name: youtube
-version: "2.2.1"
+version: "2.3.0"
 description: Search YouTube for long, recent, well-watched content and curate ranked lists you can refine and transcribe. Use when the user wants to find videos or build a watch list.
 ---
 
@@ -14,7 +13,7 @@ youtube "rust async" --preset fresh           # ranking preset
 youtube "query" --stdout                      # print only (legacy)
 ```
 
-Finds fresh, long, deep content (Invidious API, no key), ranks it, and **saves a list you curate** — promote picks, tag, exclude channels, expand. When the Picks are right: `vtd transcript --list <name>` transcribes them all → [vtd skill](../video-transcript-downloader/SKILL.md). Zero dependencies (stdlib only).
+Finds fresh, long, deep content, ranks it, and **saves a list you curate** — promote picks, tag, exclude channels, expand. When the Picks are right: `vtd transcript --list <name>` transcribes them all → [vtd skill](../video-transcript-downloader/SKILL.md). Stdlib-only by default; `--backend ytdlp` and `playlist-import` additionally need `yt-dlp` on PATH.
 
 ## Install
 

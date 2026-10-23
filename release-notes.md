@@ -1,5 +1,14 @@
 ## Unreleased
 
+### youtube — agent-sichtbar: disable-model-invocation entfernt (v2.3.0)
+- Der Skill erscheint jetzt in pi's available_skills (Description als
+  Trigger: "find videos / build a watch list") — frische Sessions finden
+  Videos auf Zuruf, ohne dass der Nutzer den Befehl kennen muss.
+  Vorher: passive Ausführung (Agent musste zufällig vom Befehl wissen).
+- Intro korrigiert: "Zero dependencies" stimmt nicht mehr — yt-dlp ist
+  Optional-Requirement fuer --backend ytdlp + playlist-import.
+
+
 ### youtube — yt-dlp-Suchbackend als Option + Auto-Fallback (Rewrite, Stufe 2)
 - **`youtube "q" --backend ytdlp`** — zuverlässige Suche direkt über
   yt-dlp; **Invidious bleibt Default** (anonym, siehe references/privacy.md).
