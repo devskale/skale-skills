@@ -538,6 +538,130 @@ def video_id_from_url(s: str) -> str:
     return m.group(1) if m else s.strip()
 
 
+# ╔ yt-dlp search backend (optional; Invidious stays the anonymous default) ═
+# Two-stage design (issue youtube-ytdlp-rewrite, validated live 2026-10-23:
+# ytsearch30 flat = 2.1s / 44 fields):
+#   1. flat pool  — ytsearch{pool} --flat-playlist: all fields except dates
+#   2. enrich     — full extraction ONLY for hard-filter survivors (dates for
+#                   the --fresh filter + recency scoring, age_limit for 🔒)
+# Privacy: unlike Invidious, your OWN IP queries YouTube (references/privacy.md).
+
+def _parse_upload_date(s: Any) -> Optional[int]:
+    """yt-dlp 'upload_date' is YYYYMMDD; 'timestamp' (unix) is preferred."""
+    if isinstance(s, (int, float)) and s > 0:
+        return int(s)
+    if isinstance(s, str) and re.fullmatch(r"\d{8}", s):
+        import calendar
+        try:
+            return calendar.timegm(time.strptime(s, "%Y%m%d"))
+        except ValueError:
+            return None
+    return None
+
+
+def _ytdlp_to_video(d: Dict[str, Any], enrich: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Normalize a flat/full yt-dlp dump into the Invidious video shape the<arg_value><b88a6f17>Normalize a flat/full yt-dlp dump into the Invidious video shape the
+    filter/score pipeline already speaks (videoId, title, author, authorId,
+    viewCount, lengthSeconds, published, isAgeLimited)."""
+    e = enrich or {}
+    age = e.get("age_limit", d.get("age_limit"))
+    return {
+        "videoId": d.get("id") or "",
+        "title": d.get("title") or "",
+        "author": d.get("channel") or d.get("uploader") or "",
+        "authorId": d.get("channel_id") or "",
+        "viewCount": _to_int(d.get("view_count") or 0),
+        "lengthSeconds": _to_int(d.get("duration") or 0),
+        "published": _parse_upload_date(e.get("timestamp") or e.get("upload_date")
+                                        or d.get("timestamp") or d.get("upload_date")),
+        "isAgeLimited": bool(age and age > 0) or d.get("availability") == "need_auth",
+        "liveContent": bool(d.get("is_live")),
+    }
+
+
+def _ytdlp_flat(query: str, pool: int) -> List[Dict[str, Any]]:
+    """Stage 1: flat search — fast, complete on fields, no dates."""
+    import subprocess
+    try:
+        proc = subprocess.run(
+            ["yt-dlp", "--flat-playlist", "--dump-json", "--no-warnings",
+             f"ytsearch{pool}:{query}"],
+            capture_output=True, text=True, timeout=120,
+        )
+    except FileNotFoundError:
+        sys.exit("error: --backend ytdlp needs yt-dlp on PATH (e.g. `brew install yt-dlp`)")
+    except subprocess.TimeoutExpired:
+        return []
+    if proc.returncode != 0:
+        err = (proc.stderr or "").strip().splitlines()
+        print(f"error: yt-dlp search failed (exit {proc.returncode})\n"
+              + "\n".join(err[-3:]), file=sys.stderr)
+        return []
+    out: List[Dict[str, Any]] = []
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(d, dict) and d.get("id"):
+            out.append(d)
+    return out
+
+
+def _ytdlp_enrich(video_ids: List[str], max_workers: int = 6) -> Dict[str, Dict[str, Any]]:
+    """Stage 2: full extraction for exactly the survivors (~5s each, parallel)
+    — yields timestamp/upload_date (age filter + recency score) and age_limit (🔒)."""
+    import subprocess
+    from concurrent.futures import ThreadPoolExecutor
+
+    def one(vid: str) -> Tuple[str, Optional[Dict[str, Any]]]:
+        try:
+            proc = subprocess.run(
+                ["yt-dlp", "--dump-json", "--no-download", "--no-warnings",
+                 f"https://www.youtube.com/watch?v={vid}"],
+                capture_output=True, text=True, timeout=60,
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                d = json.loads(proc.stdout.strip().splitlines()[0])
+                return vid, {"timestamp": d.get("timestamp"),
+                             "upload_date": d.get("upload_date"),
+                             "age_limit": d.get("age_limit")}
+        except Exception:
+            pass  # loud-ok: enrichment is best-effort; missing date = unknown age
+        return vid, None
+
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        return {vid: e for vid, e in ex.map(one, video_ids) if e}
+
+
+def ytdlp_search(query: str, pool: int, hard_filter, enrich_cap: int = 25) -> List[Dict[str, Any]]:
+    """Full yt-dlp search: flat pool → hard filter (no-date fields) →
+    enrich survivors → normalized video dicts for the shared pipeline.
+    `hard_filter(video_dict) -> bool` runs on the NORMALIZED shape."""
+    flat = _ytdlp_flat(query, pool)
+    if not flat:
+        return []
+    videos = [_ytdlp_to_video(d) for d in flat]
+    survivors = [v for v in videos if hard_filter(v)]
+    if not survivors:
+        return videos  # nothing survived — return the raw pool; the pipeline's
+        # own report explains that filters were too strict
+    ids = [v["videoId"] for v in survivors[:enrich_cap]]
+    enrich = _ytdlp_enrich(ids)
+    for v in survivors[:enrich_cap]:
+        e = enrich.get(v["videoId"])
+        if e:
+            # merge ONLY the enriched fields — a full _ytdlp_to_video({"id": …})
+            # would zero title/views/duration (bug caught by the live smoke)
+            v["published"] = _parse_upload_date(e.get("timestamp") or e.get("upload_date"))
+            age = e.get("age_limit")
+            v["isAgeLimited"] = bool(age and age > 0)
+    return videos
+
+
 # ╔ Deep-mode scoring + filtering ════════════════════════════════════════
 
 def passes_filters(
@@ -730,6 +854,48 @@ def report_search_failure(
         print("  Replace the dead instances (re-probe the pool):", file=sys.stderr)
         print("    youtube --discover", file=sys.stderr)
 
+def _finish_search(args, scored: List[Tuple[float, Dict[str, Any]]], now: float,
+                   pool_size: int, channel_ucid: Optional[str] = None,
+                   promote_host: Optional[str] = None) -> int:
+    """Shared tail of every search backend: picks/candidates → stdout or list."""
+    picks = scored[: args.num]
+    candidates = scored[args.num:]
+
+    if args.verbose:
+        print(f"Pool {pool_size} unique videos, passed {len(scored)}, "
+              f"picks {len(picks)}, candidates {len(candidates)}.", file=sys.stderr)
+
+    # Fail loud: fewer picks than asked for — say so, don't go quiet.
+    if len(picks) < args.num:
+        print(f"Note: only {len(picks)}/{args.num} passed the filters "
+              f"(pool {pool_size} unique, preset {args.preset}) — "
+              "loosen --fresh/--min-views/--min-duration or raise --pool "
+              "for more.", file=sys.stderr)
+
+    if promote_host:
+        promote_instance(promote_host)
+
+    if args.stdout:
+        print_results([v for _, v in picks], now, show_score=args.verbose, scored=picks)
+        return 0
+
+    # Auto-save list.
+    slug = slugify(args.save) if args.save else slugify(args.query)
+    path = os.path.join(LISTS_DIR, f"{slug}.md")
+    meta = (f"_Search: {time.strftime('%Y-%m-%d', time.localtime(now))} · "
+            f"pool {pool_size} · preset {args.preset} · "
+            f"`{args.query}`" + (f" · channel:{channel_ucid}" if channel_ucid else "") + "_")
+    write_list(path, args.query or slug, picks, candidates, now, meta)
+    print(path)
+    # Preview: first ~6 lines so the agent/user sees what landed.
+    with open(path, encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            if i >= 6:
+                break
+            print(line.rstrip())
+    return 0
+
+
 def do_search(args) -> int:
     now = time.time()
     raw_mode = args.rank is not None
@@ -769,6 +935,42 @@ def do_search(args) -> int:
                   f"blocked={len(blocked)}", file=sys.stderr)
 
     exclude_channels = [c.strip() for c in (args.exclude_channel or []) if c.strip()]
+
+    def _hard_filter(v: Dict[str, Any]) -> bool:
+        """No-date filters only — the yt-dlp backend enriches dates AFTER this."""
+        return passes_filters(v, now, args.min_views, None,
+                              0 if args.any_length else args.min_duration,
+                              args.max_duration, blocked, exclude_channels)
+
+    backend = getattr(args, "backend", "invidious") or "invidious"
+    if backend == "ytdlp":
+        if channel_ucid:
+            print("error: --channel with --backend ytdlp is not supported (yet) — "
+                  "use the default Invidious backend for channel searches", file=sys.stderr)
+            return 1
+        if args.verbose:
+            print("Mode: backend=ytdlp (your IP queries YouTube — see references/privacy.md)",
+                  file=sys.stderr)
+        pool = ytdlp_search(args.query, fetch_n, _hard_filter)
+        if not pool:
+            print("error: yt-dlp backend returned nothing (query too exotic, or yt-dlp "
+                  "outdated — try `yt-dlp -U`)", file=sys.stderr)
+            return 1
+        if raw_mode:
+            print_results(pool, now)
+            return 0
+        filtered = [v for v in pool if passes_filters(
+            v, now, args.min_views, parse_age_spec(args.fresh),
+            0 if args.any_length else args.min_duration, args.max_duration, blocked, exclude_channels)]
+        if not filtered:
+            report_search_failure(dead=[], errors={},
+                                  filtered_hosts=[("yt-dlp (youtube.com)", len(pool))])
+            return 1
+        scored = [(score_video(v, rank, len(filtered), now, weights, favs), v)
+                  for rank, v in enumerate(filtered)]
+        scored.sort(key=lambda sv: sv[0], reverse=True)
+        return _finish_search(args, scored, now, pool_size=len(pool),
+                              channel_ucid=None)
 
     tried: List[str] = []
     dead: List[str] = []
@@ -836,6 +1038,23 @@ def do_search(args) -> int:
         # results were all filtered out stay cached (they're healthy; the
         # filters were just strict for this query).
         evict_instances(dead)
+        # Relief valve: a TOTAL instance failure (no pool at all) retries via
+        # yt-dlp — less anonymous (your IP queries YouTube, references/
+        # privacy.md), loudly announced. A filters-killed-everything case
+        # gets no fallback: the same videos would be filtered there too.
+        if not pool and not raw_mode and not channel_ucid:
+            print("note: every Invidious instance failed — retrying via yt-dlp "
+                  "(less anonymous: your IP queries YouTube)", file=sys.stderr)
+            yt_pool = ytdlp_search(args.query, fetch_n, _hard_filter)
+            yt_filtered = [v for v in (yt_pool or []) if passes_filters(
+                v, now, args.min_views, parse_age_spec(args.fresh),
+                0 if args.any_length else args.min_duration, args.max_duration,
+                blocked, exclude_channels)]
+            if yt_filtered:
+                scored = [(score_video(v, rank, len(yt_filtered), now, weights, favs), v)
+                          for rank, v in enumerate(yt_filtered)]
+                scored.sort(key=lambda sv: sv[0], reverse=True)
+                return _finish_search(args, scored, now, pool_size=len(yt_pool))
         report_search_failure(dead, errors, filtered_hosts)
         return 1
 
@@ -845,39 +1064,9 @@ def do_search(args) -> int:
     scored = [(score_video(v, rank, len(filtered), now, weights, favs), v)
               for rank, v in enumerate(filtered)]
     scored.sort(key=lambda sv: sv[0], reverse=True)
-    picks = scored[: args.num]
-    candidates = scored[args.num:]
-
-    if args.verbose:
-        print(f"Pool {len(pool)} unique videos, passed {len(filtered)}, "
-              f"picks {len(picks)}, candidates {len(candidates)}.", file=sys.stderr)
-
-    # Fail loud: fewer picks than asked for — say so, don't go quiet.
-    if len(picks) < args.num:
-        print(f"Note: only {len(picks)}/{args.num} passed the filters "
-              f"(pool {len(pool)} unique, preset {args.preset}) — "
-              "loosen --fresh/--min-views/--min-duration or raise --pool "
-              "for more.", file=sys.stderr)
-
-    promote_instance(first_healthy or tried[0])
-
-    if args.stdout:
-        print_results([v for _, v in picks], now, show_score=args.verbose, scored=picks)
-        return 0
-
-    # Auto-save list.
-    slug = slugify(args.save) if args.save else slugify(args.query)
-    path = os.path.join(LISTS_DIR, f"{slug}.md")
-    meta = (f"_Search: {time.strftime('%Y-%m-%d', time.localtime(now))} · "
-            f"pool {len(pool)} · preset {args.preset} · "
-            f"`{args.query}`" + (f" · channel:{channel_ucid}" if channel_ucid else "") + "_")
-    write_list(path, args.query or slug, picks, candidates, now, meta)
-    print(path)
-    # Preview: first ~6 lines so the agent/user sees what landed.
-    with open(path, encoding="utf-8") as f:
-        preview = [next(f, "") for _ in range(6)]
-    sys.stderr.write("".join(preview).rstrip() + "\n")
-    return 0
+    return _finish_search(args, scored, now, pool_size=len(pool),
+                          channel_ucid=channel_ucid,
+                          promote_host=first_healthy or (tried[0] if tried else None))
 
 
 # ╔ Subcommands ══════════════════════════════════════════════════════════
@@ -1289,6 +1478,10 @@ def main() -> int:
                         help="Min duration seconds (default 1200)")
     parser.add_argument("--max-duration", type=int, default=None, help="Max duration seconds")
     parser.add_argument("--region", help="Region code (e.g. US, DE)")
+    parser.add_argument("--backend", choices=["invidious", "ytdlp"], default="invidious",
+                        help="search backend: invidious (default, anonymous — instance IP "
+                             "queries YouTube) or ytdlp (reliable, but YOUR IP queries "
+                             "YouTube; auto-used as fallback when every instance fails)")
     parser.add_argument("--no-favs", action="store_true", help="Disable favourite-channel boost")
     # Output
     parser.add_argument("--stdout", action="store_true", help="Print to stdout (don't save a list)")

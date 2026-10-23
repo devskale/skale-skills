@@ -1,5 +1,23 @@
 ## Unreleased
 
+### youtube — yt-dlp-Suchbackend als Option + Auto-Fallback (Rewrite, Stufe 2)
+- **`youtube "q" --backend ytdlp`** — zuverlässige Suche direkt über
+  yt-dlp; **Invidious bleibt Default** (anonym, siehe references/privacy.md).
+  Zwei-Stufen-Architektur wie im Issue: flat-Pool (ytsearch{pool}, ~2 s,
+  44 Felder) → harte Filter ohne Datum → Vollextraktion NUR der Überlebenden
+  (parallel, ~5 s/Video) für `--fresh`-Filter, Recency-Score und 🔒-Markierung
+  (age_limit). Live validiert: 30er-Pool in 21 s, echte Altersangaben,
+  fand das RustConf-Video, das Invidious verpasste.
+- **Auto-Fallback:** stirbt JEDE Instance (kein Pool), retried der Skill
+  laut ankündigt via yt-dlp — der Nothammer hinter dem Anonym-Default.
+  Filters-killte-alles Fälle bekommen bewusst KEINEN Fallback (gleiche
+  Videos würden auch dort gefiltert).
+- `_finish_search` als geteilter Tail für alle Backends; Bug aus dem Live-
+  Smoke gefixt (Enrichment zerstörte viewCount/duration durch Voll-Update).
+- 8 neue Unit-Tests (Mapping, Datums-Parsing, Flat-Parsing, Hard-Filter-
+  Flow), Unit 62/62, Suite 54/54, Live-Smokes: backend + Fallback grün.
+
+
 ### youtube — references/privacy.md: die Anonymitäts-Matrix dokumentiert
 - Die heute verifizierte Matrix (Live-Verhalten + 2026-Web-Recherche) als
   Referenzdokument: Suche anonym nur über Invidious (Instance-Betreiber

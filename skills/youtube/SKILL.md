@@ -49,6 +49,7 @@ Each entry carries a real `youtube.com/watch?v=ID` (vtd-ready) + channel · dura
 | `--min-duration` / `--max-duration` | 1200 / — | seconds |
 | `--region CC` | — | locale |
 | `--rank MODE` | — | raw sort: relevance/date/views/rating (disables deep mode) |
+| `--backend X` | invidious | `invidious` (anonymous default) or `ytdlp` (reliable, but your IP queries YouTube — [references/privacy.md](references/privacy.md)); ytdlp is also the automatic fallback when every instance fails |
 | `--no-favs` | off | disable favourite-channel boost |
 
 ## Refine a list (curation)
@@ -102,7 +103,7 @@ youtube --update | --selfcheck | --discover
 - **Invidious `/videos/{id}` (related videos) is widely blocked** — so `expand --like` resolves the video's *channel* instead (more from creator). If that fails, use `--channel` or `--more`.
 - **Watch links are `youtube.com`** (not the Invidious host), so they're ready for `vtd transcript --url …`.
 - **Fewer picks than `--num`?** Filters are strict. Widen with `--fresh all`, `--any-length`, lower `--min-views`, or bigger `--pool`.
-- **"all instances failed"** → `youtube --discover` (parallel probe, rebuilds the cache). Most public instances die regularly — the self-heal (evict/promote/merge) usually recovers on its own.
+- **"all instances failed"** → the skill now auto-retries via the **yt-dlp backend** (loudly announced — less anonymous). If that also fails: `youtube --discover` (parallel probe, rebuilds the cache). Most public instances die regularly — the self-heal (evict/promote/merge) usually recovers on its own. You can also search yt-dlp directly: `youtube "q" --backend ytdlp`.
 - **The long-term fix is a yt-dlp backend rewrite** — tracked on the skale-skills board as issue `youtube-ytdlp-rewrite` (`.work/issues/backlog/`, machine-local symlink).
 
 ## How it works

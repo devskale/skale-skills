@@ -392,6 +392,89 @@ class TestRegistryMeta(unittest.TestCase):
         self.assertEqual(key[1], 0.0)
 
 
+class TestYtdlpBackend(unittest.TestCase):
+    """yt-dlp backend: normalization, date parsing, flat parsing, wiring."""
+
+    def test_parse_upload_date_timestamp_wins(self):
+        self.assertEqual(search._parse_upload_date(1792600000), 1792600000)
+
+    def test_parse_upload_date_ymd(self):
+        ts = search._parse_upload_date("20260423")
+        self.assertIsInstance(ts, int)
+        self.assertTrue(ts > 1700000000)
+
+    def test_parse_upload_date_garbage(self):
+        self.assertIsNone(search._parse_upload_date(None))
+        self.assertIsNone(search._parse_upload_date("yesterday"))
+        self.assertIsNone(search._parse_upload_date(0))
+
+    def test_to_video_mapping(self):
+        d = {"id": "abc123", "title": "Deep Dive", "channel": "Chan", "channel_id": "UCx",
+             "view_count": 1234, "duration": 1800}
+        v = search._ytdlp_to_video(d)
+        self.assertEqual(v["videoId"], "abc123")
+        self.assertEqual(v["author"], "Chan")
+        self.assertEqual(v["authorId"], "UCx")
+        self.assertEqual(v["viewCount"], 1234)
+        self.assertEqual(v["lengthSeconds"], 1800)
+        self.assertIsNone(v["published"])          # flat: no date
+        self.assertFalse(v["isAgeLimited"])
+
+    def test_to_video_enrichment_overrides(self):
+        v = search._ytdlp_to_video(
+            {"id": "x", "view_count": 5, "duration": 10},
+            enrich={"timestamp": 1792600000, "age_limit": 18})
+        self.assertEqual(v["published"], 1792600000)
+        self.assertTrue(v["isAgeLimited"])
+
+    def test_to_video_availability_need_auth_marks_restricted(self):
+        v = search._ytdlp_to_video({"id": "x", "availability": "need_auth"})
+        self.assertTrue(v["isAgeLimited"])
+
+    def test_ytdlp_flat_parses_dump_lines(self):
+        import subprocess as real_sp
+        lines = "\n".join([
+            json.dumps({"id": "a", "title": "A", "view_count": 10, "duration": 30}),
+            "not json at all",
+            json.dumps({"id": "b", "title": "B", "view_count": 20, "duration": 40}),
+        ])
+        class _P:
+            returncode = 0
+            stdout = lines
+            stderr = ""
+        unittest.mock.patch("subprocess.run", lambda cmd, **kw: _P()).start()
+        self.addCleanup(unittest.mock.patch.stopall)
+        out = search._ytdlp_flat("query", 10)
+        self.assertEqual([d["id"] for d in out], ["a", "b"])  # bad line skipped
+
+    def test_ytdlp_search_hard_filters_then_returns_pool(self):
+        # 3 videos, only #2 passes the hard filter → enrichment cap respected,
+        # but the FULL pool is returned for the shared pipeline.
+        flat = [
+            {"id": "small", "title": "s", "view_count": 1, "duration": 5},
+            {"id": "good", "title": "g", "view_count": 9000, "duration": 1800},
+            {"id": "tiny", "title": "t", "view_count": 2, "duration": 5},
+        ]
+        import subprocess as real_sp
+        flat_lines = "\n".join(json.dumps(d) for d in flat)
+        class _P:
+            returncode = 0
+            stdout = flat_lines
+            stderr = ""
+        def fake_run(cmd, **kw):
+            assert cmd[0] == "yt-dlp"
+            # flat search vs enrich single-video: both get _P; enrich result unused here
+            return _P()
+        unittest.mock.patch("subprocess.run", fake_run).start()
+        # enrich must NOT hit the network-mocked subprocess with garbage → patch it out
+        unittest.mock.patch.object(search, "_ytdlp_enrich", lambda ids, **kw: {}).start()
+        self.addCleanup(unittest.mock.patch.stopall)
+        hard = lambda v: v["viewCount"] >= 1000 and v["lengthSeconds"] >= 1200
+        out = search.ytdlp_search("q", 10, hard)
+        self.assertEqual(len(out), 3)                 # full pool returned
+        self.assertEqual(out[1]["videoId"], "good")  # order preserved
+
+
 class TestFailLoud(unittest.TestCase):
     """Failure reporting: names hosts + reasons, gives actionable next steps."""
 
