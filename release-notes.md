@@ -1,5 +1,15 @@
 ## Unreleased
 
+### youtube — references/privacy.md: die Anonymitäts-Matrix dokumentiert
+- Die heute verifizierte Matrix (Live-Verhalten + 2026-Web-Recherche) als
+  Referenzdokument: Suche anonym nur über Invidious (Instance-Betreiber
+  sieht IP+Query), Transcript-Downloads nie anonym, 🔒 restricted ohne
+  anonymen Pfad (Age-Gate-Physik), yt-dlp+Tor möglich aber langsam,
+  Cookie-Runs anunciieren die Identität + Agent fragt vorher.
+- SKILL.md verlinkt sie ("Read when privacy matters") — progressive
+  disclosure bleibt gewahrt.
+
+
 ### pdf2mark — pages-aware Poll-Budget: lange OCR-Jobs warten durch (222-Seiten-Vorfall)
 - **Vorfall 2026-10-22 (embeddings-Suite):** 222- und 316-Seiten-Scans
   erschöpften das statische 600s-Budget → Fehler-Exit, obwohl die Jobs kurz

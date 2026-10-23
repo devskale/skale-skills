@@ -63,6 +63,10 @@ youtube expand --like <url> | --channel <name> | --more "<q>" [--list <name>]   
 
 → **Read [references/curation.md](references/curation.md)** for section semantics, tag vocabulary, and the full refine loop. **Read when** curating a list.
 
+## Privacy (who sees what)
+
+Searches over Invidious are anonymous against Google (the instance's IP hits YouTube — but the operator sees your queries). Transcript downloads never are: your IP talks to YouTube. 🔒 restricted content has **no anonymous path** — cookies attach an account. **Read [references/privacy.md](references/privacy.md)** for the full matrix, proxy/Tor notes, and what stays local. **Read when** privacy matters or a backend choice is questioned.
+
 ## Channel preferences (global, grows over time)
 
 ```bash
