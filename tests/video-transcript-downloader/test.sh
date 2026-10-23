@@ -149,6 +149,15 @@ WITHFALSE=$(HOME="$COOKIE_HOME" VTD_DEBUG=1 "$VTD" transcript --url "$VTD_NOOP_U
 assert "--cookies false -> no cookies" "[ "$WITHFALSE" -eq 0 ]"
 WITHINLINE=$(HOME="$COOKIE_HOME" VTD_DEBUG=1 "$VTD" transcript --url "$VTD_NOOP_URL" --no-file --cookies firefox 2>&1 | grep -c 'cookies (inline): firefox' || true)
 assert "--cookies firefox -> inline spec" "[ "$WITHINLINE" -ge 1 ]"
+# Identity announcement: every resolved spec is announced on stderr WITHOUT
+# debug mode — the attached account must be visible in every run (user rule:
+# the agent asks which account BEFORE invoking; the tool says which one it got).
+ANNOUNCE_CFG=$(HOME="$COOKIE_HOME" "$VTD" transcript --url "$VTD_NOOP_URL" --no-file --cookies 2>&1 | grep -c '🔒 cookies: chrome:Profile 2 — this download runs under that browser identity' || true)
+assert "--cookies announces profile loudly (no VTD_DEBUG needed)" "[ "$ANNOUNCE_CFG" -ge 1 ]"
+ANNOUNCE_INLINE=$(HOME="$COOKIE_HOME" "$VTD" transcript --url "$VTD_NOOP_URL" --no-file --cookies 'chrome:Profile 5' 2>&1 | grep -c '🔒 cookies: chrome:Profile 5 — this download runs under that browser identity' || true)
+assert "inline spec announces too" "[ "$ANNOUNCE_INLINE" -ge 1 ]"
+ANNOUNCE_OFF=$(HOME="$COOKIE_HOME" "$VTD" transcript --url "$VTD_NOOP_URL" --no-file --cookies false 2>&1 | grep -c '🔒 cookies:' || true)
+assert "no cookies -> no announcement" "[ "$ANNOUNCE_OFF" -eq 0 ]"
 rm -rf "$COOKIE_HOME"
 assert "has cookies subcommand"    "grep -q 'cookies set' scripts/vtd.js"
 assert "has cookieArgs function"   "grep -q 'function cookieArgs' scripts/vtd.js"

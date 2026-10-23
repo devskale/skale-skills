@@ -99,6 +99,13 @@ vtd download --url 'https://...' -- --format 137+140       # specific format
 
 ## Age-restricted videos
 
+> **Agent rule (hard):** before ANY invocation with `--cookies`, **ask the user
+> which browser profile / account** to use — never silently run with the
+> persisted config profile. A cookies download runs AS that identity (YouTube
+> logs it on the account); the user decides which one, every single time.
+> Inline specs (`--cookies 'chrome:Profile 2'`) count as the answer — if the
+> user already named the profile in the request, no extra question needed.
+
 YouTube blocks age-gated content without authentication. The `youtube` skill marks these with `🔒 age-restricted` in the list. To transcribe them, pass cookies from a signed-in browser:
 
 ```bash

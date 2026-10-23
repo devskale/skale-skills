@@ -62,7 +62,16 @@ function saveConfig(cfg) {
 //   --cookies false           → disable (override config)
 //   --cookies chrome          → browser only
 //   --cookies chrome:Profile 1 → browser + profile (inline)
+//
+// Every resolved spec is announced on stderr (not just in debug mode):
+// the attached identity must be visible in every run — the agent is expected
+// to confirm the account with the user BEFORE invoking --cookies (see SKILL.md).
 function cookieArgs(opts) {
+  const announce = (spec) => {
+    process.stderr.write(`🔒 cookies: ${spec} — this download runs under that browser identity\n`);
+    return ["--cookies-from-browser", spec];
+  };
+
   // Default off: flag never passed.
   if (opts.cookies === undefined) return [];
 
@@ -72,7 +81,7 @@ function cookieArgs(opts) {
   // Inline spec: --cookies chrome:Profile 1
   if (typeof opts.cookies === "string" && opts.cookies !== "true") {
     debug(`cookies (inline): ${opts.cookies}`);
-    return ["--cookies-from-browser", opts.cookies];
+    return announce(opts.cookies);
   }
 
   // --cookies with no value (true): read from config/env.
@@ -82,7 +91,7 @@ function cookieArgs(opts) {
   if (browser) {
     const spec = profile ? `${browser}:${profile}` : browser;
     debug(`cookies (config): ${spec}`);
-    return ["--cookies-from-browser", spec];
+    return announce(spec);
   }
   return [];
 }

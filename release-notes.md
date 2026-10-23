@@ -1,5 +1,16 @@
 ## Unreleased
 
+### vtd — Cookie-Identität: laut anunciieren + Agent fragt immer nach dem Account
+- **Nutzer-Regel (2026-10-23):** vor JEDEM `--cookies`-Download fragt der Agent,
+  mit welchem Browser-Profil/Account geladen wird — nie stillschweigend das
+  persistierte Config-Profil verwenden. Als Hard Rule im SKILL.md verankert
+  (Inline-Spec im Nutzer-Wunsch = Antwort, dann keine Extra-Frage).
+- **Tool-seitig sichtbar:** jede aufgelöste Cookie-Spec wird jetzt IMMER auf
+  stderr anunciert (nicht nur im Debug-Modus):
+  `🔒 cookies: chrome:Profile 2 — this download runs under that browser identity`
+  — die angehängte Identität ist in jedem Run sichtbar (Defense in Depth).
+- 3 neue Tests (Announce mit Config, inline, off), Suite 67/67 grün.
+
 ### youtube — `playlist-import`: beliebige YouTube-Playlist als kuratierbare Liste
 - **`youtube playlist-import <url|PL-id> [--save NAME]`** — importiert jede
   Playlist (eigene, unlisted, fremde) als `./lists/<slug>.md` im Skill-Format
