@@ -136,6 +136,25 @@ echo "n" | run_in "$REPO" purge >/dev/null
 echo "$(run_in "$REPO" purge -y purge-me)" | grep -q "1 purged" && ok || bad "purge -y did not purge"
 [ ! -f "$TEST_ROOT/works/testproj/issues/archive/purge-me.md" ] && ok || bad "purged file still exists"
 
+# purge pre-snapshot (2026-10-23): ONE manual commit of the doomed files right
+# before deletion — single-writer safety net, NO timer (autocommit ban intact).
+# Sandbox: git-init the works root so the snapshot has a repo to commit into.
+git -C "$TEST_ROOT/works" init -q
+printf 'x' > "$TEST_ROOT/works/testproj/.marker"   # give the repo an initial commit target
+git -C "$TEST_ROOT/works" add -A && git -C "$TEST_ROOT/works" commit -qm init
+run_in "$REPO" new snap-me >/dev/null
+run_in "$REPO" done snap-me >/dev/null
+PURGE_OUT="$(run_in "$REPO" purge -y snap-me)"
+echo "$PURGE_OUT" | grep -q "snapshot" && ok || bad "purge must snapshot before deleting (git repo present)"
+SNAP_HASH="$(echo "$PURGE_OUT" | sed -n 's/.*snapshot \([0-9a-f]*\).*/\1/p' | head -1)"
+[ -n "$SNAP_HASH" ] && ok || bad "no snapshot hash reported"
+[ ! -f "$TEST_ROOT/works/testproj/issues/archive/snap-me.md" ] && ok || bad "snap-me should be deleted after purge"
+git -C "$TEST_ROOT/works" checkout -q "$SNAP_HASH" -- testproj/issues/archive/snap-me.md 2>/dev/null
+grep -q "state: DONE" "$TEST_ROOT/works/testproj/issues/archive/snap-me.md" 2>/dev/null \
+  && ok || bad "recovery via snapshot checkout must restore the file (state DONE)"
+git -C "$TEST_ROOT/works" checkout -q HEAD -- testproj/issues 2>/dev/null || true   # clean the restore for later tests
+rm -f "$TEST_ROOT/works/testproj/issues/archive/snap-me.md"
+
 # board-html: renders + escapes (live issue present so it has something to render)
 out=$(run_in "$REPO" board-html --out "$TEST_ROOT/board.html" --title '<script>x</script>')
 [ -f "$TEST_ROOT/board.html" ] && ok || bad "board-html did not write output"

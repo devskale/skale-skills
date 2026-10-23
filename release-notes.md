@@ -1,5 +1,38 @@
 ## Unreleased
 
+### issues — purge-Vorschnappschuss: Single-Writer-Sicherheitsnetz statt Finalität
+- **`issues purge` committet jede zum Löschen vorgesehene Datei EINMAL direkt
+  vor dem Löschen** (`purge-snapshot (pre-delete)`, nur genau dieser Pfad —
+  fremde gestetzte Arbeit wird nie mitgerissen). Recovery:
+  `git -C <works> log --grep=purge-snapshot` → `checkout <hash> -- <file>`.
+- **Kein Verstoß gegen das Autocommit-Verbot (2026-10-21):** verboten sind
+  TIMER, die stündlich in den gesyncten `.git` rennen; der purge-Schnappschuss
+  ist ein Hand-Commit im Moment der Gefahr, single-writer, ohne Rennen.
+- Ohne Git-Repo über dem Board: lauter Hinweis, purge bleibt final.
+  Add-Fehler/Commit-Fehler → WARN pro Datei (loud), Löschung läuft weiter.
+- 4 neue Tests (Snapshot-Hash, Recovery via checkout, …), Suite 113/113 grün;
+  doctor + help + SKILL.md auf den neuen Zustand umgeschrieben.
+
+### fetch-url — Wayback-Machine-Fallback für blockierte Seiten (v2.10.0)
+- **Neu: `wayback`-Tool + Auto-Fallback.** Blocken alle Live-Tools (Login-Wall,
+  403, tote Links), holt fetch-url die archivierte Kopie von archive.org:
+  CDX-Snapshot-Suche (exact mit `fastLatest`, Eskalation prefix) → neuester/
+  größter Snapshot zuerst → Content-Validierung (JS-SPA-Shells werden
+  übersprungen, Login-Wall-Shells abgelehnt). Output-Prefix zeigt den Snapshot.
+  `--tool wayback` erzwingt, `--no-wayback` deaktiviert den Auto-Fallback.
+- **Härtung nach apisniffer-Analyse** (Issue `wayback-archive-org-sniff`,
+  2026-10-23): archive.org fährt ein **Connection-Rate-Gate pro IP** (~11 neue
+  Conns/25 s → RST für alle Clients, kein JA4-Gate) — deshalb läuft alles
+  Wayback über eine **keep-alive `requests.Session`**; ConnectionError wird
+  wie 429 mit 30/60-s-Backoff behandelt; Snapshot-Fetches serialisiert und
+  budgetiert (max 4).
+- **CDX-Cache on-disk** (~/.cache/skale-skills/fetch-url/wayback-cdx/, 24 h
+  TTL, `FETCH_URL_CACHE_DIR` überschreibbar): wiederholte Anfragen für dieselbe
+  URL treffen CDX nicht mehr (bigiron.cc-Empfehlung).
+- **`is_valid_content` ergänzt:** kurze Login-Wall-Shells („Skip to main
+  content“ + Login-Link, < 400 Zeichen) sind jetzt ungültig — der Reddit-
+  Login-Wall wurde vorher von w3m/lynx/jina/markdown als „gültig" durchgewinkt.
+
 ### issues — Autocommit-Lüge beendet: doctor + SKILL.md auf Realität (2026-10-21-Entscheidung)
 - **Hintergrund:** der Autocommit-Timer (stündlicher Commit im geteilten
   works-root) korrupte das Repo 2× (2026-10-20/21) und wurde per Nutzer-

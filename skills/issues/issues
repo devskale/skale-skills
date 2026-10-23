@@ -909,8 +909,48 @@ cmd_purge() {  # [-y] [slug...]  — permanently delete from archive/cancelled
     echo "About to DELETE:"; while IFS= read -r f; do [ -n "$f" ] && echo "  - $(basename "$f")"; done <<< "$files"
     read -rp "Proceed? [y/N] " ans; [ "${ans:0:1}" = "y" ] || { echo "aborted"; return; }
   fi
+  purge_snapshot "$files"
   local n=0; while IFS= read -r f; do [ -n "$f" ] && { rm -f "$f"; n=$((n+1)); }; done <<< "$files"
   echo "$n purged."
+}
+
+# Single-writer safety net (2026-10-23): ONE manual commit of exactly the
+# to-be-purged files, right before deletion. No timer, no background writer —
+# the 2026-10-21 autocommit ban stays intact; this is a hand-commit, fired
+# only in the moment of danger. Recovery: git -C <root> checkout <hash> -- <file>
+purge_snapshot() {  # $1 = newline-separated file list
+  local f root="" p="$HOME"
+  p="$(dirname "$(issues_dir)")"                # .../works/<project>
+  while [ "$p" != "/" ] && [ -n "$p" ]; do
+    [ -d "$p/.git" ] && { root="$p"; break; }
+    p="$(dirname "$p")"
+  done
+  if [ -z "$root" ]; then
+    echo "note: no git repo above the board — purge is FINAL (no snapshot possible)"
+    return 0
+  fi
+  local names="" first=1
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    # git commit -- <path> only covers TRACKED files: add first (untracked
+    # purged files must enter history before deletion), then commit just that
+    # path — other sessions' staged work is never swept along.
+    if ! git -C "$root" add -- "$f"; then
+      echo "WARN: snapshot add failed for $f — purge proceeds, but this file has NO recovery point" >&2
+      continue
+    fi
+    if git -C "$root" diff --cached --quiet -- "$f" 2>/dev/null; then
+      continue   # unchanged since last commit — history already holds it
+    fi
+    if ! git -C "$root" commit -q -m "purge-snapshot (pre-delete)" -- "$f"; then
+      echo "WARN: snapshot commit failed for $f — purge proceeds, but this file has NO recovery point" >&2
+      continue
+    fi
+    local hash; hash="$(git -C "$root" rev-parse --short HEAD)"
+    [ $first -eq 1 ] && { echo "snapshot $hash — recovery: git -C $root checkout $hash -- <file>"; first=0; }
+    names="$names $(basename "$f")"
+  done <<< "$1"
+  return 0
 }
 
 cmd_done() {  # <slug> — mark DONE (was: silently listed archive instead!)
@@ -1340,7 +1380,7 @@ TROUBLESHOOTING
   version: unknown on new              → add version_cmd/version_default to project config
   version shows raw grep line          → version_cmd quoting broken; write cmd unquoted
   duplicate slug across columns        → merge into one file, delete the stray
-  purge deleted too much               → recovery: local git history in the root
+  purge deleted too much               → recovery: the purge-snapshot commit (git -C <works> log --grep=purge-snapshot; purge commits each doomed file right before deleting)
                                           (auto-commit hourly, per-machine) —
                                           git -C ~/code/skaleshare/works log / show
 EOF
@@ -1469,7 +1509,7 @@ cmd_doctor() {
       *) if [ -x "$CENTRAL/.autocommit.sh" ] || ls "$HOME/Library/LaunchAgents"/com.skale.works.plist "$HOME/Library/LaunchAgents"/*handoffs* >/dev/null 2>&1; then
            doc_warn "auto-commit files present but the mechanism was REMOVED by user decision 2026-10-21 (2× repo corruption) — delete them: $CENTRAL/.autocommit.sh + the LaunchAgent plist. purge is FINAL by design; only manual commits that happened earlier can recover a file"
          else
-           doc_ok "versioning: local git, commits by hand (no auto-commit, by decision 2026-10-21: hourly auto-commits corrupted the synced .git 2×) — 'purge' is FINAL; only earlier manual commits can recover"
+           doc_ok "versioning: local git, commits by hand + purge-snapshot on delete (no auto-commit TIMER — banned 2026-10-21 after 2× repo corruption; purge's single hand-commit is single-writer and safe)"
          fi ;;
     esac
   else
