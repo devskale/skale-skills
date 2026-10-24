@@ -50,7 +50,7 @@ Fetches the latest GitHub release and drops `peep` into `/usr/local/bin` (or `~/
 export PATH="$HOME/.local/bin:$PATH"   # add to ~/.bashrc / ~/.zshrc
 ```
 
-> Note: the install script currently builds **macOS + Linux x64** binaries only. For Linux arm64, use the direct release download or build from source.
+> Note: the install script currently builds **macOS + Linux x64** binaries only. For Linux arm64, [build from source](#option-3--build-from-source-needs-bun).
 
 ### Option 3 — build from source (needs bun)
 
