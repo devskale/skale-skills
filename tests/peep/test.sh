@@ -84,11 +84,21 @@ has_flag() {
 }
 
 # Documented commands exist at top level
+WARN=0   # early: research probes below WARN before section 6 uses the counter
 for cmd in read thread replies search mentions home bookmarks likes news lists \
-           list-timeline following followers user-tweets starred inbox research \
+           list-timeline following followers user-tweets starred inbox \
            about profile archive blocks mutes cache local-search query-ids whoami; do
     assert "command '$cmd' exists" "peep help 2>&1 | grep -qE \"^  ($cmd)(\\|trending)? \""
 done
+# research: documented but NOT in any available build (neither release 0.9.0
+# nor clone main — upstream WIP that never landed; found 2026-10-24).
+if peep help 2>&1 | grep -qE "^  research "; then
+    assert "command 'research' exists" "true"
+    assert "research --thread-depth" "has_flag research --thread-depth"
+    assert "research --no-live"      "has_flag research --no-live"
+else
+    WARN=$((WARN + 1)); echo "  WARN: 'research' documented but not in this build (upstream WIP)"
+fi
 
 # Documented flags per command
 assert "read --json"        "has_flag read --json"
@@ -114,8 +124,6 @@ assert "user-tweets --delay" "has_flag user-tweets --delay"
 assert "starred --unread"   "has_flag starred --unread"
 assert "starred --priority" "has_flag starred --priority"
 assert "inbox --score"      "has_flag inbox --score"
-assert "research --thread-depth" "has_flag research --thread-depth"
-assert "research --no-live" "has_flag research --no-live"
 assert "about --json"       "has_flag about --json"
 assert "cache --stats"      "has_flag cache --stats"
 assert "local-search --author" "has_flag local-search --author"
@@ -136,6 +144,39 @@ else
     PASS=$((PASS + 1))
 fi
 
+# ── 5. Launcher (auto-update wrapper) ──────────────────────────────
 echo ""
-echo "=== Summary: $PASS passed, $FAIL failed, $SKIP skipped ==="
+echo "[5] Launcher (auto-update)..."
+assert "launcher script exists"   "[ -f peep ]"
+assert "launcher is executable"   "[ -x peep ]"
+assert "launcher handles --update" "grep -q -- '--update' peep"
+assert "launcher has --selfcheck"  "grep -q -- '--selfcheck' peep"
+assert "binary cached OUTSIDE repo (git clean -fdx safe)" "grep -q '.cache/peep-skill' peep"
+assert ".last-update gitignored"   "grep -q '^\.last-update$' .gitignore"
+assert "install.sh symlinks (not copies)" "grep -q 'ln -sf' install.sh"
+assert "install.sh migrates legacy binary" "grep -q 'migrating existing binary' install.sh"
+if command -v peep >/dev/null 2>&1; then
+    assert "PATH peep resolves to our launcher" "peep --selfcheck 2>&1 | grep -q 'peep launcher'"
+fi
+echo ""
+
+# ── 6. Version drift vs GitHub latest (network-dependent, honest WARN) ─
+echo "[6] Version drift vs latest release..."
+if command -v peep >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
+    INSTALLED=$(peep --version 2>/dev/null | awk '{print $1}' | tr -d 'v')
+    LATEST=$(curl -sf -m 10 "https://api.github.com/repos/devskale/peep/releases/latest" 2>/dev/null \
+        | sed -En 's/.*"name": *"Latest Release v?([0-9][0-9.]*)".*/\1/p' | head -1)
+    if [ -z "$LATEST" ]; then
+        WARN=$((WARN + 1)); echo "  WARN (network-dependent, skipped honestly): GitHub unreachable — drift check skipped"
+    elif [ -n "$INSTALLED" ] && [ "$INSTALLED" != "$LATEST" ]; then
+        WARN=$((WARN + 1)); echo "  WARN: peep $INSTALLED installed, latest release is $LATEST — run: peep --update"
+    else
+        PASS=$((PASS + 1)); echo "  ok: peep $INSTALLED = latest release $LATEST"
+    fi
+else
+    WARN=$((WARN + 1)); echo "  WARN (network-dependent, skipped honestly): peep/curl unavailable — drift check skipped"
+fi
+
+echo ""
+echo "=== Summary: $PASS passed, $FAIL failed, $SKIP skipped, $WARN warned ==="
 [ "$FAIL" -eq 0 ]

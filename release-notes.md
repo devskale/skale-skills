@@ -1,5 +1,28 @@
 ## Unreleased
 
+### peep — Launcher mit Auto-Update + Drift-WARN: neuestes Binary garantiert (0.9.3)
+- **Vorher:** nichts stellte sicher, dass das neueste peep läuft — das
+  Binary hat kein Self-Update, der Skill war bewusst skriptfrei, und X
+  rotiert GraphQL-queryIds alle 2–6 Wochen (Breaking = neues Release nötig).
+- **Launcher** (pdf2mark-Pattern): `~/.local/bin/peep` symlinks in den
+  Skill; Binary wohnt außerhalb des Repos (`~/.cache/peep-skill/peep-bin`,
+  git-clean-fdx-sicher). 7-Tage-Check gegen GitHub latest (Release-Name →
+  Version), Download bei Drift, loud failure ohne Stamp (Retry nächster
+  Lauf). `--selfcheck` zeigt installed vs latest. install.sh migriert ein
+  bestehendes Binary und installed den Launcher.
+- **Dev-Build-Guard** (Vorfall beim Bauen): ein lokales Build mit nicht-
+  numerischer Version ("main") wird NIE auto-gedowngraded — nur
+  `--update --force-realign` richtet auf Release aus. Ohne den Guard
+  downgradete der erste --update-Lauf ein neueres Dev-Build auf 0.9.0.
+- **Drift-WARN in der Suite:** [6] vergleicht installiert vs GitHub latest
+  (offline → ehrlicher Skip). Gefunden dabei: `research` ist dokumentiert,
+  aber in KEINEM verfügbaren Build (weder Release 0.9.0 noch clone main —
+  upstream WIP, nie gelandet) → Tests jetzt konditional + WARN, SKILL.md
+  trägt Warn-Hinweis.
+- Suite 87/0/1 WARN; Launcher live verifiziert (Update-Zyklus main→0.9.0,
+  Read durch den Launcher, selfcheck sauber).
+
+
 ### youtube — agent-sichtbar: disable-model-invocation entfernt (v2.3.0)
 - Der Skill erscheint jetzt in pi's available_skills (Description als
   Trigger: "find videos / build a watch list") — frische Sessions finden

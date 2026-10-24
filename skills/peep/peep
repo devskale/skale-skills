@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# peep launcher with symlink resolution + auto-update.
+#
+# The real binary lives OUTSIDE any repo at ~/.cache/peep-skill/peep-bin
+# (pi package updates run `git clean -fdx` — an untracked binary inside the
+# skill dir would be deleted). This wrapper:
+#   - execs the binary, passing every argument through
+#   - auto-updates it every 7 days (GitHub latest release, loud on failure)
+#   - offers --update (force) and --selfcheck (state report)
+#
+# Why auto-update: X rotates GraphQL queryIds every 2–6 weeks (SOTA 2026-10).
+# peep refreshes query-ids itself, but STRUCTURAL breaks need a new release —
+# an outdated binary fails silently and the user can't tell cookies from
+# query-ids from binary rot (review 2026-10-23).
+
+set -u
+
+# ── Skill-dir resolution (symlink-safe) ───────────────────────────────────
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+    DIR="$(cd "$(dirname "$SELF")" && pwd)"
+    SELF="$(readlink "$SELF")"
+    [[ "$SELF" != /* ]] && SELF="$DIR/$SELF"
+done
+SKILL_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+STAMP_FILE="$SKILL_DIR/.last-update"
+AUTO_UPDATE_DAYS=7
+
+BIN_HOME="$HOME/.cache/peep-skill"
+BIN="$BIN_HOME/peep-bin"
+GITHUB_API="https://api.github.com/repos/devskale/peep/releases/latest"
+
+_latest_version() {
+    # The repo tags releases as "latest"; the human name carries the version:
+    # "Latest Release v0.9.0" → "0.9.0". Prints "" when unreachable.
+    # (-E: macOS BSD-sed has no \? in basic regex)
+    curl -sf -m 10 "$GITHUB_API" 2>/dev/null \
+        | sed -En 's/.*"name": *"Latest Release v?([0-9][0-9.]*)".*/\1/p' \
+        | head -1
+}
+
+_installed_version() {
+    [ -x "$BIN" ] && "$BIN" --version 2>/dev/null | awk '{print $1}' | tr -d 'v'
+}
+
+_platform_asset() {
+    case "$(uname -s)/$(uname -m)" in
+        Darwin/*)  echo "peep-darwin" ;;
+        Linux/x86_64) echo "peep-linux-x64" ;;
+        *) echo "" ;;
+    esac
+}
+
+download_binary() {
+    local asset; asset="$(_platform_asset)"
+    if [ -z "$asset" ]; then
+        echo "peep: no prebuilt binary for $(uname -s)/$(uname -m) — build from source:" >&2
+        echo "  git clone https://github.com/devskale/peep && cd peep && bun run build:binary" >&2
+        return 1
+    fi
+    mkdir -p "$BIN_HOME"
+    local tmp="$BIN_HOME/.peep-bin.tmp"
+    if ! curl -sfL -m 120 "https://github.com/devskale/peep/releases/download/latest/$asset" -o "$tmp"; then
+        echo "peep: download failed ($asset) — keeping current binary" >&2
+        rm -f "$tmp"
+        return 1
+    fi
+    chmod +x "$tmp"
+    mv "$tmp" "$BIN"
+}
+
+needs_update() {
+    [ ! -f "$STAMP_FILE" ] && return 0
+    local last now
+    last=$(cat "$STAMP_FILE" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    [ $(( (now - last) / 86400 )) -ge "$AUTO_UPDATE_DAYS" ]
+}
+
+update_now() {
+    local want have
+    want="$(_latest_version)"
+    if [ -z "$want" ]; then
+        echo "peep: could not reach GitHub (api) — keeping current binary, will retry" >&2
+        return 1   # no stamp → retried next run
+    fi
+    have="$(_installed_version)"
+    # Dev-build guard: a non-numeric version ("main", commit hash, …) is a
+    # LOCAL build on purpose — auto-update must never downgrade it to an
+    # older release (incident 2026-10-24: main-with-research → 0.9.0-without).
+    # Only an explicit --update --force realigns to the release.
+    if [ -n "$have" ] && ! echo "$have" | grep -qE '^[0-9][0-9.]*$'; then
+        if [ "${1:-}" = "--force-realign" ]; then
+            echo "peep: dev build ($have) — realigning to release $want"
+        else
+            date +%s > "$STAMP_FILE"   # checked; dev build respected
+            return 0
+        fi
+    fi
+    if [ -n "$have" ] && [ "$have" = "$want" ]; then
+        date +%s > "$STAMP_FILE"
+        [ "${1:-}" = "--force" ] && echo "peep: up to date ($have)"
+        return 0
+    fi
+    echo "peep: updating binary ${have:-<none>} → $want …"
+    if download_binary; then
+        date +%s > "$STAMP_FILE"
+        echo "✓ peep $want installed"
+    else
+        return 1   # loud failure already printed; no stamp → retry next run
+    fi
+}
+
+case "${1:-}" in
+    --update|--self-update)
+        # --update --force-realign: replace an intentional dev build with
+        # the latest release (auto-update never does that by itself).
+        if [ "${2:-}" = "--force-realign" ]; then
+            update_now --force-realign
+        else
+            update_now --force
+        fi
+        exit $?
+        ;;
+    --selfcheck)
+        echo "peep launcher (skill v$(grep -o 'version.*"[^"]*"' "$SKILL_DIR/SKILL.md" 2>/dev/null | head -1 | grep -o '[0-9][^"]*' || echo '?'))"
+        echo "  binary:  $BIN"
+        echo "  version: $(_installed_version || echo 'not installed — run: peep --update')"
+        echo "  latest:  $(_latest_version || echo 'unreachable')"
+        echo "  last check: $([ -f "$STAMP_FILE" ] && date -r "$STAMP_FILE" '+%Y-%m-%d %H:%M' || echo never)"
+        exit 0
+        ;;
+esac
+
+# Auto-update check (background, non-blocking). stdout is discarded, stderr
+# stays attached — loud-failures rule: a failed update warns on stderr and
+# writes NO stamp, so the next run retries (pdf2mark launcher pattern).
+if needs_update && [ -d "$HOME/.cache" ]; then
+    ( update_now ) >/dev/null &
+fi
+
+if [ ! -x "$BIN" ]; then
+    echo "peep: binary not installed at $BIN — run: peep --update" >&2
+    exit 1
+fi
+
+exec "$BIN" "$@"

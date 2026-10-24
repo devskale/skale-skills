@@ -1,6 +1,6 @@
 ---
 name: peep
-version: "0.9.2"
+version: "0.9.3"
 description: "Bash skill — run `peep <command>` in your shell (not an MCP tool). Read X/Twitter via the `peep` CLI: tweets, threads, timelines, bookmarks, search. Use when the user wants to read or catch up on X/Twitter."
 license: MIT
 disable-model-invocation: true
@@ -60,13 +60,24 @@ bun install && bun run build:binary   # produces ./peep
 sudo mv peep /usr/local/bin/
 ```
 
-### Verify
+### Verify & Update
 
 ```bash
 peep --version   # → 0.9.0 (…)
 peep check       # → which credentials are sourced + from where
 peep whoami      # → the X account the cookies belong to (needs auth, below)
+peep --selfcheck # → launcher state: binary path, installed vs latest release, last check
+peep --update    # → align the binary to the latest GitHub release
 ```
+
+The skill ships a **launcher** (`~/.local/bin/peep` → skill dir, binary at
+`~/.cache/peep-skill/peep-bin` — outside any repo, `git clean -fdx`-safe).
+It auto-checks GitHub for a newer release every 7 days (loud on failure,
+retry next run). **Dev builds are respected:** a binary with a non-numeric
+version (built from source) is never auto-downgraded to an older release —
+only `peep --update --force-realign` does that. X rotates GraphQL queryIds
+every 2–6 weeks; when reads break structurally, `peep --update` is the first
+thing to try (after `peep check` for cookies).
 
 > **Auth isn't part of install.** peep reuses your logged-in X browser session — see [Authentication](#authentication-read-this-first). Until you've logged into x.com in a browser, `whoami` will report missing credentials.
 
@@ -141,7 +152,7 @@ Triage bookmarks with metadata and run an AI-ranked inbox:
 peep starred --unread --priority critical
 peep starred note <id> "follow up"                # + tag / priority / folder / revisit / mark-read
 peep inbox --score                                # AI-ranked mentions (needs OPENAI_API_KEY)
-peep research "codex" --thread-depth 10           # bookmarks → markdown brief (thread + links)
+peep research "codex" --thread-depth 10           # bookmarks → markdown brief (thread + links) — ⚠ upstream WIP, not in current builds (2026-10-24)
 ```
 → Full detail in [references/data.md](references/data.md). **Read when** managing bookmarks, the inbox, or working offline.
 
