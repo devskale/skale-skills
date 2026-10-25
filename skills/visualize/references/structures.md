@@ -102,6 +102,10 @@ Use when the point is "X connects to Y connects to Z."
 Nesting/containment: parent → child, tree, folder structure, org chart.
 - Nested boxes with indentation, or a tree with connecting lines.
 - Collapse interactions are a nice-to-have, not required — the page must render statically.
+- **Big hierarchies (>30 nodes, unknown depth, exploratory use):** `markmap.html`
+  instead — a static tree breaks down and interactivity (click-collapse, zoom) is the
+  honest form. Threshold is a guide: an org chart with 8 nodes stays static; a document
+  outline with 60 headings goes markmap.
 - **For a repo/`tree` view:** use the *annotated tree* — indented rows with a name,
   one-line description, and colour-coded kind tag (skill/ext/docs/…). See
   [promptlib.md](promptlib.md) §8 for the full recipe and CSS.

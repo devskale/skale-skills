@@ -59,6 +59,24 @@ diagram recolors with the skin without re-render. CDN track: needs network at vi
 Template of choice when diagrams should feel native to the house; fall back to
 `mermaid.html` for Mermaid-specific features.
 
+## markmap.html — big interactive hierarchies
+
+Header (kicker/title/sub + kbd hint row) · one `markmap-card` holding a
+`div.markmap > script[type="text/template"]` whose body IS the content: optional
+markmap frontmatter (`initialExpandLevel`, `maxWidth`, spacing, `colorFreezeLevel`)
+followed by plain Markdown (headings + nested lists = the tree) · provenance footer.
+Rendered by [markmap-autoloader](https://markmap.js.org) from CDN — no JS to write,
+no build. CDN track: needs network at view time.
+
+- Fill rules: the Markdown is the entire payload — keep node labels short
+  (they are labels, not paragraphs); depth via nesting, order via list order.
+- `initialExpandLevel: 2` shows skeleton + one detail level; `-1` expands all —
+  pick per content (org chart: 2; doc outline: -1).
+- House-tuned via CSS (`--markmap-font-family`, neutral ink, thin `--soft` branches);
+  colour stays structural (branch hues by `colorFreezeLevel`), not decoration.
+- Routing: >30 nodes or unknown depth → here; fewer → static `repo-tree.html`/
+  `mermaid.html` ([structures.md](structures.md) · Nesting/containment).
+
 - `mermaid-card`s (white card, scrollable) each holding one `pre.mermaid` graph;
   hand-built `card`s for everything non-graph.
 - The scaffold ships `.seam`/`.leak`/`.deep` classDef helpers — diagram semantics, colour

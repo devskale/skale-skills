@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}} — markmap</title>
+<script>
+  window.markmap = {
+    autoLoader: { manual: false },
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.18/dist/index.js"></script>
+<style>
+:root{--ink:#1a1a1a;--paper:#fafaf9;--paper-2:#f4f4f5;--muted:#6b7280;--soft:#a1a1aa;--line:#e5e5e5}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper);color:var(--ink);line-height:1.5}
+main{max-width:72rem;margin:0 auto;padding:3rem 1.5rem 4rem}
+header{margin-bottom:1.5rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 .5rem;font-weight:600}
+h1{font-size:2rem;margin:0 0 .3rem;letter-spacing:-.02em;font-weight:650}
+.sub{color:var(--muted);margin:0;max-width:52rem}
+.hint{display:flex;gap:.5rem;align-items:center;font-size:.75rem;color:var(--soft);margin-top:.8rem}
+.hint .kbd{border:1px solid var(--line);border-radius:.25rem;padding:0 .3rem;font-family:ui-monospace,monospace;background:#fff}
+.markmap-card{background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:.5rem}
+.markmap{width:100%;height:72vh}
+footer{margin-top:1.2rem;font-size:.72rem;color:var(--soft)}
+footer .src{color:var(--muted)}
+/* markmap house-tuning: neutral ink, paper background, thin branches */
+.markmap{--markmap-font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--paper)}
+.markmap-svg text{fill:var(--ink)}
+.markmap-svg path.mm-link{stroke:var(--soft)}
+</style>
+</head>
+<body data-skin="paper">
+<main>
+  <header>
+    <p class="kicker">{{KICKER}}</p>
+    <h1>{{TITLE}}</h1>
+    <p class="sub">{{SUB}} — interactive mindmap: click nodes to collapse, scroll to zoom, drag to pan.</p>
+    <p class="hint"><span class="kbd">click</span> collapse · <span class="kbd">scroll</span> zoom · <span class="kbd">drag</span> pan · <span class="kbd">⌘/ctrl + scroll</span> fit</p>
+  </header>
+
+  <div class="markmap-card">
+    <div class="markmap">
+      <script type="text/template">
+---
+markmap:
+  maxWidth: 320
+  initialExpandLevel: 2
+  spacingHorizontal: 80
+  spacingVertical: 12
+  colorFreezeLevel: 2
+---
+{{MARKDOWN}}
+      </script>
+    </div>
+  </div>
+
+  <footer>
+    <span class="src">{{SOURCE}}</span> · rendered with <a href="https://markmap.js.org">markmap</a> (CDN) · {{DATE}}
+  </footer>
+</main>
+</body>
+</html>

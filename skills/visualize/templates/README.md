@@ -14,6 +14,7 @@ in [../references/scaffolds.md](../references/scaffolds.md).
 | [`system-map.html`](system-map.html) | Inline CSS, editorial | Multi-repo / multi-service platform | Multi-panel: topology, pipeline, fleet |
 | [`report.html`](report.html) | Inline CSS, editorial | A structured document | Kicker, exec summary, numbered sections, recommendations, TOC |
 | [`mermaid.html`](mermaid.html) | **Mermaid (CDN)** | Graph-shaped content, polished Pocock-style | Loads Mermaid from CDN — needs network; use for complex graphs |
+| [`markmap.html`](markmap.html) | **markmap (CDN)** | Big interactive hierarchies (>30 nodes, unknown depth) | Markdown headings/lists → collapsible/zoomable mindmap; click-collapse, scroll-zoom; CDN; use when a static tree (`repo-tree`, Mermaid) would overflow |
 | [`pele.html`](pele.html) | **pele (CDN)** | Graph-shaped content, Mermaid syntax | Mermaid syntax via pele (MIT, Obsidian) — 6× smaller, themeable via CSS variables mapped to house tokens; needs network; check the [compatibility matrix](https://pele.run/compatibility) for exotic types |
 | [`tailwind-report.html`](tailwind-report.html) | **Tailwind (CDN)** | Irregular report layouts, Pocock-style candidate cards | Utilities as syntax, house tokens as vocabulary (config maps ink/paper/severity); critical CSS kills the flash; needs network |
 | [`timeline.html`](timeline.html) | Inline CSS, editorial | Sequence: roadmap, changelog, phases, history | Vertical spine + type dots (legend hue) + `now` marker |
