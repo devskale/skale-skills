@@ -1,5 +1,20 @@
 ## Unreleased
 
+### Alle Launcher: pull.rebase-Pin gegen globales pull.rebase=true (Batch-Fix)
+- **Vorfall (gemeldet 2026-10-24):** `fetch-url` warnte bei JEDEM Run
+  *"cannot pull with rebase: You have unstaged changes"* — das Auto-Update
+  stirbt am dreckigen Tree, schreibt keinen Stamp, retryed endlos laut.
+  Ursache wie beim pdf2mark-Fix (2026-10-23): globales `pull.rebase=true`
+  zwingt `git pull --ff-only` in den Rebase-Modus, der einen sauberen Tree
+  verlangt. Systemisch: **8 Launcher** mit demselben Muster.
+- **Fix:** `git -c pull.rebase=false pull --ff-only` in fetch-url,
+  improve-ux, issues, surf, vtd, visualize, web-search, youtube
+  (pdf2mark hatte den Pin schon). loud-failures-Pattern erweitert
+  (erkennt den gezogenen Pull in der -c-Form — Guard-Intention unveraendert).
+- Loud-failures-Suite 38/0, alle 8 Launcher syntax-geprueft, fetch-url live
+  verifiziert (Warnung weg, Extraktion intakt).
+
+
 ### peep — Launcher mit Auto-Update + Drift-WARN: neuestes Binary garantiert (0.9.3)
 - **Vorher:** nichts stellte sicher, dass das neueste peep läuft — das
   Binary hat kein Self-Update, der Skill war bewusst skriptfrei, und X

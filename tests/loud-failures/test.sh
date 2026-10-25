@@ -38,8 +38,11 @@ for f in $(grep -rl "git pull" skills/ 2>/dev/null | grep -vE "\.md$|install\.|/
         bad "$name: &>/dev/null discards update errors"
         continue
     fi
-    # pull not guarded → stamp would be written on failure
-    if grep -q "git pull" "$f" && ! grep -qE "if ! git pull|! *\(.*git pull|&& ! .*git pull" "$f"; then
+    # pull not guarded → stamp would be written on failure.
+    # (-c pull.rebase=false pin: global pull.rebase=true would otherwise turn
+    # --ff-only into a rebase that demands a clean tree — pdf2mark incident
+    # 2026-10-23, batch-fixed across all launchers 2026-10-24)
+    if grep -q "git pull" "$f" && ! grep -qE "if ! git( -c [a-z.=-]+)? pull|! *\(.*git( -c [a-z.=-]+)? pull|&& ! .*git( -c [a-z.=-]+)? pull" "$f"; then
         bad "$name: git pull not guarded with 'if !' — stamp may be written on failure"
         continue
     fi

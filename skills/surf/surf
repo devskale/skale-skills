@@ -18,7 +18,7 @@ case "${1:-}" in
     --update)
         echo "Updating surf..."
         cd "$SKILL_DIR"
-        if [ -d "../../.git" ] && ! (cd "$SKILL_DIR/../.." && git pull --ff-only); then
+        if [ -d "../../.git" ] && ! (cd "$SKILL_DIR/../.." && git -c pull.rebase=false pull --ff-only); then
             echo "✗ git pull failed — staying on current code, stamp NOT updated" >&2
             exit 1
         fi
@@ -50,7 +50,7 @@ if [ -d "$SKILL_DIR/../../.git" ]; then
         # discarded, stderr stays attached; NO stamp on failure → next run retries.
         (
             cd "$SKILL_DIR/../.." || exit 1
-            if ! git pull --ff-only --quiet; then
+            if ! git -c pull.rebase=false pull --ff-only --quiet; then
                 echo "surf: auto-update git pull failed — staying on current code, will retry next run" >&2
                 exit 1
             fi

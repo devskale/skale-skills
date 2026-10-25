@@ -27,7 +27,7 @@ case "${1:-}" in
     --update|--self-update)
         cd "$SKILL_DIR"
         echo "Updating youtube..."
-        if ! (cd "$GIT_ROOT" && git pull --ff-only); then
+        if ! (cd "$GIT_ROOT" && git -c pull.rebase=false pull --ff-only); then
             echo "✗ git pull failed — staying on current code, stamp NOT updated" >&2
             exit 1
         fi
@@ -73,7 +73,7 @@ if [ -d "$GIT_ROOT/.git" ]; then
         (
             cd "$GIT_ROOT" || exit 1
             ok=true
-            if ! git pull --ff-only --quiet; then
+            if ! git -c pull.rebase=false pull --ff-only --quiet; then
                 echo "youtube: auto-update git pull failed — staying on current code, will retry next run" >&2
                 ok=false
             fi

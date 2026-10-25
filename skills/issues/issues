@@ -39,7 +39,7 @@ GIT_ROOT="${GIT_ROOT:-$SKILL_DIR}"
 case "${1:-}" in
     --update|--self-update)
         echo "Updating issues skill..."
-        cd "$GIT_ROOT" && git pull --ff-only
+        cd "$GIT_ROOT" && git -c pull.rebase=false pull --ff-only
         date +%s > "$STAMP_FILE"
         echo "Updated."
         exit 0
@@ -68,7 +68,7 @@ if [ -d "$GIT_ROOT/.git" ]; then
         # discarded, stderr stays attached; NO stamp on failure → next run retries.
         (
             cd "$GIT_ROOT" || exit 1
-            if ! git pull --ff-only --quiet; then
+            if ! git -c pull.rebase=false pull --ff-only --quiet; then
                 echo "issues: auto-update git pull failed — staying on current code, will retry next run" >&2
                 exit 1
             fi
