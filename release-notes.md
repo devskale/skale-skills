@@ -1,5 +1,20 @@
 ## Unreleased
 
+### issues/dev/inspirations.md: kanzo + hex als Lernquellen (dev/-Konvention)
+- **Neue Konvention `skills/<name>/dev/`**: skill-lokales Maintainer-Wissen —
+  reist MIT dem Skill, ist aber nie Agent-Futter (references/ = progressive
+  disclosure für den Agenten, dev/ = Developer; Nutzer-Entscheidung 2026-11-01
+  nach zwei Korrekturen: nicht references/, nicht repo-weites docs/):
+  externe Tools mit
+  klarem "worth taking / not taking" statt blindem Adoption-Lob.
+- **kanzo** (Browser-Kanban + MCP, 1 Woche alt): Live-Board als
+  board-html --live-Idee; Git-Sync-in-Momenten validiert unsere
+  Autocommit-Verbots-Architektur; Column-Gating als harte Regel.
+- **hex** (local-first Voice-Dictation): local-first als laut gepitchtes
+  Feature, Dev-Channel-Self-Updater als grown-up Launcher-Pattern,
+  Modes als Vorbild fuer per-project config.
+
+
 ### playground.sh — der saubere Playground-Roster (list/play/doctor/clean)
 - **Nutzer-Regel 2026-11-01 verdrahtet:** Playground-Skills sind NIE im
   pi-Roster. Vorfall: unslop-Symlink in klark0/.pi/skills hätte es in jede

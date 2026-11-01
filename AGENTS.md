@@ -103,6 +103,7 @@ configure a DEBUG handler on the `credgoo` logger to see it.
 | [docs/agent-agnostic.md](docs/agent-agnostic.md) | **Living review + roadmap**: repo verdict, ecosystem comparison, agent-agnostic plan with status |
 | [docs/deprecation.md](docs/deprecation.md) | Deprecating a skill — the step-by-step and the load-bearing exclusion traps |
 | [docs/ideas.md](docs/ideas.md) | **Ideas** — well-developed issues: decided directions, deliberately not implemented (the hub for all sketches) |
+| `skills/<name>/dev/` | **Dev notes** — skill-local maintainer knowledge (inspirations, benchmarks, design rationale). Travels with the skill, but is never agent-facing: `references/` = progressive disclosure (agent), `dev/` = developer. Started with [issues/dev/inspirations.md](skills/issues/dev/inspirations.md) |
 | [LAYOUT.md](LAYOUT.md) | The three "not shipped" states — idea / under review / deprecated, and how each is excluded from the package |
 | [release-notes.md](release-notes.md) | Changelog of notable changes, newest first (`## Unreleased` at the top) |
 | [docs/pi-web-access.md](docs/pi-web-access.md) | The third-party `pi-web-access` package (librarian skill) — what it provides and how it relates to our own web skills |
