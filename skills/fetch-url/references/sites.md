@@ -56,7 +56,7 @@ Tested tool rankings for popular sites.
 - **markdown**: ✅ Good
 - **w3m**: ⚠️ Navigation-heavy output
 
-### Defuddle notes (added 2026-10, benchmark `references/inspirations.md`)
+### Defuddle notes (added 2026-10, benchmark `dev/inspirations.md`)
 - Local main-content extraction (Obsidian Web Clipper engine) via `npx defuddle`,
   fetched with curl_cffi (Chrome TLS impersonation). Needs Node.js.
 - Nav shells on JS-built pages are detected via wordCount gate (<100 words = shell →

@@ -96,4 +96,4 @@ brew install w3m lynx chawan       # optional local browsers for better fallback
 - [references/sites.md](references/sites.md) — per-site tool rankings. **Read when** a site returns poor output and you need to pick a better `--tool`.
 - [references/github.md](references/github.md) — GitHub raw-URL patterns. **Read when** fetching GitHub file/README/directory content.
 - [references/troubleshooting.md](references/troubleshooting.md) — detailed fixes. **Read when** a fetch fails or returns empty/garbled output.
-- [references/inspirations.md](references/inspirations.md) — extraction engines worth studying (Defuddle, …). **Read when** improving extraction quality or picking new tools.
+- [dev/inspirations.md](dev/inspirations.md) — extraction engines worth studying (Defuddle, …). Maintainer notes (`dev/` — agent never loads these).

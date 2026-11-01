@@ -1,5 +1,21 @@
 ## Unreleased
 
+### dev/-Konvention repo-weit angewandt: 8 Skills mit Maintainer-Heimat
+- **Umgezogen (falsch gelagert erkannt):** fetch-url references/inspirations.md
+  → dev/inspirations.md; visualize references/architecture-log.md →
+  dev/architecture-log.md (beides Maintainer-Wissen hinter progressive
+  disclosure). SKILL.md/sites.md-Links angepasst.
+- **Bewusst NICHT umgezogen:** rodney dev-workflow.md (Agent-Anleitung für
+  Dev-Sessions), improve-ux sota/ (Arbeitsmaterial zum Zitieren beim Review).
+- **Neu gesät aus Session-Wissen:** youtube dev/sota-and-backends.md
+  (Backend-Rationale + Messdaten), pdf2mark dev/timings.md (OCR-Messreihe
+  + Budget-Begründung), peep dev/x-landscape.md (X-2026 + Incident-Lore),
+  web-search dev/backend-rationale.md (Invidious-Lektion als Anti-Pattern),
+  vtd dev/landscape.md (Transcript-Markt + Age-Gate-Physik + Cookie-Regeln).
+- Skills ohne echten Nachlass (d2, figure, surf, improve-ux, rodney, issues
+  hatte schon) bekommen BEWUSST kein leeres dev/ — keine Gerüst-Dateien.
+
+
 ### issues/dev/inspirations.md: kanzo + hex als Lernquellen (dev/-Konvention)
 - **Neue Konvention `skills/<name>/dev/`**: skill-lokales Maintainer-Wissen —
   reist MIT dem Skill, ist aber nie Agent-Futter (references/ = progressive
