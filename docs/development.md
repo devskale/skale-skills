@@ -83,6 +83,17 @@ target skill's `references/inspirations.md`. Then `rm -rf .pi/skills/<name>` —
   installing anything permanently is a separate, explicit user decision; never vendor
   (adoption would mean installing from upstream: `npx skills add`, `openskills`).
 
+### Der Roster: `scripts/playground.sh`
+
+    scripts/playground.sh list     # was liegt in der Farm (.clones/) + watchlist-status
+    scripts/playground.sh play X   # fertiger Session-Flag-Befehl für den Play
+    scripts/playground.sh doctor   # Roster-Pollution + tote Links finden
+    scripts/playground.sh clean X  # Clone entfernen + Strays melden
+
+Hard rule (Nutzer 2026-11-01): Playground-Skills sind **nie** im pi-Roster —
+kein `.pi/skills`-Symlinks, kein `~/.agents/skills`-Eintrag. Play = Session-Flag
+oder read-and-follow; der doctor schlägt Alarm, wenn doch ein Link in die Farm zeigt.
+
 ### A. Session-only override (preferred — zero persistent state)
 
 Load the working tree for **one run** via a CLI flag. Nothing is written to settings, so

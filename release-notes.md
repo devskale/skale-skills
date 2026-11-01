@@ -1,5 +1,21 @@
 ## Unreleased
 
+### playground.sh — der saubere Playground-Roster (list/play/doctor/clean)
+- **Nutzer-Regel 2026-11-01 verdrahtet:** Playground-Skills sind NIE im
+  pi-Roster. Vorfall: unslop-Symlink in klark0/.pi/skills hätte es in jede
+  Session geladen — entfernt; Mechanismus danach dokumentiert und vergossen.
+- `list`: Farm (.clones/, gitignored) + SKILL.md-Baum + Watchlist-Status,
+  YAML-Description sauber geparst (ein- und mehrzeilig), hidden-Duplikat-
+  Baeume (.openclaw) gefiltert — BSD-find-Falle beachtet (absolutes
+  `-not -path "*/.*"` matcht .clones selbst).
+- `play <name>`: fertiger `pi --skill`-Befehl (kanonischer Skill-Pfad,
+  Clone-Name bevorzugt) + read-and-follow-Alternative fuer laufende Sessions.
+- `doctor`: Roster-Pollution (Links in die Farm in ~/.pi, ~/.agents,
+  klark0/.pi), tote Links, leere Clones. `clean`: Clone-Removal + Stray-Meldung.
+- Ponytail (DietrichGebert) in die Farm geclont — Play-ready (watchlist:
+  watch). Suite tests/playground 14 Checks gruen.
+
+
 ### Alle Launcher: pull.rebase-Pin gegen globales pull.rebase=true (Batch-Fix)
 - **Vorfall (gemeldet 2026-10-24):** `fetch-url` warnte bei JEDEM Run
   *"cannot pull with rebase: You have unstaged changes"* — das Auto-Update

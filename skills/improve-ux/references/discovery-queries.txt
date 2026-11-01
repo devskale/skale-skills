@@ -1,12 +1,10 @@
 # improve-ux discovery queries — one per line, '#' starts a comment.
 # `improve-ux discover` rotates through these; edit freely.
-best UI component gallery sites
-animated component libraries react tailwind
+# 2026-11-01: geschärft für klark0-UX-Vereinheitlichung (gewachsene B2B-App,
+# data-dense Auswertungs-UI: Tabellen, Dashboards, Formulare, Bidder-Views).
+b2b enterprise dashboard design system examples
+data table ux design patterns dense information
 design system examples public
+complex form design patterns multi step enterprise
 empty state design patterns gallery
-ux inspiration sites curated
-motion design ui patterns website
-shadcn ui component registry collection
-dashboard ui templates gallery
-landing page design inspiration
-accessibility focused component library
+dashboard ui templates gallery data heavy
