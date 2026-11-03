@@ -56,6 +56,7 @@ DEFAULT_API_URL = "https://amd.skale.dev/api/fetch_url"
 MARKDOWN_NEW_URL = "https://markdown.new"
 JINA_READER_URL = "https://r.jina.ai"
 
+
 # Defuddle (Obsidian Web Clipper's extraction engine): local main-content
 # extraction, curl_fetched HTML -> `npx defuddle parse --json`.
 # Pinned: pre-1.0 project, CLI/API may shift between minors.
@@ -95,6 +96,12 @@ WEAK_ERROR_PATTERNS = [
     r"forbidden",
     r"rate limited",
 ]
+
+# Login-wall shells: tiny pages whose whole visible text is a skip-to-
+# content link (plus login redirect or markdown frontmatter). Measured
+# 2026-10: old.reddit served this shell to w3m/lynx AND markdown.new/jina
+# instead of the post. Too short to be an article.
+_LOGIN_SHELL_MAX_CHARS = 400
 
 ERROR_PATTERNS = STRONG_ERROR_PATTERNS + WEAK_ERROR_PATTERNS
 
@@ -278,6 +285,7 @@ def is_valid_content(content: str) -> bool:
     - Strong patterns (e.g. "checking your browser"): any single hit = block.
     - Weak patterns (e.g. "cloudflare"): need 2+ distinct hits = block.
       A single "cloudflare" mention in an HN headline is not a block.
+    - Tiny login-wall shells (skip-to-content + login link only) are invalid.
     """
     if not content or not content.strip():
         return False
@@ -287,6 +295,13 @@ def is_valid_content(content: str) -> bool:
         return True
 
     scan = content[:_ERROR_SCAN_WINDOW].lower()
+
+    # Login-wall shell: short page whose only substance is a skip-to-content
+    # link (+ login redirect / markdown frontmatter). A real page never fits
+    # this profile: content pages have body text beyond the nav link.
+    stripped = content.strip()
+    if len(stripped) <= _LOGIN_SHELL_MAX_CHARS and "skip to main content" in scan:
+        return False
 
     # Strong patterns: any single match means block.
     for pattern in STRONG_ERROR_PATTERNS:

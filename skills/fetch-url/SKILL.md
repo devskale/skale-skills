@@ -1,6 +1,6 @@
 ---
 name: fetch-url
-version: "2.9.0"
+version: "2.9.1"
 description: "Bash skill — run `fetch-url \"url\"` in your shell (not an MCP tool). Fetch and extract readable text from any web page. Use when the user wants to read an article, docs, or scrape a page."
 ---
 
@@ -14,24 +14,16 @@ Extracts text from any webpage. Works globally after install. **No credentials n
 
 ## Keep it simple
 
-The default auto-selects the best tool per site. Don't add flags you don't need.
-
-| ✗ Don't | ✓ Do |
-|---------|------|
-| `export PATH="$HOME/.local/bin:$PATH"; fetch-url "url" --tool jina -v 2>&1 \| head -100` | `fetch-url "url"` |
-| `fetch-url "url" --tool auto --clean -v` | `fetch-url "url"` |
-
-- **Output is already cleaned** (empty lines collapsed). No `head`, no `2>&1`.
-- **No URL yet?** `web-search "query"` finds the page first — the two are a combo: search finds, fetch-url reads.
-- **Tool auto-selects per site** (Reddit→w3m, GitHub/docs→defuddle, StackOverflow→markdown). Reach for `--tool` only when the default output is poor.
-- **JS/Cloudflare-protected site?** `fetch-url "url" --tool chrome` (or `--tool markdown --md-method browser`).
+- **Output is already cleaned.** No `head`, no `2>&1`. `fetch-url "url"` genügt. No URL yet? `web-search "query"` first — search finds, fetch-url reads.
+- **Tool auto-selects per site** (Reddit→w3m, GitHub/docs→defuddle, StackOverflow→markdown). `--tool` only when the default output is poor.
+- **JS/Cloudflare site?** `--tool chrome` (or `--tool markdown --md-method browser`).
 
 ## Install & update
 
 ```bash
 pi install git:github.com/devskale/skale-skills   # the pi package (loads the skill)
-./install.sh                                      # run once from this dir → global `fetch-url` command (uv auto-installed)
-fetch-url --update / --selfcheck                  # manual update / version+date (auto-updates every 7d)
+./install.sh                                      # once from this dir → global `fetch-url` (uv auto-installed)
+fetch-url --update / --selfcheck                  # manual update / version+date
 ```
 
 ## Usage
@@ -39,8 +31,7 @@ fetch-url --update / --selfcheck                  # manual update / version+date
 ```bash
 fetch-url "https://example.com"           # Auto-selects best tool
 fetch-url "https://reddit.com/r/python"   # Redirects to old.reddit.com, uses w3m
-fetch-url "URL" --tool jina              # Force specific tool
-fetch-url "URL" -v                        # Verbose (shows tool + redirects)
+fetch-url "URL" --tool jina              # Force specific tool (-v = verbose)
 ```
 
 ## Options
@@ -86,10 +77,9 @@ brew install w3m lynx chawan       # optional local browsers for better fallback
 
 | Problem | Fix |
 |---------|-----|
-| `fetch-url: command not found` | Run `./install.sh` once (creates the `fetch-url` command on PATH), then call `fetch-url "url"` — never the full path and never `export PATH=`. |
-| gunzip error on GitHub | Use `--tool defuddle` (now default for GitHub) |
-| Empty result | Try `--tool defuddle`, `--tool jina` or `--tool chrome` |
-| Dependency error | `fetch-url --update` |
+| `command not found` | Run `./install.sh` once, then `fetch-url "url"` — never full path, never `export PATH=` |
+| gunzip error on GitHub | `--tool defuddle` (default for GitHub) |
+| Empty result | `--tool defuddle` / `--tool jina` / `--tool chrome` |
 
 ## References
 

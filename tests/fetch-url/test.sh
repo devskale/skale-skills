@@ -371,6 +371,46 @@ else
 fi
 echo ""
 
+# ── 21. Wayback: login-wall shell rejected (unit) ─────────────────────
+echo "[21] Wayback shell validation (unit)..."
+SHELL_OK=$(cd "$SKILL_DIR" && python3 - <<'PYEOF'
+import sys
+sys.path.insert(0, 'scripts')
+from fetch import is_valid_content
+shells = [
+    '[1]Skip to main content\n\nReferences\n\n   1. https://old.reddit.com/login/?reason=lor2',
+    'Title: Welcome to Reddit\n\nMarkdown Content:\n[Skip to main content](#main-content)',
+]
+ok = all(not is_valid_content(s) for s in shells)
+ok &= is_valid_content('Real article text about cloudflare and CD services. ' * 5)
+print('ok' if ok else 'fail')
+PYEOF
+) || true
+assert "login-wall shells rejected, real content accepted" "[ '$SHELL_OK' = 'ok' ]"
+echo ""
+
+
+# ── 22. Blocked page: schnell + ehrlich failen (User-Regel 2026-10-24) ─
+echo "[22] Blocked page fails fast & honest..."
+BLOCKED_START=$(date +%s)
+BLOCKED_OUT=$(fetch-url "https://www.reddit.com/r/linuxquestions/comments/1tsibn3/" 2>&1) || true
+BLOCKED_SECS=$(( $(date +%s) - BLOCKED_START ))
+if echo "$BLOCKED_OUT" | grep -q "All tools failed"; then
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: blocked page error is not the honest per-tool breakdown"
+fi
+# Budget: blockierte Seiten müssen in < 30 s durchfallen (Regel: < 10 s,
+# CI-Netz-Puffer). Ein wayback-artiger Marathon (> 60 s) wäre ein Regress.
+if [ "$BLOCKED_SECS" -lt 30 ]; then
+    PASS=$((PASS + 1))
+else
+    FAIL=$((FAIL + 1))
+    echo "  FAIL: blocked page took ${BLOCKED_SECS}s (rule: fail fast)"
+fi
+echo ""
+
 # ── Results ──────────────────────────────────────────────────────────────
 echo "=== Results ==="
 echo "  Passed: $PASS"

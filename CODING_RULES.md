@@ -254,6 +254,17 @@ cd "$SKILL_DIR"
 Grounded in [Learnings from the Codex repo](docs/codex-learnings.md) — as
 implementation gets cheaper, tests, boundaries, and lint matter *more*, not less.
 
+### Latenz & Fail-Verhalten (User-Regel 2026-10-24: „wenn failen, dann schnell und ehrlich")
+
+- Interactive Skills machen **nur rasche Fetches/Calls**. Ein Fallback mit
+  35–150 s Laufzeit (Wayback/archive.org, Vorfall 2026-10-24) gehört NICHT
+  in die automatische Kette — Best case zu lang, Worst case ein Marathon.
+- Block/Fehler = **sichtbar in Sekunden**, nicht nach Minuten: ehrlich failen
+  (klare Fehlermeldung mit Ursache), niemals langsam ins Timeout kriechen.
+- Langsame Pfade nur als **bewusstes Opt-in** (expliziter Flag/Tool, der die
+  Wartezeit ankündigt) — oder gar nicht. Messbar am Smoke: blockierte Seite
+  muss in < 10 s durchfallen (fetch-url-Referenz: 6 s).
+
 ### Invocation & cwd
 
 - Skills are invoked **bare**: `web-search "query"`, `fetch-url "url"` — from
