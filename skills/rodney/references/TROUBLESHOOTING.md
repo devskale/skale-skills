@@ -17,6 +17,8 @@ When a command fails, don't blindly retry — classify first:
 
 1. **Is the browser alive?** `rodney status` (or `rodney-cleanup --json`).
    - No browser / stale state → `rodney-cleanup --clean`, then `rodney start`.
+   - Dies again shortly after start → binary-level problem, see the first failure
+     scenario below (`ROD_CHROME_BIN` override).
 2. **Was it a timeout?** `wait`, `waitstable`, `waitidle` time out → page slow or
    selector wrong. Retry with a longer `ROD_TIMEOUT` or a different wait.
 3. **Was it an assertion (exit 1)?** Element missing / not visible / wrong value →
@@ -25,6 +27,16 @@ When a command fails, don't blindly retry — classify first:
 
 ## Common failure scenarios
 
+- **Browser silently exits 20–60 s after `start`, between commands, no crash report**
+  → the system Chrome binary is unstable headless — not a rodney bug. Signature:
+  `status` shows a stale PID right after successful commands; state.json appears/vanishes;
+  no Chrome entry in `~/Library/Logs/DiagnosticReports/`. Seen jMacAir 2026-11-05: regular
+  Chrome exited deterministically ~30 s (even bare `nohup … --headless`, no rodney), while
+  Chrome Beta survived; the regular binary also wrote Chrome-**Beta** Crashpad paths
+  (install mismatch). **Fix:** verify with a bare probe
+  (`nohup "<chrome>" --headless --user-data-dir /tmp/probe about:blank &`, watch the PID
+  60 s), then `export ROD_CHROME_BIN="<stable binary>"` (e.g. Chrome Beta) and restart.
+  Don't debug rodney internals before the probe rules the binary out.
 - **Click / input does nothing** → SPA re-rendered, selector stale. Re-query with
   `waitstable`, re-select, retry. For autocomplete/booking flows, prefer the site's
   public API or `rodney js` to set values directly.

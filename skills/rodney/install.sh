@@ -94,6 +94,19 @@ case ":$PATH:" in
     *) echo "  NOTE add ~/.local/bin to PATH to use 'rodney'" ;;
 esac
 
+# ── 5. Helper launchers ───────────────────────────────────────────────────
+# SKILL.md/TROUBLESHOOTING.md document rodney-sessions / rodney-cleanup /
+# rodney-ps as commands — install them so the docs are true (drift 2026-11-05:
+# documented but never installed, users had to call the .sh by path).
+for helper in rodney-sessions rodney-cleanup rodney-ps; do
+    SRC="$SKILL_DIR/scripts/$helper.sh"
+    if [ -f "$SRC" ]; then
+        chmod +x "$SRC"
+        ln -sf "$SRC" "$BIN_DIR/$helper"
+        echo "  ✓ $helper → $BIN_DIR/$helper"
+    fi
+done
+
 echo ""
 echo "✓ Installation complete!"
 echo ""

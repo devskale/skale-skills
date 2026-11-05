@@ -308,6 +308,10 @@ sessions converge on pages instead of duplicating and drifting. Each named
 session starts its own headless Chrome (full isolation, more RAM); it does
 NOT share your visible Chrome or your logged-in profile.
 
+**Agents on shared machines default to `--session <taskname>`** — interactive
+use and agent runs then never fight over the global browser, and a `stop` from
+one side cannot kill the other's Chrome (global `stop` shuts the shared one).
+
 ## Environment
 
 | Variable | Default | Purpose |
@@ -332,6 +336,7 @@ NOT share your visible Chrome or your logged-in profile.
 - **Exit codes**: 0 = success, 1 = assertion failed, 2 = error (bad args, timeout, no browser).
 - **Heavy React apps** (booking sites, SPAs with autocomplete dropdowns) may timeout on `click`/`input`. Workaround: use the site's public API directly (most airlines, travel sites have one), or use `rodney js` to set values programmatically.
 - **⚠️ The rod-managed Chromium (`~/.cache/rod/browser/`) is a frozen 2024 Tip-of-Tree dev snapshot, not stable** — go-rod pins revision 1321438 (Chromium 128.0.6568.**0**) and has shipped no update since July 2024. On newer distros this snapshot can be **partially broken**: `text`/`Element.Text()` returns `""`, `type`/`InsertText` never lands, and the HistoryEmbeddings AI feature can SIGABRT the whole browser (see rodney#4, rodney#3 / diskfull 2026-10-07). **Since v0.12.0 rodney auto-prefers the system browser** (`launcher.LookPath()`: Chrome/Chromium/Edge) over the snapshot — `ROD_CHROME_BIN` is only needed as an explicit override or on boxes without a system browser. On older binaries: point `ROD_CHROME_BIN` at your system Chrome (`/opt/google/chrome/chrome` on Linux). If `text` hangs or returns empty on a fresh page, suspect the snapshot first (`rodney doctor` shows which browser is in use).
+- **A system Chrome can itself be the problem**: if the browser silently exits 20–60 s after `start` (between commands, no crash report), the binary is unstable headless — probe it bare and switch via `ROD_CHROME_BIN` (jMacAir 2026-11-05: regular Chrome died ~30 s, Chrome Beta stable). Signature + probe recipe: [references/TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) §Common failure scenarios.
 
 ## Process visibility & cleanup
 
