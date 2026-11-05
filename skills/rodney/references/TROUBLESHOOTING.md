@@ -17,8 +17,8 @@ When a command fails, don't blindly retry — classify first:
 
 1. **Is the browser alive?** `rodney status` (or `rodney-cleanup --json`).
    - No browser / stale state → `rodney-cleanup --clean`, then `rodney start`.
-   - Dies again shortly after start → binary-level problem, see the first failure
-     scenario below (`ROD_CHROME_BIN` override).
+   - Dies again shortly after start on an old binary (pre-`854700c`) → the
+     Automatic-Termination scenario below.
 2. **Was it a timeout?** `wait`, `waitstable`, `waitidle` time out → page slow or
    selector wrong. Retry with a longer `ROD_TIMEOUT` or a different wait.
 3. **Was it an assertion (exit 1)?** Element missing / not visible / wrong value →
@@ -27,16 +27,16 @@ When a command fails, don't blindly retry — classify first:
 
 ## Common failure scenarios
 
-- **Browser silently exits 20–60 s after `start`, between commands, no crash report**
-  → the system Chrome binary is unstable headless — not a rodney bug. Signature:
-  `status` shows a stale PID right after successful commands; state.json appears/vanishes;
-  no Chrome entry in `~/Library/Logs/DiagnosticReports/`. Seen jMacAir 2026-11-05: regular
-  Chrome exited deterministically ~30 s (even bare `nohup … --headless`, no rodney), while
-  Chrome Beta survived; the regular binary also wrote Chrome-**Beta** Crashpad paths
-  (install mismatch). **Fix:** verify with a bare probe
-  (`nohup "<chrome>" --headless --user-data-dir /tmp/probe about:blank &`, watch the PID
-  60 s), then `export ROD_CHROME_BIN="<stable binary>"` (e.g. Chrome Beta) and restart.
-  Don't debug rodney internals before the probe rules the binary out.
+- **Browser silently exits 20–60 s after `start`, between commands, no crash report
+  (macOS, FIXED)** → macOS „Automatic Termination": Chrome ≤156 in `--headless`
+  declares itself idle and loginwindow force-quits it (TAL). Since fork commit
+  `854700c` `rodney start` uses `--app=about:blank` on darwin instead of
+  `--headless` — the window makes the app non-idle-eligible. `RODNEY_TRUE_HEADLESS=1`
+  restores real headless (CI/repro; expect the ~30 s kill on affected Chrome builds).
+  Historical evidence (2026-11-05, jMacAir): regular Chrome 156 exited after 20–76 s
+  headless; Chrome Beta 158 and the rod snapshot survived; `NSDisableAutomaticTermination`
+  and CDP-keepalive did NOT help. If an OLD rodney (< 854700c) hits this, pin a stable
+  binary via `ROD_CHROME_BIN`.
 - **Click / input does nothing** → SPA re-rendered, selector stale. Re-query with
   `waitstable`, re-select, retry. For autocomplete/booking flows, prefer the site's
   public API or `rodney js` to set values directly.
