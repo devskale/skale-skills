@@ -20,10 +20,11 @@ jMacAir ~/code/my-project (main) • session-name
 - `xp` marker when `PI_EXPERIMENTAL=1` (parity with built-in, pi ≥ 0.79.5)
 - On narrow terminals, progressively skips: `(auto) → CH → R`
 
-### Line 2 right — model + Z.ai quota
+### Line 2 right — model + Z.ai/uniinfer quota
 - `zai {pct}% ({time-to-window-reset})` — **leads the cluster so it survives truncation**, color-coded: **accent <50%**, **warning ≥50%**, **error ≥80%**.
-- Model + thinking level. The redundant `(zai)` provider prefix is dropped when Z.ai quota is shown.
-- Example: `zai 6% (4h09m) glm-5.1 • low`
+- `uni {pct}% ({time-to-window-reset})` — uniinfer/Aqueduct usage (`GET /v1/usage`, Bearer = unii key). Shows the **highest-utilised window** (minute/hour/day vs. Aqueduct 50/1500/15000), countdown from `reset_at` (ISO-UTC, Aqueduct-aligned: volle Minute/Stunde, Mitternacht UTC). Same color thresholds. Only polled on `unii` providers; `(unii)` prefix dropped while shown.
+- Model + thinking level. The redundant `(zai)`/`(unii)` provider prefix is dropped when its quota is shown.
+- Example: `zai 6% (4h09m) uni 1% (59m) glm-5.1 • low`
 
 ### Line 3 — extension statuses (via `ctx.ui.setStatus()`)
 

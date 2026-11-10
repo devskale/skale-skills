@@ -89,8 +89,8 @@ function formatCwdForFooter(cwd: string, home: string): string {
 
 const HOME = process.env.HOME || process.env.USERPROFILE || "";
 
-/** Pick a theme color for a Z.ai usage percentage. */
-function zaiColor(pct: number): string {
+/** Pick a theme color for a quota usage percentage (shared: Z.ai + uniinfer). */
+function quotaColor(pct: number): string {
 	if (pct >= 80) return "error";
 	if (pct >= 50) return "warning";
 	return "accent";
@@ -186,6 +186,54 @@ async function fetchZaiUsage(modelRegistry: {
 	return result;
 }
 
+// ── uniinfer usage (uniinfer.skale.dev/v1/usage — proxy-counted Aqueduct windows) ──
+
+const UNII_USAGE_API_URL = "https://uniinfer.skale.dev/v1/usage";
+const UNII_FETCH_COOLDOWN_MS = 30_000;
+const UNII_FETCH_TIMEOUT_MS = 8_000;
+
+interface UniUsage {
+	pct: number;
+	resetIn?: string;
+}
+
+function isUniiProvider(provider: string | undefined): boolean {
+	return provider?.toLowerCase().startsWith("unii") ?? false;
+}
+
+async function fetchUniUsage(modelRegistry: {
+	getApiKeyForProvider(p: string): Promise<string | undefined>;
+}): Promise<UniUsage | undefined> {
+	const apiKey = await modelRegistry.getApiKeyForProvider("unii");
+	if (!apiKey) return undefined;
+	const response = await fetch(UNII_USAGE_API_URL, {
+		headers: { Authorization: `Bearer ${apiKey}` },
+		signal: AbortSignal.timeout(UNII_FETCH_TIMEOUT_MS),
+	});
+	if (!response.ok) return undefined;
+	const data = (await response.json()) as {
+		windows?: Record<string, { used?: number; limit?: number; reset_at?: string }>;
+	};
+	const windows = data.windows;
+	if (!windows) return undefined;
+	// The highest-utilised window drives the display (minute/hour/day; Aqueduct
+	// limits 50/1500/15000 per shared upstream TU key — `used` is this key's
+	// attribution, NOT the proxy-wide total).
+	let best: { pct: number; resetAt?: string } | undefined;
+	for (const w of Object.values(windows)) {
+		if (typeof w.used !== "number" || typeof w.limit !== "number" || w.limit <= 0) continue;
+		const pct = (w.used / w.limit) * 100;
+		if (!best || pct > best.pct) best = { pct, resetAt: w.reset_at };
+	}
+	if (!best) return undefined;
+	const result: UniUsage = { pct: best.pct };
+	if (best.resetAt) {
+		const epoch = Date.parse(best.resetAt);
+		if (!Number.isNaN(epoch)) result.resetIn = formatTimeRemainingFromEpochMs(epoch);
+	}
+	return result;
+}
+
 // ── Extension entry point ─────────────────────────────────────────────────────
 
 interface TuiLike {
@@ -195,6 +243,8 @@ interface TuiLike {
 export default function (pi: ExtensionAPI) {
 	let cachedZaiUsage: ZaiUsage | undefined;
 	let lastZaiFetchTime = 0;
+	let cachedUniUsage: UniUsage | undefined;
+	let lastUniFetchTime = 0;
 	let periodicTimer: ReturnType<typeof setInterval> | undefined;
 	let tuiRef: TuiLike | undefined;
 
@@ -223,13 +273,51 @@ export default function (pi: ExtensionAPI) {
 		return cachedZaiUsage;
 	}
 
+	async function refreshUniUsage(
+		ctx: {
+			model?: { provider: string } | undefined;
+			modelRegistry: { getApiKeyForProvider(p: string): Promise<string | undefined> };
+		},
+		force = false,
+	): Promise<UniUsage | undefined> {
+		if (!isUniiProvider(ctx.model?.provider)) {
+			cachedUniUsage = undefined;
+			return undefined;
+		}
+		const now = Date.now();
+		if (!force && cachedUniUsage && now - lastUniFetchTime < UNII_FETCH_COOLDOWN_MS) {
+			return cachedUniUsage;
+		}
+		try {
+			cachedUniUsage = await fetchUniUsage(ctx.modelRegistry);
+			lastUniFetchTime = now;
+			tuiRef?.requestRender();
+		} catch {
+			// keep previous cache on error
+		}
+		return cachedUniUsage;
+	}
+
+	function renderUniUsage(
+		usage: UniUsage | undefined,
+		theme: { fg(c: string, t: string): string },
+	): string {
+		if (!usage) return "";
+		const pct = Math.round(usage.pct);
+		let s = theme.fg(quotaColor(pct), `uni ${pct}%`);
+		if (usage.resetIn) {
+			s += theme.fg("dim", ` (${usage.resetIn})`);
+		}
+		return s;
+	}
+
 	function renderZaiUsage(
 		usage: ZaiUsage | undefined,
 		theme: { fg(c: string, t: string): string },
 	): string {
 		if (!usage) return "";
 		const pct = Math.round(usage.percentage * 10) / 10;
-		let s = theme.fg(zaiColor(pct), `zai ${pct}%`);
+		let s = theme.fg(quotaColor(pct), `zai ${pct}%`);
 		if (usage.timeRemaining) {
 			s += theme.fg("dim", ` (${usage.timeRemaining})`);
 		}
@@ -244,6 +332,9 @@ export default function (pi: ExtensionAPI) {
 		periodicTimer = setInterval(() => {
 			if (isZaiProvider(ctx.model?.provider)) {
 				void refreshZaiUsage(ctx);
+			}
+			if (isUniiProvider(ctx.model?.provider)) {
+				void refreshUniUsage(ctx);
 			}
 		}, ZAI_PERIODIC_REFRESH_MS);
 		// Don't keep the event loop alive just for quota polling.
@@ -261,6 +352,7 @@ export default function (pi: ExtensionAPI) {
 		if (ctx.mode !== "tui") return;
 
 		await refreshZaiUsage(ctx, true);
+		await refreshUniUsage(ctx, true);
 
 		ctx.ui.setFooter((tui, theme, footerData) => {
 			tuiRef = tui;
@@ -337,6 +429,7 @@ export default function (pi: ExtensionAPI) {
 
 					// ── Right cluster (line 2): Z.ai usage leads so it survives truncation ──
 					const isZai = isZaiProvider(ctx.model?.provider);
+					const isUni = isUniiProvider(ctx.model?.provider);
 					const modelName = ctx.model?.id || "no-model";
 
 					let modelCluster = modelName;
@@ -347,15 +440,17 @@ export default function (pi: ExtensionAPI) {
 								? `${modelName} • thinking off`
 								: `${modelName} • ${thinkingLevel}`;
 					}
-					// Drop the redundant "(zai)" provider prefix when showing Z.ai usage.
+					// Drop the redundant provider prefix when showing its usage.
 					let providerPrefix = "";
-					if (!isZai && footerData.getAvailableProviderCount() > 1 && ctx.model) {
+					if (!isZai && !isUni && footerData.getAvailableProviderCount() > 1 && ctx.model) {
 						providerPrefix = `(${ctx.model.provider}) `;
 					}
 					const modelPart = providerPrefix + modelCluster;
 
 					const zaiPart = renderZaiUsage(cachedZaiUsage, theme);
-					const rightSide = zaiPart ? `${zaiPart} ${modelPart}` : modelPart;
+					const uniPart = renderUniUsage(cachedUniUsage, theme);
+					const quotaParts = [zaiPart, uniPart].filter(Boolean).join(" ");
+					const rightSide = quotaParts ? `${quotaParts} ${modelPart}` : modelPart;
 					const rightSideWidth = visibleWidth(rightSide);
 
 					// ── Left stats (line 2): progressive skip (auto) → CH → R ──
@@ -472,19 +567,27 @@ export default function (pi: ExtensionAPI) {
 		startPeriodicRefresh(ctx);
 	});
 
-	// Refresh Z.ai usage on model switch
+	// Refresh quota usage on model switch
 	pi.on("model_select", async (event, ctx) => {
 		if (isZaiProvider(event.model.provider)) {
 			await refreshZaiUsage(ctx, true);
 		} else {
 			cachedZaiUsage = undefined;
 		}
+		if (isUniiProvider(event.model.provider)) {
+			await refreshUniUsage(ctx, true);
+		} else {
+			cachedUniUsage = undefined;
+		}
 	});
 
-	// Refresh Z.ai usage after each turn
+	// Refresh quota usage after each turn
 	pi.on("turn_end", async (_event, ctx) => {
 		if (isZaiProvider(ctx.model?.provider)) {
 			await refreshZaiUsage(ctx);
+		}
+		if (isUniiProvider(ctx.model?.provider)) {
+			await refreshUniUsage(ctx);
 		}
 	});
 
