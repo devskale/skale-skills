@@ -1511,7 +1511,10 @@ export default function xmodelExtension(pi: ExtensionAPI) {
 			const how = shown.mode === "pixels" ? "inline" : "as ASCII block art (chafa)";
 			content.push({
 				type: "text",
-				text: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} displayed ${how} to the user — view-only, you did NOT receive the pixels. To analyze the contents (read text in it, diagnose a screenshot, interpret a chart), call the read_image tool with this path.]`,
+				// Understanding is opt-in ("manchmal, nicht default"): the note must NOT
+				// invite a VLM call after every display-only read. Locked in by
+				// tests/xmodel ("handover note conditional" + regression guard).
+				text: `[xmodel handover · ${n} image${n > 1 ? "s" : ""} displayed ${how} to the user — view-only, you did NOT receive the pixels. read_image runs a VLM (slow, token cost): call it only if the task genuinely requires the image's contents (text in it, screenshot diagnosis, chart interpretation) — otherwise no follow-up.]`,
 			});
 		} else {
 			content.push({

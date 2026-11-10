@@ -67,6 +67,8 @@ assert "message renderer registered"           "grep -q 'registerMessageRenderer
 assert "understand param handled"              "grep -q 'understandRaw === true' xmodel.ts"
 assert "read protocol note in system prompt"   "grep -q 'READ_PROTOCOL' xmodel.ts"
 assert "read intercepted before vision return" "grep -q 'READ HANDOVER' xmodel.ts"
+assert "handover note conditional (opt-in understanding)" "grep -q 'call it only if the task genuinely requires' xmodel.ts"
+assert "no unconditional VLM invitation in handover" "! grep -q 'To analyze the contents (read text in it, diagnose a screenshot, interpret a chart), call' xmodel.ts"
 assert "delegate handover wired"               "grep -q 'delegateVision(ctx, event, images' xmodel.ts"
 assert "read_image per-call thinking override"  "grep -q 'wantThink' xmodel.ts && grep -q 'thinkingLevel: thinkLevel' xmodel.ts"
 assert "understand accepts focus string"        "grep -q 'understandRaw' xmodel.ts"
