@@ -131,10 +131,13 @@ function readAutoCompactionEnabled(cwd: string): boolean {
 
 // ── Z.ai usage ────────────────────────────────────────────────────────────────
 
+const ZAI_PROVIDER_KEY = "zai"; // pi provider prefix (auth + display gating)
 const ZAI_USAGE_API_URL = "https://api.z.ai/api/monitor/usage/quota/limit";
+const ZAI_TOKENS_LIMIT_TYPE = "TOKENS_LIMIT"; // API contract: the subscription quota entry
+const ZAI_LABEL = "zai"; // footer label names the SOURCE of the %
 const ZAI_FETCH_COOLDOWN_MS = 30_000;
 const ZAI_FETCH_TIMEOUT_MS = 8_000;
-const ZAI_PERIODIC_REFRESH_MS = 3 * 60_000; // keep time-to-window fresh while idle
+const QUOTA_PERIODIC_REFRESH_MS = 3 * 60_000; // shared: keep time-to-window fresh while idle
 
 interface ZaiUsage {
 	percentage: number;
@@ -143,7 +146,7 @@ interface ZaiUsage {
 }
 
 function isZaiProvider(provider: string | undefined): boolean {
-	return provider?.toLowerCase().startsWith("zai") ?? false;
+	return provider?.toLowerCase().startsWith(ZAI_PROVIDER_KEY) ?? false;
 }
 
 function formatTimeRemainingFromEpochMs(ms: number): string {
@@ -160,7 +163,7 @@ function formatTimeRemainingFromEpochMs(ms: number): string {
 async function fetchZaiUsage(modelRegistry: {
 	getApiKeyForProvider(p: string): Promise<string | undefined>;
 }): Promise<ZaiUsage | undefined> {
-	const apiKey = await modelRegistry.getApiKeyForProvider("zai");
+	const apiKey = await modelRegistry.getApiKeyForProvider(ZAI_PROVIDER_KEY);
 	if (!apiKey) return undefined;
 	const response = await fetch(ZAI_USAGE_API_URL, {
 		headers: { Authorization: `Bearer ${apiKey}` },
@@ -177,7 +180,7 @@ async function fetchZaiUsage(modelRegistry: {
 			}>;
 		};
 	};
-	const tokensLimit = data.data.limits.find((l) => l.type === "TOKENS_LIMIT");
+	const tokensLimit = data.data.limits.find((l) => l.type === ZAI_TOKENS_LIMIT_TYPE);
 	if (!tokensLimit) return undefined;
 	const result: ZaiUsage = {
 		percentage: tokensLimit.percentage,
@@ -380,7 +383,7 @@ export default function (pi: ExtensionAPI) {
 	): string {
 		if (!usage) return "";
 		const pct = Math.round(usage.percentage * 10) / 10;
-		let s = theme.fg(quotaColor(pct), `zai ${pct}%`);
+		let s = theme.fg(quotaColor(pct), `${ZAI_LABEL} ${pct}%`);
 		if (usage.timeRemaining) {
 			s += theme.fg("dim", ` (${usage.timeRemaining})`);
 		}
@@ -399,7 +402,7 @@ export default function (pi: ExtensionAPI) {
 			if (isUniiProvider(ctx.model?.provider)) {
 				void refreshUniUsage(ctx);
 			}
-		}, ZAI_PERIODIC_REFRESH_MS);
+		}, QUOTA_PERIODIC_REFRESH_MS);
 		// Don't keep the event loop alive just for quota polling.
 		periodicTimer.unref?.();
 	}
