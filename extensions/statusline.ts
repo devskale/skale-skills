@@ -368,7 +368,9 @@ export default function (pi: ExtensionAPI) {
 		if (!usage) return "";
 		// Layers side by side in config order ("uni 1:0%") — one percent sign at
 		// the end, compact; color tracks the most-utilised (binding) layer.
-		const parts = usage.windows.map((w) => `${Math.round(w.pct)}`).join(":");
+		// Percentages ALWAYS round up (ceil): any nonzero usage shows as at
+		// least 1% — a pool at 0.02% is "in use", not "0".
+		const parts = usage.windows.map((w) => `${w.pct > 0 ? Math.ceil(w.pct) : 0}`).join(":");
 		const binding = Math.max(...usage.windows.map((w) => w.pct));
 		let s = theme.fg(quotaColor(binding), `${UNII_LABEL} ${parts}%`);
 		if (usage.resetIn) {
