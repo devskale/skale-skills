@@ -213,12 +213,15 @@ interface UniWindow {
 	reset_at?: string;
 }
 
+interface UniPoolKey {
+	key: string;
+	used?: Record<string, number>;
+	limits?: Record<string, number | null>;
+}
+
 interface UniUsageResponse {
 	windows?: Record<string, UniWindow>;
-	providers?: Record<
-		string,
-		{ pool?: { used?: Record<string, number>; limits?: Record<string, number | null> } }
-	>;
+	providers?: Record<string, { pool?: { keys?: UniPoolKey[] } }>;
 }
 
 /** One displayed layer: window name + utilisation in percent. */
@@ -251,14 +254,16 @@ function countdownOf(window: UniWindow | undefined): string | undefined {
 	return Number.isNaN(epoch) ? undefined : formatTimeRemainingFromEpochMs(epoch);
 }
 
-/** Pool windows for the CURRENT model's upstream provider (tu@… → "tu").
- *  Each upstream key carries its own quota; the pool sums them (Aqueduct
- *  2×50/1500/15000 with two TU keys). Order follows UNII_DISPLAY_WINDOWS. */
-function providerPoolWindows(data: UniUsageResponse, prefix: string | undefined): UniWindowPct[] {
-	const pool = prefix ? data.providers?.[prefix]?.pool : undefined;
-	if (!pool) return [];
+/** Windows of the upstream key the CURRENT model rides on (tu@… → key "tu",
+ *  tu-klark@… → key "tu-klark"): its fill vs ITS OWN quota — the real truth,
+ *  no pool aggregates (user decision 2026-11-11). Model prefix = alias = key. */
+function currentKeyWindows(data: UniUsageResponse, prefix: string | undefined): UniWindowPct[] {
+	if (!prefix) return [];
+	const keys = data.providers?.[prefix]?.pool?.keys;
+	const entry = keys?.find((k) => k.key === prefix);
+	if (!entry) return [];
 	return UNII_DISPLAY_WINDOWS.flatMap((w) => {
-		const pct = pctOf({ used: pool.used?.[w], limit: pool.limits?.[w] });
+		const pct = pctOf({ used: entry.used?.[w], limit: entry.limits?.[w] });
 		return pct === undefined ? [] : [{ window: w, pct }];
 	});
 }
@@ -287,7 +292,7 @@ async function fetchUniUsage(
 	if (!response.ok) return undefined;
 	const data = (await response.json()) as UniUsageResponse;
 	const prefix = modelId?.includes("@") ? modelId.split("@")[0] : undefined;
-	let windows = providerPoolWindows(data, prefix);
+	let windows = currentKeyWindows(data, prefix);
 	if (windows.length === 0) windows = aggregateWindows(data);
 	if (windows.length === 0) return undefined;
 	// Reset boundaries are calendar-aligned (full minute/hour, midnight UTC for
