@@ -22,7 +22,7 @@ jMacAir ~/code/my-project (main) • session-name
 
 ### Line 2 right — model + Z.ai/uniinfer quota
 - `zai {pct}% ({time-to-window-reset})` — **leads the cluster so it survives truncation**, color-coded: **accent <50%**, **warning ≥50%**, **error ≥80%**.
-- `uni {pct}% ({time-to-window-reset})` — uniinfer/Aqueduct usage (`GET /v1/usage`, Bearer = unii key). Shows the **highest-utilised window** (minute/hour/day vs. Aqueduct 50/1500/15000), countdown from `reset_at` (ISO-UTC, Aqueduct-aligned: volle Minute/Stunde, Mitternacht UTC). Same color thresholds. Only polled on `unii` providers; `(unii)` prefix dropped while shown.
+- `uni:tu {pct}% ({time-to-window-reset})` — uniinfer usage, **pool-getrieben für den Provider des aktuellen Modells** (`tu@…` → TU-Pool: worst window vs. Pool-Limits, z. B. 2 TU-Keys = 100/3000/30000; Countdown aus `reset_at`, Aqueduct-aligned). Provider ohne bekannte Limits → Fallback auf die aggregierten `windows` (`uni {pct}%`, Richtwert). Same color thresholds. Only polled on `unii` providers; `(unii)` prefix dropped while shown.
 - Model + thinking level. The redundant `(zai)`/`(unii)` provider prefix is dropped when its quota is shown.
 - Example: `zai 6% (4h09m) uni 1% (59m) glm-5.1 • low`
 

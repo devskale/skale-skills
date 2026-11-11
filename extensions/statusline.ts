@@ -193,6 +193,7 @@ const UNII_FETCH_COOLDOWN_MS = 30_000;
 const UNII_FETCH_TIMEOUT_MS = 8_000;
 
 interface UniUsage {
+	label: string;
 	pct: number;
 	resetIn?: string;
 }
@@ -201,9 +202,12 @@ function isUniiProvider(provider: string | undefined): boolean {
 	return provider?.toLowerCase().startsWith("unii") ?? false;
 }
 
-async function fetchUniUsage(modelRegistry: {
-	getApiKeyForProvider(p: string): Promise<string | undefined>;
-}): Promise<UniUsage | undefined> {
+async function fetchUniUsage(
+	modelRegistry: {
+		getApiKeyForProvider(p: string): Promise<string | undefined>;
+	},
+	modelId?: string,
+): Promise<UniUsage | undefined> {
 	const apiKey = await modelRegistry.getApiKeyForProvider("unii");
 	if (!apiKey) return undefined;
 	const response = await fetch(UNII_USAGE_API_URL, {
@@ -213,12 +217,45 @@ async function fetchUniUsage(modelRegistry: {
 	if (!response.ok) return undefined;
 	const data = (await response.json()) as {
 		windows?: Record<string, { used?: number; limit?: number; reset_at?: string }>;
+		providers?: Record<
+			string,
+			{ pool?: { used?: Record<string, number>; limits?: Record<string, number | null> } }
+		>;
 	};
 	const windows = data.windows;
 	if (!windows) return undefined;
-	// The highest-utilised window drives the display (minute/hour/day; Aqueduct
-	// limits 50/1500/15000 per shared upstream TU key — `used` is this key's
-	// attribution, NOT the proxy-wide total).
+	// Preferred: the CURRENT model's upstream provider pool (e.g. tu@… → "tu"),
+	// worst window vs that pool's own limits (each upstream key carries its own
+	// quota; the pool sums them — Aqueduct 2×50/1500/15000 with two TU keys).
+	const prefix = modelId?.includes("@") ? modelId.split("@")[0] : undefined;
+	const pool = prefix ? data.providers?.[prefix]?.pool : undefined;
+	if (pool?.used && pool.limits) {
+		let bestPct = -1;
+		let bestWindow: string | undefined;
+		for (const w of Object.keys(pool.limits)) {
+			const used = pool.used[w];
+			const limit = pool.limits[w];
+			if (typeof used !== "number" || typeof limit !== "number" || limit <= 0) continue;
+			const pct = (used / limit) * 100;
+			if (pct > bestPct) {
+				bestPct = pct;
+				bestWindow = w;
+			}
+		}
+		if (bestWindow !== undefined && bestPct >= 0) {
+			const result: UniUsage = { label: `uni:${prefix}`, pct: bestPct };
+			// Reset boundaries are calendar-aligned (full minute/hour, midnight UTC
+			// for Aqueduct) — the aggregate windows carry the same reset_at.
+			const resetAt = windows[bestWindow]?.reset_at;
+			if (resetAt) {
+				const epoch = Date.parse(resetAt);
+				if (!Number.isNaN(epoch)) result.resetIn = formatTimeRemainingFromEpochMs(epoch);
+			}
+			return result;
+		}
+	}
+	// Fallback: aggregate windows across all providers (proxy total in
+	// TU-shaped buckets) — Richtwert, not provider truth.
 	let best: { pct: number; resetAt?: string } | undefined;
 	for (const w of Object.values(windows)) {
 		if (typeof w.used !== "number" || typeof w.limit !== "number" || w.limit <= 0) continue;
@@ -226,7 +263,7 @@ async function fetchUniUsage(modelRegistry: {
 		if (!best || pct > best.pct) best = { pct, resetAt: w.reset_at };
 	}
 	if (!best) return undefined;
-	const result: UniUsage = { pct: best.pct };
+	const result: UniUsage = { label: "uni", pct: best.pct };
 	if (best.resetAt) {
 		const epoch = Date.parse(best.resetAt);
 		if (!Number.isNaN(epoch)) result.resetIn = formatTimeRemainingFromEpochMs(epoch);
@@ -275,7 +312,7 @@ export default function (pi: ExtensionAPI) {
 
 	async function refreshUniUsage(
 		ctx: {
-			model?: { provider: string } | undefined;
+			model?: { provider: string; id?: string } | undefined;
 			modelRegistry: { getApiKeyForProvider(p: string): Promise<string | undefined> };
 		},
 		force = false,
@@ -289,7 +326,7 @@ export default function (pi: ExtensionAPI) {
 			return cachedUniUsage;
 		}
 		try {
-			cachedUniUsage = await fetchUniUsage(ctx.modelRegistry);
+			cachedUniUsage = await fetchUniUsage(ctx.modelRegistry, ctx.model?.id);
 			lastUniFetchTime = now;
 			tuiRef?.requestRender();
 		} catch {
@@ -304,7 +341,7 @@ export default function (pi: ExtensionAPI) {
 	): string {
 		if (!usage) return "";
 		const pct = Math.round(usage.pct);
-		let s = theme.fg(quotaColor(pct), `uni ${pct}%`);
+		let s = theme.fg(quotaColor(pct), `${usage.label} ${pct}%`);
 		if (usage.resetIn) {
 			s += theme.fg("dim", ` (${usage.resetIn})`);
 		}
