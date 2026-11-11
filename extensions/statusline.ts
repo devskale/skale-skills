@@ -366,11 +366,11 @@ export default function (pi: ExtensionAPI) {
 		theme: { fg(c: string, t: string): string },
 	): string {
 		if (!usage) return "";
-		// Layers side by side in config order ("uni 1%:0%"); color tracks the
-		// most-utilised (binding) layer.
-		const parts = usage.windows.map((w) => `${Math.round(w.pct)}%`).join(":");
+		// Layers side by side in config order ("uni 1:0%") — one percent sign at
+		// the end, compact; color tracks the most-utilised (binding) layer.
+		const parts = usage.windows.map((w) => `${Math.round(w.pct)}`).join(":");
 		const binding = Math.max(...usage.windows.map((w) => w.pct));
-		let s = theme.fg(quotaColor(binding), `${UNII_LABEL} ${parts}`);
+		let s = theme.fg(quotaColor(binding), `${UNII_LABEL} ${parts}%`);
 		if (usage.resetIn) {
 			s += theme.fg("dim", ` (${usage.resetIn})`);
 		}

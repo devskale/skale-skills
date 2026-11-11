@@ -22,7 +22,7 @@ jMacAir ~/code/my-project (main) • session-name
 
 ### Line 2 right — model + Z.ai/uniinfer quota
 - `zai {pct}% ({time-to-window-reset})` — **leads the cluster so it survives truncation**, color-coded: **accent <50%**, **warning ≥50%**, **error ≥80%**.
-- `uni {hour}%:{day}% ({time-to-hour-reset})` — uniinfer usage, **pool-getrieben für den Provider des aktuellen Modells** (`tu@…` → TU-Pool, z. B. 2 TU-Keys = 100/3000/30000). Zwei Layer nebeneinander (Stunde:Tag, Config `UNII_DISPLAY_WINDOWS`, Minute bewusst raus — Burst-Guard, tickt nur); Countdown läuft auf die Stunde (nahe Grenze), Farbe nach dem bindenden Layer. Kein Provider-Suffix im Label — die Model-ID zeigt ihn eh. Provider ohne bekannte Limits → Fallback auf die aggregierten `windows` (Richtwert). Same color thresholds. Only polled on `unii` providers; `(unii)` prefix dropped while shown.
+- `uni {hour}:{day}% ({time-to-hour-reset})` — uniinfer usage, **pool-getrieben für den Provider des aktuellen Modells** (`tu@…` → TU-Pool, z. B. 2 TU-Keys = 100/3000/30000). Zwei Layer nebeneinander (Stunde:Tag, Config `UNII_DISPLAY_WINDOWS`, Minute bewusst raus — Burst-Guard, tickt nur); Countdown läuft auf die Stunde (nahe Grenze), Farbe nach dem bindenden Layer. Kein Provider-Suffix im Label — die Model-ID zeigt ihn eh. Provider ohne bekannte Limits → Fallback auf die aggregierten `windows` (Richtwert). Same color thresholds. Only polled on `unii` providers; `(unii)` prefix dropped while shown.
 - Model + thinking level. The redundant `(zai)`/`(unii)` provider prefix is dropped when its quota is shown.
 - Example: `zai 6% (4h09m) uni 1% (59m) glm-5.1 • low`
 
