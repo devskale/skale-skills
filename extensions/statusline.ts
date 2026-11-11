@@ -89,10 +89,13 @@ function formatCwdForFooter(cwd: string, home: string): string {
 
 const HOME = process.env.HOME || process.env.USERPROFILE || "";
 
+const QUOTA_WARN_PCT = 50;
+const QUOTA_ERROR_PCT = 80;
+
 /** Pick a theme color for a quota usage percentage (shared: Z.ai + uniinfer). */
 function quotaColor(pct: number): string {
-	if (pct >= 80) return "error";
-	if (pct >= 50) return "warning";
+	if (pct >= QUOTA_ERROR_PCT) return "error";
+	if (pct >= QUOTA_WARN_PCT) return "warning";
 	return "accent";
 }
 
@@ -188,17 +191,82 @@ async function fetchZaiUsage(modelRegistry: {
 
 // ── uniinfer usage (uniinfer.skale.dev/v1/usage — proxy-counted Aqueduct windows) ──
 
+// Config — everything a future change should need, in one place.
+const UNII_PROVIDER_KEY = "unii"; // pi provider prefix (auth + display gating)
 const UNII_USAGE_API_URL = "https://uniinfer.skale.dev/v1/usage";
 const UNII_FETCH_COOLDOWN_MS = 30_000;
 const UNII_FETCH_TIMEOUT_MS = 8_000;
+const UNII_LABEL = "uni"; // footer label names the SOURCE of the % (the proxy)
+/** Display windows, near → far, rendered "hour%:day%". Minute deliberately
+ *  excluded: a burst guard that resets every full minute — noisy countdown,
+ *  never the binding layer for display. */
+const UNII_DISPLAY_WINDOWS = ["hour", "day"] as const;
+/** The countdown runs to this window's reset (the near boundary). */
+const UNII_COUNTDOWN_WINDOW = "hour";
+
+interface UniWindow {
+	used?: number;
+	limit?: number | null;
+	reset_at?: string;
+}
+
+interface UniUsageResponse {
+	windows?: Record<string, UniWindow>;
+	providers?: Record<
+		string,
+		{ pool?: { used?: Record<string, number>; limits?: Record<string, number | null> } }
+	>;
+}
+
+/** One displayed layer: window name + utilisation in percent. */
+interface UniWindowPct {
+	window: string;
+	pct: number;
+}
 
 interface UniUsage {
-	pct: number;
+	windows: UniWindowPct[];
 	resetIn?: string;
 }
 
 function isUniiProvider(provider: string | undefined): boolean {
-	return provider?.toLowerCase().startsWith("unii") ?? false;
+	return provider?.toLowerCase().startsWith(UNII_PROVIDER_KEY) ?? false;
+}
+
+/** Utilisation of one window in percent, undefined when unmeasurable. */
+function pctOf(window: UniWindow | undefined): number | undefined {
+	if (typeof window?.used !== "number" || typeof window.limit !== "number" || window.limit <= 0) {
+		return undefined;
+	}
+	return (window.used / window.limit) * 100;
+}
+
+/** Countdown string for a window's reset_at, undefined when missing/invalid. */
+function countdownOf(window: UniWindow | undefined): string | undefined {
+	if (!window?.reset_at) return undefined;
+	const epoch = Date.parse(window.reset_at);
+	return Number.isNaN(epoch) ? undefined : formatTimeRemainingFromEpochMs(epoch);
+}
+
+/** Pool windows for the CURRENT model's upstream provider (tu@… → "tu").
+ *  Each upstream key carries its own quota; the pool sums them (Aqueduct
+ *  2×50/1500/15000 with two TU keys). Order follows UNII_DISPLAY_WINDOWS. */
+function providerPoolWindows(data: UniUsageResponse, prefix: string | undefined): UniWindowPct[] {
+	const pool = prefix ? data.providers?.[prefix]?.pool : undefined;
+	if (!pool) return [];
+	return UNII_DISPLAY_WINDOWS.flatMap((w) => {
+		const pct = pctOf({ used: pool.used?.[w], limit: pool.limits?.[w] });
+		return pct === undefined ? [] : [{ window: w, pct }];
+	});
+}
+
+/** Fallback: aggregate windows across all providers (proxy total in TU-shaped
+ *  buckets) — Richtwert, not provider truth. */
+function aggregateWindows(data: UniUsageResponse): UniWindowPct[] {
+	return UNII_DISPLAY_WINDOWS.flatMap((w) => {
+		const pct = pctOf(data.windows?.[w]);
+		return pct === undefined ? [] : [{ window: w, pct }];
+	});
 }
 
 async function fetchUniUsage(
@@ -207,68 +275,23 @@ async function fetchUniUsage(
 	},
 	modelId?: string,
 ): Promise<UniUsage | undefined> {
-	const apiKey = await modelRegistry.getApiKeyForProvider("unii");
+	const apiKey = await modelRegistry.getApiKeyForProvider(UNII_PROVIDER_KEY);
 	if (!apiKey) return undefined;
 	const response = await fetch(UNII_USAGE_API_URL, {
 		headers: { Authorization: `Bearer ${apiKey}` },
 		signal: AbortSignal.timeout(UNII_FETCH_TIMEOUT_MS),
 	});
 	if (!response.ok) return undefined;
-	const data = (await response.json()) as {
-		windows?: Record<string, { used?: number; limit?: number; reset_at?: string }>;
-		providers?: Record<
-			string,
-			{ pool?: { used?: Record<string, number>; limits?: Record<string, number | null> } }
-		>;
-	};
-	const windows = data.windows;
-	if (!windows) return undefined;
-	// Preferred: the CURRENT model's upstream provider pool (e.g. tu@… → "tu"),
-	// worst window vs that pool's own limits (each upstream key carries its own
-	// quota; the pool sums them — Aqueduct 2×50/1500/15000 with two TU keys).
-	// No provider suffix in the label — the model id (tu@…) already shows it.
+	const data = (await response.json()) as UniUsageResponse;
 	const prefix = modelId?.includes("@") ? modelId.split("@")[0] : undefined;
-	const pool = prefix ? data.providers?.[prefix]?.pool : undefined;
-	if (pool?.used && pool.limits) {
-		let bestPct = -1;
-		let bestWindow: string | undefined;
-		for (const w of Object.keys(pool.limits)) {
-			const used = pool.used[w];
-			const limit = pool.limits[w];
-			if (typeof used !== "number" || typeof limit !== "number" || limit <= 0) continue;
-			const pct = (used / limit) * 100;
-			if (pct > bestPct) {
-				bestPct = pct;
-				bestWindow = w;
-			}
-		}
-		if (bestWindow !== undefined && bestPct >= 0) {
-			const result: UniUsage = { pct: bestPct };
-			// Reset boundaries are calendar-aligned (full minute/hour, midnight UTC
-			// for Aqueduct) — the aggregate windows carry the same reset_at.
-			const resetAt = windows[bestWindow]?.reset_at;
-			if (resetAt) {
-				const epoch = Date.parse(resetAt);
-				if (!Number.isNaN(epoch)) result.resetIn = formatTimeRemainingFromEpochMs(epoch);
-			}
-			return result;
-		}
-	}
-	// Fallback: aggregate windows across all providers (proxy total in
-	// TU-shaped buckets) — Richtwert, not provider truth.
-	let best: { pct: number; resetAt?: string } | undefined;
-	for (const w of Object.values(windows)) {
-		if (typeof w.used !== "number" || typeof w.limit !== "number" || w.limit <= 0) continue;
-		const pct = (w.used / w.limit) * 100;
-		if (!best || pct > best.pct) best = { pct, resetAt: w.reset_at };
-	}
-	if (!best) return undefined;
-	const result: UniUsage = { pct: best.pct };
-	if (best.resetAt) {
-		const epoch = Date.parse(best.resetAt);
-		if (!Number.isNaN(epoch)) result.resetIn = formatTimeRemainingFromEpochMs(epoch);
-	}
-	return result;
+	let windows = providerPoolWindows(data, prefix);
+	if (windows.length === 0) windows = aggregateWindows(data);
+	if (windows.length === 0) return undefined;
+	// Reset boundaries are calendar-aligned (full minute/hour, midnight UTC for
+	// Aqueduct); the aggregate windows carry the reset_at for all layers.
+	const resetIn =
+		countdownOf(data.windows?.[UNII_COUNTDOWN_WINDOW]) ?? countdownOf(data.windows?.[windows[0].window]);
+	return { windows, resetIn };
 }
 
 // ── Extension entry point ─────────────────────────────────────────────────────
@@ -340,8 +363,11 @@ export default function (pi: ExtensionAPI) {
 		theme: { fg(c: string, t: string): string },
 	): string {
 		if (!usage) return "";
-		const pct = Math.round(usage.pct);
-		let s = theme.fg(quotaColor(pct), `uni ${pct}%`);
+		// Layers side by side in config order ("uni 1%:0%"); color tracks the
+		// most-utilised (binding) layer.
+		const parts = usage.windows.map((w) => `${Math.round(w.pct)}%`).join(":");
+		const binding = Math.max(...usage.windows.map((w) => w.pct));
+		let s = theme.fg(quotaColor(binding), `${UNII_LABEL} ${parts}`);
 		if (usage.resetIn) {
 			s += theme.fg("dim", ` (${usage.resetIn})`);
 		}
