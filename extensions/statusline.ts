@@ -217,6 +217,15 @@ interface UniPoolKey {
 	key: string;
 	used?: Record<string, number>;
 	limits?: Record<string, number | null>;
+	/** Upstream truth (quota_source=upstream-headers), per bare model name. */
+	upstream?: Record<
+		string,
+		{
+			requests?: { used: number; limit: number; remaining?: number; reset_at?: string };
+			tokens?: { used: number; limit: number; remaining?: number; reset_at?: string };
+			age_s?: number;
+		}
+	>;
 }
 
 interface UniUsageResponse {
@@ -257,15 +266,25 @@ function countdownOf(window: UniWindow | undefined): string | undefined {
 /** Windows of the upstream key the CURRENT model rides on (tu@… → key "tu",
  *  tu-klark@… → key "tu-klark"): its fill vs ITS OWN quota — the real truth,
  *  no pool aggregates (user decision 2026-11-11). Model prefix = alias = key. */
-function currentKeyWindows(data: UniUsageResponse, prefix: string | undefined): UniWindowPct[] {
-	if (!prefix) return [];
+function currentKeyWindows(
+	data: UniUsageResponse,
+	prefix: string | undefined,
+	bareModel: string | undefined,
+): { windows: UniWindowPct[]; resetAt?: string } {
+	if (!prefix) return { windows: [] };
 	const keys = data.providers?.[prefix]?.pool?.keys;
 	const entry = keys?.find((k) => k.key === prefix);
-	if (!entry) return [];
-	return UNII_DISPLAY_WINDOWS.flatMap((w) => {
+	if (!entry) return { windows: [] };
+	const req = bareModel ? entry.upstream?.[bareModel]?.requests : undefined;
+	if (req) {
+		const pct = pctOf({ used: req.used, limit: req.limit });
+		if (pct !== undefined) return { windows: [{ window: "day", pct }], resetAt: req.reset_at };
+	}
+	const windows = UNII_DISPLAY_WINDOWS.flatMap((w) => {
 		const pct = pctOf({ used: entry.used?.[w], limit: entry.limits?.[w] });
 		return pct === undefined ? [] : [{ window: w, pct }];
 	});
+	return { windows };
 }
 
 /** Fallback: aggregate windows across all providers (proxy total in TU-shaped
@@ -291,14 +310,18 @@ async function fetchUniUsage(
 	});
 	if (!response.ok) return undefined;
 	const data = (await response.json()) as UniUsageResponse;
-	const prefix = modelId?.includes("@") ? modelId.split("@")[0] : undefined;
-	let windows = currentKeyWindows(data, prefix);
+	const parts = modelId?.split("@") ?? [];
+	const prefix = parts[0] || undefined;
+	const bareModel = parts[1] || undefined;
+	let { windows, resetAt } = currentKeyWindows(data, prefix, bareModel);
 	if (windows.length === 0) windows = aggregateWindows(data);
 	if (windows.length === 0) return undefined;
-	// Reset boundaries are calendar-aligned (full minute/hour, midnight UTC for
-	// Aqueduct); the aggregate windows carry the reset_at for all layers.
+	// Upstream truth carries its own reset; calendar windows reset aligned
+	// (full minute/hour, midnight UTC for Aqueduct).
 	const resetIn =
-		countdownOf(data.windows?.[UNII_COUNTDOWN_WINDOW]) ?? countdownOf(data.windows?.[windows[0].window]);
+		(resetAt && countdownOf({ used: 0, limit: 0, reset_at: resetAt })) ??
+		countdownOf(data.windows?.[UNII_COUNTDOWN_WINDOW]) ??
+		countdownOf(data.windows?.[windows[0].window]);
 	return { windows, resetIn };
 }
 
