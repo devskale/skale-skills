@@ -193,7 +193,6 @@ const UNII_FETCH_COOLDOWN_MS = 30_000;
 const UNII_FETCH_TIMEOUT_MS = 8_000;
 
 interface UniUsage {
-	label: string;
 	pct: number;
 	resetIn?: string;
 }
@@ -227,6 +226,7 @@ async function fetchUniUsage(
 	// Preferred: the CURRENT model's upstream provider pool (e.g. tu@… → "tu"),
 	// worst window vs that pool's own limits (each upstream key carries its own
 	// quota; the pool sums them — Aqueduct 2×50/1500/15000 with two TU keys).
+	// No provider suffix in the label — the model id (tu@…) already shows it.
 	const prefix = modelId?.includes("@") ? modelId.split("@")[0] : undefined;
 	const pool = prefix ? data.providers?.[prefix]?.pool : undefined;
 	if (pool?.used && pool.limits) {
@@ -243,7 +243,7 @@ async function fetchUniUsage(
 			}
 		}
 		if (bestWindow !== undefined && bestPct >= 0) {
-			const result: UniUsage = { label: `uni:${prefix}`, pct: bestPct };
+			const result: UniUsage = { pct: bestPct };
 			// Reset boundaries are calendar-aligned (full minute/hour, midnight UTC
 			// for Aqueduct) — the aggregate windows carry the same reset_at.
 			const resetAt = windows[bestWindow]?.reset_at;
@@ -263,7 +263,7 @@ async function fetchUniUsage(
 		if (!best || pct > best.pct) best = { pct, resetAt: w.reset_at };
 	}
 	if (!best) return undefined;
-	const result: UniUsage = { label: "uni", pct: best.pct };
+	const result: UniUsage = { pct: best.pct };
 	if (best.resetAt) {
 		const epoch = Date.parse(best.resetAt);
 		if (!Number.isNaN(epoch)) result.resetIn = formatTimeRemainingFromEpochMs(epoch);
@@ -341,7 +341,7 @@ export default function (pi: ExtensionAPI) {
 	): string {
 		if (!usage) return "";
 		const pct = Math.round(usage.pct);
-		let s = theme.fg(quotaColor(pct), `${usage.label} ${pct}%`);
+		let s = theme.fg(quotaColor(pct), `uni ${pct}%`);
 		if (usage.resetIn) {
 			s += theme.fg("dim", ` (${usage.resetIn})`);
 		}
