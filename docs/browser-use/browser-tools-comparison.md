@@ -155,6 +155,14 @@ rodney start --args="--single-process --disable-gpu \
 
 **Weaknesses:** very new · CF lock-in · fewer features than Browserbase.
 
+> **Watch: [Kitesurf](https://github.com/cloudflare/kitesurf)** (2026-11) — CFs experimentelle
+> **Chrome-lose Browser-Engine** auf Workers (Blitz+Stylo+Boa-in-WASM, CDP/Puppeteer-kompatibel,
+> PDF via Krilla; Nachfolgerichtung von Browser Run). Für uns heute kein Fall: experimentell,
+> CDP-Subset, Workers-Pflicht für Cloud, Bazel-Build lokal — und auf den Macs deckt echtes
+> Chrome (rodney/surf/`fetch-url --tool chrome`) den JS-Fall mit voller Fidelität.
+> **Reaktiv werden, wenn:** eine Chrome-lose Umgebung (CI/serverless) JS-Rendering braucht
+> oder eine `--tool kitesurf`-Stufe in fetch-url für local-only-Extraktion reif scheint.
+
 ## 10. Puppeteer MCP 🧟 (walking dead)
 
 > **Verified 2026-10-04: no maintained official Puppeteer MCP server exists.** The reference server (`@modelcontextprotocol/server-puppeteer`) is deprecated on npm (2025-05); `@anthropic-ai/puppeteer-mcp` never existed (old doc error); community servers dead. **Use Playwright MCP for the MCP path.** The puppeteer *library* itself is alive and excellent.
@@ -255,6 +263,12 @@ For 20–100-step loops, agent-browser is ~20× cheaper than Claude Computer Use
 **Renamed:** chrome-mcp → [livemcp](https://github.com/Magi-Labs/livemcp) (alive) · CF Browser Rendering → Browser Run.
 
 **Alive (spot-check 2026-10):** OpenChrome, CloakBrowser (31.9k★), Nanobrowser (13.9k★), agent-browser (43.5k★), browser-use (117k★), Playwright MCP (37.8k★), Stagehand, Skyvern, Airtop, sweet-cookie.
+
+## To look at (unreviewed candidates)
+
+> Candidates spotted but not yet triaged. Verify against the Chrome 136+ rule, then move to a numbered section or the Graveyard.
+
+- [browse](https://github.com/anomalyco/browse) — MCP server + Chromium extension (221★, TS). Agents drive your *real* browser via Playwright in background tabs, hand off to you for login/2FA/payment, then continue. Works in Chrome/Edge/Brave/Arc/Helium/Vivaldi/Opera/Chromium. Overlaps **surf** (real session, macOS) and **chrome-devtools-mcp**; extension-bridge approach is worth comparing against our session-reuse notes. Added 2026-11-07.
 
 ## References
 
