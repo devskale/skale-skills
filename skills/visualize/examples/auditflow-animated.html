@@ -161,7 +161,8 @@
     <h2><span class="idx">1</span>PA-Flow — der Standardpfad <span class="small muted">default</span></h2>
     <p class="sub small">Zwei Layer: oben, was an Kontext reinkommt (Kriterium, Docliste,
     Meta) — unten, was passiert. Kontext-Entscheidung + Dokumentenfindung sind eins
-    (GATHER); der PA-Check wählt zwischen batch (1 Call) und orchestrate (pro Doc).</p>
+    (GATHER). Der PA-Check wählt: alle Docs in einem Prompt bewerten (2a) oder
+    Doc für Doc mit Schluss-Urteil (2b).</p>
 
     <div class="controls">
       <button class="btn" type="button" data-replay>↻ replay</button>
@@ -248,8 +249,8 @@
           <rect class="blk" x="760" y="96" width="170" height="92"/>
           <circle cx="772" cy="114" r="4" fill="#b45309"/>
           <text class="lab" x="784" y="118" fill="#155e75">2a · ASSESS</text>
-          <text class="sm" x="772" y="140">1 Call alle Docs</text>
-          <text class="sm" x="772" y="156">DENKT · trim-retry ×2</text>
+          <text class="sm" x="772" y="140">alle Docs in 1 Prompt</text>
+          <text class="sm" x="772" y="156">bei Überlauf: kürzen</text>
           <text class="sm" x="772" y="176" fill="#0e7490">→ result</text>
         </g>
 
@@ -257,8 +258,8 @@
           <rect class="blk" x="760" y="196" width="170" height="92"/>
           <circle cx="772" cy="214" r="4" fill="#b45309"/>
           <text class="lab" x="784" y="218" fill="#155e75">2b · ORCHESTRATE</text>
-          <text class="sm" x="772" y="240">pro Doc geordnet</text>
-          <text class="sm" x="772" y="256">+ conclude DENKT</text>
+          <text class="sm" x="772" y="240">liest Doc für Doc</text>
+          <text class="sm" x="772" y="256">dann Schluss-Urteil</text>
           <text class="sm" x="772" y="276" fill="#0e7490">→ result</text>
         </g>
 
