@@ -190,68 +190,73 @@
         </g>
 
         <!-- Welle 3ff: die Pipeline -->
+        <!-- GATHER-Gruppe: Kontext-Entscheidung + Dokumentenfindung gehören zusammen
+             (Checkpoint post_gather wird genau nach diesem Paar geschrieben) -->
         <g class="n" data-step="3">
-          <rect class="blk" x="410" y="70" width="140" height="72"/>
-          <circle cx="422" cy="88" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
-          <text class="lab" x="434" y="92" fill="#155e75">0 · KONTEXT</text>
-          <text class="sm" x="422" y="112">prüft: docs nötig?</text>
-          <text class="sm" x="422" y="128">relevante meta?</text>
-        </g>
-
-        <g class="n" data-step="4">
-          <rect class="blk" x="584" y="70" width="150" height="72"/>
-          <circle cx="596" cy="88" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
-          <text class="lab" x="608" y="92" fill="#155e75">1 · FINDE-DOKS</text>
-          <text class="sm" x="596" y="112">sucht passende Docs</text>
-          <text class="sm" x="596" y="128">doktyp OR-match</text>
-          <!-- Seiteneingang: liest die Doclist des Bieters (runter) -->
-          <path class="edge" data-step="4" pathLength="1" d="M659 142 V186"/>
-          <g>
-            <rect class="mini" x="604" y="190" width="110" height="34"/>
-            <text class="lab" x="614" y="206" fill="#5f7370">doclist</text>
-            <text class="sm" x="614" y="220">Bieter-Uploads</text>
+          <rect class="grp" x="402" y="58" width="340" height="160"/>
+          <text class="sm" x="410" y="70" letter-spacing=".1em">GATHER</text>
+          <g class="n" data-step="3">
+            <rect class="blk" x="410" y="74" width="140" height="72"/>
+            <circle cx="422" cy="92" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
+            <text class="lab" x="434" y="96" fill="#155e75">0 · KONTEXT</text>
+            <text class="sm" x="422" y="116">prüft: docs nötig?</text>
+            <text class="sm" x="422" y="132">relevante meta?</text>
           </g>
+          <g class="n" data-step="4">
+            <rect class="blk" x="584" y="74" width="150" height="72"/>
+            <circle cx="596" cy="92" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
+            <text class="lab" x="608" y="96" fill="#155e75">1 · FINDE-DOKS</text>
+            <text class="sm" x="596" y="116">sucht passende Docs</text>
+            <text class="sm" x="596" y="132">doktyp OR-match</text>
+            <!-- Seiteneingang: liest die Doclist des Bieters (runter) -->
+            <path class="edge" data-step="4" pathLength="1" d="M659 146 V172"/>
+            <g>
+              <rect class="mini" x="604" y="176" width="110" height="34"/>
+              <text class="lab" x="614" y="192" fill="#5f7370">doclist</text>
+              <text class="sm" x="614" y="206">Bieter-Uploads</text>
+            </g>
+          </g>
+          <path class="edge" data-step="4" pathLength="1" d="M550 110 H580"/>
         </g>
 
         <g class="n" data-step="5">
-          <polygon class="blk-solid" points="790,60 834,106 790,152 746,106"/>
-          <text class="lab" x="790" y="102" text-anchor="middle" fill="#1e2b28">PA?</text>
-          <text class="sm" x="790" y="118" text-anchor="middle">deklariert</text>
+          <polygon class="blk-solid" points="804,60 848,106 804,152 760,106"/>
+          <text class="lab" x="804" y="102" text-anchor="middle" fill="#1e2b28">PA?</text>
+          <text class="sm" x="804" y="118" text-anchor="middle">deklariert</text>
           <!-- Seiteneingang: PA-Bibliothek (runter) -->
-          <path class="edge" data-step="5" pathLength="1" d="M790 152 V182"/>
+          <path class="edge" data-step="5" pathLength="1" d="M804 152 V182"/>
           <g>
-            <rect class="mini" x="722" y="186" width="136" height="34"/>
-            <text class="lab" x="732" y="202" fill="#5f7370">PA-BIBLIOTHEK</text>
-            <text class="sm" x="732" y="216">pas_resolver</text>
+            <rect class="mini" x="736" y="186" width="136" height="34"/>
+            <text class="lab" x="746" y="202" fill="#5f7370">PA-BIBLIOTHEK</text>
+            <text class="sm" x="746" y="216">pas_resolver</text>
           </g>
         </g>
 
         <g class="n" data-step="6">
-          <rect class="blk" x="868" y="62" width="160" height="88"/>
-          <circle cx="880" cy="80" r="4" fill="#b45309"/>
-          <text class="lab" x="892" y="84" fill="#155e75">2 · ASSESS</text>
-          <text class="sm" x="880" y="106">LLM urteilt über Docs</text>
-          <text class="sm" x="880" y="122">2a · 1 Call alle Docs</text>
-          <text class="sm" x="880" y="138">2b · pro Doc + conclude</text>
+          <rect class="blk" x="882" y="62" width="160" height="88"/>
+          <circle cx="894" cy="80" r="4" fill="#b45309"/>
+          <text class="lab" x="906" y="84" fill="#155e75">2 · ASSESS</text>
+          <text class="sm" x="894" y="106">LLM urteilt über Docs</text>
+          <text class="sm" x="894" y="122">2a · 1 Call alle Docs</text>
+          <text class="sm" x="894" y="138">2b · pro Doc + conclude</text>
         </g>
 
         <g class="n" data-step="7">
-          <path class="blk-solid" d="M1044 88 a52 13 0 0 1 104 0 v40 a52 13 0 0 1 -104 0 z"/>
-          <ellipse class="blk-solid" cx="1096" cy="88" rx="52" ry="13"/>
-          <text class="lab" x="1096" y="114" text-anchor="middle" fill="#1a7f4b">audit.json</text>
-          <text class="sm" x="1096" y="130" text-anchor="middle">writeback atomic</text>
+          <path class="blk-solid" d="M1056 88 a52 13 0 0 1 104 0 v40 a52 13 0 0 1 -104 0 z"/>
+          <ellipse class="blk-solid" cx="1108" cy="88" rx="52" ry="13"/>
+          <text class="lab" x="1108" y="114" text-anchor="middle" fill="#1a7f4b">audit.json</text>
+          <text class="sm" x="1108" y="130" text-anchor="middle">writeback atomic</text>
         </g>
 
         <!-- Kanten (data-step = Welle des ZIELS) -->
-        <path class="edge" data-step="3" pathLength="1" d="M196 106 H406"/>
-        <path class="edge" data-step="4" pathLength="1" d="M550 106 H580"/>
-        <path class="edge" data-step="5" pathLength="1" d="M734 106 H742"/>
-        <path class="edge" data-step="6" pathLength="1" d="M834 106 H864"/>
-        <path class="edge" data-step="7" pathLength="1" d="M1028 106 H1040"/>
+        <path class="edge" data-step="3" pathLength="1" d="M196 106 H398"/>
+        <path class="edge" data-step="5" pathLength="1" d="M742 106 H756"/>
+        <path class="edge" data-step="6" pathLength="1" d="M848 106 H878"/>
+        <path class="edge" data-step="7" pathLength="1" d="M1042 106 H1052"/>
 
         <!-- Replay-Loop -->
-        <path class="edge loop" data-step="end" d="M1044 116 C 1010 190, 970 196, 938 158"/>
-        <text class="sm n" data-step="end" x="864" y="196" fill="#b45309">--replay-from post_assess · 0-LLM bis Phase</text>
+        <path class="edge loop" data-step="end" d="M1056 116 C 1020 190, 980 196, 948 158"/>
+        <text class="sm n" data-step="end" x="884" y="208" fill="#b45309">--replay-from post_assess · 0-LLM bis Phase</text>
       </svg>
       <figcaption>Fig. 1 — Checkpoints <code>post_gather</code> (nach Step 0/1) und
       <code>post_assess</code> (Result): <code>--replay-from</code> misst die Downstream-Phase
