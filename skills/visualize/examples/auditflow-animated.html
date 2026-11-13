@@ -150,8 +150,8 @@
   </header>
 
   <div class="legend">
-    <span class="it"><span class="dot" style="background:#b45309"></span>LLM denkt (Urteil)</span>
-    <span class="it"><span class="dot hollow"></span>nothink · deterministisch</span>
+    <span class="it"><span class="dot" style="background:#b45309"></span>LLM urteilt</span>
+    <span class="it"><span class="dot hollow"></span>deterministisch</span>
     <span class="it"><span class="dashline"></span>replay / prompt-tuning</span>
     <span class="it"><span class="dot" style="background:#1a7f4b"></span>terminal</span>
   </div>
@@ -159,8 +159,9 @@
   <!-- ══════════════════ FIG 1 · PA-FLOW (DEFAULT) ══════════════════ -->
   <section class="flowblock">
     <h2><span class="idx">1</span>PA-Flow — der Standardpfad <span class="small muted">default</span></h2>
-    <p class="sub small">3-Step generische Bewertung: Kontext-Entscheidung, Dokumentenfindung,
-    Bewertung — am PA-Check gabelt sich batch vs. orchestrate.</p>
+    <p class="sub small">3-Step generische Bewertung: Kontext-Entscheidung, Dokumentenfindung
+    (aus der Doclist des Bieters), dann LLM-Urteil — der PA-Check wählt zwischen
+    batch (1 Call) und orchestrate (pro Doc).</p>
 
     <div class="controls">
       <button class="btn" type="button" data-replay>↻ replay</button>
@@ -193,38 +194,52 @@
           <rect class="blk" x="410" y="70" width="140" height="72"/>
           <circle cx="422" cy="88" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
           <text class="lab" x="434" y="92" fill="#155e75">0 · KONTEXT</text>
-          <text class="sm" x="422" y="112">entscheide nothink</text>
-          <text class="sm" x="422" y="128">docs nötig? meta?</text>
+          <text class="sm" x="422" y="112">prüft: docs nötig?</text>
+          <text class="sm" x="422" y="128">relevante meta?</text>
         </g>
 
         <g class="n" data-step="4">
           <rect class="blk" x="584" y="70" width="150" height="72"/>
           <circle cx="596" cy="88" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
           <text class="lab" x="608" y="92" fill="#155e75">1 · FINDE-DOKS</text>
-          <text class="sm" x="596" y="112">nothink · batch ≤15</text>
+          <text class="sm" x="596" y="112">sucht passende Docs</text>
           <text class="sm" x="596" y="128">doktyp OR-match</text>
+          <!-- Seiteneingang: liest die Doclist des Bieters (runter) -->
+          <path class="edge" data-step="4" pathLength="1" d="M659 142 V186"/>
+          <g>
+            <rect class="mini" x="604" y="190" width="110" height="34"/>
+            <text class="lab" x="614" y="206" fill="#5f7370">doclist</text>
+            <text class="sm" x="614" y="220">Bieter-Uploads</text>
+          </g>
         </g>
 
         <g class="n" data-step="5">
           <polygon class="blk-solid" points="790,60 834,106 790,152 746,106"/>
           <text class="lab" x="790" y="102" text-anchor="middle" fill="#1e2b28">PA?</text>
           <text class="sm" x="790" y="118" text-anchor="middle">deklariert</text>
+          <!-- Seiteneingang: PA-Bibliothek (runter) -->
+          <path class="edge" data-step="5" pathLength="1" d="M790 152 V182"/>
+          <g>
+            <rect class="mini" x="722" y="186" width="136" height="34"/>
+            <text class="lab" x="732" y="202" fill="#5f7370">PA-BIBLIOTHEK</text>
+            <text class="sm" x="732" y="216">pas_resolver</text>
+          </g>
         </g>
 
         <g class="n" data-step="6">
-          <rect class="blk" x="868" y="62" width="150" height="88"/>
+          <rect class="blk" x="868" y="62" width="160" height="88"/>
           <circle cx="880" cy="80" r="4" fill="#b45309"/>
           <text class="lab" x="892" y="84" fill="#155e75">2 · ASSESS</text>
-          <text class="sm" x="880" y="106">2a · batch</text>
-          <text class="sm" x="880" y="122">2b · orchestrate</text>
-          <text class="sm" x="880" y="138">DENKT · trim-retry ×2</text>
+          <text class="sm" x="880" y="106">LLM urteilt über Docs</text>
+          <text class="sm" x="880" y="122">2a · 1 Call alle Docs</text>
+          <text class="sm" x="880" y="138">2b · pro Doc + conclude</text>
         </g>
 
         <g class="n" data-step="7">
-          <path class="blk-solid" d="M1034 88 a52 13 0 0 1 104 0 v40 a52 13 0 0 1 -104 0 z"/>
-          <ellipse class="blk-solid" cx="1086" cy="88" rx="52" ry="13"/>
-          <text class="lab" x="1086" y="114" text-anchor="middle" fill="#1a7f4b">audit.json</text>
-          <text class="sm" x="1086" y="130" text-anchor="middle">writeback atomic</text>
+          <path class="blk-solid" d="M1044 88 a52 13 0 0 1 104 0 v40 a52 13 0 0 1 -104 0 z"/>
+          <ellipse class="blk-solid" cx="1096" cy="88" rx="52" ry="13"/>
+          <text class="lab" x="1096" y="114" text-anchor="middle" fill="#1a7f4b">audit.json</text>
+          <text class="sm" x="1096" y="130" text-anchor="middle">writeback atomic</text>
         </g>
 
         <!-- Kanten (data-step = Welle des ZIELS) -->
@@ -232,10 +247,10 @@
         <path class="edge" data-step="4" pathLength="1" d="M550 106 H580"/>
         <path class="edge" data-step="5" pathLength="1" d="M734 106 H742"/>
         <path class="edge" data-step="6" pathLength="1" d="M834 106 H864"/>
-        <path class="edge" data-step="7" pathLength="1" d="M1018 106 H1030"/>
+        <path class="edge" data-step="7" pathLength="1" d="M1028 106 H1040"/>
 
         <!-- Replay-Loop -->
-        <path class="edge loop" data-step="end" d="M1034 116 C 1000 190, 960 196, 938 158"/>
+        <path class="edge loop" data-step="end" d="M1044 116 C 1010 190, 970 196, 938 158"/>
         <text class="sm n" data-step="end" x="864" y="196" fill="#b45309">--replay-from post_assess · 0-LLM bis Phase</text>
       </svg>
       <figcaption>Fig. 1 — Checkpoints <code>post_gather</code> (nach Step 0/1) und
@@ -281,7 +296,14 @@
           <rect class="blk" x="410" y="70" width="140" height="72"/>
           <circle cx="422" cy="88" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
           <text class="lab" x="434" y="92" fill="#155e75">1 · GATHER</text>
-          <text class="sm" x="422" y="112">0 LLM calls</text>
+          <text class="sm" x="422" y="112">liest anforderung</text>
+          <!-- Seiteneingang: Quellen (runter) -->
+          <path class="edge" data-step="3" pathLength="1" d="M480 142 V186"/>
+          <g>
+            <rect class="mini" x="410" y="190" width="140" height="34"/>
+            <text class="lab" x="420" y="206" fill="#5f7370">QUELLEN</text>
+            <text class="sm" x="420" y="220">projekt.json + AAB</text>
+          </g>
           <text class="sm" x="540" y="134" text-anchor="end" fill="#b45309">~15 s</text>
         </g>
 
@@ -418,8 +440,22 @@
     }
 
     /* Kanten neu verdrahten: Endpunkte an Anker-dx, Kontrollpunkte an die
-       Mitte der beiden Pfad-Enden — Kurven wandern kohärent mit. */
+       Mitte der beiden Pfad-Enden — Kurven wandern kohärent mit.
+       AUSNAHME: Kanten INNERHALB eines Knotens (Seiteneingang-Konnektoren
+       auf Speicher) reisen schon mit dem Wrapper — doppeltes Shiften
+       würde sie daneben landen lassen (realer Bug, 2026-11-12). */
+    var nodeEls = [];
+    lanes.forEach(function (l) { l.forEach(function (n) { nodeEls.push(n.el); }); });
+    function insideNode(el) {
+      var p = el.parentNode;
+      while (p && p !== svg) {
+        if (nodeEls.indexOf(p) !== -1) return true;
+        p = p.parentNode;
+      }
+      return false;
+    }
     svg.querySelectorAll('path.edge').forEach(function (p) {
+      if (insideNode(p)) return;
       var d = p.getAttribute('d');
       if (!d) return;
       var toks = d.match(/[MLHVCSQTAZmlhvcsqtaz]|-?[\d.]+/g);

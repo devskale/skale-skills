@@ -293,8 +293,22 @@
     }
 
     /* Kanten neu verdrahten: Endpunkte an Anker-dx, Kontrollpunkte an die
-       Mitte der beiden Pfad-Enden — Kurven wandern kohärent mit. */
+       Mitte der beiden Pfad-Enden — Kurven wandern kohärent mit.
+       AUSNAHME: Kanten INNERHALB eines Knotens (Seiteneingang-Konnektoren
+       auf Speicher) reisen schon mit dem Wrapper — doppeltes Shiften
+       würde sie daneben landen lassen (realer Bug, 2026-11-12). */
+    var nodeEls = [];
+    lanes.forEach(function (l) { l.forEach(function (n) { nodeEls.push(n.el); }); });
+    function insideNode(el) {
+      var p = el.parentNode;
+      while (p && p !== svg) {
+        if (nodeEls.indexOf(p) !== -1) return true;
+        p = p.parentNode;
+      }
+      return false;
+    }
     svg.querySelectorAll('path.edge').forEach(function (p) {
+      if (insideNode(p)) return;
       var d = p.getAttribute('d');
       if (!d) return;
       var toks = d.match(/[MLHVCSQTAZmlhvcsqtaz]|-?[\d.]+/g);

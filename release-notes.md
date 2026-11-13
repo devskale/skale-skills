@@ -1,5 +1,20 @@
 ## Unreleased
 
+### visualize step-wave: PA-Semantik (Nutzer-Review 2026-11-12)
+- **„nothink" ist nicht relevant** — Jargon aus Labels und Legende entfernt
+  („LLM urteilt“ / „deterministisch“ statt denkt/nothink).
+- **Seiteneingänge als Runter-Pfeile auf Speicher**: FINDE-DOKS → `doclist
+  (Bieter-Uploads)`, PA? → `PA-BIBLIOTHEK (pas_resolver)`, GATHER → `QUELLEN
+  (projekt.json + AAB)`. Speicher in der Knotengruppe verschachtelt —
+  auto-distribute nimmt sie mit.
+- **ASSESS selbsterklärend**: „LLM urteilt über Docs · 2a · 1 Call alle Docs ·
+  2b · pro Doc + conclude“ statt kryptischem batch/orchestrate.
+- **Distribute-Bug (Doppelverschiebung)**: Kanten INNERHALB eines Knotens
+  reisen mit dem Wrapper UND wurden neu verdrahtet → Konnektoren landeten
+  daneben. Fix: insideNode-Kanten überspringen das Rewiring. Numerisch
+  bewiesen: Konnektor=Knoten=Speicher (521/709/337), Pfeilspitze exakt auf
+  Speicheroberkante.
+
 ### visualize step-wave: auto-distribute + ENTRY-Gruppierung
 - **Logisch gruppieren** (Nutzer 2026-11-12): MinTasks (CLI, ROUTING) in EINE gestrichelte
   Container-Gruppe mit Mini-Boxen, Megaprozesse (Phasen) in vollen Boxen — beide
