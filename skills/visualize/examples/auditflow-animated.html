@@ -159,9 +159,9 @@
   <!-- ══════════════════ FIG 1 · PA-FLOW (DEFAULT) ══════════════════ -->
   <section class="flowblock">
     <h2><span class="idx">1</span>PA-Flow — der Standardpfad <span class="small muted">default</span></h2>
-    <p class="sub small">3-Step generische Bewertung: Kontext-Entscheidung, Dokumentenfindung
-    (aus der Doclist des Bieters), dann LLM-Urteil — der PA-Check wählt zwischen
-    batch (1 Call) und orchestrate (pro Doc).</p>
+    <p class="sub small">Zwei Layer: oben, was an Kontext reinkommt (Kriterium, Docliste,
+    Meta) — unten, was passiert. Kontext-Entscheidung + Dokumentenfindung sind eins
+    (GATHER); der PA-Check wählt zwischen batch (1 Call) und orchestrate (pro Doc).</p>
 
     <div class="controls">
       <button class="btn" type="button" data-replay>↻ replay</button>
@@ -169,98 +169,126 @@
     </div>
 
     <figure>
-      <svg viewBox="0 0 1180 240" data-anim="flow" data-distribute role="img"
-           aria-label="PA-Flow: CLI, Routing, Kontext-Entscheidung, finde-doks, PA-Check, Assess, dann atomic in audit.json. Gestrichelte Replay-Schleife von audit.json zurück zu Assess.">
-        <!-- Welle 1–2: ENTRY-Gruppe (MinTasks) → Pipeline (Megaprozesse) -->
+      <svg viewBox="0 0 1180 312" data-anim="flow" role="img"
+           aria-label="PA-Flow in zwei Layern: oben der Kontext (Kriterium, Docliste, Meta), unten der Workflow: CLI, Routing, Gather (Kontext-Entscheidung plus finde-doks), PA-Check mit PA-Bibliothek, Assess, atomic in audit.json. Gestrichelte Replay-Schleife zurück zu Assess.">
+        <!-- ══ KONTEXT-LAYER (oben): was reinkommt — Wellen 1–3 ══ -->
+        <text class="sm n" data-step="1" x="16" y="44" letter-spacing=".1em">KONTEXT</text>
+
         <g class="n" data-step="1">
-          <rect class="grp" x="16" y="54" width="180" height="104"/>
-          <text class="sm" x="24" y="68" letter-spacing=".1em">ENTRY</text>
-          <g class="n" data-step="1">
-            <rect class="mini" x="28" y="74" width="156" height="34"/>
-            <circle cx="38" cy="84" r="3.5" fill="none" stroke="#5f7370" stroke-width="1.5"/>
-            <text class="lab" x="48" y="88" fill="#0e7490">CLI</text>
-            <text class="sm" x="38" y="102">auditFlow.py --id</text>
-          </g>
-          <g class="n" data-step="2">
-            <rect class="mini" x="28" y="116" width="156" height="34"/>
-            <circle cx="38" cy="126" r="3.5" fill="#b45309"/>
-            <text class="lab" x="48" y="130" fill="#1e2b28">ROUTING</text>
-            <text class="sm" x="38" y="144">skip · sonst → PA</text>
-          </g>
+          <rect class="blk" x="180" y="16" width="140" height="56"/>
+          <circle cx="192" cy="34" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
+          <text class="lab" x="204" y="38" fill="#155e75">KRITERIUM</text>
+          <text class="sm" x="192" y="58">aus projekt.json</text>
         </g>
 
-        <!-- Welle 3ff: die Pipeline -->
-        <!-- GATHER-Gruppe: Kontext-Entscheidung + Dokumentenfindung gehören zusammen
-             (Checkpoint post_gather wird genau nach diesem Paar geschrieben) -->
+        <g class="n" data-step="2">
+          <rect class="blk" x="327" y="16" width="140" height="56"/>
+          <circle cx="339" cy="34" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
+          <text class="lab" x="351" y="38" fill="#155e75">DOCLIST</text>
+          <text class="sm" x="339" y="58">Bieter-Uploads</text>
+        </g>
+
         <g class="n" data-step="3">
-          <rect class="grp" x="402" y="58" width="340" height="160"/>
-          <text class="sm" x="410" y="70" letter-spacing=".1em">GATHER</text>
-          <g class="n" data-step="3">
-            <rect class="blk" x="410" y="74" width="140" height="72"/>
-            <circle cx="422" cy="92" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
-            <text class="lab" x="434" y="96" fill="#155e75">0 · KONTEXT</text>
-            <text class="sm" x="422" y="116">prüft: docs nötig?</text>
-            <text class="sm" x="422" y="132">relevante meta?</text>
-          </g>
+          <rect class="blk" x="474" y="16" width="140" height="56"/>
+          <circle cx="486" cy="34" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
+          <text class="lab" x="498" y="38" fill="#155e75">META</text>
+          <text class="sm" x="486" y="58">Bieter-Fakten</text>
+        </g>
+
+        <!-- Kontext fließt zusammen in GATHER (Wellen-Pfeile bei GATHER) -->
+        <path class="edge" data-step="6" pathLength="1" d="M250 76 L338 116"/>
+        <path class="edge" data-step="6" pathLength="1" d="M397 76 V116"/>
+        <path class="edge" data-step="6" pathLength="1" d="M544 76 L456 116"/>
+        <text class="sm n" data-step="6" x="212" y="150">kriterium</text>
+
+        <!-- ══ WORKFLOW-LAYER (unten): was passiert — Wellen 4–9 ══ -->
+        <text class="sm n" data-step="4" x="16" y="96" letter-spacing=".1em">WORKFLOW</text>
+
+        <g class="n" data-step="4">
+          <rect class="grp" x="16" y="104" width="180" height="104"/>
+          <text class="sm" x="24" y="118" letter-spacing=".1em">ENTRY</text>
           <g class="n" data-step="4">
-            <rect class="blk" x="584" y="74" width="150" height="72"/>
-            <circle cx="596" cy="92" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
-            <text class="lab" x="608" y="96" fill="#155e75">1 · FINDE-DOKS</text>
-            <text class="sm" x="596" y="116">sucht passende Docs</text>
-            <text class="sm" x="596" y="132">doktyp OR-match</text>
-            <!-- Seiteneingang: liest die Doclist des Bieters (runter) -->
-            <path class="edge" data-step="4" pathLength="1" d="M659 146 V172"/>
-            <g>
-              <rect class="mini" x="604" y="176" width="110" height="34"/>
-              <text class="lab" x="614" y="192" fill="#5f7370">doclist</text>
-              <text class="sm" x="614" y="206">Bieter-Uploads</text>
-            </g>
+            <rect class="mini" x="28" y="128" width="156" height="34"/>
+            <circle cx="38" cy="138" r="3.5" fill="none" stroke="#5f7370" stroke-width="1.5"/>
+            <text class="lab" x="48" y="142" fill="#0e7490">CLI</text>
+            <text class="sm" x="38" y="156">auditFlow.py --id</text>
           </g>
-          <path class="edge" data-step="4" pathLength="1" d="M550 110 H580"/>
-        </g>
-
-        <g class="n" data-step="5">
-          <polygon class="blk-solid" points="804,60 848,106 804,152 760,106"/>
-          <text class="lab" x="804" y="102" text-anchor="middle" fill="#1e2b28">PA?</text>
-          <text class="sm" x="804" y="118" text-anchor="middle">deklariert</text>
-          <!-- Seiteneingang: PA-Bibliothek (runter) -->
-          <path class="edge" data-step="5" pathLength="1" d="M804 152 V182"/>
-          <g>
-            <rect class="mini" x="736" y="186" width="136" height="34"/>
-            <text class="lab" x="746" y="202" fill="#5f7370">PA-BIBLIOTHEK</text>
-            <text class="sm" x="746" y="216">pas_resolver</text>
+          <g class="n" data-step="5">
+            <rect class="mini" x="28" y="170" width="156" height="34"/>
+            <circle cx="38" cy="180" r="3.5" fill="#b45309"/>
+            <text class="lab" x="48" y="184" fill="#1e2b28">ROUTING</text>
+            <text class="sm" x="38" y="198">skip · sonst → PA</text>
           </g>
         </g>
 
+        <!-- GATHER: kontext + finde-doks sind EINS -->
         <g class="n" data-step="6">
-          <rect class="blk" x="882" y="62" width="160" height="88"/>
-          <circle cx="894" cy="80" r="4" fill="#b45309"/>
-          <text class="lab" x="906" y="84" fill="#155e75">2 · ASSESS</text>
-          <text class="sm" x="894" y="106">LLM urteilt über Docs</text>
-          <text class="sm" x="894" y="122">2a · 1 Call alle Docs</text>
-          <text class="sm" x="894" y="138">2b · pro Doc + conclude</text>
+          <rect class="blk" x="302" y="124" width="190" height="76"/>
+          <circle cx="314" cy="144" r="4" fill="none" stroke="#5f7370" stroke-width="1.5"/>
+          <text class="lab" x="326" y="148" fill="#155e75">GATHER</text>
+          <text class="sm" x="314" y="168">kontext + finde-doks</text>
+          <text class="sm" x="314" y="188" fill="#0e7490">→ bundle (docs + kontext)</text>
         </g>
 
         <g class="n" data-step="7">
-          <path class="blk-solid" d="M1056 88 a52 13 0 0 1 104 0 v40 a52 13 0 0 1 -104 0 z"/>
-          <ellipse class="blk-solid" cx="1108" cy="88" rx="52" ry="13"/>
-          <text class="lab" x="1108" y="114" text-anchor="middle" fill="#1a7f4b">audit.json</text>
-          <text class="sm" x="1108" y="130" text-anchor="middle">writeback atomic</text>
+          <polygon class="blk-solid" points="642,110 686,156 642,202 598,156"/>
+          <text class="lab" x="642" y="152" text-anchor="middle" fill="#1e2b28">PA?</text>
+          <text class="sm" x="642" y="168" text-anchor="middle">deklariert</text>
+          <!-- Seiteneingang: PA-Bibliothek (runter) -->
+          <path class="edge" data-step="7" pathLength="1" d="M642 202 V218"/>
+          <g>
+            <rect class="mini" x="574" y="222" width="136" height="34"/>
+            <text class="lab" x="586" y="238" fill="#5f7370">PA-BIBLIOTHEK</text>
+            <text class="sm" x="586" y="250">pas_resolver</text>
+          </g>
         </g>
 
-        <!-- Kanten (data-step = Welle des ZIELS) -->
-        <path class="edge" data-step="3" pathLength="1" d="M196 106 H398"/>
-        <path class="edge" data-step="5" pathLength="1" d="M742 106 H756"/>
-        <path class="edge" data-step="6" pathLength="1" d="M848 106 H878"/>
-        <path class="edge" data-step="7" pathLength="1" d="M1042 106 H1052"/>
+        <!-- Fan-out am PA-Check: 2a Standard (batch) | 2b orchestrate (pro Doc) -->
+        <g class="n" data-step="8">
+          <rect class="blk" x="760" y="96" width="170" height="92"/>
+          <circle cx="772" cy="114" r="4" fill="#b45309"/>
+          <text class="lab" x="784" y="118" fill="#155e75">2a · ASSESS</text>
+          <text class="sm" x="772" y="140">1 Call alle Docs</text>
+          <text class="sm" x="772" y="156">DENKT · trim-retry ×2</text>
+          <text class="sm" x="772" y="176" fill="#0e7490">→ result</text>
+        </g>
+
+        <g class="n" data-step="8">
+          <rect class="blk" x="760" y="196" width="170" height="92"/>
+          <circle cx="772" cy="214" r="4" fill="#b45309"/>
+          <text class="lab" x="784" y="218" fill="#155e75">2b · ORCHESTRATE</text>
+          <text class="sm" x="772" y="240">pro Doc geordnet</text>
+          <text class="sm" x="772" y="256">+ conclude DENKT</text>
+          <text class="sm" x="772" y="276" fill="#0e7490">→ result</text>
+        </g>
+
+        <g class="n" data-step="9">
+          <path class="blk-solid" d="M1058 184 a52 13 0 0 1 104 0 v40 a52 13 0 0 1 -104 0 z"/>
+          <ellipse class="blk-solid" cx="1110" cy="184" rx="52" ry="13"/>
+          <text class="lab" x="1110" y="210" text-anchor="middle" fill="#1a7f4b">audit.json</text>
+          <text class="sm" x="1110" y="226" text-anchor="middle">writeback atomic</text>
+        </g>
+
+        <!-- Kanten (data-step = Welle des ZIELS) + Ergebnis-Labels: Output → Input -->
+        <path class="edge" data-step="6" pathLength="1" d="M196 158 H298"/>
+        <path class="edge" data-step="7" pathLength="1" d="M492 158 H590"/>
+        <text class="sm n" data-step="7" x="510" y="150">bundle</text>
+        <path class="edge" data-step="8" pathLength="1" d="M686 148 L756 134"/>
+        <path class="edge" data-step="8" pathLength="1" d="M686 164 L756 238"/>
+        <text class="sm n" data-step="8" x="698" y="126">standard</text>
+        <text class="sm n" data-step="8" x="664" y="268">--batch off</text>
+        <path class="edge" data-step="9" pathLength="1" d="M930 142 C 990 142, 1010 172, 1054 172"/>
+        <path class="edge" data-step="9" pathLength="1" d="M930 242 C 992 242, 1012 200, 1054 198"/>
+        <text class="sm n" data-step="9" x="958" y="192">result</text>
 
         <!-- Replay-Loop -->
-        <path class="edge loop" data-step="end" d="M1056 116 C 1020 190, 980 196, 948 158"/>
-        <text class="sm n" data-step="end" x="884" y="208" fill="#b45309">--replay-from post_assess · 0-LLM bis Phase</text>
+        <path class="edge loop" data-step="end" d="M1072 240 C 1020 292, 950 296, 900 284"/>
+        <text class="sm n" data-step="end" x="620" y="300" fill="#b45309">--replay-from post_assess · 0-LLM bis Phase</text>
       </svg>
-      <figcaption>Fig. 1 — Checkpoints <code>post_gather</code> (nach Step 0/1) und
-      <code>post_assess</code> (Result): <code>--replay-from</code> misst die Downstream-Phase
-      mit aktuellen Prompts — kein Writeback ohne <code>--write</code>.</figcaption>
+      <figcaption>Fig. 1 — Kontext-Layer (Kriterium · Docliste · Meta) speist GATHER;
+      Checkpoints <code>post_gather</code> (nach GATHER) und <code>post_assess</code>
+      (Result). <code>--replay-from</code> misst die Downstream-Phase mit aktuellen
+      Prompts — kein Writeback ohne <code>--write</code>.</figcaption>
     </figure>
   </section>
 
