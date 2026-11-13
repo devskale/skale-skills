@@ -1,5 +1,20 @@
 ## Unreleased
 
+### visualize step-wave: auto-distribute + ENTRY-Gruppierung
+- **Logisch gruppieren** (Nutzer 2026-11-12): MinTasks (CLI, ROUTING) in EINE gestrichelte
+  Container-Gruppe mit Mini-Boxen, Megaprozesse (Phasen) in vollen Boxen — beide
+  Figuren (PA + FAP) umgebaut. boxcheck kennt Schachtelung: Ancestor-Container-Rahmen
+  sind nie „fremd“ (kein text-over-shape auf das eigene Innenleben).
+- **Auto-Distribute** (`data-distribute`, opt-in): gleiche horizontale Gaps pro Lane
+  (Cluster nach y-Überlappung — mehrreihige Layouts bleiben). Knoten wandern in
+  Wrapper-g’s (keine transform-Kollision mit der Pop-Animation), Kanten werden per
+  Anker neu verdrahtet (Endpunkte an Knoten-dx, Kontrollpunkte an die Mitte), freie
+  Labels folgen ihrem nächsten Knoten. Min-Gap-Guard 24px — zu breite Lanes werden
+  LAUT geskippt statt still gequetscht.
+- **SVG-Lektion gelernt**: `tagName` ist case-sensitiv (`'g'`, nicht `'G'`) — der erste
+  Distribute-Lauf filterte still ins Leere; Fehler-Suche via window.onerror-Sonde.
+- Mock bleibt bewusst hand-komponiert (Fan-Layout ohne data-distribute).
+
 ### visualize boxcheck: lieber 2 Zeilen als 1 abgeschnittene (Nutzer-Regel 2026-11-12)
 - Beim Overlay-Fix wurden Labels gekürzt („2a batch | 2b orch.") — Split hätte mehr
   Bedeutung bewahrt. Jetzt: ASSESS-Box auf 4 Zeilen („2a · batch" / „2b · orchestrate" /

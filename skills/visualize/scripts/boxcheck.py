@@ -500,11 +500,13 @@ def lint(html: str) -> tuple[list[str], int, int]:
                         f"text-over-text      \"{la}\" overlaps \"{lb}\" "
                         f"by {ox:.0f}×{oy:.0f}px"
                     )
-        # text over a foreign group's shape union (labels drifting into nodes)
+        # text over a foreign group's shape union (labels drifting into nodes).
+        # Ancestor containers are NOT foreign: a group frame legitimately
+        # surrounds its nested minitasks (ENTRY grouping, 2026-11-12).
         for c, (x0, top, x1, bot), label in texts:
-            own = own_group(c)
+            ancestors = set(id(a) for a in c.ancestors())
             for g, (gx0, gy0, gx1, gy1) in groups:
-                if g is own:
+                if g is own_group(c) or id(g) in ancestors:
                     continue
                 ox = min(x1, gx1) - max(x0, gx0)
                 oy = min(bot, gy1) - max(top, gy0)

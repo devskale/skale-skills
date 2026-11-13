@@ -19,6 +19,9 @@
   · Label zu breit? Erst 2 Zeilen (Box höher), dann kürzen — Split-Hint kommt vom Gate
   · Mehrere Figuren: je <section class="flowblock"> mit eigenem Button + eigenem SVG
   · Timing: --wave/--t-node/--t-edge/--stag unten tunen; GPU-only (opacity/transform)
+  · Auto-Distribute: data-distribute auf dem <svg> verteilt die Knoten pro Lane
+    auf GLEICHE horizontale Gaps (Lane = y-Überlappungs-Cluster, mehrreihig ok);
+    Kanten werden per Anker neu verdrahtet. Fan-Layouts (Mock) lassen es weg.
 
   VERTRAG: Endframe = vollständiges Standbild (print + reduced-motion + no-JS).
   GATE: visualize gate <file> — inkl. boxcheck (Text muss in der Box bleiben).
@@ -212,13 +215,149 @@
 </div>
 
 <script>
-/* ── step-wave orchestrator (multi-svg) — NICHT anfassen, nur Wellen authoring ── */
+/* ── step-wave orchestrator (multi-svg: eine Engine pro [data-anim="flow"]) ── */
 (function () {
   var NS = 'http://www.w3.org/2000/svg';
   var WAVE = 460, STAG = 70, EDGE = 550, NODE = 420, LEAD = 300, TAIL = 260;
+  var SHAPE = /^(rect|circle|ellipse|polygon|path)$/;
+
+  /* ── auto-distribute (opt-in: data-distribute) ───────────────────────
+     Gleiche horizontale Gaps pro Lane (Lane = Cluster nach vertikaler
+     Überlappung — mehrreihige Layouts bleiben möglich). Knoten wandern
+     in ein positionierendes Wrapper-g (die Pop-Animation lebt im inneren
+     Knoten, das transform-Attribut außen — keine Kollision). Kanten werden
+     per Anker neu verdrahtet: Endpunkte an ihre Knoten-dx, Kontrollpunkte
+     an die Mitte der beiden End-dx. Laut gescheitert (console.warn), wenn
+     die Lane nicht passt — still quetschen ist keine Option. */
+  function distribute(svg) {
+    var vb = svg.viewBox.baseVal;
+    var margin = 16, minGap = 24;
+    var avail = vb.width - 2 * margin;
+    var nodes = Array.prototype.filter.call(svg.children, function (el) {
+      return el.tagName.toLowerCase() === 'g' && Array.prototype.some.call(el.children, function (c) {
+        return SHAPE.test(c.tagName);
+      });
+    });
+    if (nodes.length < 2) return;
+
+    /* Lanes: nach y clustern */
+    var lanes = [];
+    nodes.forEach(function (n) {
+      var b = n.getBBox();
+      var lane = lanes.find(function (l) {
+        return l.some(function (m) { return !(b.y + b.height < m.y - 1 || b.y > m.y + m.h + 1); });
+      });
+      if (lane) lane.push({ el: n, x: b.x, y: b.y, w: b.width, h: b.height });
+      else lanes.push([{ el: n, x: b.x, y: b.y, w: b.width, h: b.height }]);
+    });
+
+    var anchors = [];
+    lanes.forEach(function (lane) {
+      if (lane.length < 2) { register(lane); return; }
+      lane.sort(function (a, b) { return a.x - b.x; });
+      var sum = lane.reduce(function (s, n) { return s + n.w; }, 0);
+      var gap = (avail - sum) / (lane.length - 1);
+      if (gap < minGap) {
+        console.warn('step-wave distribute: lane too wide (gap ' + gap.toFixed(0) +
+                     'px < ' + minGap + ') — keeping authored layout');
+        register(lane); return;
+      }
+      var x = margin;
+      lane.forEach(function (n) {
+        var dx = x - n.x;
+        if (Math.abs(dx) > 0.5) {
+          var wrap = document.createElementNS(NS, 'g');
+          svg.insertBefore(wrap, n.el);
+          wrap.appendChild(n.el);
+          wrap.setAttribute('transform', 'translate(' + dx.toFixed(1) + ' 0)');
+        }
+        n.dx = dx;
+        x += n.w + gap;
+      });
+      register(lane);
+    });
+
+    function register(lane) {
+      lane.forEach(function (n) { if (n.dx === undefined) n.dx = 0; anchors.push(n); });
+    }
+
+    function dxAt(px, py) {
+      var best = null, bestD = Infinity;
+      anchors.forEach(function (a) {
+        if (px >= a.x - 12 && px <= a.x + a.w + 12 && py >= a.y - 12 && py <= a.y + a.h + 12) {
+          var d = Math.abs(a.x + a.w / 2 - px);
+          if (d < bestD) { bestD = d; best = a; }
+        }
+      });
+      return best ? best.dx : 0;
+    }
+
+    /* Kanten neu verdrahten: Endpunkte an Anker-dx, Kontrollpunkte an die
+       Mitte der beiden Pfad-Enden — Kurven wandern kohärent mit. */
+    svg.querySelectorAll('path.edge').forEach(function (p) {
+      var d = p.getAttribute('d');
+      if (!d) return;
+      var toks = d.match(/[MLHVCSQTAZmlhvcsqtaz]|-?[\d.]+/g);
+      if (!toks) return;
+      var pts = d.match(/-?[\d.]+/g).map(parseFloat);
+      var startDx = dxAt(pts[0], pts[1]);
+      var endNums = pts.slice(-2);
+      var endDx = dxAt(endNums[0], endNums[1]);
+      var midDx = (startDx + endDx) / 2;
+      var out = [];
+      var i = 0, cx = 0, cy = 0, cmd = '';
+      while (i < toks.length) {
+        var t = toks[i];
+        if (/[a-zA-Z]/.test(t)) { cmd = t; out.push(t); i++; continue; }
+        var nums = [];
+        while (i < toks.length && !/[a-zA-Z]/.test(toks[i])) { nums.push(parseFloat(toks[i])); i++; }
+        var C = cmd.toUpperCase(), rel = cmd !== cmd.toUpperCase();
+        var bx = rel ? cx : 0, by = rel ? cy : 0;
+        if (C === 'M' || C === 'L') {
+          cx = bx + nums[0]; cy = by + nums[1];
+          out.push((cx + dxAt(cx, cy)).toFixed(1), String(cy));
+        } else if (C === 'H') {
+          cx = bx + nums[0];
+          out.push((cx + dxAt(cx, cy)).toFixed(1));
+        } else if (C === 'V') {
+          cy = by + nums[0];
+          out.push(String(cy));
+        } else if (C === 'C') {
+          out.push((bx + nums[0] + midDx).toFixed(1), String(by + nums[1]),
+                   (bx + nums[2] + midDx).toFixed(1), String(by + nums[3]));
+          cx = bx + nums[4]; cy = by + nums[5];
+          out.push((cx + dxAt(cx, cy)).toFixed(1), String(cy));
+        } else if (C === 'S' || C === 'Q') {
+          out.push((bx + nums[0] + midDx).toFixed(1), String(by + nums[1]));
+          cx = bx + nums[2]; cy = by + nums[3];
+          out.push((cx + dxAt(cx, cy)).toFixed(1), String(cy));
+        } else if (C === 'A') {
+          out.push(String(nums[0]), String(nums[1]), String(nums[2]), String(nums[3]), String(nums[4]));
+          cx = bx + nums[5]; cy = by + nums[6];
+          out.push((cx + dxAt(cx, cy)).toFixed(1), String(cy));
+        }
+      }
+      p.setAttribute('d', out.join(' '));
+    });
+
+    /* freie Labels (direkte text-Kinder) wandern mit ihrem nächsten Knoten */
+    Array.prototype.forEach.call(svg.children, function (el) {
+      if (el.tagName.toLowerCase() !== 'text') return;
+      var b = el.getBBox();
+      var center = b.x + b.width / 2;
+      var best = null, bestD = Infinity;
+      anchors.forEach(function (a) {
+        var d = Math.abs(a.x + a.w / 2 - center);
+        if (d < bestD) { bestD = d; best = a; }
+      });
+      if (best) el.setAttribute('x', (parseFloat(el.getAttribute('x')) + best.dx).toFixed(1));
+    });
+  }
 
   function initFlow(svg) {
     svg.classList.add('pre');   /* sync, vor dem ersten Paint — ohne JS bleibt statisch */
+
+    if (svg.hasAttribute('data-distribute')) distribute(svg);
 
     /* Pfeilspitze an jedem Kantenende: positionierendes <g class="ahg">
        (translate+rotate als SVG-Attribut), innerer path.ah poppt um das

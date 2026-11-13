@@ -135,6 +135,13 @@ for e in pele-gallery workflow-animated auditflow-animated; do
     check "jscheck example $e.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/examples/$e.html"
     check "boxcheck example $e.html → exit 0" 0 "$SCRIPT" boxcheck "$SKILL/examples/$e.html"
 done
+# auto-distribute: engine + opt-in auf den Beispielen (auditflow), Mock bewusst ohne (Fan-Layout)
+grep -q 'data-distribute' "$SKILL/examples/auditflow-animated.html" \
+    && ok || bad "auditflow example lost data-distribute (auto distribute opt-in)"
+grep -q 'function distribute' "$SKILL/templates/workflow-animated.html" \
+    && ok || bad "workflow-animated template lost the distribute engine"
+! grep -q 'data-distribute' "$SKILL/examples/workflow-animated.html" \
+    && ok || bad "mock should stay hand-composed (no data-distribute) — fan layout"
 
 # pyproject is required for Python skills (CODING_RULES) and its version must match SKILL.md
 [ -f "$SKILL/pyproject.toml" ] && ok || bad "pyproject.toml missing"
@@ -560,6 +567,27 @@ cat > "$BOX/t2e-ok.html" <<'EOF'
 </svg></body></html>
 EOF
 check "boxcheck: curve bbox near-miss (curve dips below) → exit 0" 0 "$SCRIPT" boxcheck "$BOX/t2e-ok.html"
+
+# ancestor containers are not foreign: a group frame surrounds its nested
+# minitasks (ENTRY-Gruppierung, Nutzer 2026-11-12) — kein text-over-shape
+cat > "$BOX/nested.html" <<'EOF'
+<!doctype html><html><head><style>
+.lab{ font-family:ui-monospace,Menlo,monospace; font-size:12px }
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 200">
+  <g><rect x="10" y="10" width="200" height="150" fill="none"/>
+    <text class="sm" x="18" y="24">ENTRY</text>
+    <g><rect x="20" y="34" width="90" height="40"/>
+      <text class="lab" x="28" y="50">CLI</text>
+      <text class="sm" x="28" y="64">the call</text></g>
+    <g><rect x="20" y="84" width="90" height="40"/>
+      <text class="lab" x="28" y="100">ROUTE</text>
+      <text class="sm" x="28" y="114">the decision</text></g>
+  </g>
+</svg></body></html>
+EOF
+check "boxcheck: nested minitasks inside a group frame → exit 0" 0 "$SCRIPT" boxcheck "$BOX/nested.html"
 
 # own templates + examples must stay clean — the gate is a gate, not noise
 for f in "$SKILL"/templates/*.html "$SKILL"/examples/*.html; do

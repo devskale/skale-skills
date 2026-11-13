@@ -22,6 +22,11 @@ zwei eigene Figuren mit je eigener Welle — keine gemeinsame Doppelspur-Lane
 Elemente gehören **Wellen** (`data-step="N"`, 1-basiert, docs-order = Stagger-Reihenfolge):
 
 - **Knoten**: `<g class="n" data-step="N">` — eine Box samt Text/Punkten.
+- **Logisch gruppieren, nicht flachklopfen** (Nutzer-Regel 2026-11-12): MinTasks (CLI-Aufruf,
+  Routing-Check) gehören in EINE gestrichelte Container-Gruppe mit Mini-Boxen
+  (`g.grp` + `g.mini`), Megaprozesse (die Phasen) bekommen volle Boxen — gleiche
+  visuelle Ebene = gleiche logische Ebene. boxcheck kennt die Schachtelung: der
+  Rahmen eines Ancestor-Containers ist nie „fremd".
 - **Lieber 2 kurze Zeilen als 1 abgeschnittene** (Nutzer-Regel 2026-11-12): wenn ein Label
   die Box sprengt, zuerst splitten (Box ggf. höher ziehen), dann erst kürzen — boxcheck
   rechnet den Split vor („split into 2 lines (~Npx/line fits Mpx)"). Pipe `|` und `·`
@@ -46,6 +51,24 @@ Timeline pro Welle `N` (Tokens, überschreibbar pro Seite):
   die Kante ankommt), Parallel-Elemente staffeln um `--stag`.
 - Fan-outs (1→n) sind einfach n Kanten/Knoten in derselben Welle — der Stagger macht die Fächerung.
 - Gesamtlauf ≈ `(maxN−1)·wave + lead + node + tail`; Loops (`end`) nach `tail=260ms`.
+
+### Auto-Distribute (`data-distribute`, opt-in)
+
+Hand-authored x-Koordinaten klaffen ungleich (auditflow: 214px neben 10px Gaps).
+`data-distribute` auf dem `<svg>` verteilt zur Laufzeit:
+
+- **Lane-Clustering**: Knoten (g mit Shapes) werden nach vertikaler Überlappung zu
+  Lanes gruppiert — mehrreihige Layouts (Fan-outs) bleiben unverändert.
+- **Gleiche Gaps**: `(viewBox − 2·16 − Σbreiten) / (n−1)`, Minimum 24px — unterschritten
+  wird LAUT geskippt (`console.warn`, authorierte Position bleibt).
+- **Verdrahtung**: Knoten wandern in ein Wrapper-`<g transform="translate(dx 0)">`
+  (die Pop-Animation sitzt im inneren Knoten — keine transform-Kollision). Kanten:
+  Endpunkte an ihren Anker-Knoten, Kontrollpunkte an die Mitte der End-dx; freie
+  Labels wandern mit ihrem nächsten Knoten.
+- **SVG-Fallstrick**: `tagName` ist case-sensitiv — `'g'`, nie `'G'` (Realer Bug 2026-11-12:
+  distribute filterte ins Leere und lief still vorbei).
+- Der statische Markup bleibt gültig für boxcheck/print/no-JS — Distribution fügt
+  nur Luft hinzu, nie Überlappungen (min-Gap-Guard).
 
 ## Technik (warum genau so)
 
