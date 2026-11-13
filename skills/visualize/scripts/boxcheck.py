@@ -459,10 +459,20 @@ def lint(html: str) -> tuple[list[str], int, int]:
                 ):
                     over = got - limit if edge in ("right", "bottom") else limit - got
                     if over > TOL_BOX:
-                        violations.append(
+                        msg = (
                             f"text-out-of-box    \"{label}\" crosses {edge} edge "
                             f"by {over:.0f}px (text {got:.0f} vs box {limit:.0f})"
                         )
+                        if edge == "right":
+                            # zwei kurze Zeilen erhalten mehr Bedeutung als eine
+                            # abgeschnittene — der Hinweis rechnet es vor
+                            need, avail = x1 - x0, bx1 - bx0
+                            if need > 1.5 * avail:
+                                msg += (
+                                    f" — split into 2 lines (~{need / 2:.0f}px/line "
+                                    f"fits {avail:.0f}px)"
+                                )
+                        violations.append(msg)
             else:
                 # free text: the viewBox is the box
                 vx1, vy1 = vb[0] + vb[2], vb[1] + vb[3]
@@ -539,7 +549,7 @@ def main() -> int:
     if real:
         print(
             f"visualize boxcheck: ✗ {len(real)} text(s) outside their box — "
-            f"shrink the label, widen the box, or move the text",
+            f"split the label across lines, shorten it, widen the box, or move the text",
             file=sys.stderr,
         )
         return 1

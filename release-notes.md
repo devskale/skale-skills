@@ -1,5 +1,13 @@
 ## Unreleased
 
+### visualize boxcheck: lieber 2 Zeilen als 1 abgeschnittene (Nutzer-Regel 2026-11-12)
+- Beim Overlay-Fix wurden Labels gekürzt („2a batch | 2b orch.") — Split hätte mehr
+  Bedeutung bewahrt. Jetzt: ASSESS-Box auf 4 Zeilen („2a · batch" / „2b · orchestrate" /
+  „DENKT · trim-retry ×2"), Loop-Endpunkt angepasst.
+- boxcheck rechnet den Split vor: horizontaler Overflow mit need > 1,5× Box → Hint
+  „split into 2 lines (~Npx/line fits Mpx)"; Fehler-Summary nennt Split als erste Option.
+  `|` und `·` sind dokumentierte Bruchstellen (animation.md + Template-Kommentar).
+
 ### visualize boxcheck: lint harder — Overlays, nicht nur Containment
 - **Anlass (live auf skale.dev gefunden, 2026-11-12):** Split-Labels („sonst → PA",
   „match → FAP“) ragten 41/27px in die Ziel-Boxen, die Retry-Kurve im Mock kreuzte

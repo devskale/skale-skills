@@ -469,6 +469,9 @@ cat > "$BOX/over.html" <<'EOF'
 EOF
 out="$("$SCRIPT" boxcheck "$BOX/over.html" 2>&1)"
 if [ $? -eq 1 ] && printf '%s' "$out" | grep -q "text-out-of-box"; then ok; else bad "boxcheck overflow not reported: $out"; fi
+# zwei kurze Zeilen erhalten mehr Bedeutung als eine abgeschnittene — der
+# Hinweis muss die Rechnung mitliefern (Nutzer-Regel 2026-11-12)
+if printf '%s' "$out" | grep -q "split into 2 lines"; then ok; else bad "boxcheck split-hint missing: $out"; fi
 
 cat > "$BOX/canvas.html" <<'EOF'
 <!doctype html><html><head><style>

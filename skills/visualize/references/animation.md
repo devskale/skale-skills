@@ -22,6 +22,10 @@ zwei eigene Figuren mit je eigener Welle — keine gemeinsame Doppelspur-Lane
 Elemente gehören **Wellen** (`data-step="N"`, 1-basiert, docs-order = Stagger-Reihenfolge):
 
 - **Knoten**: `<g class="n" data-step="N">` — eine Box samt Text/Punkten.
+- **Lieber 2 kurze Zeilen als 1 abgeschnittene** (Nutzer-Regel 2026-11-12): wenn ein Label
+  die Box sprengt, zuerst splitten (Box ggf. höher ziehen), dann erst kürzen — boxcheck
+  rechnet den Split vor („split into 2 lines (~Npx/line fits Mpx)"). Pipe `|` und `·`
+  sind natürliche Bruchstellen.
 - **Kante**: `<path class="edge" data-step="N" pathLength="1" d="…">` — **N = Welle des
   ZIELS** (die Kante zieht an, während ihr Ziel erscheint).
 - **Loop/Feedback**: `class="edge loop"` + `data-step="end"` — gestrichelt, warn-Farbe,
