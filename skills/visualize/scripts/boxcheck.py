@@ -17,6 +17,13 @@ mono-first, advance ≈ 0.6em/char) and compare it against
 Checks (exit 1 lists every violation, each with the numbers):
   text-out-of-box    estimated extent crosses the group's shape union (+2px tol)
   text-out-of-viewbox  extent crosses the svg viewBox (the shipped bug class)
+  text-over-text      two texts overlap — any group; adjacent lines have ~6px air
+  text-over-shape     a text drifts into ANOTHER node's shape union (shipped:
+                      "sonst → PA" ran 41px into the KONTEXT box, 2026-11-12)
+  text-over-edge      a text sits on an edge curve — sampled ON-curve (Bernstein
+                      subdivision), because a curve's bbox flags labels the curve
+                      never touches (the false-positive class that would make the
+                      gate noise)
 
 Honest scope (skipped is reported, never silently passed):
   foreignObject      svg blocks containing one are skipped wholesale (pele /
@@ -46,6 +53,8 @@ PATH_CMD = re.compile(r"([MLHVCSQTAZmlhvcsqtaz])|(-?\d*\.?\d+(?:[eE][-+]?\d+)?)"
 MONO_HINT = re.compile(r"monospace|Menlo|Consolas|Courier|Roboto[ ,]?Mono", re.I)
 TOL_BOX = 2.0        # px slack against the shape union — strokes + estimates
 TOL_VB = 0.5         # px slack against the viewBox — the canvas is hard
+TOL_OVERLAP = 1.0    # px slack for element-vs-element overlap — estimates breathe
+CURVE_SAMPLES = 8    # bezier subdivision depth for text-over-edge sampling
 
 
 class Style(NamedTuple):
@@ -220,6 +229,90 @@ def path_bbox(d: str) -> tuple[float, float, float, float] | None:
     return (min(xs), min(ys), max(xs), max(ys))
 
 
+def path_samples(d: str) -> list[tuple[float, float]]:
+    """On-curve sample points for a path ``d`` — the text-over-edge truth.
+
+    Lines contribute their endpoints, cubics/quadratics are subdivided
+    (Bernstein), arcs contribute chord endpoints + midpoint. Control points
+    stay out: a lint that flags the bounding box of a curve flags labels the
+    curve never touches (shipped false positive, 2026-11-12).
+    """
+    pairs = PATH_CMD.findall(d)
+    toks = [a or b for a, b in pairs]
+    pts: list[tuple[float, float]] = []
+    x = y = 0.0
+    cmd = ""
+    i = 0
+
+    def bez(p0, p1, p2, p3, n=CURVE_SAMPLES) -> None:
+        for k in range(n + 1):
+            t = k / n
+            u = 1 - t
+            pts.append((
+                u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+                u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+            ))
+
+    while i < len(toks):
+        t = toks[i]
+        if t.isalpha():
+            cmd = t
+            if cmd in "Zz":
+                pts.append((x, y))
+            i += 1
+            continue
+        nums: list[float] = []
+        while i < len(toks) and not toks[i].isalpha():
+            nums.append(float(toks[i]))
+            i += 1
+        C = (cmd or "M").upper()
+        rel = cmd.islower() and cmd.isalpha()
+        bx, by = (x, y) if rel else (0.0, 0.0)
+        if C == "M" and len(nums) >= 2:
+            x, y = bx + nums[0], by + nums[1]
+            pts.append((x, y))
+        elif C == "L" and len(nums) >= 2:
+            x, y = bx + nums[0], by + nums[1]
+            pts.append((x, y))
+        elif C == "H" and nums:
+            x = bx + nums[0]
+            pts.append((x, y))
+        elif C == "V" and nums:
+            y = by + nums[0]
+            pts.append((x, y))
+        elif C == "C" and len(nums) >= 6:
+            p1 = (bx + nums[0], by + nums[1])
+            p2 = (bx + nums[2], by + nums[3])
+            p3 = (bx + nums[4], by + nums[5])
+            bez((x, y), p1, p2, p3)
+            x, y = p3
+        elif C == "S" and len(nums) >= 4:  # reflected c1 unknown — degenerate cubic
+            p2 = (bx + nums[0], by + nums[1])
+            p3 = (bx + nums[2], by + nums[3])
+            bez((x, y), (x, y), p2, p3)
+            x, y = p3
+        elif C == "Q" and len(nums) >= 4:
+            p1 = (bx + nums[0], by + nums[1])
+            p3 = (bx + nums[2], by + nums[3])
+            for k in range(CURVE_SAMPLES + 1):
+                t = k / CURVE_SAMPLES
+                u = 1 - t
+                pts.append((
+                    u * u * x + 2 * u * t * p1[0] + t * t * p3[0],
+                    u * u * y + 2 * u * t * p1[1] + t * t * p3[1],
+                ))
+            x, y = p3
+        elif C == "T" and len(nums) >= 2:
+            x, y = bx + nums[0], by + nums[1]
+            pts.append((x, y))
+        elif C == "A" and len(nums) >= 7:
+            ex, ey = bx + nums[5], by + nums[6]
+            pts.append(((x + ex) / 2, (y + ey) / 2))
+            x, y = ex, ey
+            pts.append((x, y))
+    return pts
+
+
 def shape_bbox(n: Node) -> tuple[float, float, float, float] | None:
     """(x0, y0, x1, y1) for a shape, None for anything we cannot measure."""
     a = n.attrs
@@ -312,9 +405,23 @@ def lint(html: str) -> tuple[list[str], int, int]:
         if vb is None or len(vb) != 4 or None in vb:
             vb = [0.0, 0.0, 0.0, 0.0]
 
-        def walk(n: Node) -> None:
+        def walk(n: Node, texts: list, groups: list, curves: list) -> None:
             nonlocal checked, skipped
             for c in n.children:
+                if c.tag == "defs":
+                    continue  # pattern/grid geometry is background, not content
+                if c.tag == "g":
+                    boxes = [b for ch in c.children if (b := shape_bbox(ch)) is not None]
+                    if boxes:
+                        xs0, ys0, xs1, ys1 = zip(*boxes)
+                        groups.append((c, (min(xs0), min(ys0), max(xs1), max(ys1))))
+                    walk(c, texts, groups, curves)
+                    continue
+                if c.tag == "path":
+                    samples = path_samples(c.attrs.get("d", ""))
+                    if samples:
+                        curves.append((c, samples))
+                    continue
                 if c.tag == "text":
                     if any("transform" in a.attrs for a in c.ancestors()):
                         skipped += 1
@@ -324,37 +431,94 @@ def lint(html: str) -> tuple[list[str], int, int]:
                         skipped += 1
                         continue
                     checked += 1
-                    x0, top, x1, bot = ext
-                    label = unescape(c.text).strip()[:38] or "(empty)"
-                    box = group_box(c)
-                    if box is not None:
-                        bx0, by0, bx1, by1 = box
-                        for edge, got, limit in (
-                            ("left", x0, bx0), ("top", top, by0),
-                            ("right", x1, bx1), ("bottom", bot, by1),
-                        ):
-                            over = got - limit if edge in ("right", "bottom") else limit - got
-                            if over > TOL_BOX:
-                                violations.append(
-                                    f"text-out-of-box    \"{label}\" crosses {edge} edge "
-                                    f"by {over:.0f}px (text {got:.0f} vs box {limit:.0f})"
-                                )
-                    else:
-                        # free text: the viewBox is the box
-                        vx1, vy1 = vb[0] + vb[2], vb[1] + vb[3]
-                        for edge, got, limit in (
-                            ("left", x0, vb[0]), ("top", top, vb[1]),
-                            ("right", x1, vx1), ("bottom", bot, vy1),
-                        ):
-                            over = got - limit if edge in ("right", "bottom") else limit - got
-                            if over > TOL_VB:
-                                violations.append(
-                                    f"text-out-of-viewbox  \"{label}\" crosses {edge} edge "
-                                    f"by {over:.0f}px (text {got:.0f} vs canvas {limit:.0f})"
-                                )
-                walk(c)
+                    texts.append((c, ext, unescape(c.text).strip()[:38] or "(empty)"))
+                walk(c, texts, groups, curves)
 
-        walk(parser.root)
+        texts: list = []
+        groups: list = []
+        curves: list = []
+        walk(parser.root, texts, groups, curves)
+
+        def own_group(node: Node):
+            for anc in node.ancestors():
+                if anc.tag == "g" and any(shape_bbox(ch) is not None for ch in anc.children):
+                    return anc
+            return None
+
+        for c, (x0, top, x1, bot), label in texts:
+            box = None
+            for g, gb in groups:
+                if g is own_group(c):
+                    box = gb
+                    break
+            if box is not None:
+                bx0, by0, bx1, by1 = box
+                for edge, got, limit in (
+                    ("left", x0, bx0), ("top", top, by0),
+                    ("right", x1, bx1), ("bottom", bot, by1),
+                ):
+                    over = got - limit if edge in ("right", "bottom") else limit - got
+                    if over > TOL_BOX:
+                        violations.append(
+                            f"text-out-of-box    \"{label}\" crosses {edge} edge "
+                            f"by {over:.0f}px (text {got:.0f} vs box {limit:.0f})"
+                        )
+            else:
+                # free text: the viewBox is the box
+                vx1, vy1 = vb[0] + vb[2], vb[1] + vb[3]
+                for edge, got, limit in (
+                    ("left", x0, vb[0]), ("top", top, vb[1]),
+                    ("right", x1, vx1), ("bottom", bot, vy1),
+                ):
+                    over = got - limit if edge in ("right", "bottom") else limit - got
+                    if over > TOL_VB:
+                        violations.append(
+                            f"text-out-of-viewbox  \"{label}\" crosses {edge} edge "
+                            f"by {over:.0f}px (text {got:.0f} vs canvas {limit:.0f})"
+                        )
+
+        # ── lint harder: overlays, not just containment ──────────────────
+        # text on text (any group — adjacent lines have ~6px real air)
+        for i in range(len(texts)):
+            ca, (ax0, atop, ax1, abot), la = texts[i]
+            for j in range(i + 1, len(texts)):
+                cb, (bx0, btop, bx1, bbot), lb = texts[j]
+                ox = min(ax1, bx1) - max(ax0, bx0)
+                oy = min(abot, bbot) - max(atop, btop)
+                if ox > TOL_OVERLAP and oy > TOL_OVERLAP:
+                    violations.append(
+                        f"text-over-text      \"{la}\" overlaps \"{lb}\" "
+                        f"by {ox:.0f}×{oy:.0f}px"
+                    )
+        # text over a foreign group's shape union (labels drifting into nodes)
+        for c, (x0, top, x1, bot), label in texts:
+            own = own_group(c)
+            for g, (gx0, gy0, gx1, gy1) in groups:
+                if g is own:
+                    continue
+                ox = min(x1, gx1) - max(x0, gx0)
+                oy = min(bot, gy1) - max(top, gy0)
+                if ox > TOL_OVERLAP and oy > TOL_OVERLAP:
+                    violations.append(
+                        f"text-over-shape     \"{label}\" overlaps another node's box "
+                        f"by {ox:.0f}×{oy:.0f}px"
+                    )
+        # text over an edge curve — sampled on-curve, bbox would lie
+        for c, (x0, top, x1, bot), label in texts:
+            sx0, sop, sx1, sbot = x0 + TOL_OVERLAP, top + TOL_OVERLAP, x1 - TOL_OVERLAP, bot - TOL_OVERLAP
+            if sx1 <= sx0 or sbot <= sop:
+                continue
+            for p, samples in curves:
+                og = own_group(p)
+                if og is not None and og is own_group(c):
+                    continue
+                for px, py in samples:
+                    if sx0 <= px <= sx1 and sop <= py <= sbot:
+                        violations.append(
+                            f"text-over-edge      \"{label}\" sits on an edge curve "
+                            f"(at {px:.0f},{py:.0f})"
+                        )
+                        break
     return violations, checked, skipped
 
 

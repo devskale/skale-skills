@@ -1,5 +1,17 @@
 ## Unreleased
 
+### visualize boxcheck: lint harder — Overlays, nicht nur Containment
+- **Anlass (live auf skale.dev gefunden, 2026-11-12):** Split-Labels („sonst → PA",
+  „match → FAP“) ragten 41/27px in die Ziel-Boxen, die Retry-Kurve im Mock kreuzte
+  ihr „retry ≤ 3“-Label. Containment-Checks sahen das nicht.
+- **Drei neue Checks:** `text-over-text` (zwei Texte überlappen), `text-over-shape`
+  (Text driftet in die Shape-Union eines FREMDEN Knotens), `text-over-edge` (Text
+  sitzt auf einer Kantenkurve — on-curve gesampelt via Bernstein-Subdivision, weil
+  die Kurven-BBox Labels flaggen würde, die die Kurve nie berührt).
+- Fixtures für jeden Check + Anti-Noise-Guard (BBox-Nähe ohne Berührung bleibt grün);
+  19 Templates/Examples ohne False Positive. Beispiel-Seiten bereinigt (Split-Labels
+  gestrichen — die Info steht in den ROUTING-Boxen; Retry-Label umgezogen).
+
 ### visualize 1.14.0 — animierte Workflows (step-wave) + boxcheck-Gate
 - **step-wave engine** (opt-in): `templates/workflow-animated.html` +
   `references/animation.md` — Knoten poppen, Kanten zeichnen sich in Flussrichtung

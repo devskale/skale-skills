@@ -505,6 +505,59 @@ cat > "$BOX/cyl.html" <<'EOF'
 EOF
 check "boxcheck: cylinder body (path) is the box, texts inside → exit 0" 0 "$SCRIPT" boxcheck "$BOX/cyl.html"
 
+# ── lint harder: overlays, not just containment (2026-11-12, live auf
+# skale.dev gefunden: Split-Labels ragten in die Ziel-Boxen, eine Loop-Kurve
+# kreuzte ihr Label). Drei Checks, je ein Fixture, das genau ihn triggert —
+# plus der Anti-Noise-Guard: Kurven-BBox-Nähe ohne echte Berührung bleibt grün.
+cat > "$BOX/t2t.html" <<'EOF'
+<!doctype html><html><head><style>
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 120">
+  <g><rect x="10" y="10" width="200" height="60"/></g>
+  <text class="sm" x="20" y="40">first line here</text>
+  <text class="sm" x="22" y="44">second line overlaps</text>
+</svg></body></html>
+EOF
+out="$("$SCRIPT" boxcheck "$BOX/t2t.html" 2>&1)"
+if [ $? -eq 1 ] && printf '%s' "$out" | grep -q "text-over-text"; then ok; else bad "boxcheck text-over-text not reported: $out"; fi
+
+cat > "$BOX/t2s.html" <<'EOF'
+<!doctype html><html><head><style>
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 120">
+  <g><rect x="10" y="10" width="200" height="60"/></g>
+  <g><rect x="260" y="10" width="120" height="60"/></g>
+  <text class="sm" x="180" y="40">label drifting right</text>
+</svg></body></html>
+EOF
+out="$("$SCRIPT" boxcheck "$BOX/t2s.html" 2>&1)"
+if [ $? -eq 1 ] && printf '%s' "$out" | grep -q "text-over-shape"; then ok; else bad "boxcheck text-over-shape not reported: $out"; fi
+
+cat > "$BOX/t2e.html" <<'EOF'
+<!doctype html><html><head><style>
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 120">
+  <path d="M20 20 C 120 40, 200 60, 300 20" fill="none" stroke="#000"/>
+  <text class="sm" x="120" y="45">sitting on the curve</text>
+</svg></body></html>
+EOF
+out="$("$SCRIPT" boxcheck "$BOX/t2e.html" 2>&1)"
+if [ $? -eq 1 ] && printf '%s' "$out" | grep -q "text-over-edge"; then ok; else bad "boxcheck text-over-edge not reported: $out"; fi
+
+cat > "$BOX/t2e-ok.html" <<'EOF'
+<!doctype html><html><head><style>
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 120">
+  <path d="M20 20 C 120 90, 200 90, 300 20" fill="none" stroke="#000"/>
+  <text class="sm" x="120" y="42">clear above the dip</text>
+</svg></body></html>
+EOF
+check "boxcheck: curve bbox near-miss (curve dips below) → exit 0" 0 "$SCRIPT" boxcheck "$BOX/t2e-ok.html"
+
 # own templates + examples must stay clean — the gate is a gate, not noise
 for f in "$SKILL"/templates/*.html "$SKILL"/examples/*.html; do
     out="$("$SCRIPT" boxcheck "$f" 2>&1)"
