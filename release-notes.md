@@ -1,5 +1,24 @@
 ## Unreleased
 
+### visualize 1.14.0 — animierte Workflows (step-wave) + boxcheck-Gate
+- **step-wave engine** (opt-in): `templates/workflow-animated.html` +
+  `references/animation.md` — Knoten poppen, Kanten zeichnen sich in Flussrichtung
+  (`pathLength="1"`-Trick), gestrichelte Loops wischen rein, Pfeilspitzen werden
+  injiziert (Endpunkt + Tangente, kein marker-end-Artefakt). Endframe = vollständiges
+  Standbild; print / `prefers-reduced-motion` / no-JS zeigen das Standbild (`.pre`-Klasse
+  synchron vor erstem Paint). Replay-Button je `.flowblock`, Multi-SVG-fähig.
+  Beispiele: `examples/workflow-animated.html` (Mock), `examples/auditflow-animated.html`
+  (agentos auditflow, zwei getrennte Figuren PA/FAP — Nutzer-Regel: Pfade trennen statt
+  Doppelspur quetschen). SOTA-Quellen: Emil-Kowalski-Standards (Ease-Out-Bezier,
+  GPU-only, Stagger, reduced-motion), Motion.dev-Stagger-Wave.
+- **boxcheck** (neues Gate, parallel in `visualize gate`): SVG-Text muss in seiner Box
+  und im viewBox bleiben — Text-Extent aus der CSS-Klasse (mono ≈ 0.6em/Zeichen +
+  letter-spacing) gegen die Shape-Union der Gruppe (rect/polygon/ellipse/circle/path;
+  Zylinder-Körper via Mini-Path-Walker, Arcs mit ry-Slack). Anlass: 5px-Überstand am
+  auditflow-Terminal, von Hand im Browser gefunden — jetzt mechanisch. Vier echte
+  Label-Overflows im auditflow-Beispiel gefixt; 18 Templates/Examples ohne False
+  Positive. `foreignObject`-SVGs (pele/mermaid) werden ehrlich geskippt.
+
 ### dev/-Konvention repo-weit angewandt: 8 Skills mit Maintainer-Heimat
 - **Umgezogen (falsch gelagert erkannt):** fetch-url references/inspirations.md
   → dev/inspirations.md; visualize references/architecture-log.md →

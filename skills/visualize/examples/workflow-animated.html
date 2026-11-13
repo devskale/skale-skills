@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step-wave workflow — animation mock</title>
+<!--
+  visualize house skin v3 · flavor: blueprint · data-anim="flow" step-wave engine
+  Mock: INGEST → PARSE → (VALIDATE | ENRICH) → MERGE → EXPORT + retry loop.
+  The animation ENDS in the complete static frame (static contract holds).
+-->
+<style>
+  :root, body[data-skin="blueprint"]{
+    --paper:#f1f3f2; --card:#fbfcfc; --soft:#e6eae8;
+    --ink:#1e2b28;   --muted:#5f7370; --line:#c9d4d0;
+    --cat-1:#0e7490; --cat-2:#155e75; --cat-3:#b45309;
+    --ok:#1a7f4b; --warn:#b45309; --bad:#c0262d;
+    --radius:2px;  --shadow:none;
+    /* ── animation tokens (step-wave engine) ─────────────────────── */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);   /* entrances */
+    --ease-flow: cubic-bezier(0.65, 0, 0.35, 1);  /* line draw */
+    --t-node: 420ms; --t-edge: 550ms; --wave: 520ms; --stag: 70ms;
+  }
+  *{ box-sizing:border-box }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding:56px 24px 80px;
+  }
+  .wrap{ max-width:960px; margin:0 auto }
+  h1{ font-size:clamp(28px, 5vw, 38px); line-height:1.08; letter-spacing:-.025em;
+      font-weight:800; margin:10px 0 10px }
+  .sub{ color:var(--muted); font-size:16px; line-height:1.5; max-width:60ch; margin:0 }
+  .kicker{ font-family:ui-monospace, Menlo, monospace; font-size:11.5px; font-weight:700;
+           letter-spacing:.14em; text-transform:uppercase; color:var(--cat-1) }
+  .meta{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-top:12px }
+  header{ margin-bottom:8px }
+  header::after{ content:""; display:block; height:3px; background:var(--ink); margin-top:20px }
+  footer{ margin-top:56px; padding-top:14px; border-top:2px solid var(--ink);
+          display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+          font-size:12.5px; color:var(--muted) }
+  .small{ font-size:12.5px } .muted{ color:var(--muted) }
+  .legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted);
+           align-items:center; margin:18px 0 8px }
+  .legend .it{ display:inline-flex; align-items:center; gap:7px }
+  .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; flex:none }
+  .dashline{ width:26px; height:0; border-top:2px dashed var(--warn); display:inline-block }
+  figure{ margin:20px 0 0 }
+  figcaption{ font-size:12.5px; color:var(--muted); margin-top:10px }
+  svg{ width:100%; height:auto; display:block }
+
+  .controls{ display:flex; align-items:center; gap:14px; margin-top:22px }
+  .btn{
+    font:700 11px/1 ui-monospace, Menlo, monospace; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--ink);
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:8px 14px; cursor:pointer;
+    transition: background .15s var(--ease-out), transform .15s var(--ease-out);
+  }
+  .btn:hover{ background:var(--soft) }
+  .btn:active{ transform:scale(.97) }
+
+  /* ── svg block-diagram vocabulary (blueprint) ──────────────────── */
+  .blk{ fill:var(--card); stroke:#b7c6c0; stroke-width:1.2; stroke-dasharray:5 3 }
+  .lab{ font-family:ui-monospace, Menlo, monospace; font-size:12px; font-weight:700;
+        letter-spacing:.06em }
+  .sm{ font-family:ui-monospace, Menlo, monospace; font-size:10.5px; fill:var(--muted) }
+  .edge{ stroke:var(--ink); stroke-width:1.6; fill:none }
+  .edge.loop{ stroke:var(--warn); stroke-width:1.6; fill:none; stroke-dasharray:6 4 }
+  .ah{ opacity:0 }
+
+  /* ── step-wave engine ──────────────────────────────────────────────
+     No-JS contract: the bare markup renders the COMPLETE static diagram.
+     The orchestrator adds .pre synchronously before first paint (hides),
+     then .play runs keyframes with per-element --d delays. Final frame
+     is always the full diagram — static contract holds everywhere. */
+  [data-anim="flow"].pre .n{ opacity:0; transform-box:fill-box; transform-origin:center }
+  [data-anim="flow"].pre.play .n{
+    animation: node-in var(--t-node) var(--ease-out) both;
+    animation-delay: var(--d, 0ms);
+  }
+  @keyframes node-in{
+    from{ opacity:0; transform:translateY(8px) scale(.97) }
+    to  { opacity:1; transform:none }
+  }
+  /* solid edges: pathLength="1" normalizes — dashoffset 1→0 draws the line */
+  [data-anim="flow"].pre .edge:not(.loop){
+    stroke-dasharray:1; stroke-dashoffset:1;
+  }
+  [data-anim="flow"].pre.play .edge:not(.loop){
+    animation: draw var(--t-edge) var(--ease-flow) both;
+    animation-delay: var(--d, 0ms);
+  }
+  @keyframes draw{ to{ stroke-dashoffset:0 } }
+  /* dashed loops: dash-draw conflicts with the dash pattern → clip wipe */
+  [data-anim="flow"].pre .edge.loop{ clip-path:inset(-12px 100% -12px -2px) }
+  [data-anim="flow"].pre.play .edge.loop{
+    animation: wipe var(--t-edge) var(--ease-flow) both;
+    animation-delay: var(--d, 0ms);
+  }
+  @keyframes wipe{ to{ clip-path:inset(-12px -2px -12px -2px) } }
+  /* auto-injected arrowheads: outer g positions (translate+rotate via SVG
+     attribute), inner path pops around its own center (fill-box origin) */
+  [data-anim="flow"].pre .ah{ opacity:0; transform-box:fill-box; transform-origin:center }
+  [data-anim="flow"].pre.play .ah{
+    animation: ah-in 160ms var(--ease-out) both;
+    animation-delay: var(--d, 0ms);   /* --d is set on the .ahg wrapper */
+  }
+  @keyframes ah-in{
+    from{ opacity:0; transform:scale(.6) }
+    to  { opacity:1; transform:none }
+  }
+
+  /* the contract: reduced motion / print → the complete static frame */
+  @media (prefers-reduced-motion: reduce){
+    [data-anim="flow"] .n{ opacity:1; animation:none !important; transform:none !important }
+    [data-anim="flow"] .edge{ clip-path:none; animation:none !important;
+      stroke-dasharray:inherit; stroke-dashoffset:0 !important }
+    [data-anim="flow"] .edge.loop{ stroke-dasharray:6 4 }
+    [data-anim="flow"] .ah{ opacity:1; animation:none !important; transform:none !important }
+    .btn{ display:none }
+  }
+  @media print{
+    .controls{ display:none }
+    [data-anim="flow"] .n{ opacity:1 !important; transform:none !important }
+    [data-anim="flow"] .edge{ stroke-dasharray:inherit; stroke-dashoffset:0 !important;
+      clip-path:none !important }
+    [data-anim="flow"] .ah{ opacity:1 !important }
+  }
+</style>
+</head>
+<body data-skin="blueprint">
+<div class="wrap">
+
+  <header>
+    <div class="kicker">animated workflow · mock</div>
+    <h1>Step-wave reveal</h1>
+    <p class="sub">Animation-engine test — boxes pop in as their incoming lines draw,
+    left to right, branching fan-out, dashed retry loop last. Ends in the full
+    static frame.</p>
+    <div class="meta">
+      <span>engine: data-anim="flow"</span><span>2026-11-12</span>
+      <span>scope: mock pipeline</span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button class="btn" type="button" data-replay>↻ replay</button>
+    <span class="small muted">autoplay on load · honors prefers-reduced-motion</span>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 940 300" data-anim="flow" role="img"
+         aria-label="Pipeline: ingest, parse, then validate and enrich in parallel, merge, export; a dashed retry loop runs from validate back to parse">
+      <!-- ══ nodes: g.n with data-step ══ -->
+      <g class="n" data-step="1">
+        <rect class="blk" x="8" y="104" width="132" height="72"/>
+        <circle cx="20" cy="124" r="4" fill="#0e7490"/>
+        <text class="lab" x="30" y="128" fill="#0e7490">INGEST</text>
+        <text class="sm" x="20" y="150">watch folder</text>
+        <text class="sm" x="20" y="166">drop events</text>
+      </g>
+
+      <g class="n" data-step="2">
+        <rect class="blk" x="196" y="104" width="132" height="72"/>
+        <circle cx="208" cy="124" r="4" fill="#155e75"/>
+        <text class="lab" x="218" y="128" fill="#155e75">PARSE</text>
+        <text class="sm" x="208" y="150">structure + meta</text>
+        <text class="sm" x="208" y="166">no judgment yet</text>
+      </g>
+
+      <g class="n" data-step="3">
+        <rect class="blk" x="380" y="36" width="150" height="64"/>
+        <circle cx="392" cy="56" r="4" fill="#0e7490"/>
+        <text class="lab" x="402" y="60" fill="#0e7490">VALIDATE</text>
+        <text class="sm" x="392" y="82">schema · refs</text>
+      </g>
+
+      <g class="n" data-step="3">
+        <rect class="blk" x="380" y="176" width="150" height="64"/>
+        <circle cx="392" cy="196" r="4" fill="#155e75"/>
+        <text class="lab" x="402" y="200" fill="#155e75">ENRICH</text>
+        <text class="sm" x="392" y="222">lookup · tags</text>
+      </g>
+
+      <g class="n" data-step="4">
+        <rect class="blk" x="592" y="104" width="132" height="72"/>
+        <circle cx="604" cy="124" r="4" fill="#0e7490"/>
+        <text class="lab" x="614" y="128" fill="#0e7490">MERGE</text>
+        <text class="sm" x="604" y="150">join on id</text>
+        <text class="sm" x="604" y="166">conflict → last</text>
+      </g>
+
+      <g class="n" data-step="5">
+        <rect class="blk" x="772" y="104" width="160" height="72"/>
+        <circle cx="784" cy="124" r="4" fill="#1a7f4b"/>
+        <text class="lab" x="794" y="128" fill="#1a7f4b">EXPORT</text>
+        <text class="sm" x="784" y="150">atomic write</text>
+        <text class="sm" x="784" y="166">+ manifest</text>
+      </g>
+
+      <!-- ══ edges: path.edge, data-step = wave of the TARGET ══ -->
+      <path class="edge" data-step="2" pathLength="1" d="M140 140 H192"/>
+      <path class="edge" data-step="3" pathLength="1" d="M328 140 L376 74"/>
+      <path class="edge" data-step="3" pathLength="1" d="M328 140 L376 206"/>
+      <path class="edge" data-step="4" pathLength="1" d="M530 68 L588 134"/>
+      <path class="edge" data-step="4" pathLength="1" d="M530 208 L588 146"/>
+      <path class="edge" data-step="5" pathLength="1" d="M724 140 H768"/>
+
+      <!-- retry loop — drawn last (data-step="end"), dashed, warn -->
+      <path class="edge loop" data-step="end" d="M392 36 C 340 8, 280 24, 250 96"/>
+      <text class="sm n" data-step="end" x="300" y="22" fill="#b45309">retry ≤ 3</text>
+    </svg>
+    <figcaption>Fig. 1 — solid arrows = happy path (left to right); dashed amber = retry loop
+    (VALIDATE → PARSE). Arrowheads are injected by the orchestrator at each edge's end.</figcaption>
+  </figure>
+
+  <div class="legend">
+    <span class="it"><span class="dot" style="background:#0e7490"></span>stages</span>
+    <span class="it"><span class="dot" style="background:#1a7f4b"></span>terminal</span>
+    <span class="it"><span class="dashline"></span>retry / feedback</span>
+  </div>
+
+  <footer>
+    <span>visualize · step-wave engine mock — request → research → build</span>
+    <span>house skin v3 · data-skin="blueprint"</span>
+  </footer>
+</div>
+
+<script>
+/* ── step-wave orchestrator ──────────────────────────────────────────
+   Reads data-step on .n groups and path.edge elements, assigns --d
+   (animation-delay) per wave: edges draw first, node pops while the
+   edge arrives. "end" waves (loops) play after the main flow.
+   Arrowheads are injected per edge from its end tangent. No deps. */
+(function () {
+  var svg = document.querySelector('[data-anim="flow"]');
+  if (!svg) return;
+  svg.classList.add('pre');   /* sync, before first paint — no-JS stays static */
+
+  var WAVE = 520, STAG = 70, EDGE = 550, NODE = 420, LEAD = 300, TAIL = 260;
+  var NS = 'http://www.w3.org/2000/svg';
+
+  /* inject an arrowhead at each edge's end (solid + loop): a positioning
+     <g class="ahg"> carries translate+rotate as an SVG attribute; the inner
+     path.ah fades+pops around its own center (--d inherits down to it) */
+  var edges = svg.querySelectorAll('path.edge');
+  edges.forEach(function (p) {
+    var L = p.getTotalLength();
+    if (L < 2) return;
+    var end = p.getPointAtLength(L);
+    var pre = p.getPointAtLength(Math.max(0, L - 1));
+    var ang = Math.atan2(end.y - pre.y, end.x - pre.x) * 180 / Math.PI;
+    var g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'ahg');
+    g.setAttribute('transform', 'translate(' + end.x.toFixed(1) + ' ' + end.y.toFixed(1) +
+                    ') rotate(' + ang.toFixed(1) + ')');
+    var ah = document.createElementNS(NS, 'path');
+    ah.setAttribute('d', 'M0 -4 L8 0 L0 4 z');
+    ah.setAttribute('class', 'ah');
+    ah.setAttribute('fill', getComputedStyle(p).stroke);
+    g.appendChild(ah);
+    p.parentNode.insertBefore(g, p.nextSibling);
+  });
+
+  /* group elements by step */
+  var byStep = new Map();
+  svg.querySelectorAll('[data-step]').forEach(function (el) {
+    var s = el.getAttribute('data-step');
+    if (!byStep.has(s)) byStep.set(s, []);
+    byStep.get(s).push(el);
+  });
+
+  var numeric = [];
+  byStep.forEach(function (_, s) { if (!isNaN(+s)) numeric.push(+s); });
+  numeric.sort(function (a, b) { return a - b; });
+  var lastWave = numeric.length ? numeric[numeric.length - 1] : 1;
+
+  byStep.forEach(function (els, s) {
+    var isEnd = s === 'end';
+    var base = isEnd
+      ? (lastWave - 1) * WAVE + LEAD + NODE + TAIL
+      : (+s - 1) * WAVE;
+    var first = !isEnd && +s === 1;   /* entry nodes: no incoming edge */
+    els.forEach(function (el, k) {
+      var d;
+      if (el.classList.contains('edge')) {
+        d = base + k * STAG;
+        var g = el.nextElementSibling;
+        if (g && g.classList.contains('ahg')) {
+          g.style.setProperty('--d', (d + EDGE - 140) + 'ms');
+        }
+      } else {
+        d = base + (first ? 0 : LEAD) + k * STAG;
+      }
+      el.style.setProperty('--d', d + 'ms');
+    });
+  });
+
+  /* play / replay */
+  var btn = document.querySelector('[data-replay]');
+  function play() {
+    svg.classList.remove('play');
+    void svg.getBoundingClientRect();          /* force reflow → restart */
+    requestAnimationFrame(function () { svg.classList.add('play'); });
+  }
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    svg.classList.remove('pre');               /* stay in the static frame */
+  } else {
+    play();
+  }
+  if (btn) btn.addEventListener('click', play);
+})();
+</script>
+</body>
+</html>

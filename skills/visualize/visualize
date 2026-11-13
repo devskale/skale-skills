@@ -129,11 +129,12 @@ Usage:
   visualize share <file.html>     # upload to the throwaway store, print the URL, slop-lint (findings → exit 1)
   visualize share --update <file> # share under a stable name (create-or-get) — same URL on repeat
   visualize share --dir <dir>     # upload a dir (recursively; nested files flattened)
-  visualize gate <file.html>      # ALL gates parallel: validate + slop + chartcheck + jscheck → exit 1 if any fails
+  visualize gate <file.html>      # ALL gates parallel: validate + slop + chartcheck + jscheck + boxcheck → exit 1 if any fails
   visualize validate <file.html>  # verify it's one file: local refs fail, popular CDNs ok
   visualize lint <file.html>      # style taste-gate: flag decorative AI-tells
   visualize chartcheck <file.html> # dataviz integrity gate: bar baseline, log scale, process notes, source
   visualize jscheck <file.html>   # JS gate: node --check on every inline <script> + TDZ heuristic
+  visualize boxcheck <file.html>  # svg text-in-box gate: labels must stay inside their shape/viewBox
   visualize --help                # this help
 
 The agent builds the HTML (see SKILL.md). This launcher only opens, shares, validates, lints, chartchecks.
@@ -382,6 +383,21 @@ case "$cmd" in
         exec python3 "$SKILL_DIR/scripts/chartcheck.py" "$f"
         ;;
 
+    boxcheck)
+        [ $# -eq 1 ] || { echo "visualize boxcheck: expected one file" >&2; exit 2; }
+        f="$1"; [ -f "$f" ] || { echo "visualize boxcheck: not a file: $f" >&2; exit 2; }
+        # SVG text-in-box gate. Der Anlass ist echt: ein animiertes
+        # auditflow-Figuren-Terminal ragte 5px über den viewBox — von Hand
+        # im Browser gefunden (2026-11-12). Diese Messung ist jetzt mechanisch:
+        # Text-Extent (CSS-Klasse → font-size/mono/letter-spacing) gegen die
+        # Shape-Union der Gruppe und den viewBox. Best-effort wie jscheck:
+        # ohne python3 kein Blocking, aber laut gesagt.
+        if ! command -v python3 >/dev/null 2>&1; then
+            echo "visualize boxcheck: python3 not found — install python3 for the svg box gate" >&2
+            exit 0
+        fi
+        exec python3 "$SKILL_DIR/scripts/boxcheck.py" "$f"
+        ;;
     jscheck)
         [ $# -eq 1 ] || { echo "visualize jscheck: expected one file" >&2; exit 2; }
         f="$1"; [ -f "$f" ] || { echo "visualize jscheck: not a file: $f" >&2; exit 2; }
@@ -525,14 +541,16 @@ PYEOF
         "$SELF" validate "$f" >"$tmpd/validate.out" 2>&1 & vpid=$!
         "$SELF" chartcheck "$f" >"$tmpd/chartcheck.out" 2>&1 & cpid=$!
         "$SELF" jscheck "$f" >"$tmpd/jscheck.out" 2>&1 & jpid=$!
+        "$SELF" boxcheck "$f" >"$tmpd/boxcheck.out" 2>&1 & bpid=$!
         python3 "$SKILL_DIR/scripts/lib/slop_client.py" lint "$f" --human \
             >"$tmpd/slop.out" 2>&1 & spid=$!
         wait $vpid; vrc=$?
         wait $cpid; crc=$?
         wait $jpid; jrc=$?
+        wait $bpid; brc=$?
         wait $spid; src=$?
         fails=0
-        for g in validate:$vrc slop:$src chartcheck:$crc jscheck:$jrc; do
+        for g in validate:$vrc slop:$src chartcheck:$crc jscheck:$jrc boxcheck:$brc; do
             gname="${g%%:*}"; grc="${g##*:}"
             if [ "$grc" -eq 0 ]; then
                 echo "gate $gname: OK" >&2

@@ -122,17 +122,18 @@ rm -rf "$(dirname "$PILLFILE")"
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
 # templates must pass their own gates (house style + self-contained + JS parses)
-for t in cards repo-tree system-map report mermaid pele tailwind-report timeline before-after cheatsheet barchart; do
+for t in cards repo-tree system-map report mermaid pele tailwind-report timeline before-after cheatsheet barchart workflow-animated; do
     check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
     check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
     check "jscheck template $t.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/templates/$t.html"
 done
 
 # examples must pass the same gates (filled pages, real content)
-for e in pele-gallery; do
+for e in pele-gallery workflow-animated auditflow-animated; do
     check "lint example $e.html → exit 0" 0 "$SCRIPT" lint "$SKILL/examples/$e.html"
     check "validate example $e.html → exit 0" 0 "$SCRIPT" validate "$SKILL/examples/$e.html"
     check "jscheck example $e.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/examples/$e.html"
+    check "boxcheck example $e.html → exit 0" 0 "$SCRIPT" boxcheck "$SKILL/examples/$e.html"
 done
 
 # pyproject is required for Python skills (CODING_RULES) and its version must match SKILL.md
@@ -436,8 +437,82 @@ for tpl in "$SKILL"/templates/*.html; do
     if [ $? -eq 0 ]; then ok; else bad "chartcheck false positive on $(basename "$tpl"): $out"; fi
 done
 
+# ── boxcheck: svg text-in-box gate (visual linting) ─────────────────────
+# Anlass: ein animiertes auditflow-Terminal ragte 5px über den viewBox — von
+# Hand im Browser gefunden (2026-11-12). Jetzt mechanisch: Text-Extent gegen
+# Shape-Union und viewBox. Eine Verhaltensänderung braucht echte Aufrufe:
+# eine saubere Seite (exit 0), eine pro Check (exit 1 + Check-Name), und die
+# Ehrlichkeits-Skips (foreignObject) dürfen nie blocken.
+BOX="$TMP/boxcheck"; mkdir -p "$BOX"
+cat > "$BOX/good.html" <<'EOF'
+<!doctype html><html><head><style>
+.lab{ font-family:ui-monospace,Menlo,monospace; font-size:12px; letter-spacing:.06em }
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 120">
+  <g><rect x="10" y="10" width="180" height="60"/>
+    <text class="lab" x="22" y="32">NODE</text>
+    <text class="sm" x="22" y="52">fits fine here</text></g>
+  <text class="sm" x="220" y="60">free label inside canvas</text>
+</svg></body></html>
+EOF
+check "boxcheck: fitting text → exit 0" 0 "$SCRIPT" boxcheck "$BOX/good.html"
+
+cat > "$BOX/over.html" <<'EOF'
+<!doctype html><html><head><style>
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 120">
+  <g><rect x="10" y="10" width="120" height="60"/>
+    <text class="sm" x="22" y="40">this label is far too long for the box</text></g>
+</svg></body></html>
+EOF
+out="$("$SCRIPT" boxcheck "$BOX/over.html" 2>&1)"
+if [ $? -eq 1 ] && printf '%s' "$out" | grep -q "text-out-of-box"; then ok; else bad "boxcheck overflow not reported: $out"; fi
+
+cat > "$BOX/canvas.html" <<'EOF'
+<!doctype html><html><head><style>
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 120">
+  <text class="sm" x="360" y="60">runs past the right canvas edge</text>
+</svg></body></html>
+EOF
+out="$("$SCRIPT" boxcheck "$BOX/canvas.html" 2>&1)"
+if [ $? -eq 1 ] && printf '%s' "$out" | grep -q "text-out-of-viewbox"; then ok; else bad "boxcheck viewBox overflow not reported: $out"; fi
+
+# foreignObject = rich-label contract (pele/mermaid) — skipped, never blocked
+cat > "$BOX/foreign.html" <<'EOF'
+<!doctype html><html><body>
+<svg viewBox="0 0 400 120"><foreignObject width="200" height="60"><div>rich</div></foreignObject></svg>
+</body></html>
+EOF
+check "boxcheck: foreignObject svg is skipped, not failed" 0 "$SCRIPT" boxcheck "$BOX/foreign.html"
+
+# a cylinder (path body + ellipse cap) must count the path as its box —
+# the false-positive class that shipped before path support
+cat > "$BOX/cyl.html" <<'EOF'
+<!doctype html><html><head><style>
+.lab{ font-family:ui-monospace,Menlo,monospace; font-size:12px }
+.sm{ font-family:ui-monospace,Menlo,monospace; font-size:10.5px }
+</style></head><body>
+<svg viewBox="0 0 400 140">
+  <g><path d="M100 30 a40 10 0 0 1 80 0 v36 a40 10 0 0 1 -80 0 z"/>
+    <ellipse cx="140" cy="30" rx="40" ry="10"/>
+    <text class="lab" x="140" y="56" text-anchor="middle">audit.json</text>
+    <text class="sm" x="140" y="70" text-anchor="middle">atomic write</text></g>
+</svg></body></html>
+EOF
+check "boxcheck: cylinder body (path) is the box, texts inside → exit 0" 0 "$SCRIPT" boxcheck "$BOX/cyl.html"
+
+# own templates + examples must stay clean — the gate is a gate, not noise
+for f in "$SKILL"/templates/*.html "$SKILL"/examples/*.html; do
+    out="$("$SCRIPT" boxcheck "$f" 2>&1)"
+    if [ $? -eq 0 ]; then ok; else bad "boxcheck false positive on $(basename "$f"): $out"; fi
+done
+
 # help + guard rails: every command in usage() must be reachable and listed
-for c in open share gate validate lint chartcheck jscheck; do
+for c in open share gate validate lint chartcheck jscheck boxcheck; do
     "$SCRIPT" --help 2>&1 | grep -q "visualize $c " && ok || bad "$c missing from --help"
 done
 check "chartcheck rejects a missing file" 2 "$SCRIPT" chartcheck "$TMP/nope.html"

@@ -1,7 +1,7 @@
 ---
 disable-model-invocation: true
 name: visualize
-version: "1.13.4"
+version: "1.14.0"
 description: "Explain or present with the smallest view that makes the point — inline code forms or one self-contained HTML page with a shareable URL. Use when the user wants to visualize, compare, explain, or turn data/code into a page, diagram, or report."
 ---
 
@@ -24,8 +24,11 @@ matched-shape diff often answers better and smaller ([code-forms.md](references/
    `<body data-skin="paper|swiss|terminal|blueprint">` (paper = Editorial-Default,
    swiss = Stats/Vergleiche, terminal = Infra/CLI, blueprint = Architektur) and build
    inside it (tokens, type scale, card/legend/table patterns are already right — never
-   blank CSS). Then set the output target, compose, and run `visualize gate <file>` —
-   one command, all gates parallel (validate + slop + chartcheck + jscheck; exit 1 if any fails).
+   blank CSS). Animated workflow diagrams are opt-in from
+   `templates/workflow-animated.html` ([animation.md](references/animation.md) —
+   step-wave model; ends in the full static frame). Then set the output target, compose,
+   and run `visualize gate <file>` — one command, all gates parallel (validate + slop +
+   chartcheck + jscheck + boxcheck; exit 1 if any fails).
    ([output.md](references/output.md) · [modules.md](references/modules.md) ·
    [html-patterns.md](references/html-patterns.md))
 3. **Deliver** — open it and give the URL. ([output.md](references/output.md) → Sharing)
@@ -72,5 +75,5 @@ For a global `visualize` command, run this skill's `./install.sh` (Linux/macOS) 
 - **Examples:** [examples/pele-gallery.html](examples/pele-gallery.html) — six Mermaid types rendered by pele, house-themed (filled, real content)
 - **Design:** [structures.md](references/structures.md) (intents → stacks) · [patterns.md](references/patterns.md) (semantic patterns) · [modules.md](references/modules.md) (page modules) · [report.md](references/report.md) (report mode)
 - **Architektur:** [architecture-log.md](dev/architecture-log.md) — Review-Kandidaten, Entscheidungen, Verworfenes (dauerhafte Spur; Maintainer-Log in `dev/`)
-- **Polish:** [promptlib.md](references/promptlib.md) (design moves) · [inspirations.md](references/inspirations.md) (visual references)
+- **Polish:** [promptlib.md](references/promptlib.md) (design moves) · [inspirations.md](references/inspirations.md) (visual references) · [animation.md](references/animation.md) (step-wave workflows, opt-in)
 - **Output:** [output.md](references/output.md) (targets, share/update) · [scaffolds.md](references/scaffolds.md) (template anatomy) · [html-patterns.md](references/html-patterns.md) (scaffold) · [chart-integrity.md](references/chart-integrity.md) (charts)

@@ -21,6 +21,7 @@ in [../references/scaffolds.md](../references/scaffolds.md).
 | [`before-after.html`](before-after.html) | Inline CSS, editorial | Migration, refactor, "what would change" | Two-column −/+ delta + paired trace with first-divergence marker |
 | [`cheatsheet.html`](cheatsheet.html) | Inline CSS, monospace commands | Dense CLI / tool reference | Command chips + one-line descriptions, topic groups with hue dots |
 | [`barchart.html`](barchart.html) | Inline CSS, **zero JS** | Data comparison | Pure CSS bars — width ∝ value, one accent bar, values as text |
+| [`workflow-animated.html`](workflow-animated.html) | Inline CSS + vanilla JS | **Animated workflows** (opt-in) | Step-wave reveal: boxes pop, edges draw left→right, loops wipe last; ends in the full static frame (print/reduced-motion/no-JS) · authoring: [../references/animation.md](../references/animation.md) |
 
 ## Two style families
 
