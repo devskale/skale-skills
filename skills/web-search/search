@@ -61,8 +61,8 @@ case "${1:-}" in
             echo "✗ git pull failed — staying on current code, stamp NOT updated" >&2
             exit 1
         fi
-        if ! (cd "$SKILL_DIR" && uv sync 2>&1); then
-            echo "✗ uv sync failed — code updated but deps may be stale" >&2
+        if ! (cd "$SKILL_DIR" && uv lock --upgrade-package credgoo && uv sync 2>&1); then
+            echo "✗ uv lock/sync failed — code updated but deps may be stale" >&2
             exit 1
         fi
         date +%s > "$STAMP_FILE"
@@ -128,7 +128,12 @@ if [ -d "$GIT_ROOT/.git" ]; then
                 echo "web-search: auto-update git pull failed — staying on current code, will retry next run" >&2
                 ok=false
             fi
-            if $ok && ! (cd "$SKILL_DIR" && uv sync --quiet); then
+            # Pin-Anhebung (retro 2026-11-16): bare `uv sync` bleibt auf dem
+            # uv.lock-Pin — credgoo rotiert schnell (Backend-Neuzugänge wie
+            # cfworker), ein veralteter Pin macht jedes credgoo-Backend unklar,
+            # das neuer ist als der Lock. Gezielt nur credgoo anheben, der Rest
+            # bleibt gepinnt (keine Drift bei Fremd-Deps).
+            if $ok && ! (cd "$SKILL_DIR" && uv lock --upgrade-package credgoo -q && uv sync --quiet); then
                 echo "web-search: auto-update uv sync failed — staying on current code, will retry next run" >&2
                 ok=false
             fi
