@@ -86,3 +86,4 @@ tests/gdocs/output/
 
 # repo clones for study (agent convention, never ship)
 .clones/
+skilltestbed/
