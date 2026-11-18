@@ -11,3 +11,5 @@ test_output/
 test_transcripts/
 transcripts/
 .last-update
+# yt-dlp session export — never commit
+*cookies*.txt
