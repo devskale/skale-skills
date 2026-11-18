@@ -127,9 +127,9 @@ rodney stop
 
 ## Console
 
-### `rodney console [--level L] [--json] [--browser] [--follow] [--clear]`
+### `rodney console [--level L] [--json] [--browser] [--follow] [--clear] [--timeout S]`
 
-Read console output. Without a background collector: live stream (Ctrl+C). With collector (console-start): print buffered messages.
+Read console output. Without a background collector: live stream (Ctrl+C or --timeout). With collector (console-start): print buffered messages.
 
 Flags:
 
@@ -138,6 +138,7 @@ Flags:
 - `--browser    also browser-level log entries (network errors, security)`
 - `--follow     print buffered, then tail live`
 - `--clear      print and empty the buffer`
+- `--timeout S  stop live/tail mode after S seconds (required when stdin is not a TTY)`
 
 ```bash
 rodney console --level error
@@ -493,23 +494,29 @@ rodney reload --hard
 
 ## Network interception
 
-### `rodney block <pattern> [--method M]`
+### `rodney block <pattern> [--method M] [--timeout S]`
 
 Fail matching requests client-side (offline behaviour). Persistent foreground process.
+
+Flags:
+
+- `--method M    restrict to HTTP method`
+- `--timeout S   auto-stop after S seconds (required when stdin is not a TTY)`
 
 ```bash
 rodney block '*.ads.*'
 ```
 
-### `rodney mock <pattern> <response> [--status N] [--type MIME] [--method M]`
+### `rodney mock <pattern> <response> [--status N] [--type MIME] [--method M] [--timeout S]`
 
-Serve a canned response for matching requests. Runs as a persistent foreground process — Ctrl+C to stop.
+Serve a canned response for matching requests. Runs as a persistent foreground process — Ctrl+C or --timeout to stop.
 
 Flags:
 
 - `--status N    HTTP status (default 200)`
 - `--type MIME   content type (default text/plain)`
 - `--method M    restrict to HTTP method`
+- `--timeout S   auto-stop after S seconds (required when stdin is not a TTY)`
 - `response '-' reads body from stdin`
 
 ```bash
@@ -518,15 +525,16 @@ rodney mock '*api/users*' '{"id":1}' --type application/json
 
 ## Network requests
 
-### `rodney requests [--json] [--follow] [--clear]`
+### `rodney requests [--json] [--follow] [--clear] [--timeout S]`
 
-Read captured network requests. Without a background collector: live stream (Ctrl+C). With collector (requests-start): print buffered requests.
+Read captured network requests. Without a background collector: live stream (Ctrl+C or --timeout). With collector (requests-start): print buffered requests.
 
 Flags:
 
 - `--json    JSON lines output`
 - `--follow  print buffered, then tail live`
 - `--clear   print and empty the buffer`
+- `--timeout S   stop live/tail mode after S seconds (required when stdin is not a TTY)`
 
 ```bash
 rodney requests

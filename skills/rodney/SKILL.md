@@ -43,7 +43,7 @@ rodney stop                               # 5. ALWAYS stop when done
 ## Use the Latest Rodney
 
 Rodney ships as release binaries built locally (not on PyPI). **Minimum version: see
-[`MIN_VERSION`](MIN_VERSION)** (currently `0.12.1` — the about:blank panic fix). Older
+[`MIN_VERSION`](MIN_VERSION)** (currently `0.13.0` — module renamed to github.com/devskale/rodney). Older
 binaries panic on `rodney open about:blank` with a bare Go panic (exit 1). The gate is
 enforced by scripts, not prose: `install.sh`/`install.bat` read `MIN_VERSION` and fail
 the install if the downloaded asset is older, and `tests/rodney/test.sh` fails the suite.
