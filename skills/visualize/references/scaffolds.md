@@ -122,6 +122,20 @@ no build. CDN track: needs network at view time.
 - Fill: values as text always (colour alone is not data); one accent max. Integrity
   rules: [chart-integrity.md](chart-integrity.md).
 
+## blockdiagram.html — architecture blocks & connections
+
+- Hand-crafted inline-SVG block diagram (blueprint flavor): labeled boxes, arrows,
+  groups — editorial control over layout where Mermaid would auto-tangle.
+- Fill: one box per module/system, arrows carry the connection's meaning (label on
+  the edge), nesting shows containment. Best ≤ 12 boxes; beyond that → `d2`.
+
+## module-diff.html — before/after for architecture reviews
+
+- Two-column −/+ delta per module (KANDIDAT cards), vocabulary from codebase-design
+  (module · interface · depth · seam), DELETION TEST as the closing line.
+- Fill: one card per deepening candidate, before = today's shape, after = the
+  deepened shape. Companion to [../dev/architecture-log.md](../dev/architecture-log.md).
+
 ---
 
 **The rule that governs all scaffolds:** if a block needs a paragraph of explanation to be

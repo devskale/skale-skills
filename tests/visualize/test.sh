@@ -122,10 +122,14 @@ rm -rf "$(dirname "$PILLFILE")"
 [ -f "$SKILL/templates/README.md" ] && ok || bad "templates/README.md missing"
 
 # templates must pass their own gates (house style + self-contained + JS parses)
-for t in cards repo-tree system-map report mermaid pele tailwind-report timeline before-after cheatsheet barchart workflow-animated; do
-    check "lint template $t.html → exit 0" 0 "$SCRIPT" lint "$SKILL/templates/$t.html"
-    check "validate template $t.html → exit 0" 0 "$SCRIPT" validate "$SKILL/templates/$t.html"
-    check "jscheck template $t.html → exit 0" 0 "$SCRIPT" jscheck "$SKILL/templates/$t.html"
+# GLOB, not a list: a template added later must join the sweep automatically —
+# blockdiagram/module-diff/skin/markmap were silently uncovered while listed
+# templates were checked (deep review 2026-11-18).
+for tpl in "$SKILL"/templates/*.html; do
+    t="$(basename "$tpl")"
+    check "lint template $t → exit 0" 0 "$SCRIPT" lint "$tpl"
+    check "validate template $t → exit 0" 0 "$SCRIPT" validate "$tpl"
+    check "jscheck template $t → exit 0" 0 "$SCRIPT" jscheck "$tpl"
 done
 
 # examples must pass the same gates (filled pages, real content)
@@ -600,6 +604,23 @@ for c in open share gate validate lint chartcheck jscheck boxcheck; do
     "$SCRIPT" --help 2>&1 | grep -q "visualize $c " && ok || bad "$c missing from --help"
 done
 check "chartcheck rejects a missing file" 2 "$SCRIPT" chartcheck "$TMP/nope.html"
+
+# ── validate: unfilled placeholders fail (deep review 2026-11-18) ──────────
+# Der peinlichste Failure-Mode: eine geteilte Seite mit {{title}}. Kein Gate
+# fing es (chartcheck stript {{...}} bewusst — für Templates korrekt, heißt
+# aber: der ausgelieferte Fall war ungeprüft). validate flaggt {{...}} jetzt;
+# templates/ sind die Quelle der Placeholder und exempt (realpath-Check).
+PH="$TMP/ph.html"
+printf '<!doctype html><html><body><h1>{{title}}</h1><p>Source: {{source}}</p></body></html>' > "$PH"
+phout="$("$SCRIPT" validate "$PH" 2>&1)"; phrc=$?
+if [ $phrc -eq 1 ] && printf '%s' "$phout" | grep -q "unfilled template placeholder"; then ok; else bad "validate: unfilled {{...}} not flagged (rc=$phrc: $phout)"; fi
+# template exemption: the sweep above validates every templates/*.html — if a
+# template failed on its own placeholders, the sweep would already have caught it
+# (this is the exemption's regression net, not a separate copy of the sweep)
+check "validate: template placeholders are exempt (cards.html)" 0 "$SCRIPT" validate "$SKILL/templates/cards.html"
+# a filled page stays green
+printf '<!doctype html><html><body><h1>Real title</h1><p>Source: ledger 2026</p></body></html>' > "$PH"
+check "validate: filled page with no placeholders → exit 0" 0 "$SCRIPT" validate "$PH"
 
 # ── jscheck: every inline <script> must parse (regression 2026-10-15) ──────────
 # The old gate had TWO definitions of "script block" — <script[[:space:]]*> for

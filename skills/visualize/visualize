@@ -485,12 +485,27 @@ for m in re.finditer(r'\bimport\s+[^"\';]*?\bfrom\s*["\']([^"\']+)["\']', SCRIPT
 for m in re.finditer(r'\bimport\s*\(\s*["\']([^"\']+)["\']', SCRIPTS):
     check('js import', m.group(1))
 
+for m in re.finditer(r'\bimport\s*\([\s*"\']([^"\']+)["\']', SCRIPTS):
+    check('js import', m.group(1))
+
+# 4. Unfilled placeholders — a shipped page with {{title}} or {{source}} is the
+#    most embarrassing failure mode of this skill, and nothing else catches it
+#    (chartcheck strips {{...}} so templates lint clean — correct there, but
+#    that means the shipped case is unchecked). Templates under templates/ are
+#    the one place {{...}} is legitimate: they are the source of placeholders.
+in_templates = '/templates/' in path.replace('\\', '/')
+if not in_templates:
+    ph = re.findall(r'\{\{[^}]{1,80}\}\}', src)
+    if ph:
+        bad.append('unfilled template placeholder(s): ' + ', '.join(dict.fromkeys(ph[:5])))
+
 if bad:
     print('visualize validate: NOT a single file — dependency references found:')
     for line in dict.fromkeys(bad):
         print('  - ' + line)
     print('Popular CDNs are fine (' + ', '.join(KNOWN_CDNS[:5]) + ', ...).')
     print('Everything else: inline it or use a popular CDN; local sibling files always fail.')
+    print('Placeholders: fill every {{...}} with real content before sharing (templates/ are exempt).')
     sys.exit(1)
 else:
     print(f'visualize validate: OK — one file ({len(src)} bytes; content inline, CDN deps allowed)')

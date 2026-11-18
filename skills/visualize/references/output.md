@@ -67,7 +67,8 @@ visualize open out.html            # then export/screenshot a full-page PNG
 
 # 2. Use rodney (headless Chrome in this repo) for a deterministic full-page PNG
 rodney start
-rodney open "file://$PWD/out.html" --screenshot out.png --full-page
+rodney open "file://$PWD/out.html"
+rodney screenshot --full out.png
 rodney stop
 ```
 

@@ -1,5 +1,22 @@
 ## Unreleased
 
+### visualize deep review: Placeholder-Gate + Waisen-Templates (2026-11-18)
+- **validate fängt unfilled `{{...}}`** — der peinlichste Failure-Mode (geteilte
+  Seite mit `{{title}}`) war von keinem Gate gedeckt; chartcheck stript Place-
+  holder bewusst (korrekt für Templates), hieß aber: der ausgelieferte Fall war
+  ungeprüft. Jetzt: validate flaggt `{{...}}`, `templates/` exempt (realpath).
+- **Bugfix output.md**: `rodney open --screenshot out.png --full-page` existiert
+  nicht — korrekt ist `rodney screenshot --full out.png` nach dem open
+  (live verifiziert).
+- **Waisen-Templates dokumentiert**: blockdiagram.html + module-diff.html
+  passierten alle Gates, standen aber in keiner Doku — jetzt in templates/README.md
+  + scaffolds.md.
+- **Test-Sweep auf Glob**: der Template-Sweep listete 11 von 16 Templates explizit
+  (blockdiagram/module-diff/skin/markmap fielen still raus) — jetzt
+  `templates/*.html`-Glob; kein Template kann je wieder unbemerkt fehlen.
+  276 → 291 Checks.
+- install.sh-Usage auf den aktuellen Befehlssatz gebracht (gate statt 3 alte Befehle).
+
 ### visualize step-wave: PA-Semantik (Nutzer-Review 2026-11-12)
 - **„nothink" ist nicht relevant** — Jargon aus Labels und Legende entfernt
   („LLM urteilt“ / „deterministisch“ statt denkt/nothink).
