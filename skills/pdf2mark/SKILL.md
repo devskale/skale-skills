@@ -1,7 +1,9 @@
 ---
 name: pdf2mark
 description: Bash skill — run `pdf2mark <file.pdf>` in your shell (not an MCP tool). Convert PDFs to clean Markdown — local extraction, cloud-OCR fallback for scans. Use when the user wants a PDF as Markdown.
+license: MIT
 disable-model-invocation: true
+compatibility: "Python 3.9+ (pdfplumber, local); llamaparse fallback needs network + token"
 metadata:
   version: "1.7.0"
 ---

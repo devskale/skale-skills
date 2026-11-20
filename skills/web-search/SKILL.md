@@ -1,6 +1,8 @@
 ---
 name: web-search
 description: "Bash skill — run `web-search \"query\"` in your shell (not an MCP tool). Search the web; returns text, image, news, or video results. Use when the user wants to search or look something up."
+license: MIT
+compatibility: "Network (SearXNG/Duck API) + credgoo token"
 metadata:
   version: "2.5.1"
 ---

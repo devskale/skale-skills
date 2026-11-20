@@ -110,8 +110,8 @@ assert "has rodney stop"           "grep -q 'rodney stop' SKILL.md"
 assert "has rodney start"          "grep -q 'rodney start' SKILL.md"
 assert "mentions build install"     "grep -q 'go build' SKILL.md"
 assert "has Cookie section"        "grep -q 'rodney cookie-set' SKILL.md"
-assert "has Emulation section"     "grep -q 'rodney timezone' SKILL.md"
-assert "has Video section"         "grep -q 'rodney start-video' SKILL.md"
+assert "has Emulation section"     "grep -q '\*\*Emulation\*\*' SKILL.md"
+assert "has Video section"         "grep -q 'start-video' SKILL.md"
 echo ""
 
 # ── 7. .gitignore ────────────────────────────────────────────────────

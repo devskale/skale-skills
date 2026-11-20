@@ -84,7 +84,9 @@ Optional: **Repo**, **Config**, **Notes**.
 ## Index & Activation
 
 `SKILL-INDEX.md` is auto-generated (`uv run index-skills.py` — always run it after
-adding/removing/renaming a resource). Status badges:
+adding/removing/renaming a resource). **Machine-local and gitignored** — it reflects
+the `~/.pi` state of whichever machine generates it, so committing it would ship a
+perpetually stale snapshot. Status badges:
 
 - 🟢 **global** — symlinked to `~/.pi/agent/` (active everywhere)
 - 🔵 **package** — provided by a global npm package (active everywhere)

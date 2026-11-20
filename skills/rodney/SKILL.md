@@ -2,6 +2,8 @@
 disable-model-invocation: true
 name: rodney
 description: Drive a persistent headless Chrome from the CLI — one process keeps cookies and state across calls. Use when the user wants to scrape JS-rendered pages, screenshot, fill forms, export PDFs, or run browser tests in CI.
+license: MIT
+compatibility: "Requires Chrome/Chromium (system browser preferred since v0.12.0) and the rodney binary (installer downloads it)"
 metadata:
   version: "1.1.0"
 ---
@@ -94,26 +96,14 @@ that version or newer, and the installers refuse to leave an older binary in pla
 
 ## Project Setup
 
-To add rodney to a project, add this to the project's AGENTS.md:
+To add rodney to a project, put this in the project's AGENTS.md (adjust paths):
 
 ```markdown
 ## Browser Automation
 
 Use rodney for headless Chrome automation (scraping, screenshots, forms, PDFs, a11y, smoke tests).
-
-### Setup
-1. Install: `go build -o ~/.local/bin/rodney .` (from a clone of devskale/rodney)
-2. Verify: `rodney start && rodney stop`
-3. Link skill: `ln -s /path/to/skale-skills/skills/rodney .pi/skills/rodney`
-
-### Usage
-```bash
-rodney start
-rodney open https://example.com
-rodney waitstable
-rodney screenshot page.png
-rodney stop
-```
+Install via `bash skills/rodney/install.sh` (release binary, no Go toolchain).
+Always: `rodney start` → work → `rodney stop`. Self-discover commands with `rodney --help`.
 ```
 
 ## Quick Start
@@ -143,154 +133,42 @@ matrix, see **[docs/browser-use/which-browser-tool.md](../../docs/browser-use/wh
 
 ## Commands
 
-### Navigation & Waiting
+**The binary is the source of truth**: `rodney --help` (grouped overview), `rodney help <command>`
+(canonical usage + flags), `rodney help --json` (full machine-readable registry — 83 commands).
+Full curated reference with the *why/when*: [references/commands.md](references/commands.md).
+
+The daily core:
 
 ```bash
-rodney open <url>           # Navigate (auto-adds http://; about:/data:/blob:/javascript: never prefixed — v0.12.1)
-rodney open <url> --reuse   # Switch to an existing page at that URL instead
-                            #   of navigating the active page away (parallel
-                            #   sessions converge on ONE page)
-rodney back                 # Go back
-rodney forward              # Go forward
-rodney reload [--hard]      # Reload (bypass cache with --hard)
-rodney wait <selector>      # Wait for element to appear
-rodney waitload             # Wait for page load event
-rodney waitstable           # Wait until DOM stops changing
-rodney waitidle             # Wait for network idle
-rodney sleep <seconds>      # Fixed delay
+# navigate & wait
+rodney open <url> [--reuse]     # --reuse: switch to an existing page at that URL
+rodney waitstable               # preferred over waitload for SPAs
+# extract
+rodney text <selector>          # one line per match
+rodney js '<expr>'              # single quoted arg; results are stringified
+# interact
+rodney click <selector> · input <sel> <text> · type <text> · press <key>
+rodney select <sel> <value> · file <sel> <path> · hover <sel>
+# capture
+rodney screenshot [--full] [f] · screenshot-el <sel> [f] · pdf [f]
+# tabs
+rodney pages [--json] · page <index|t:id> · newpage [url] · closepage
+# cookies
+rodney cookie-set <n> <v> · cookie-get [n] [--json] · cookie-clear [--domain d]
+# assertions (exit 1 on failure)
+rodney exists <sel> · visible <sel> · count <sel> · assert <expr> [expected]
 ```
 
-### Content Extraction
+Beyond the core — the highlights (full details via `rodney help <cmd>`):
 
-```bash
-rodney title                        # Page title
-rodney url                          # Current URL
-rodney text <selector>              # Text content (one per match)
-rodney html [selector]              # HTML (full page or element)
-rodney attr <selector> <name>       # Attribute value
-rodney js <expression>              # Evaluate JS, return result
-```
-
-### Screenshots & PDFs
-
-```bash
-rodney screenshot [-w N -h N] [file]         # Viewport screenshot
-rodney screenshot-el <selector> [file]        # Element screenshot
-rodney pdf [file]                             # Export as PDF
-```
-
-### Interaction
-
-```bash
-rodney click <selector>            # Click element
-rodney input <selector> <text>     # Type into input (sets .value directly)
-rodney type <text>                 # Real keyboard typing into focused element
-                                   #   (fires key events — SPA validation reacts)
-rodney press <key> [key ...]       # Real key events: enter, tab, ctrl+a, shift+tab
-rodney scroll <x> <y> [--steps N]  # Scroll page by pixels (negative y = up)
-rodney scroll-el <selector>        # Scroll element into view
-rodney clear <selector>            # Clear input
-rodney select <selector> <value>   # Select dropdown option
-rodney submit <selector>           # Submit form
-rodney hover <selector>            # Hover
-rodney file <selector> <path>      # Set file on file input
-rodney download <selector> [file]  # Download href/src target
-```
-
-### Cookies
-
-```bash
-rodney cookie-set <name> <value> [opts]   # Set a cookie (defaults to current page)
-rodney cookie-get [name] [--json]         # Get cookie value by name, or all as JSON
-rodney cookie-delete <name> [opts]        # Delete cookies by name
-rodney cookie-clear [--domain <dom>]      # Clear all cookies (or one domain)
-```
-
-`cookie-set` options: `--domain <dom>`, `--url <url>`, `--path <path>`, `--secure`, `--httponly`, `--samesite <Strict|Lax|None>`, `--expires <unix>`.
-`cookie-delete` options: `--domain <dom>`, `--url <url>`, `--path <path>`.
-
-### Emulation
-
-```bash
-rodney ua <user-agent>              # Override browser user agent string
-rodney timezone <timezone-id>       # Override timezone (e.g. "Asia/Tokyo")
-rodney locale <locale>              # Override locale (e.g. "de-DE")
-rodney geo --lat N --lon N          # Spoof geolocation coordinates
-rodney media [--type T] [--feature name=value ...]  # Emulate media type/features
-```
-
-`media` examples: `rodney media --type print` (print media), `rodney media --feature prefers-color-scheme=dark`.
-
-### Network Interception
-
-```bash
-rodney mock <pattern> <response> [--status N] [--type MIME] [--method M]  # Serve canned response for matching requests
-rodney block <pattern> [--method M]                                        # Fail matching requests client-side
-```
-
-Both run as **persistent foreground commands** (until Ctrl+C) — other rodney commands in
-separate shells drive the browser while the interception is active. `mock` serves a body
-(or `-file=<path>`), `block` fails with `BlockedByClient`. See
-[references/commands.md](references/commands.md) → *Network Interception* for the full
-flag tables and examples.
-
-### Video Recording
-
-```bash
-rodney start-video              # Start recording video of the active page
-rodney stop-video [file]        # Stop and save (.gif default, .mp4 needs ffmpeg)
-```
-
-### Tabs
-
-```bash
-rodney pages                # List tabs (* marks active, t:<id> = stable target ID)
-rodney pages --json         # Machine-readable: index, targetId, title, url, active
-rodney page <index|t:id>    # Switch tab — t:<id> is drift-proof when parallel
-                            #   sessions shift the indices
-rodney newpage [url]        # Open new tab
-rodney closepage [index|t:id]  # Close tab
-rodney console              # Live console log stream (Ctrl+C stops)
-rodney console-start        # Background collector → console.jsonl
-rodney console [--clear]    # Read + empty the collector buffer
-rodney console-stop         # Stop collector
-rodney requests [--json]    # Network requests (live or collector-buffered)
-rodney requests-start/stop  # Background request collector → requests.jsonl
-rodney dialog [--dismiss]   # Arm JS-dialog handler BEFORE triggering
-                            #   (accept default; --dismiss cancels; --text answers)
-rodney screenshot --full    # Explicit full-page capture
-```
-
-### Assertions (exit 1 on failure)
-
-```bash
-rodney exists <selector>                        # Element exists?
-rodney visible <selector>                       # Element visible?
-rodney count <selector>                         # Count matches
-rodney assert <expr> [expected] [-m msg]        # JS truthy or equality check
-```
-
-### Accessibility
-
-```bash
-rodney ax-tree [--depth N] [--json]             # Dump accessibility tree
-rodney ax-find [--name N] [--role R] [--json]   # Find accessible nodes
-rodney ax-node <selector> [--json]              # Element accessibility info
-```
-
-### Network interception (mock / block)
-
-Intercept the browser's network to **mock** API responses or **block** requests — for
-error-state testing, offline simulation, and deterministic scraping. These run as
-**persistent foreground processes** (own shell, stop with Ctrl+C).
-
-```bash
-rodney mock "*api.example.com/users*" '{"id":1}' --type application/json   # canned response
-rodney block "*.jpg" "*.gif"                                                # fail requests
-```
-
-**Full guide with patterns, flags, and use cases:**
-**[references/network-interception.md](references/network-interception.md)**.
+- **Emulation**: `ua`, `timezone`, `locale`, `geo --lat --lon`, `media --type print`
+- **Network interception**: `mock <pattern> <response>` / `block <pattern>` — persistent foreground
+  commands (own shell, Ctrl+C); full guide: [references/network-interception.md](references/network-interception.md)
+- **Console & network**: `console` / `console-start|stop` (collector), `requests` / `requests-start|stop`
+- **Video**: `start-video` / `stop-video [file]` (.gif default, .mp4 needs ffmpeg)
+- **Dialogs**: `dialog [--dismiss]` — arm BEFORE triggering
+- **Accessibility**: `ax-tree`, `ax-find --name N --role R`, `ax-node <sel>`
+- **Downloads**: `download <selector> [file]`
 
 ## Sessions
 

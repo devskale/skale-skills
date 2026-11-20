@@ -17,7 +17,7 @@ not merge) live in [LAYOUT.md](../LAYOUT.md); this page is the how-to.
    (Skill | Was | Replaced by).
 4. **Fix the `~/.local/bin/<cmd>` symlink** — it points into the old path and silently
    breaks otherwise.
-5. **Regenerate** `SKILL-INDEX.md` (`uv run index-skills.py`).
+5. **Regenerate** `SKILL-INDEX.md` locally (`uv run index-skills.py`) — machine-local, gitignored.
 6. **Update references** in AGENTS.md and other docs; point the migration guide at the new
    path. `tests/docs/test.sh` fails on docs orphans, so a moved doc must be re-linked.
 7. Keep the archived `SKILL.md`'s deprecation banner and migration table; the launcher

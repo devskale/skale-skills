@@ -2,6 +2,8 @@
 disable-model-invocation: true
 name: improve-ux
 description: Improve UI/UX grounded in curated reference sites, with a ratings loop and findings ledger. Use when polishing a component, page, or design system (hierarchy, spacing, motion, accessibility, copy).
+license: MIT
+compatibility: "Network for reference-site study; browser for screenshots"
 metadata:
   version: "0.4.0"
 ---

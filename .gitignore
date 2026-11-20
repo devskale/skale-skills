@@ -87,3 +87,5 @@ tests/gdocs/output/
 # repo clones for study (agent convention, never ship)
 .clones/
 skilltestbed/
+# machine-local skill index (reflects ~/.pi of the generating machine — regenerate locally)
+SKILL-INDEX.md

@@ -1,6 +1,8 @@
 ---
 name: youtube
 description: Search YouTube for long, recent, well-watched content and curate ranked lists you can refine and transcribe. Use when the user wants to find videos or build a watch list.
+license: MIT
+compatibility: "Network (Invidious API, auto-fallback)"
 metadata:
   version: "2.3.0"
 ---

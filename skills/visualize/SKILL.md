@@ -2,6 +2,8 @@
 disable-model-invocation: true
 name: visualize
 description: "Explain or present with the smallest view that makes the point — inline code forms or one self-contained HTML page with a shareable URL. Use when the user wants to visualize, compare, explain, or turn data/code into a page, diagram, or report."
+license: MIT
+compatibility: "python3 for the full gate suite; curl for share"
 metadata:
   version: "1.14.1"
 ---

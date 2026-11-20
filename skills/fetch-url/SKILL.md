@@ -1,6 +1,8 @@
 ---
 name: fetch-url
 description: "Bash skill — run `fetch-url \"url\"` in your shell (not an MCP tool). Fetch and extract readable text from any web page. Use when the user wants to read an article, docs, or scrape a page."
+license: MIT
+compatibility: "Network + credgoo token for the bearer API"
 metadata:
   version: "2.9.1"
 ---
