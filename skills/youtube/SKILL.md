@@ -1,7 +1,8 @@
 ---
 name: youtube
-version: "2.3.0"
 description: Search YouTube for long, recent, well-watched content and curate ranked lists you can refine and transcribe. Use when the user wants to find videos or build a watch list.
+metadata:
+  version: "2.3.0"
 ---
 
 # YouTube Search + Curation

@@ -1,9 +1,9 @@
 ---
 name: figure
-version: "1.2.1"
 description: Draw hand-drawn-style architecture or workflow figures (sketchy Excalidraw look) as SVG + PNG from a small .fig.mjs spec. Use when the user wants a presentation-style diagram figure.
 metadata:
   author: skale-dev
+  version: "1.2.1"
 disable-model-invocation: true
 ---
 

@@ -43,7 +43,7 @@ grep -q 'GIT_ROOT/.git' "$SCRIPT" && ok || bad "auto-update guard must use GIT_R
 head -1 "$SKILL/SKILL.md" | grep -q '^---$' && ok || bad "SKILL.md missing frontmatter"
 grep -q '^name: pdf2mark' "$SKILL/SKILL.md" && ok || bad "frontmatter name: pdf2mark"
 grep -q '^description:' "$SKILL/SKILL.md" && ok || bad "frontmatter description missing"
-FMV=$(grep -m1 '^version:' "$SKILL/SKILL.md" | grep -o '[0-9][0-9.]*')
+FMV=$(grep -m1 'version:' "$SKILL/SKILL.md" | grep -o '[0-9][0-9.]*')
 PYV=$(grep -m1 '^version' "$SKILL/pyproject.toml" | grep -o '[0-9][0-9.]*')
 [ -n "$FMV" ] && [ "$FMV" = "$PYV" ] && ok || bad "version mismatch SKILL.md($FMV) vs pyproject($PYV)"
 

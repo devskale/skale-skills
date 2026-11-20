@@ -1,7 +1,8 @@
 ---
 name: fetch-url
-version: "2.9.1"
 description: "Bash skill — run `fetch-url \"url\"` in your shell (not an MCP tool). Fetch and extract readable text from any web page. Use when the user wants to read an article, docs, or scrape a page."
+metadata:
+  version: "2.9.1"
 ---
 
 # Fetch URL

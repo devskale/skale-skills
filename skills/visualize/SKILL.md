@@ -1,8 +1,9 @@
 ---
 disable-model-invocation: true
 name: visualize
-version: "1.14.1"
 description: "Explain or present with the smallest view that makes the point — inline code forms or one self-contained HTML page with a shareable URL. Use when the user wants to visualize, compare, explain, or turn data/code into a page, diagram, or report."
+metadata:
+  version: "1.14.1"
 ---
 
 # visualize — one self-contained HTML for any set of things

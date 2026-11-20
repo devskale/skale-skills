@@ -1,9 +1,10 @@
 ---
 name: d2
-version: "1.4.1"
 description: Draw architecture, sequence, flowchart, or ER diagrams as code with the D2 CLI. Use when the user wants to create, edit, validate, or render any diagram or .d2 file.
 license: MIT
 disable-model-invocation: true
+metadata:
+  version: "1.4.1"
 ---
 
 # D2 — Diagrams as Code

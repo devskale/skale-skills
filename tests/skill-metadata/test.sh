@@ -95,11 +95,19 @@ print(len(d))")
         warn "skills/$name: description carries gate mechanics — enforcement language belongs in the body"
     fi
 
+    # Spec conformance (agentskills.io): top-level frontmatter fields are
+    # name/description/license/compatibility/metadata/allowed-tools only.
+    # Our version lives under metadata.version; disable-model-invocation is
+    # the pi-specific opt-out (kept — pi is our primary client).
+    if grep -qE '^version:' "$f"; then
+        bad "skills/$name: top-level 'version:' — move under metadata: (Agent Skills spec)"
+    fi
+
     # version truth: SKILL.md frontmatter ↔ pyproject.toml (where present).
     # Found in the wild 2026-10-15: youtube SKILL.md 2.2.0 vs pyproject 2.1.0.
     pp="skills/$name/pyproject.toml"
     if [ -f "$pp" ]; then
-        sv=$(grep -m1 '^version:' "$f" | grep -oE '[0-9][0-9.]*')
+        sv=$(grep -m1 'version:' "$f" | grep -oE '[0-9][0-9.]*')
         pv=$(grep -m1 '^version' "$pp" | grep -oE '[0-9][0-9.]*')
         assert "skills/$name: SKILL.md version ($sv) matches pyproject ($pv)" \
             "[ -n '$sv' ] && [ '$sv' = '$pv' ]"

@@ -149,7 +149,7 @@ grep -q 'function distribute' "$SKILL/templates/workflow-animated.html" \
 
 # pyproject is required for Python skills (CODING_RULES) and its version must match SKILL.md
 [ -f "$SKILL/pyproject.toml" ] && ok || bad "pyproject.toml missing"
-SKILL_V=$(grep -m1 '^version:' "$SKILL/SKILL.md" | grep -o '[0-9][0-9.]*')
+SKILL_V=$(grep -m1 'version:' "$SKILL/SKILL.md" | grep -o '[0-9][0-9.]*')
 TOML_V=$(grep -m1 '^version' "$SKILL/pyproject.toml" | grep -o '[0-9][0-9.]*')
 [ -n "$SKILL_V" ] && [ "$SKILL_V" = "$TOML_V" ] \
     && ok || bad "version mismatch SKILL.md($SKILL_V) vs pyproject($TOML_V)"

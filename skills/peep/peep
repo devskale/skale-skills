@@ -123,7 +123,7 @@ case "${1:-}" in
         exit $?
         ;;
     --selfcheck)
-        echo "peep launcher (skill v$(grep -o 'version.*"[^"]*"' "$SKILL_DIR/SKILL.md" 2>/dev/null | head -1 | grep -o '[0-9][^"]*' || echo '?'))"
+        echo "peep launcher (skill v$(grep -o 'version:[[:space:]]*"[^"]*"' "$SKILL_DIR/SKILL.md" 2>/dev/null | head -1 | grep -o '[0-9][^"]*' || echo '?'))"
         echo "  binary:  $BIN"
         echo "  version: $(_installed_version || echo 'not installed — run: peep --update')"
         echo "  latest:  $(_latest_version || echo 'unreachable')"

@@ -159,7 +159,7 @@ case "$cmd" in
         exit 0
         ;;
     --selfcheck)
-        vversion() { grep -m1 '^version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -o '[0-9][0-9.]*' || echo "?"; }
+        vversion() { grep -m1 'version:' "$SKILL_DIR/SKILL.md" 2>/dev/null | grep -o '[0-9][0-9.]*' || echo "?"; }
         last="never"
         if [ -f "$STAMP_FILE" ]; then
             ts="$(cat "$STAMP_FILE" 2>/dev/null)"
